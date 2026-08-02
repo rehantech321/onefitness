@@ -49,6 +49,22 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_native_splash: ^2.4.6
+
+# Native launch-screen config for `dart run flutter_native_splash:create` —
+# generates the actual iOS/Android splash shown before Flutter's first frame,
+# matching the app's dark theme instead of a default white flash.
+flutter_native_splash:
+  color: "#0C0C0D"
+  image: assets/images/logo.png
+  color_dark: "#0C0C0D"
+  image_dark: assets/images/logo.png
+  android_12:
+    color: "#0C0C0D"
+    image: assets/images/logo.png
+    color_dark: "#0C0C0D"
+    image_dark: assets/images/logo.png
+  web: false
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
