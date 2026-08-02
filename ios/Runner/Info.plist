@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ONE Fitness uses your photo library so you can upload progress photos to track your fitness journey.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>ONE Fitness saves progress photos you choose to your photo library.</string>
 </dict>
 </plist>
