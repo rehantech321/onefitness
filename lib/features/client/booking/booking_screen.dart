@@ -141,21 +141,25 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         children: [
           if (myUpcoming.isNotEmpty) ...[
             const SectionLabel("Your upcoming sessions"),
-            GridView.count(
-              crossAxisCount: 4,
+            GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 6,
-              mainAxisSpacing: 6,
-              childAspectRatio: 0.72,
-              children: (_showAllUpcoming ? myUpcoming : myUpcoming.take(4).toList())
-                  .map((b) => UpcomingSessionCard(
-                        booking: b,
-                        trainers: trainers,
-                        onReschedule: _startReschedule,
-                        onCancel: (b) => setState(() => _cancelTarget = b),
-                      ))
-                  .toList(),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 150,
+                mainAxisExtent: 176,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: (_showAllUpcoming ? myUpcoming : myUpcoming.take(4).toList()).length,
+              itemBuilder: (context, i) {
+                final b = (_showAllUpcoming ? myUpcoming : myUpcoming.take(4).toList())[i];
+                return UpcomingSessionCard(
+                  booking: b,
+                  trainers: trainers,
+                  onReschedule: _startReschedule,
+                  onCancel: (b) => setState(() => _cancelTarget = b),
+                );
+              },
             ),
             if (myUpcoming.length > 4)
               Padding(

@@ -56,6 +56,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     final meta = kStatusMeta[status]!;
     final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
     final notes = record != null ? getClientProgramNotes(record) : const [];
+    final earnedBadges = ref.watch(earnedBadgesProvider);
+    final hasActiveBadges = earnedBadges.any((b) => b.clientId == widget.clientId && b.isActive);
 
     void update(ClientInfoUpdater updater) => ref.read(trainerRosterProvider.notifier).update(widget.clientId, updater);
 
@@ -89,6 +91,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             ],
           ),
           const SizedBox(height: 18),
+          const SectionLabel("Active Merit Badges"),
+          hasActiveBadges
+              ? Padding(padding: const EdgeInsets.only(bottom: 14), child: MeritBadgeRow(clientId: widget.clientId, earnedBadges: earnedBadges))
+              : const Padding(padding: EdgeInsets.only(bottom: 14), child: Text("No Merit Badges earned yet.", style: TextStyle(fontSize: 12, color: AppColors.mute))),
           if (record != null) FlagAlert(flag: getHighestFlag(record, info)),
           if (notes.isNotEmpty)
             Container(

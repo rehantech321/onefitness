@@ -6,11 +6,13 @@ import "../models/client_info.dart";
 import "../models/client_plan.dart";
 import "../models/client_record.dart";
 import "../models/comm_message.dart";
+import "../models/earned_badge.dart";
 import "../models/exercise_prescription.dart";
 import "../models/habit_log_entry.dart";
 import "../models/measurement.dart";
 import "../models/membership_plan.dart";
 import "../models/nutrition_plan.dart";
+import "../models/points_ledger_entry.dart";
 import "../models/program_day.dart";
 import "../models/roster_client.dart";
 import "../models/saved_program.dart";
@@ -627,5 +629,30 @@ class MockData {
           trainerId: "demo-marcus",
           trainerName: "Marcus Rivera",
         ),
+      ];
+
+  static List<EarnedBadge> earnedBadges() => [
+        EarnedBadge(id: "badge-alex-1", clientId: "demo-alex", badgeKey: "one_fitness", earnedAt: _minusDays(20)),
+        EarnedBadge(id: "badge-alex-2", clientId: "demo-alex", badgeKey: "progress_tracker", earnedAt: _minusDays(10)),
+        EarnedBadge(
+          id: "badge-alex-3",
+          clientId: "demo-alex",
+          badgeKey: "record_breaker",
+          earnedAt: _minusDays(5),
+          earnedMethod: "coach",
+          grantedByUserId: "demo-marcus",
+          note: "Bench press PR — 185 lbs x 5",
+        ),
+        EarnedBadge(id: "badge-jordan-1", clientId: "demo-jordan", badgeKey: "one_fitness", earnedAt: _minusDays(14)),
+        EarnedBadge(id: "badge-taylor-1", clientId: "demo-taylor", badgeKey: "one_fitness", earnedAt: _minusDays(8)),
+      ];
+
+  static List<PointsLedgerEntry> pointsLedger() => [
+        PointsLedgerEntry(id: "pts-alex-1", clientId: "demo-alex", amount: 1, type: "earn", source: "challenge_participation", createdAt: _minusDays(18), expiresAt: _plusDays(163)),
+        PointsLedgerEntry(id: "pts-alex-2", clientId: "demo-alex", amount: 1, type: "earn", source: "progress_photo", createdAt: _minusDays(14), expiresAt: _plusDays(167)),
+        PointsLedgerEntry(id: "pts-alex-3", clientId: "demo-alex", amount: 1, type: "earn", source: "measurement", createdAt: _minusDays(13), expiresAt: _plusDays(168)),
+        PointsLedgerEntry(id: "pts-alex-4", clientId: "demo-alex", amount: 3, type: "earn", source: "workout_streak", createdAt: _minusDays(10), expiresAt: _plusDays(171)),
+        PointsLedgerEntry(id: "pts-alex-5", clientId: "demo-alex", amount: 2, type: "grant", source: "discretionary_grant", createdAt: _minusDays(5), expiresAt: _plusDays(176), grantedByUserId: "demo-marcus", reason: "Great effort on leg day this week"),
+        PointsLedgerEntry(id: "pts-jordan-1", clientId: "demo-jordan", amount: 1, type: "earn", source: "challenge_participation", createdAt: _minusDays(12), expiresAt: _plusDays(169)),
       ];
 }

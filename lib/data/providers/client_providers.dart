@@ -4,7 +4,9 @@ import "../models/booking.dart";
 import "../models/challenge.dart";
 import "../models/client_info.dart";
 import "../models/client_record.dart";
+import "../models/earned_badge.dart";
 import "../models/membership_plan.dart";
+import "../models/points_ledger_entry.dart";
 import "../models/roster_client.dart";
 import "../models/squad.dart";
 import "../models/trainer.dart";
@@ -140,3 +142,30 @@ class SquadsNotifier extends Notifier<List<Squad>> {
 }
 
 final squadsProvider = NotifierProvider<SquadsNotifier, List<Squad>>(SquadsNotifier.new);
+
+/// Every client's earned Merit Badges (App.jsx `meritBadges`) — global list,
+/// shared identically by the client's own Badge Gallery and the coach-side
+/// MeritBadgesTab, same convention as squadsProvider.
+class EarnedBadgesNotifier extends Notifier<List<EarnedBadge>> {
+  @override
+  List<EarnedBadge> build() => MockData.earnedBadges();
+
+  void award(EarnedBadge badge) => state = [...state, badge];
+
+  void revoke(String badgeId, {required String revokedAt, String? revokedByUserId}) =>
+      state = state.map((b) => b.id == badgeId ? b.copyWith(revokedAt: revokedAt, revokedByUserId: revokedByUserId) : b).toList();
+}
+
+final earnedBadgesProvider = NotifierProvider<EarnedBadgesNotifier, List<EarnedBadge>>(EarnedBadgesNotifier.new);
+
+/// Every client's points-ledger rows (App.jsx `pointsLedger`) — global
+/// list, shared by the client's own Rewards screen and the coach-side
+/// PointsTab.
+class PointsLedgerNotifier extends Notifier<List<PointsLedgerEntry>> {
+  @override
+  List<PointsLedgerEntry> build() => MockData.pointsLedger();
+
+  void add(PointsLedgerEntry entry) => state = [...state, entry];
+}
+
+final pointsLedgerProvider = NotifierProvider<PointsLedgerNotifier, List<PointsLedgerEntry>>(PointsLedgerNotifier.new);

@@ -32,7 +32,14 @@ class SessionsRemainingBadge extends StatelessWidget {
               children: [
                 const Icon(LucideIcons.circleSlash, size: 18, color: AppColors.warning),
                 const SizedBox(width: 8),
-                Text("${plan.name} — Frozen", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                Expanded(
+                  child: Text(
+                    "${plan.name} — Frozen",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -65,7 +72,9 @@ class SessionsRemainingBadge extends StatelessWidget {
               children: [
                 const Icon(LucideIcons.clipboardList, size: 18, color: AppColors.gold),
                 const SizedBox(width: 8),
-                Text(plan.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                Expanded(
+                  child: Text(plan.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -98,9 +107,17 @@ class SessionsRemainingBadge extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(plan.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.txt)),
+              Expanded(
+                child: Text(
+                  plan.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.txt),
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
@@ -109,6 +126,8 @@ class SessionsRemainingBadge extends StatelessWidget {
                 ),
                 child: Text(
                   plan.kind == PlanKind.membership ? "MEMBERSHIP" : "PACKAGE",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                 ),
               ),

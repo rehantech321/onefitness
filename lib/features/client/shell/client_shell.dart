@@ -5,6 +5,7 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/providers/client_providers.dart";
+import "../badges/badge_gallery_screen.dart";
 import "../booking/booking_screen.dart";
 import "../challenges/challenges_screen.dart";
 import "../chat/chat_screen.dart";
@@ -18,6 +19,7 @@ import "../intake/intake_area_screen.dart";
 import "../log_progress/log_progress_screen.dart";
 import "../plans/nutrition_tab.dart";
 import "../plans/plans_screen.dart";
+import "../rewards/rewards_screen.dart";
 import "../squad/squad_dashboard_screen.dart";
 import "client_shell_state.dart";
 
@@ -42,6 +44,8 @@ const _drawerItems = [
   _NavItem("progress", "Log Progress", LucideIcons.barChart2),
   _NavItem("habits", "Habit Tracker", LucideIcons.flame),
   _NavItem("challenges", "Challenges", LucideIcons.trophy),
+  _NavItem("rewards", "Rewards", LucideIcons.gift),
+  _NavItem("badges", "Merit Badges", LucideIcons.award),
   _NavItem("history", "History", LucideIcons.history),
   _NavItem("forms", "Assessments", LucideIcons.fileText),
   _NavItem("squad", "My Squad", LucideIcons.users2),
@@ -60,6 +64,8 @@ const _titles = {
   "progress": "Log Progress",
   "habits": "Habit Tracker",
   "challenges": "Challenges",
+  "rewards": "Rewards",
+  "badges": "Merit Badges",
   "forms": "Assessments",
   "history": "History",
   "signatures": "Signatures",
@@ -80,6 +86,7 @@ class ClientShell extends ConsumerWidget {
     final info = ref.watch(clientInfoProvider);
     final client = ref.watch(clientRecordProvider);
     final bookings = ref.watch(clientBookingsProvider);
+    final earnedBadges = ref.watch(earnedBadgesProvider);
 
     void go(String key) {
       ref.read(clientScreenProvider.notifier).go(key);
@@ -134,6 +141,8 @@ class ClientShell extends ConsumerWidget {
                     onLogWorkout: () => go("plans"),
                     onPickDate: (_) {},
                     onGoHabits: () => go("habits"),
+                    earnedBadges: earnedBadges,
+                    onGoBadges: () => go("badges"),
                   ),
                 "chat" => const ChatScreen(),
                 "plans" => const PlansScreen(),
@@ -144,6 +153,8 @@ class ClientShell extends ConsumerWidget {
                 "signatures" => const SignaturesScreen(),
                 "memberships" => const MembershipHubScreen(),
                 "challenges" => const ChallengesScreen(),
+                "rewards" => RewardsScreen(clientId: info.id),
+                "badges" => BadgeGalleryScreen(clientId: info.id),
                 "settings" => const ProfileSettingsScreen(),
                 "squad" => const SquadDashboardScreen(),
                 "forms" => const IntakeAreaScreen(),

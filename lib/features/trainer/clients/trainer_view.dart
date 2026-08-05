@@ -3,8 +3,10 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "habits_tab.dart";
 import "logged_tab.dart";
+import "merit_badges_tab.dart";
 import "notes_tab.dart";
 import "plans_tab.dart";
+import "points_tab.dart";
 import "profile_tab.dart";
 import "squad_tab.dart";
 
@@ -25,6 +27,8 @@ const _moreTabs = [
   _TabDef("habits", "Habits", LucideIcons.flame),
   _TabDef("notes", "Notes", LucideIcons.flag),
   _TabDef("squad", "Squad", LucideIcons.users2),
+  _TabDef("points", "Points", LucideIcons.gift),
+  _TabDef("badges", "Badges", LucideIcons.award),
 ];
 
 /// Mirrors TrainerView.jsx — the per-client tab bar (3 primary tabs + a
@@ -40,23 +44,54 @@ class TrainerView extends StatefulWidget {
 
 class _TrainerViewState extends State<TrainerView> {
   String _tab = "profile";
-  bool _moreOpen = false;
 
   @override
   void didUpdateWidget(covariant TrainerView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.clientId != widget.clientId) {
-      setState(() {
-        _tab = "profile";
-        _moreOpen = false;
-      });
+      setState(() => _tab = "profile");
     }
   }
 
-  void _goTab(String k) => setState(() {
-        _tab = k;
-        _moreOpen = false;
-      });
+  void _goTab(String k) => setState(() => _tab = k);
+
+  // Uses showMenu (the root Overlay) rather than a Positioned-in-Stack
+  // dropdown: a Positioned that overflows its Stack's own box paints
+  // *behind* the next sibling in the outer Column (ProfileTab's content),
+  // which silently clipped the last couple of menu items when this list
+  // grew past 3 entries. showMenu always paints above everything.
+  Future<void> _openMoreMenu(BuildContext buttonContext) async {
+    final button = buttonContext.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(buttonContext).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        button.localToGlobal(Offset(0, button.size.height), ancestor: overlay),
+        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+    final selected = await showMenu<String>(
+      context: buttonContext,
+      position: position,
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.line)),
+      constraints: const BoxConstraints(minWidth: 190),
+      items: _moreTabs.map((t) {
+        final active = _tab == t.key;
+        return PopupMenuItem<String>(
+          value: t.key,
+          child: Row(
+            children: [
+              Icon(t.icon, size: 16, color: active ? AppColors.gold : AppColors.mute),
+              const SizedBox(width: 12),
+              Text(t.label, style: TextStyle(fontSize: 14, color: active ? AppColors.gold : AppColors.txt, fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+    if (selected != null) _goTab(selected);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,69 +100,22 @@ class _TrainerViewState extends State<TrainerView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
-              child: Row(
-                children: [
-                  ..._primary.map((t) => Expanded(child: _TabButton(def: t, active: _tab == t.key, onTap: () => _goTab(t.key)))),
-                  Expanded(
-                    child: _TabButton(
-                      def: const _TabDef("more", "More", LucideIcons.moreHorizontal),
-                      active: _moreOpen || activeInMore,
-                      onTap: () => setState(() => _moreOpen = !_moreOpen),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (_moreOpen)
-              Positioned(
-                top: 46,
-                right: 0,
-                child: Container(
-                  width: 190,
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    border: Border.all(color: AppColors.line),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 24)],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: _moreTabs.map((t) {
-                      final active = _tab == t.key;
-                      return InkWell(
-                        onTap: () => _goTab(t.key),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                          decoration: BoxDecoration(
-                            color: active ? AppColors.gold.withValues(alpha: 0.12) : null,
-                            border: const Border(bottom: BorderSide(color: AppColors.line)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(t.icon, size: 16, color: active ? AppColors.gold : AppColors.mute),
-                              const SizedBox(width: 12),
-                              Text(
-                                t.label,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: active ? AppColors.gold : AppColors.txt,
-                                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
+        Container(
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+          child: Row(
+            children: [
+              ..._primary.map((t) => Expanded(child: _TabButton(def: t, active: _tab == t.key, onTap: () => _goTab(t.key)))),
+              Expanded(
+                child: Builder(
+                  builder: (btnContext) => _TabButton(
+                    def: const _TabDef("more", "More", LucideIcons.moreHorizontal),
+                    active: activeInMore,
+                    onTap: () => _openMoreMenu(btnContext),
                   ),
                 ),
               ),
-          ],
+            ],
+          ),
         ),
         Expanded(child: _body()),
       ],
@@ -148,6 +136,10 @@ class _TrainerViewState extends State<TrainerView> {
         return NotesTab(clientId: widget.clientId);
       case "squad":
         return SquadTab(clientId: widget.clientId);
+      case "points":
+        return PointsTab(clientId: widget.clientId);
+      case "badges":
+        return MeritBadgesTab(clientId: widget.clientId);
       default:
         return const SizedBox.shrink();
     }

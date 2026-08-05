@@ -7,6 +7,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/client_record.dart";
+import "../../../data/models/earned_badge.dart";
 import "sessions_remaining_badge.dart";
 import "workout_calendar.dart";
 
@@ -21,6 +22,8 @@ class ClientDashboardScreen extends StatelessWidget {
     required this.onLogWorkout,
     required this.onPickDate,
     required this.onGoHabits,
+    required this.earnedBadges,
+    required this.onGoBadges,
   });
 
   final ClientRecord client;
@@ -30,6 +33,8 @@ class ClientDashboardScreen extends StatelessWidget {
   final VoidCallback onLogWorkout;
   final ValueChanged<String> onPickDate;
   final VoidCallback onGoHabits;
+  final List<EarnedBadge> earnedBadges;
+  final VoidCallback onGoBadges;
 
   Booking? get _next {
     final todayStr = isoToday();
@@ -63,6 +68,19 @@ class ClientDashboardScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Text(dayLabel(isoToday()), style: const TextStyle(fontSize: 13, color: AppColors.mute)),
+          ),
+
+          if (earnedBadges.any((b) => b.clientId == info.id && b.isActive)) ...[
+            MeritBadgeRow(clientId: info.id, earnedBadges: earnedBadges),
+            const SizedBox(height: 2),
+          ],
+          TextButton(
+            onPressed: onGoBadges,
+            style: TextButton.styleFrom(foregroundColor: AppColors.gold, padding: EdgeInsets.zero, minimumSize: Size.zero, alignment: Alignment.centerLeft),
+            child: const Padding(
+              padding: EdgeInsets.only(bottom: 14),
+              child: Text("See all Merit Badges →", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+            ),
           ),
 
           SessionsRemainingBadge(info: info, bookings: bookings),
