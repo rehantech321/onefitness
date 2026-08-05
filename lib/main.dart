@@ -41,7 +41,8 @@ class _RootGate extends ConsumerWidget {
     final clientSignedIn = ref.watch(clientSignedInProvider);
     final trainerAuth = ref.watch(trainerAuthProvider);
 
-    final showHeader = !(role == "client" && clientSignedIn);
+    final staffSignedIn = role == "trainer" && trainerAuth != null;
+    final showHeader = !((role == "client" && clientSignedIn) || staffSignedIn);
     final body = role == "trainer" ? (trainerAuth == null ? const TrainerAuthScreen() : const TrainerShell()) : (clientSignedIn ? const ClientShell() : const ClientAuthScreen());
 
     if (!showHeader) return body;

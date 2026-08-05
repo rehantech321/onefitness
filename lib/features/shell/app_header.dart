@@ -2,24 +2,19 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../core/theme/app_colors.dart";
 import "../../data/providers/role_provider.dart";
-import "../../data/providers/trainer_providers.dart";
 
-/// Mirrors AppShell.jsx's `Header` — the Coach/Client pill toggle shown
-/// above whichever shell is active, plus the ONE Fitness logo once a coach
-/// is signed in. Hidden entirely once a client is signed in (their shell
-/// takes the full screen), matching the source's
-/// `!(role === "client" && activeClient)` condition. The pill itself is
-/// only useful for picking which login form to show, so once staff
-/// (coach or owner) are actually signed in it drops away too, leaving just
-/// the logo.
+/// Mirrors AppShell.jsx's `Header` — the Coach/Client pill toggle used to
+/// pick which sign-in form to show. Hidden entirely once someone is
+/// actually signed in (client or staff) — their own shell takes the full
+/// screen with no reserved space above it, matching the source's
+/// `!(role === "client" && activeClient)` condition, extended the same way
+/// for the staff side.
 class AppHeader extends ConsumerWidget {
   const AppHeader({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final role = ref.watch(roleProvider);
-    final trainerAuth = ref.watch(trainerAuthProvider);
-    final staffSignedIn = role == "trainer" && trainerAuth != null;
 
     return Container(
       color: AppColors.bg,
@@ -27,25 +22,15 @@ class AppHeader extends ConsumerWidget {
         bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-          child: Column(
-            children: [
-              if (staffSignedIn)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Image.asset("assets/images/logo.png", height: 26),
-                ),
-              if (!staffSignedIn)
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(color: const Color(0xFF1A1A1B), borderRadius: BorderRadius.circular(50), border: Border.all(color: AppColors.line)),
-                  child: Row(
-                    children: [
-                      _PillButton(label: "Coach", selected: role == "trainer", onTap: () => ref.read(roleProvider.notifier).set("trainer")),
-                      _PillButton(label: "Client", selected: role == "client", onTap: () => ref.read(roleProvider.notifier).set("client")),
-                    ],
-                  ),
-                ),
-            ],
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(color: const Color(0xFF1A1A1B), borderRadius: BorderRadius.circular(50), border: Border.all(color: AppColors.line)),
+            child: Row(
+              children: [
+                _PillButton(label: "Coach", selected: role == "trainer", onTap: () => ref.read(roleProvider.notifier).set("trainer")),
+                _PillButton(label: "Client", selected: role == "client", onTap: () => ref.read(roleProvider.notifier).set("client")),
+              ],
+            ),
           ),
         ),
       ),
