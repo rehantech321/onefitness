@@ -4,7 +4,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 /// switched via the Coach/Client pill toggle in the shared Header.
 class RoleNotifier extends Notifier<String> {
   @override
-  String build() => "trainer"; // matches App.jsx's default useState("trainer")
+  String build() => "client";
 
   void set(String value) => state = value;
 }

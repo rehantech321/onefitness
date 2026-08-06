@@ -75,117 +75,123 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
             ),
           ),
           child: SafeArea(
-            child: Column(
-              children: [
-                // Reserves ~2/3 of the screen for the photo — mirrors the
-                // web version's `flexGrow:2` spacer. The form below is
-                // sized to its own content (like the web version's
-                // `flexGrow:1, flexBasis:0` sibling, which flexbox never
-                // shrinks below min-content), so it never gets clipped on
-                // short viewports; this spacer just absorbs the remainder.
-                const Expanded(flex: 2, child: SizedBox.shrink()),
-                Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Column(
-                          children: [
-                            Text(
-                              "Welcome to ${_businessName.toUpperCase()}",
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w300,
-                                fontSize: 20,
-                                letterSpacing: 0.4,
-                                color: Colors.white,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                        // Fixed fraction of the screen reserved for the photo
+                        // (rather than a flex spacer that shrinks to fit the
+                        // form) so the form always starts below the runner's
+                        // feet in the background art, regardless of how tall
+                        // the form itself ends up being.
+                        SizedBox(height: constraints.maxHeight * 0.62),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Column(
+                                children: [
+                                  Text(
+                                    "Welcome to ${_businessName.toUpperCase()}",
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w300,
+                                      fontSize: 19,
+                                      letterSpacing: 0.4,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    "Sign in to your account",
+                                    style: TextStyle(color: AppColors.mute, fontSize: 12),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: 3),
-                            const Text(
-                              "Sign in to your account",
-                              style: TextStyle(color: AppColors.mute, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        FieldLabeled(
-                          label: "Email",
-                          child: AppField(
-                            controller: _email,
-                            placeholder: "name@email.com",
-                            keyboardType: TextInputType.emailAddress,
-                            onChanged: (_) => setState(() => _error = null),
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        FieldLabeled(
-                          label: "Password",
-                          child: AppField(
-                            controller: _password,
-                            placeholder: "••••••",
-                            obscureText: true,
-                            onChanged: (_) => setState(() => _error = null),
-                          ),
-                        ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 6),
-                          Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
-                        ],
-                        const SizedBox(height: 10),
-                        BtnGold(
-                          onPressed: _busy ? null : _signIn,
-                          full: true,
-                          child: _busy
-                              ? const Text("Signing in…")
-                              : const Row(
+                              const SizedBox(height: 8),
+                              FieldLabeled(
+                                label: "Email",
+                                child: AppField(
+                                  controller: _email,
+                                  placeholder: "name@email.com",
+                                  keyboardType: TextInputType.emailAddress,
+                                  onChanged: (_) => setState(() => _error = null),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              FieldLabeled(
+                                label: "Password",
+                                child: AppField(
+                                  controller: _password,
+                                  placeholder: "••••••",
+                                  obscureText: true,
+                                  onChanged: (_) => setState(() => _error = null),
+                                ),
+                              ),
+                              if (_error != null) ...[
+                                const SizedBox(height: 5),
+                                Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                              ],
+                              const SizedBox(height: 8),
+                              BtnGold(
+                                onPressed: _busy ? null : _signIn,
+                                full: true,
+                                child: _busy
+                                    ? const Text("Signing in…")
+                                    : const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(LucideIcons.user, size: 15),
+                                          SizedBox(width: 6),
+                                          Text("Sign in"),
+                                        ],
+                                      ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  children: const [
+                                    Expanded(child: Divider(color: AppColors.line, height: 1)),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 10),
+                                      child: Text(
+                                        "NEW HERE?",
+                                        style: TextStyle(color: AppColors.mute, fontSize: 11, letterSpacing: 1.5),
+                                      ),
+                                    ),
+                                    Expanded(child: Divider(color: AppColors.line, height: 1)),
+                                  ],
+                                ),
+                              ),
+                              BtnGhost(
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text("Sign-up form coming in a later pass.")),
+                                  );
+                                },
+                                full: true,
+                                child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(LucideIcons.user, size: 15),
+                                    Icon(LucideIcons.plus, size: 15),
                                     SizedBox(width: 6),
-                                    Text("Sign in"),
+                                    Text("Create my profile"),
                                   ],
                                 ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: Row(
-                            children: const [
-                              Expanded(child: Divider(color: AppColors.line, height: 1)),
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 10),
-                                child: Text(
-                                  "NEW HERE?",
-                                  style: TextStyle(color: AppColors.mute, fontSize: 11, letterSpacing: 1.5),
-                                ),
                               ),
-                              Expanded(child: Divider(color: AppColors.line, height: 1)),
-                            ],
-                          ),
-                        ),
-                        BtnGhost(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Sign-up form coming in a later pass.")),
-                            );
-                          },
-                          full: true,
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(LucideIcons.plus, size: 15),
-                              SizedBox(width: 6),
-                              Text("Create my profile"),
                             ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-              ],
+                  );
+              },
             ),
           ),
         ),
