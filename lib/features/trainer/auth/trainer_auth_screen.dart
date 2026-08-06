@@ -77,7 +77,12 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        image: DecorationImage(image: AssetImage("assets/images/login_bg.jpg"), fit: BoxFit.cover, alignment: Alignment.topCenter),
+        image: DecorationImage(
+          image: AssetImage("assets/images/login_bg.jpg"),
+          fit: BoxFit.cover,
+          // Centers the photo's own logo within the top half's box.
+          alignment: Alignment(0, -0.25),
+        ),
       ),
       child: Container(
         decoration: BoxDecoration(
@@ -89,42 +94,48 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 120),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Center(
-                        child: Text(
-                          "Staff",
-                          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 1),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      FieldLabeled(
-                        label: "Email",
-                        child: AppField(
-                          controller: _email,
-                          placeholder: "name@email.com",
-                          keyboardType: TextInputType.emailAddress,
-                          onChanged: (_) => setState(() => _error = null),
-                        ),
-                      ),
-                      const SizedBox(height: 7),
-                      FieldLabeled(
-                        label: "Password",
-                        child: AppField(controller: _password, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
-                      ),
-                      if (_error != null) ...[
-                        const SizedBox(height: 6),
-                        Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
-                      ],
-                      const SizedBox(height: 10),
-                      BtnGold(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Exactly half the screen reserved for the photo, so the
+                    // logo lands centered in the top half regardless of how
+                    // tall the (fairly long) staff sign-in form is below it.
+                    SizedBox(height: constraints.maxHeight * 0.5),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Center(
+                            child: Text(
+                              "Staff",
+                              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 1),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          FieldLabeled(
+                            label: "Email",
+                            child: AppField(
+                              controller: _email,
+                              placeholder: "name@email.com",
+                              keyboardType: TextInputType.emailAddress,
+                              onChanged: (_) => setState(() => _error = null),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          FieldLabeled(
+                            label: "Password",
+                            child: AppField(controller: _password, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
+                          ),
+                          if (_error != null) ...[
+                            const SizedBox(height: 5),
+                            Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                          ],
+                          const SizedBox(height: 6),
+                          BtnGold(
                         onPressed: _busy ? null : _signIn,
                         full: true,
                         child: _busy
@@ -136,7 +147,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                               ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Row(
                           children: const [
                             Expanded(child: Divider(color: AppColors.line, height: 1)),
@@ -160,7 +171,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Row(
                           children: const [
                             Expanded(child: Divider(color: AppColors.line, height: 1)),
@@ -194,7 +205,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                                   onChanged: (_) => setState(() => _ownerError = null),
                                 ),
                               ),
-                              const SizedBox(height: 7),
+                              const SizedBox(height: 5),
                               FieldLabeled(
                                 label: "Password",
                                 child: AppField(
@@ -208,7 +219,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                                 const SizedBox(height: 8),
                                 Text(_ownerError!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
                               ],
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 8),
                               Row(
                                 children: [
                                   Expanded(
@@ -251,11 +262,13 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                           style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                         ),
                       ),
-                    ],
-                  ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),

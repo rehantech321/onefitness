@@ -58,7 +58,9 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
           image: DecorationImage(
             image: AssetImage("assets/images/login_bg.jpg"),
             fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
+            // Centers the photo's own logo within whatever height the top
+            // half ends up being, nudged up slightly per request.
+            alignment: Alignment(0, -0.25),
           ),
         ),
         child: Container(
@@ -81,14 +83,15 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                        // Fixed fraction of the screen reserved for the photo
+                        // Exactly half the screen reserved for the photo
                         // (rather than a flex spacer that shrinks to fit the
-                        // form) so the form always starts below the runner's
-                        // feet in the background art, regardless of how tall
-                        // the form itself ends up being.
-                        SizedBox(height: constraints.maxHeight * 0.62),
+                        // form) so the logo lands centered in the top half
+                        // and the form — tightened up so it fits in the
+                        // bottom half without needing a scroll on a typical
+                        // phone — starts right at the midpoint.
+                        SizedBox(height: constraints.maxHeight * 0.5),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                          padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -112,7 +115,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               FieldLabeled(
                                 label: "Email",
                                 child: AppField(
@@ -122,7 +125,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                                   onChanged: (_) => setState(() => _error = null),
                                 ),
                               ),
-                              const SizedBox(height: 6),
+                              const SizedBox(height: 5),
                               FieldLabeled(
                                 label: "Password",
                                 child: AppField(
@@ -136,7 +139,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                                 const SizedBox(height: 5),
                                 Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
                               ],
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               BtnGold(
                                 onPressed: _busy ? null : _signIn,
                                 full: true,
@@ -153,7 +156,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                                       ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(vertical: 6),
                                 child: Row(
                                   children: const [
                                     Expanded(child: Divider(color: AppColors.line, height: 1)),
