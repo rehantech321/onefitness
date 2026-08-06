@@ -1,9 +1,11 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "core/supabase/supabase_service.dart";
 import "core/theme/app_colors.dart";
 import "core/theme/app_theme.dart";
 import "data/providers/client_providers.dart";
 import "data/providers/role_provider.dart";
+import "data/providers/supabase_bootstrap_provider.dart";
 import "data/providers/trainer_providers.dart";
 import "features/auth/client_auth_screen.dart";
 import "features/client/shell/client_shell.dart";
@@ -11,7 +13,9 @@ import "features/shell/app_header.dart";
 import "features/trainer/auth/trainer_auth_screen.dart";
 import "features/trainer/shell/trainer_shell.dart";
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseService.initialize();
   runApp(const ProviderScope(child: OneFitnessApp()));
 }
 
@@ -32,8 +36,27 @@ class OneFitnessApp extends StatelessWidget {
 /// Mirrors App.jsx's top-level structure: the Coach/Client pill toggle
 /// (Header) above whichever shell is active, hidden once a client is signed
 /// in. Each side's own auth screen gates its own shell independently.
+///
+/// Before any of that renders, this waits on [supabaseBootstrapProvider] —
+/// the real Supabase session restore + roster/trainers/bookings fetch —
+/// same as App.jsx awaiting its own bootstrap Promise.all before mounting.
 class _RootGate extends ConsumerWidget {
   const _RootGate();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bootstrap = ref.watch(supabaseBootstrapProvider);
+
+    return bootstrap.when(
+      loading: () => const Scaffold(backgroundColor: AppColors.bg, body: Center(child: CircularProgressIndicator(color: AppColors.gold))),
+      error: (err, st) => const _RootContent(), // fall back to mock/signed-out state rather than block the app
+      data: (_) => const _RootContent(),
+    );
+  }
+}
+
+class _RootContent extends ConsumerWidget {
+  const _RootContent();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

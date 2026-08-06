@@ -1,25 +1,26 @@
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/widgets/widgets.dart";
-import "../../../data/mock/mock_data.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/membership_plan.dart";
+import "../../../data/providers/client_providers.dart";
 
 /// Mirrors MembershipsHub.jsx `SessionsRemainingBadge`. Returns nothing
 /// (SizedBox.shrink) if the client has no membership plan, matching the
 /// React component's `return null`.
-class SessionsRemainingBadge extends StatelessWidget {
+class SessionsRemainingBadge extends ConsumerWidget {
   const SessionsRemainingBadge({super.key, required this.info, required this.bookings});
 
   final ClientInfo info;
   final List<Booking> bookings;
 
   @override
-  Widget build(BuildContext context) {
-    final plan = MockData.planById(info.membershipPlanId);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
     if (plan == null) return const SizedBox.shrink();
 
     if (info.membershipPaused) {

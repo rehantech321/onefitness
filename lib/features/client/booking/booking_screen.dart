@@ -7,7 +7,6 @@ import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/widgets/widgets.dart";
-import "../../../data/mock/mock_data.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/models/trainer.dart";
@@ -65,7 +64,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     final info = ref.read(clientInfoProvider);
     final bookings = ref.read(clientBookingsProvider);
     if (_rescheduling == null) {
-      final check = canBookOffering(info, sessionType, bookings, _date, slot);
+      final plan = ref.read(membershipPlansProvider.notifier).byId(info.membershipPlanId);
+      final check = canBookOffering(info, sessionType, bookings, _date, slot, plan);
       if (!check.ok) {
         setState(() => _denied = check);
         return;
@@ -130,7 +130,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       );
     }
 
-    final plan = MockData.planById(info.membershipPlanId);
+    final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
     final myUpcoming = bookings.where((b) => b.clientId == info.id && b.date.compareTo(isoToday()) >= 0).toList()
       ..sort((a, b) => (a.date + a.slot.toString().padLeft(4, '0')).compareTo(b.date + b.slot.toString().padLeft(4, '0')));
 

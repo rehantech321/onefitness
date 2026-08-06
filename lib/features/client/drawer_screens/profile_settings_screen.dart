@@ -4,7 +4,6 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/widgets/widgets.dart";
-import "../../../data/mock/mock_data.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/membership_plan.dart";
@@ -47,7 +46,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 
     final info = ref.watch(clientInfoProvider);
     final bookings = ref.watch(clientBookingsProvider);
-    final plan = MockData.planById(info.membershipPlanId);
+    final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
     final mStatus = plan != null ? membershipStatusLabel(info, plan, bookings) : null;
 
     return SingleChildScrollView(

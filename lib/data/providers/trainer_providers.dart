@@ -37,6 +37,8 @@ class TrainerRosterNotifier extends Notifier<List<ClientInfo>> {
       state = state.map((c) => c.id == clientId ? updater(c) : c).toList();
 
   void remove(String clientId) => state = state.where((c) => c.id != clientId).toList();
+
+  void setAll(List<ClientInfo> next) => state = next;
 }
 
 final trainerRosterProvider = NotifierProvider<TrainerRosterNotifier, List<ClientInfo>>(TrainerRosterNotifier.new);
@@ -48,6 +50,8 @@ class TrainerClientRecordsNotifier extends Notifier<Map<String, ClientRecord>> {
 
   void update(String clientId, ClientRecord Function(ClientRecord) updater) =>
       state = {...state, clientId: updater(state[clientId]!)};
+
+  void setAll(Map<String, ClientRecord> next) => state = next;
 }
 
 final trainerClientRecordsProvider =
@@ -66,6 +70,8 @@ class AllBookingsNotifier extends Notifier<List<Booking>> {
 
   void updateAttendance(String bookingId, String? status) =>
       state = state.map((b) => b.id == bookingId ? b.copyWith(attendanceStatus: status) : b).toList();
+
+  void setAll(List<Booking> next) => state = next;
 }
 
 final allBookingsProvider = NotifierProvider<AllBookingsNotifier, List<Booking>>(AllBookingsNotifier.new);

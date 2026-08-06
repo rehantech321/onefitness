@@ -2,7 +2,6 @@ import "../../data/models/booking.dart";
 import "../../data/models/client_info.dart";
 import "../../data/models/membership_plan.dart";
 import "../../data/models/trainer.dart";
-import "../../data/mock/mock_data.dart";
 import "date_utils.dart";
 import "membership_utils.dart";
 import "platform_settings.dart";
@@ -90,6 +89,7 @@ BookingCheck canBookOffering(
   List<Booking> bookings,
   String date,
   int slot,
+  MembershipPlan? plan,
 ) {
   final target = DateTime.parse(date).add(Duration(minutes: slot));
   final hoursAway = target.difference(DateTime.now()).inMinutes / 60.0;
@@ -109,7 +109,6 @@ BookingCheck canBookOffering(
     );
   }
 
-  final plan = MockData.planById(info.membershipPlanId);
   if (plan == null) {
     return const BookingCheck(ok: false, reason: "no-membership", msg: "You need a membership to book this. Visit the Membership Hub to get started.", noMembership: true);
   }

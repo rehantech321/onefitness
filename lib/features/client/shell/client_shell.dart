@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
@@ -289,7 +290,10 @@ class _ClientDrawer extends ConsumerWidget {
               ),
               const Divider(color: AppColors.line, height: 1),
               InkWell(
-                onTap: () => ref.read(clientSignedInProvider.notifier).signOut(),
+                onTap: () {
+                  SupabaseService.signOut();
+                  ref.read(clientSignedInProvider.notifier).signOut();
+                },
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 11),
                   child: Row(

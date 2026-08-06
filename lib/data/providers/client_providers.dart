@@ -56,6 +56,8 @@ class ClientBookingsNotifier extends Notifier<List<Booking>> {
   /// update, so nothing observes the in-between state with neither/both.
   void reschedule(Booking newBooking, String originalId) =>
       state = [...state.where((b) => b.id != originalId), newBooking];
+
+  void setAll(List<Booking> next) => state = next;
 }
 
 final clientBookingsProvider = NotifierProvider<ClientBookingsNotifier, List<Booking>>(ClientBookingsNotifier.new);
@@ -71,6 +73,8 @@ class TrainersNotifier extends Notifier<List<Trainer>> {
   }
 
   void remove(String id) => state = state.where((t) => t.id != id).toList();
+
+  void setAll(List<Trainer> next) => state = next;
 }
 
 final trainersProvider = NotifierProvider<TrainersNotifier, List<Trainer>>(TrainersNotifier.new);
@@ -89,6 +93,8 @@ class MembershipPlansNotifier extends Notifier<List<MembershipPlan>> {
   void archive(String id) => state = state.map((p) => p.id == id ? MembershipPlan(id: p.id, name: p.name, kind: p.kind, maxSessions: p.maxSessions, termMonths: p.termMonths, allowedTypes: p.allowedTypes, priceCents: p.priceCents, archived: true) : p).toList();
 
   void remove(String id) => state = state.where((p) => p.id != id).toList();
+
+  void setAll(List<MembershipPlan> next) => state = next;
 
   MembershipPlan? byId(String? id) {
     if (id == null) return null;

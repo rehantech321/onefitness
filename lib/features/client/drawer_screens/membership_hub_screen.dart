@@ -3,7 +3,6 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
-import "../../../data/mock/mock_data.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
 import "../dashboard/sessions_remaining_badge.dart";
@@ -19,7 +18,7 @@ class MembershipHubScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final info = ref.watch(clientInfoProvider);
     final bookings = ref.watch(clientBookingsProvider);
-    final plan = MockData.planById(info.membershipPlanId);
+    final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),

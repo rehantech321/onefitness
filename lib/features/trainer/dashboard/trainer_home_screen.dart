@@ -6,6 +6,7 @@ import "../../../core/utils/attention_utils.dart";
 import "../../../core/utils/client_status_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/providers/client_providers.dart";
@@ -87,7 +88,10 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                 ),
               ),
               OutlinedButton(
-                onPressed: () => ref.read(trainerAuthProvider.notifier).signOut(),
+                onPressed: () {
+                  SupabaseService.signOut();
+                  ref.read(trainerAuthProvider.notifier).signOut();
+                },
                 style: OutlinedButton.styleFrom(foregroundColor: AppColors.mute, side: const BorderSide(color: AppColors.line)),
                 child: const Text("Sign out", style: TextStyle(fontSize: 12)),
               ),

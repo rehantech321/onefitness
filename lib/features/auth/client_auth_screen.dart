@@ -1,9 +1,10 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../core/supabase/supabase_service.dart";
 import "../../core/theme/app_colors.dart";
 import "../../core/widgets/widgets.dart";
-import "../../data/providers/client_providers.dart";
+import "../../data/providers/supabase_bootstrap_provider.dart";
 
 const _businessName = "ONE Fitness";
 
@@ -32,22 +33,37 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
   }
 
   Future<void> _signIn() async {
+    if (_email.text.trim().isEmpty || _password.text.isEmpty) {
+      setState(() => _error = "Enter your email and password.");
+      return;
+    }
     setState(() {
       _error = null;
       _busy = true;
     });
-    // UI-only phase: any non-empty email/password "signs in" as the demo
-    // client. Real Supabase auth is wired up in a later pass.
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    if (_email.text.trim().isEmpty || _password.text.isEmpty) {
+    try {
+      await SupabaseService.signIn(_email.text.trim(), _password.text);
+      final profile = await SupabaseService.getSessionProfile();
+      if (profile == null || profile["role"] != "client") {
+        await SupabaseService.signOut();
+        throw Exception("This account isn't set up as a client.");
+      }
+      // Re-fetches roster/trainers/bookings/plans as this now-authenticated
+      // user (RLS returns more/different rows than the anonymous startup
+      // bootstrap saw) and sets clientInfo/clientRecord/clientBookings/
+      // clientSignedIn from the freshly-restored session in one pass.
+      await loadAndSeedCoreData(ref);
+    } catch (e, st) {
+      // ignore: avoid_print
+      print("[client sign-in] failed: $e\n$st");
+      if (!mounted) return;
       setState(() {
         _error = "Incorrect email or password.";
         _busy = false;
       });
       return;
     }
-    ref.read(clientSignedInProvider.notifier).signIn();
+    if (mounted) setState(() => _busy = false);
   }
 
   @override

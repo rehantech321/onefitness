@@ -1,9 +1,10 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
-import "../../../data/providers/trainer_providers.dart";
+import "../../../data/providers/supabase_bootstrap_provider.dart";
 
 /// Mirrors TrainerLogin.jsx, trimmed to the two sign-in paths that don't
 /// need a second real backend account: coach sign-in (any non-empty
@@ -40,37 +41,62 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
   }
 
   Future<void> _signIn() async {
+    if (_email.text.trim().isEmpty || _password.text.isEmpty) {
+      setState(() => _error = "Enter your email and password.");
+      return;
+    }
     setState(() {
       _error = null;
       _busy = true;
     });
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    if (_email.text.trim().isEmpty || _password.text.isEmpty) {
+    try {
+      await SupabaseService.signIn(_email.text.trim(), _password.text);
+      final profile = await SupabaseService.getSessionProfile();
+      if (profile == null || profile["role"] != "coach") {
+        await SupabaseService.signOut();
+        throw Exception("This account isn't set up as a coach.");
+      }
+      // Re-fetches roster/trainers/bookings/plans as this now-authenticated
+      // coach (RLS returns more/different rows than the anonymous startup
+      // bootstrap saw) and sets trainerAuth from the restored session.
+      await loadAndSeedCoreData(ref);
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = "Incorrect email or password.";
         _busy = false;
       });
       return;
     }
-    ref.read(trainerAuthProvider.notifier).signIn("demo-marcus");
+    if (mounted) setState(() => _busy = false);
   }
 
   Future<void> _ownerSignIn() async {
+    if (_ownerEmail.text.trim().isEmpty || _ownerPassword.text.isEmpty) {
+      setState(() => _ownerError = "Enter the owner email and password.");
+      return;
+    }
     setState(() {
       _ownerError = null;
       _ownerBusy = true;
     });
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-    if (_ownerEmail.text.trim().isEmpty || _ownerPassword.text.isEmpty) {
+    try {
+      await SupabaseService.signIn(_ownerEmail.text.trim(), _ownerPassword.text);
+      final profile = await SupabaseService.getSessionProfile();
+      if (profile == null || profile["role"] != "owner") {
+        await SupabaseService.signOut();
+        throw Exception("This account isn't the owner account.");
+      }
+      await loadAndSeedCoreData(ref);
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _ownerError = "Incorrect email or password.";
         _ownerBusy = false;
       });
       return;
     }
-    ref.read(trainerAuthProvider.notifier).signIn("owner");
+    if (mounted) setState(() => _ownerBusy = false);
   }
 
   @override
