@@ -1,11 +1,11 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/points_ledger_utils.dart";
 import "../../../core/utils/rewards_domain.dart";
 import "../../../core/widgets/widgets.dart";
-import "../../../data/models/points_ledger_entry.dart";
 import "../../../data/providers/client_providers.dart";
 
 /// Mirrors RewardsScreen.jsx — balance, an expiry banner, a simplified
@@ -93,17 +93,19 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         ? null
                         : () async {
                             setState(() => _redeeming = true);
-                            ref.read(pointsLedgerProvider.notifier).add(PointsLedgerEntry(
-                                  id: DateTime.now().microsecondsSinceEpoch.toString(),
-                                  clientId: widget.clientId,
-                                  amount: -redemptionPlan.points,
-                                  type: "redeem",
-                                  source: "redemption_balance",
-                                  createdAt: DateTime.now().toIso8601String().substring(0, 10),
-                                ));
-                            setState(() => _redeeming = false);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Points redeemed — the discount will apply to your next bill.")));
+                            try {
+                              await SupabaseService.redeemPoints(widget.clientId);
+                              final fresh = await SupabaseService.loadPointsLedgerFor(widget.clientId);
+                              ref.read(pointsLedgerProvider.notifier).replaceForClient(widget.clientId, fresh);
+                              setState(() => _redeeming = false);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Points redeemed — the discount will apply to your next bill.")));
+                              }
+                            } catch (e) {
+                              setState(() => _redeeming = false);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))));
+                              }
                             }
                           },
                     child: Text(_redeeming ? "Redeeming…" : "Redeem ${redemptionPlan.points} points now"),

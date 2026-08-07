@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/meal_def.dart";
@@ -45,8 +46,17 @@ class _MealPickerBodyState extends ConsumerState<_MealPickerBody> {
         mealType: widget.mealType,
         onCancel: () => setState(() => _creating = false),
         onSave: (meal) {
+          // Optimistic: pop immediately so the nutrition builder flow this
+          // meal was created from isn't blocked on a round-trip. Best-effort
+          // persist — on failure the meal just won't be in the shared
+          // catalog on the next reload, no local state to unwind (`ref`
+          // isn't safe to touch after this widget is popped/disposed).
           ref.read(customMealsProvider.notifier).add(meal);
           Navigator.of(context).pop(meal);
+          SupabaseService.insertCustomMeal(meal).catchError((Object e) {
+            // ignore: avoid_print
+            print("[meal_picker_sheet] failed to persist custom meal: $e");
+          });
         },
       );
     }

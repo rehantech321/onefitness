@@ -1,17 +1,23 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/platform_settings.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/comm_message.dart";
 import "../../../data/providers/trainer_providers.dart";
 
+enum _Channel { email, inapp, both }
+
 /// Mirrors CoachChat.jsx — the coach-side mirror of the client's Comms
 /// screen, reversed: one coach, many per-client threads (an inbox), not a
-/// single conversation. Real-time push/SMS/email delivery is stubbed as a
-/// snackbar, same trim as the client-side Comms screen.
+/// single conversation. The source's "In App" channel nudges the
+/// recipient's phone via a native SMS composer — a device-integration
+/// feature, not a backend one, so it stays a no-op here; "Email"/"Both"
+/// send for real via the send-email Edge Function.
 class CoachChatScreen extends ConsumerStatefulWidget {
   const CoachChatScreen({super.key});
 
@@ -138,12 +144,14 @@ class _CoachCompose extends ConsumerStatefulWidget {
 
 class _CoachComposeState extends ConsumerState<_CoachCompose> {
   final _controller = TextEditingController();
+  _Channel _channel = _Channel.inapp;
 
   @override
   void initState() {
     super.initState();
     final trainerAuth = ref.read(trainerAuthProvider);
     ref.read(trainerClientRecordsProvider.notifier).update(widget.client.id, (r) => r.copyWith(comms: r.comms.map((m) => m.who == "client" && (m.trainerId == null || m.trainerId == trainerAuth) ? m.copyWith(readByCoach: true) : m).toList()));
+    SupabaseService.updateClientComms(widget.client.id, ref.read(trainerClientRecordsProvider)[widget.client.id]!.comms);
   }
 
   @override
@@ -165,6 +173,19 @@ class _CoachComposeState extends ConsumerState<_CoachCompose> {
       if (text.isEmpty) return;
       final entry = CommMessage(id: DateTime.now().microsecondsSinceEpoch.toString(), who: "trainer", text: text, at: stamp(), trainerId: trainerAuth, readByCoach: true);
       ref.read(trainerClientRecordsProvider.notifier).update(widget.client.id, (r) => r.copyWith(comms: [entry, ...r.comms]));
+      SupabaseService.updateClientComms(widget.client.id, ref.read(trainerClientRecordsProvider)[widget.client.id]!.comms).catchError((Object _) {
+        ref.read(trainerClientRecordsProvider.notifier).update(widget.client.id, (r) => r.copyWith(comms: r.comms.where((c) => c.id != entry.id).toList()));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't send — check your connection and try again.")));
+      });
+      if ((_channel == _Channel.email || _channel == _Channel.both) && widget.client.email != null) {
+        SupabaseService.sendEmail(
+          to: widget.client.email!,
+          subject: "New message from your coach — $kBusinessName",
+          text: text,
+        ).catchError((Object e) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't send the email — the message is still logged below.")));
+        });
+      }
       _controller.clear();
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Message sent & logged.")));
       setState(() {});
@@ -192,6 +213,19 @@ class _CoachComposeState extends ConsumerState<_CoachCompose> {
               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.line)),
             ),
           ),
+          const Padding(
+            padding: EdgeInsets.only(top: 10, bottom: 6),
+            child: Text("Send via", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
+          ),
+          Row(
+            children: [
+              _ChannelButton(label: "Email", selected: _channel == _Channel.email, onTap: () => setState(() => _channel = _Channel.email)),
+              const SizedBox(width: 6),
+              _ChannelButton(label: "In App", selected: _channel == _Channel.inapp, onTap: () => setState(() => _channel = _Channel.inapp)),
+              const SizedBox(width: 6),
+              _ChannelButton(label: "Both", selected: _channel == _Channel.both, onTap: () => setState(() => _channel = _Channel.both)),
+            ],
+          ),
           const SizedBox(height: 10),
           BtnGold(
             full: true,
@@ -217,6 +251,41 @@ class _CoachComposeState extends ConsumerState<_CoachCompose> {
                 ),
               )),
         ],
+      ),
+    );
+  }
+}
+
+class _ChannelButton extends StatelessWidget {
+  const _ChannelButton({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+            border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: selected ? AppColors.gold : AppColors.mute,
+            ),
+          ),
+        ),
       ),
     );
   }

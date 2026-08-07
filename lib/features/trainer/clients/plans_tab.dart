@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/saved_program.dart";
@@ -142,10 +143,36 @@ class _ProgramsLibrarySection extends ConsumerWidget {
                 children: [
                   Expanded(child: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
                   TextButton(
-                    onPressed: () => ref.read(trainerClientRecordsProvider.notifier).update(clientId, (r) => r.copyWith(savedPrograms: [...r.savedPrograms, SavedProgram(id: DateTime.now().microsecondsSinceEpoch.toString(), name: p.name, programDays: p.programDays)])),
+                    onPressed: () async {
+                      final assigned = SavedProgram(id: DateTime.now().microsecondsSinceEpoch.toString(), name: p.name, programDays: p.programDays);
+                      final current = ref.read(trainerClientRecordsProvider)[clientId]!;
+                      final nextSaved = [...current.savedPrograms, assigned];
+                      try {
+                        await SupabaseService.updateClientSavedPrograms(clientId, nextSaved);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't assign — check your connection and try again.")));
+                        }
+                        return;
+                      }
+                      ref.read(trainerClientRecordsProvider.notifier).update(clientId, (r) => r.copyWith(savedPrograms: nextSaved));
+                    },
                     child: const Text("Assign", style: TextStyle(fontSize: 12, color: AppColors.gold)),
                   ),
-                  IconButton(onPressed: () => ref.read(programsLibraryProvider.notifier).remove(p.id), icon: const Icon(LucideIcons.trash2, size: 14, color: Color(0xFF6B3B3B))),
+                  IconButton(
+                    onPressed: () async {
+                      try {
+                        await SupabaseService.deleteProgramLibraryEntry(p.id);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't delete — check your connection and try again.")));
+                        }
+                        return;
+                      }
+                      ref.read(programsLibraryProvider.notifier).remove(p.id);
+                    },
+                    icon: const Icon(LucideIcons.trash2, size: 14, color: Color(0xFF6B3B3B)),
+                  ),
                 ],
               ),
             )),

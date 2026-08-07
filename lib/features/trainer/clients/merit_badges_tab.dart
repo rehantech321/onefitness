@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/earned_badge.dart";
@@ -47,25 +48,42 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
     final awardable = _coachAwardable.where((b) => !activeKeys.contains(b.key)).toList();
     final forceAssignable = kMeritBadges.where((b) => !activeKeys.contains(b.key)).toList();
 
+    Future<void> refreshBadgesAndPoints() async {
+      // grant/force-award/revoke all resync points_ledger server-side too
+      // (active-badge-count points) — see syncMeritBadgePoints.
+      final freshBadges = await SupabaseService.loadMeritBadgesFor(widget.clientId);
+      ref.read(earnedBadgesProvider.notifier).replaceForClient(widget.clientId, freshBadges);
+      final freshPoints = await SupabaseService.loadPointsLedgerFor(widget.clientId);
+      ref.read(pointsLedgerProvider.notifier).replaceForClient(widget.clientId, freshPoints);
+    }
+
+    void showFailure(Object e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))));
+      }
+    }
+
     void award(MeritBadgeDef badge) async {
       final confirmed = await _confirm(context, 'Award "${badge.name}" to ${info.name}?');
       if (!confirmed || !context.mounted) return;
       final note = await _promptText(context, "Optional note (or leave blank):");
-      ref.read(earnedBadgesProvider.notifier).award(EarnedBadge(
-            id: DateTime.now().microsecondsSinceEpoch.toString(),
-            clientId: widget.clientId,
-            badgeKey: badge.key,
-            earnedAt: DateTime.now().toIso8601String().substring(0, 10),
-            earnedMethod: "coach",
-            grantedByUserId: trainerAuth,
-            note: note?.trim().isEmpty == true ? null : note?.trim(),
-          ));
+      try {
+        await SupabaseService.grantMeritBadge(widget.clientId, badge.key, note?.trim().isEmpty == true ? null : note?.trim());
+        await refreshBadgesAndPoints();
+      } catch (e) {
+        showFailure(e);
+      }
     }
 
     void revoke(EarnedBadge badge, String name) async {
       final confirmed = await _confirm(context, 'Remove "$name" from ${info.name}? It moves to History and can be awarded again later.');
       if (!confirmed) return;
-      ref.read(earnedBadgesProvider.notifier).revoke(badge.id, revokedAt: DateTime.now().toIso8601String().substring(0, 10), revokedByUserId: trainerAuth);
+      try {
+        await SupabaseService.revokeMeritBadge(badge.id);
+        await refreshBadgesAndPoints();
+      } catch (e) {
+        showFailure(e);
+      }
     }
 
     void forceAward() async {
@@ -75,16 +93,13 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
       final confirmed = await _confirm(context, 'Force-assign "${meta?.name ?? pick}" to ${info.name}? This bypasses normal eligibility checks.');
       if (!confirmed || !context.mounted) return;
       final note = await _promptText(context, "Optional note (or leave blank):");
-      ref.read(earnedBadgesProvider.notifier).award(EarnedBadge(
-            id: DateTime.now().microsecondsSinceEpoch.toString(),
-            clientId: widget.clientId,
-            badgeKey: pick,
-            earnedAt: DateTime.now().toIso8601String().substring(0, 10),
-            earnedMethod: meta?.category == "coach" ? "coach" : "automatic",
-            grantedByUserId: trainerAuth,
-            note: note?.trim().isEmpty == true ? null : note?.trim(),
-          ));
-      setState(() => _forcePick = null);
+      try {
+        await SupabaseService.forceAwardMeritBadge(widget.clientId, pick, note?.trim().isEmpty == true ? null : note?.trim());
+        await refreshBadgesAndPoints();
+        setState(() => _forcePick = null);
+      } catch (e) {
+        showFailure(e);
+      }
     }
 
     return SingleChildScrollView(

@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/product.dart";
@@ -30,7 +31,15 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
           _editing = null;
           _creating = false;
         }),
-        onSave: (p) {
+        onSave: (p) async {
+          try {
+            await SupabaseService.upsertProduct(p);
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
+            }
+            return;
+          }
           ref.read(productsProvider.notifier).upsert(p);
           setState(() {
             _editing = null;
@@ -39,8 +48,17 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
         },
         onDelete: _editing == null
             ? null
-            : () {
-                ref.read(productsProvider.notifier).remove(_editing!.id);
+            : () async {
+                final id = _editing!.id;
+                try {
+                  await SupabaseService.deleteProduct(id);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't delete — check your connection and try again.")));
+                  }
+                  return;
+                }
+                ref.read(productsProvider.notifier).remove(id);
                 setState(() => _editing = null);
               },
       );

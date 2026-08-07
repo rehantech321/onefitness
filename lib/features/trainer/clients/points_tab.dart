@@ -1,10 +1,10 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/points_ledger_utils.dart";
 import "../../../core/utils/rewards_domain.dart";
 import "../../../core/widgets/widgets.dart";
-import "../../../data/models/points_ledger_entry.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
 
@@ -40,20 +40,26 @@ class _PointsTabState extends ConsumerState<PointsTab> {
     final expiringSoon = expiringWithin(replay.lots, days: kRewardExpiringSoonDays);
     final expiringPoints = expiringSoon.fold<int>(0, (s, l) => s + l.remaining);
 
+    Future<void> refreshLedger() async {
+      final fresh = await SupabaseService.loadPointsLedgerFor(widget.clientId);
+      ref.read(pointsLedgerProvider.notifier).replaceForClient(widget.clientId, fresh);
+    }
+
+    void showFailure(Object e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))));
+      }
+    }
+
     void grant(int amount) async {
       final reason = await _askReason(context, "+$amount grant");
       if (reason == null) return;
-      ref.read(pointsLedgerProvider.notifier).add(PointsLedgerEntry(
-            id: DateTime.now().microsecondsSinceEpoch.toString(),
-            clientId: widget.clientId,
-            amount: amount,
-            type: "grant",
-            source: "discretionary_grant",
-            createdAt: DateTime.now().toIso8601String().substring(0, 10),
-            expiresAt: DateTime.now().add(const Duration(days: 180)).toIso8601String().substring(0, 10),
-            grantedByUserId: trainerAuth,
-            reason: reason,
-          ));
+      try {
+        await SupabaseService.grantPoints(widget.clientId, amount, reason);
+        await refreshLedger();
+      } catch (e) {
+        showFailure(e);
+      }
     }
 
     void deduct() async {
@@ -63,16 +69,12 @@ class _PointsTabState extends ConsumerState<PointsTab> {
       if (amount == null || amount <= 0) return;
       final reason = await _askReason(context, "deduction");
       if (reason == null) return;
-      ref.read(pointsLedgerProvider.notifier).add(PointsLedgerEntry(
-            id: DateTime.now().microsecondsSinceEpoch.toString(),
-            clientId: widget.clientId,
-            amount: -amount,
-            type: "deduct",
-            source: "owner_deduction",
-            createdAt: DateTime.now().toIso8601String().substring(0, 10),
-            grantedByUserId: trainerAuth,
-            reason: reason,
-          ));
+      try {
+        await SupabaseService.deductPoints(widget.clientId, amount, reason);
+        await refreshLedger();
+      } catch (e) {
+        showFailure(e);
+      }
     }
 
     return SingleChildScrollView(
@@ -134,17 +136,12 @@ class _PointsTabState extends ConsumerState<PointsTab> {
             onVoid: (row) async {
               final reason = await _askReason(context, "void");
               if (reason == null) return;
-              ref.read(pointsLedgerProvider.notifier).add(PointsLedgerEntry(
-                    id: DateTime.now().microsecondsSinceEpoch.toString(),
-                    clientId: widget.clientId,
-                    amount: -row.amount,
-                    type: "void",
-                    source: "void_grant",
-                    createdAt: DateTime.now().toIso8601String().substring(0, 10),
-                    grantedByUserId: trainerAuth,
-                    reason: reason,
-                    voidedByLedgerId: row.id,
-                  ));
+              try {
+                await SupabaseService.voidPoints(row.id, reason);
+                await refreshLedger();
+              } catch (e) {
+                showFailure(e);
+              }
             },
           ),
         ],

@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/flag_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -38,7 +39,13 @@ class _NotesTabState extends ConsumerState<NotesTab> {
     final myName = isOwner ? "Owner" : (trainers.where((t) => t.id == trainerAuth).isNotEmpty ? trainers.firstWhere((t) => t.id == trainerAuth).name : "Coach");
 
     void mutateNotes(List<TrainerNote> Function(List<TrainerNote>) f) {
+      final previous = records[widget.clientId]!.trainerNotes;
       ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId, (r) => r.copyWith(trainerNotes: f(r.trainerNotes)));
+      final next = ref.read(trainerClientRecordsProvider)[widget.clientId]!.trainerNotes;
+      SupabaseService.updateClientTrainerNotes(widget.clientId, next).catchError((Object _) {
+        ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId, (r) => r.copyWith(trainerNotes: previous));
+        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
+      });
     }
 
     if (_adding || _editing != null) {

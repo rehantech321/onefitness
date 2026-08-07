@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -37,6 +38,8 @@ class _BlockTimeBodyState extends ConsumerState<_BlockTimeBody> {
   final _start = TextEditingController(text: "09:00");
   final _end = TextEditingController(text: "17:00");
   final _reason = TextEditingController();
+  bool _saving = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -139,22 +142,38 @@ class _BlockTimeBodyState extends ConsumerState<_BlockTimeBody> {
                 ],
               ),
             ),
+          if (_error != null)
+            Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12))),
           const SizedBox(height: 16),
           BtnGold(
             full: true,
-            onPressed: () {
-              ref.read(blockedTimesProvider.notifier).add(BlockedTime(
-                    id: DateTime.now().microsecondsSinceEpoch.toString(),
-                    trainerId: _trainerId,
-                    date: widget.date,
-                    allDay: _allDay,
-                    startMin: startMin,
-                    endMin: endMin,
-                    reason: _reason.text.trim().isEmpty ? null : _reason.text.trim(),
-                  ));
-              Navigator.of(context).pop();
-            },
-            child: const Text("Block time"),
+            onPressed: _saving
+                ? null
+                : () async {
+                    setState(() {
+                      _saving = true;
+                      _error = null;
+                    });
+                    try {
+                      final saved = await SupabaseService.insertBlockedTime(BlockedTime(
+                            id: "",
+                            trainerId: _trainerId,
+                            date: widget.date,
+                            allDay: _allDay,
+                            startMin: startMin,
+                            endMin: endMin,
+                            reason: _reason.text.trim().isEmpty ? null : _reason.text.trim(),
+                          ));
+                      ref.read(blockedTimesProvider.notifier).add(saved);
+                      if (context.mounted) Navigator.of(context).pop();
+                    } catch (e) {
+                      setState(() {
+                        _saving = false;
+                        _error = "Couldn't block that time — check your connection and try again.";
+                      });
+                    }
+                  },
+            child: Text(_saving ? "Blocking…" : "Block time"),
           ),
         ],
       ),

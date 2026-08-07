@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -185,14 +186,28 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
     super.dispose();
   }
 
-  void _save() {
-    ref.read(clientInfoProvider.notifier).update((info) => info.copyWith(
-          name: _name.text.trim(),
-          email: _email.text.trim(),
-          phone: _phone.text.trim(),
-          city: _city.text.trim(),
-        ));
-    widget.onBack();
+  bool _saving = false;
+  String? _error;
+
+  Future<void> _save() async {
+    final name = _name.text.trim();
+    final email = _email.text.trim();
+    final phone = _phone.text.trim();
+    final city = _city.text.trim();
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await SupabaseService.updateClientRow(ref.read(clientInfoProvider).id, name: name, email: email, phone: phone, city: city);
+      ref.read(clientInfoProvider.notifier).update((info) => info.copyWith(name: name, email: email, phone: phone, city: city));
+      widget.onBack();
+    } catch (e) {
+      setState(() {
+        _saving = false;
+        _error = "Couldn't save your profile — check your connection and try again.";
+      });
+    }
   }
 
   @override
@@ -212,10 +227,12 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
           FieldLabeled(label: "Phone", child: AppField(controller: _phone, keyboardType: TextInputType.phone)),
           const SizedBox(height: 10),
           FieldLabeled(label: "City", child: AppField(controller: _city)),
+          if (_error != null)
+            Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12))),
           const SizedBox(height: 18),
           Row(
             children: [
-              Expanded(child: BtnGold(onPressed: _save, child: const Text("Save"))),
+              Expanded(child: BtnGold(onPressed: _saving ? null : _save, child: Text(_saving ? "Saving…" : "Save"))),
               const SizedBox(width: 8),
               BtnGhost(onPressed: widget.onBack, child: const Text("Cancel")),
             ],

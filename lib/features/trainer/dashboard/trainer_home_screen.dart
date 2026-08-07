@@ -297,7 +297,14 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                 children: kAttendanceOptions.map((opt) {
                                   final active = b.attendanceStatus == opt.key;
                                   return InkWell(
-                                    onTap: () => ref.read(allBookingsProvider.notifier).updateAttendance(b.id, active ? null : opt.key),
+                                    onTap: () {
+                                      final prev = b.attendanceStatus;
+                                      final next = active ? null : opt.key;
+                                      ref.read(allBookingsProvider.notifier).updateAttendance(b.id, next);
+                                      SupabaseService.updateBookingAttendance(b.id, next).catchError((Object _) {
+                                        ref.read(allBookingsProvider.notifier).updateAttendance(b.id, prev);
+                                      });
+                                    },
                                     borderRadius: BorderRadius.circular(7),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),

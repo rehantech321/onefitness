@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/platform_settings_provider.dart";
@@ -25,7 +26,19 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(platformSettingsProvider);
-    void update(PlatformSettings Function(PlatformSettings) f) => ref.read(platformSettingsProvider.notifier).update(f);
+    void update(PlatformSettings Function(PlatformSettings) f) {
+      final prev = settings;
+      final next = f(prev);
+      ref.read(platformSettingsProvider.notifier).update((_) => next);
+      // Best-effort: several controls here fire on every keystroke (the
+      // fee-percent/business-name fields), so this mirrors the same
+      // optimistic, no-blocking-await pattern used for Squad's per-keystroke
+      // fields — a failed save just means the next reload reverts it.
+      SupabaseService.savePlatformSettings(prev, next).catchError((Object e) {
+        // ignore: avoid_print
+        print("[customize_platform_screen] failed to save: $e");
+      });
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/scheduling_utils.dart";
@@ -47,6 +48,7 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
   late final _date = TextEditingController(text: widget.initialDate);
   final _time = TextEditingController(text: "09:00");
   String? _error;
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -135,37 +137,51 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
           const SizedBox(height: 16),
           BtnGold(
             full: true,
-            onPressed: () {
-              final slot = _slotMinutes;
-              final trainerId = _trainerId;
-              if (slot == null || trainerId == null || _date.text.trim().isEmpty) {
-                setState(() => _error = "Coach, date, and time are all required.");
-                return;
-              }
-              final effectiveDiscipline = isAssessment ? "programmer" : _discipline;
-              final conflict = findTrainerConflict(bookings, trainerId, _date.text.trim(), slot, _sessionType, effectiveDiscipline);
-              if (conflict != null && !isOwner) {
-                setState(() => _error = "This coach already has a different session at that time — contact the owner to override.");
-                return;
-              }
-              final cap = capacityInfo(bookings, trainerId, _date.text.trim(), slot, _sessionType);
-              if (cap.atCap && conflict == null && !isOwner) {
-                setState(() => _error = "That session is already at capacity (${cap.cap}) — contact the owner to override.");
-                return;
-              }
-              ref.read(allBookingsProvider.notifier).addBooking(Booking(
-                    id: DateTime.now().microsecondsSinceEpoch.toString(),
-                    clientId: _client!.id,
-                    trainerId: trainerId,
-                    date: _date.text.trim(),
-                    slot: slot,
-                    sessionType: _sessionType,
-                    discipline: effectiveDiscipline,
-                    isPhysicalAssessment: isAssessment,
-                  ));
-              Navigator.of(context).pop();
-            },
-            child: const Text("Book session"),
+            onPressed: _saving
+                ? null
+                : () async {
+                    final slot = _slotMinutes;
+                    final trainerId = _trainerId;
+                    if (slot == null || trainerId == null || _date.text.trim().isEmpty) {
+                      setState(() => _error = "Coach, date, and time are all required.");
+                      return;
+                    }
+                    final effectiveDiscipline = isAssessment ? "programmer" : _discipline;
+                    final conflict = findTrainerConflict(bookings, trainerId, _date.text.trim(), slot, _sessionType, effectiveDiscipline);
+                    if (conflict != null && !isOwner) {
+                      setState(() => _error = "This coach already has a different session at that time — contact the owner to override.");
+                      return;
+                    }
+                    final cap = capacityInfo(bookings, trainerId, _date.text.trim(), slot, _sessionType);
+                    if (cap.atCap && conflict == null && !isOwner) {
+                      setState(() => _error = "That session is already at capacity (${cap.cap}) — contact the owner to override.");
+                      return;
+                    }
+                    setState(() {
+                      _saving = true;
+                      _error = null;
+                    });
+                    try {
+                      final saved = await SupabaseService.insertBooking(Booking(
+                            id: "",
+                            clientId: _client!.id,
+                            trainerId: trainerId,
+                            date: _date.text.trim(),
+                            slot: slot,
+                            sessionType: _sessionType,
+                            discipline: effectiveDiscipline,
+                            isPhysicalAssessment: isAssessment,
+                          ));
+                      ref.read(allBookingsProvider.notifier).addBooking(saved);
+                      if (context.mounted) Navigator.of(context).pop();
+                    } catch (e) {
+                      setState(() {
+                        _saving = false;
+                        _error = "Couldn't book that session — check your connection and try again.";
+                      });
+                    }
+                  },
+            child: Text(_saving ? "Booking…" : "Book session"),
           ),
         ],
       ),

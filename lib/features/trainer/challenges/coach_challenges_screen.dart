@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/challenge_utils.dart";
 import "../../../core/utils/date_utils.dart";
@@ -26,11 +27,20 @@ class _CoachChallengesScreenState extends ConsumerState<CoachChallengesScreen> {
   @override
   Widget build(BuildContext context) {
     final challenges = ref.watch(challengesProvider);
+    final trainerAuth = ref.watch(trainerAuthProvider);
 
     if (_creating) {
       return _CreateChallengeForm(
         onCancel: () => setState(() => _creating = false),
-        onSave: (c) {
+        onSave: (c) async {
+          try {
+            await SupabaseService.insertChallenge(c, createdBy: trainerAuth ?? "");
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't create — check your connection and try again.")));
+            }
+            return;
+          }
           ref.read(challengesProvider.notifier).add(c);
           setState(() => _creating = false);
         },
@@ -43,8 +53,17 @@ class _CoachChallengesScreenState extends ConsumerState<CoachChallengesScreen> {
         return _CoachChallengeDetail(
           challenge: matches.first,
           onBack: () => setState(() => _viewId = null),
-          onDelete: () {
-            ref.read(challengesProvider.notifier).remove(_viewId!);
+          onDelete: () async {
+            final id = _viewId!;
+            try {
+              await SupabaseService.deleteChallenge(id);
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't delete — check your connection and try again.")));
+              }
+              return;
+            }
+            ref.read(challengesProvider.notifier).remove(id);
             setState(() => _viewId = null);
           },
         );

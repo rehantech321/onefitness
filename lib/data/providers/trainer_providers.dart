@@ -84,6 +84,7 @@ class BlockedTimesNotifier extends Notifier<List<BlockedTime>> {
 
   void add(BlockedTime b) => state = [...state, b];
   void remove(String id) => state = state.where((b) => b.id != id).toList();
+  void setAll(List<BlockedTime> next) => state = next;
 }
 
 final blockedTimesProvider = NotifierProvider<BlockedTimesNotifier, List<BlockedTime>>(BlockedTimesNotifier.new);
@@ -100,6 +101,8 @@ class ExerciseCatalogNotifier extends Notifier<List<ExerciseDef>> {
   }
 
   void remove(String id) => state = state.where((e) => e.id != id).toList();
+
+  void setAll(List<ExerciseDef> next) => state = next;
 }
 
 final exerciseCatalogProvider = NotifierProvider<ExerciseCatalogNotifier, List<ExerciseDef>>(ExerciseCatalogNotifier.new);
@@ -116,6 +119,8 @@ class ChargesNotifier extends Notifier<List<Charge>> {
         category: c.category, description: c.description, planId: c.planId, planName: c.planName,
         trainerId: c.trainerId, trainerName: c.trainerName, waivedAt: isoToday(),
       ) : c).toList();
+
+  void setAll(List<Charge> next) => state = next;
 }
 
 final chargesProvider = NotifierProvider<ChargesNotifier, List<Charge>>(ChargesNotifier.new);
@@ -130,6 +135,8 @@ class CustomMealsNotifier extends Notifier<List<MealDef>> {
   List<MealDef> build() => [];
 
   void add(MealDef meal) => state = [...state, meal];
+
+  void setAll(List<MealDef> next) => state = next;
 }
 
 final customMealsProvider = NotifierProvider<CustomMealsNotifier, List<MealDef>>(CustomMealsNotifier.new);
@@ -142,6 +149,7 @@ class ProgramsLibraryNotifier extends Notifier<List<SavedProgram>> {
   void add(SavedProgram p) => state = [...state, p];
   void update(String id, SavedProgram Function(SavedProgram) updater) => state = state.map((p) => p.id == id ? updater(p) : p).toList();
   void remove(String id) => state = state.where((p) => p.id != id).toList();
+  void setAll(List<SavedProgram> next) => state = next;
 }
 
 final programsLibraryProvider = NotifierProvider<ProgramsLibraryNotifier, List<SavedProgram>>(ProgramsLibraryNotifier.new);
@@ -168,6 +176,8 @@ class ProductsNotifier extends Notifier<List<Product>> {
   }
 
   void remove(String id) => state = state.where((p) => p.id != id).toList();
+
+  void setAll(List<Product> next) => state = next;
 }
 
 final productsProvider = NotifierProvider<ProductsNotifier, List<Product>>(ProductsNotifier.new);
@@ -185,6 +195,8 @@ class WaiversNotifier extends Notifier<List<WaiverDoc>> {
   }
 
   void remove(String id) => state = state.where((w) => w.id != id).toList();
+
+  void setAll(List<WaiverDoc> next) => state = next;
 }
 
 final waiversProvider = NotifierProvider<WaiversNotifier, List<WaiverDoc>>(WaiversNotifier.new);

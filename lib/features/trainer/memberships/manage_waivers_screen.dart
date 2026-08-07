@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/waiver_doc.dart";
@@ -35,7 +36,15 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
           _editing = null;
           _creating = false;
         }),
-        onSave: (w) {
+        onSave: (w) async {
+          try {
+            await SupabaseService.upsertWaiverDoc(w);
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
+            }
+            return;
+          }
           ref.read(waiversProvider.notifier).upsert(w);
           setState(() {
             _editing = null;
@@ -44,8 +53,17 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
         },
         onDelete: _editing == null
             ? null
-            : () {
-                ref.read(waiversProvider.notifier).remove(_editing!.id);
+            : () async {
+                final id = _editing!.id;
+                try {
+                  await SupabaseService.deleteWaiverDoc(id);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't delete — check your connection and try again.")));
+                  }
+                  return;
+                }
+                ref.read(waiversProvider.notifier).remove(id);
                 setState(() => _editing = null);
               },
       );

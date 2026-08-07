@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/platform_settings.dart";
@@ -83,6 +84,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ref.read(clientRecordProvider.notifier).update(
             (r) => r.copyWith(comms: [entry, ...r.comms]),
           );
+      SupabaseService.updateClientComms(info.id, ref.read(clientRecordProvider).comms).catchError((Object _) {
+        ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(comms: r.comms.where((c) => c.id != entry.id).toList()));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't send — check your connection and try again.")));
+      });
+      // "In App" nudges the recipient's phone via a native SMS composer in
+      // the source app — a device-integration feature, not a backend one,
+      // so it's left as a no-op here; "Email"/"Both" are real.
+      if ((_channel == _Channel.email || _channel == _Channel.both) && selectedCoach.email != null) {
+        SupabaseService.sendEmail(
+          to: selectedCoach.email!,
+          subject: "New message from ${info.name} — $kBusinessName",
+          text: text,
+        ).catchError((Object e) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't send the email — the message is still logged below.")));
+        });
+      }
       _msgController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Message sent & logged.")),

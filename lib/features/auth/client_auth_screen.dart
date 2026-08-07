@@ -5,13 +5,13 @@ import "../../core/supabase/supabase_service.dart";
 import "../../core/theme/app_colors.dart";
 import "../../core/widgets/widgets.dart";
 import "../../data/providers/supabase_bootstrap_provider.dart";
+import "client_signup_screen.dart";
 
 const _businessName = "ONE Fitness";
 
 /// Mirrors ClientView.jsx's unauthenticated state — the client sign-in
-/// screen, background photo with a bottom-anchored compact form.
-/// Sign-up (IntakeForm) is a large multi-step form covered in a later pass;
-/// tapping "Create my profile" is a placeholder for now.
+/// screen, background photo with a bottom-anchored compact form. Tapping
+/// "Create my profile" opens ClientSignupScreen (real self-signup).
 class ClientAuthScreen extends ConsumerStatefulWidget {
   const ClientAuthScreen({super.key});
 
@@ -24,6 +24,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
   final _password = TextEditingController();
   String? _error;
   bool _busy = false;
+  bool _signingUp = false;
 
   @override
   void dispose() {
@@ -68,6 +69,9 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_signingUp) {
+      return ClientSignupScreen(onBack: () => setState(() => _signingUp = false));
+    }
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -188,11 +192,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                                 ),
                               ),
                               BtnGhost(
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text("Sign-up form coming in a later pass.")),
-                                  );
-                                },
+                                onPressed: () => setState(() => _signingUp = true),
                                 full: true,
                                 child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,

@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
@@ -39,6 +40,11 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   Booking? _rescheduling;
   dynamic _denied; // BookingCheck?
   bool _showAllUpcoming = false;
+  bool _busy = false;
+
+  void _showError(String msg) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
 
   void _pickType(String? t) => setState(() {
         _chosenType = t;
@@ -53,10 +59,21 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         _picking = null;
       });
 
-  void _confirmCancel() {
+  Future<void> _confirmCancel() async {
+    if (_busy) return;
     final b = _cancelTarget!;
-    ref.read(clientBookingsProvider.notifier).cancelBooking(b.id);
-    setState(() => _cancelTarget = null);
+    setState(() => _busy = true);
+    try {
+      await SupabaseService.deleteBooking(b.id);
+      ref.read(clientBookingsProvider.notifier).cancelBooking(b.id);
+      setState(() {
+        _busy = false;
+        _cancelTarget = null;
+      });
+    } catch (e) {
+      setState(() => _busy = false);
+      _showError("Couldn't cancel that session — check your connection and try again.");
+    }
   }
 
   void _onSlotTap(Trainer t, String sessionType, String discipline, int slot, bool mine, bool isFull) {
@@ -74,11 +91,12 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     setState(() => _picking = PendingPick(trainer: t, sessionType: sessionType, discipline: discipline, slot: slot));
   }
 
-  void _confirmBooking() {
+  Future<void> _confirmBooking() async {
+    if (_busy) return;
     final info = ref.read(clientInfoProvider);
     final pick = _picking!;
-    final newBooking = Booking(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+    final draft = Booking(
+      id: "",
       clientId: info.id,
       trainerId: pick.trainer.id,
       date: _date,
@@ -87,15 +105,25 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       discipline: pick.discipline,
       locationName: pick.trainer.locationName,
     );
-    if (_rescheduling != null) {
-      ref.read(clientBookingsProvider.notifier).reschedule(newBooking, _rescheduling!.id);
-    } else {
-      ref.read(clientBookingsProvider.notifier).addBooking(newBooking);
+    setState(() => _busy = true);
+    try {
+      final saved = await SupabaseService.insertBooking(draft);
+      final rescheduling = _rescheduling;
+      if (rescheduling != null) {
+        await SupabaseService.deleteBooking(rescheduling.id);
+        ref.read(clientBookingsProvider.notifier).reschedule(saved, rescheduling.id);
+      } else {
+        ref.read(clientBookingsProvider.notifier).addBooking(saved);
+      }
+      setState(() {
+        _busy = false;
+        _picking = null;
+        _rescheduling = null;
+      });
+    } catch (e) {
+      setState(() => _busy = false);
+      _showError("Couldn't book that session — check your connection and try again.");
     }
-    setState(() {
-      _picking = null;
-      _rescheduling = null;
-    });
   }
 
   @override

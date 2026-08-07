@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/challenge_utils.dart";
 import "../../../core/utils/date_utils.dart";
@@ -55,14 +56,20 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
       ranked.add((leaderboard[i], rank));
     }
 
-    void logEntry() {
+    void logEntry() async {
       final v = double.tryParse(_progressController.text);
       if (v == null || v < 0) return;
-      ref.read(clientRecordProvider.notifier).update((r) {
-        final prev = r.challengeProgress[challenge.id] ?? const [];
-        final nextMap = {...r.challengeProgress, challenge.id: [...prev, ChallengeProgressEntry(value: v, loggedAt: stamp())]};
-        return r.copyWith(challengeProgress: nextMap);
-      });
+      final prev = client.challengeProgress[challenge.id] ?? const [];
+      final nextMap = {...client.challengeProgress, challenge.id: [...prev, ChallengeProgressEntry(value: v, loggedAt: stamp())]};
+      try {
+        await SupabaseService.updateClientChallengeProgress(info.id, nextMap);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't log that — check your connection and try again.")));
+        }
+        return;
+      }
+      ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(challengeProgress: nextMap));
       _progressController.clear();
     }
 
@@ -114,7 +121,18 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: BtnGold(
-                onPressed: () => ref.read(challengesProvider.notifier).join(challenge.id, info.id),
+                onPressed: () async {
+                  final nextParticipants = [...challenge.participantIds, info.id];
+                  try {
+                    await SupabaseService.updateChallengeRow(challenge.id, participantIds: nextParticipants);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't join — check your connection and try again.")));
+                    }
+                    return;
+                  }
+                  ref.read(challengesProvider.notifier).join(challenge.id, info.id);
+                },
                 full: true,
                 child: const Text("Join Challenge"),
               ),

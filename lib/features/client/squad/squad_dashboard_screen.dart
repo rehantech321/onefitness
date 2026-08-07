@@ -1,12 +1,20 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/roster_client.dart";
 import "../../../data/models/squad.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/supabase_bootstrap_provider.dart";
 import "squad_member_search_screen.dart";
+
+void _showMutateError(BuildContext context) {
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
+  }
+}
 
 /// Mirrors SquadDashboard.jsx (client-facing "My Squad" drawer tab) —
 /// trimmed to the parts meaningful without a second real account to accept
@@ -60,7 +68,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
               const HintBox(text: "You'll be the Lead Account. You can invite existing clients after creating the Squad."),
               const SizedBox(height: 14),
               BtnGold(
-                onPressed: () {
+                onPressed: () async {
                   final name = _newSquadNameController.text.trim();
                   final newSquad = Squad(
                     id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -69,6 +77,12 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                     memberIds: [info.id],
                     memberMeta: {info.id: const SquadMemberMeta(paymentEnabled: true)},
                   ).withActivity("squad_created", actorName: info.name, description: "${info.name} created the Squad");
+                  try {
+                    await SupabaseService.insertSquad(newSquad);
+                  } catch (e) {
+                    _showMutateError(context);
+                    return;
+                  }
                   ref.read(squadsProvider.notifier).createSquad(newSquad);
                   setState(() => _creating = false);
                 },
@@ -124,9 +138,9 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
         roster: roster,
         squad: squad,
         onCancel: () => setState(() => _searching = false),
-        onSelect: (c) {
+        onSelect: (c) async {
           if (!squad.canAddMember()) return;
-          ref.read(squadsProvider.notifier).update(squad.id, (s) {
+          final ok = await mutateSquad(ref, squad, (s) {
             final invites = [...s.pendingInvites, SquadInvite(clientId: c.id, sentAt: _nowLabel())];
             return s.copyWith(pendingInvites: invites).withActivity(
                   "invite_sent",
@@ -134,6 +148,10 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                   description: "${info.name} invited ${c.name} to the Squad",
                 );
           });
+          if (!ok) {
+            _showMutateError(context);
+            return;
+          }
           setState(() => _searching = false);
         },
       );
@@ -162,8 +180,12 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                 Expanded(child: AppField(controller: _nameDraftController, placeholder: "Squad name…")),
                 const SizedBox(width: 6),
                 TextButton(
-                  onPressed: () {
-                    ref.read(squadsProvider.notifier).update(squad.id, (s) => s.copyWith(name: _nameDraftController.text.trim()));
+                  onPressed: () async {
+                    final ok = await mutateSquad(ref, squad, (s) => s.copyWith(name: _nameDraftController.text.trim()));
+                    if (!ok) {
+                      _showMutateError(context);
+                      return;
+                    }
                     setState(() => _nameEditing = false);
                   },
                   child: const Text("Save", style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w700)),
@@ -287,8 +309,8 @@ class _MembersTab extends ConsumerWidget {
                     ),
                     if (isLead && !lead)
                       IconButton(
-                        onPressed: () {
-                          ref.read(squadsProvider.notifier).update(squad.id, (s) {
+                        onPressed: () async {
+                          final ok = await mutateSquad(ref, squad, (s) {
                             final newIds = s.memberIds.where((id) => id != c.id).toList();
                             final newMeta = {...s.memberMeta}..remove(c.id);
                             return s.copyWith(memberIds: newIds, memberMeta: newMeta).withActivity(
@@ -297,6 +319,7 @@ class _MembersTab extends ConsumerWidget {
                                   description: "${c.name} was removed from the Squad",
                                 );
                           });
+                          if (!ok && context.mounted) _showMutateError(context);
                         },
                         icon: const Icon(LucideIcons.userMinus, size: 14, color: Color(0xFF6B3B3B)),
                       ),
@@ -308,10 +331,11 @@ class _MembersTab extends ConsumerWidget {
                     child: AppField(
                       placeholder: "${c.name}'s relationship (e.g. Spouse, Child)",
                       controller: TextEditingController(text: m.relationship),
-                      onChanged: (v) => ref.read(squadsProvider.notifier).update(
-                            squad.id,
-                            (s) => s.copyWith(memberMeta: {...s.memberMeta, c.id: m.copyWith(relationship: v)}),
-                          ),
+                      onChanged: (v) => mutateSquad(
+                        ref,
+                        squad,
+                        (s) => s.copyWith(memberMeta: {...s.memberMeta, c.id: m.copyWith(relationship: v)}),
+                      ),
                     ),
                   ),
               ],
@@ -340,10 +364,14 @@ class _MembersTab extends ConsumerWidget {
                     ),
                   ),
                   OutlinedButton(
-                    onPressed: () => ref.read(squadsProvider.notifier).update(
-                          squad.id,
-                          (s) => s.copyWith(pendingInvites: s.pendingInvites.where((x) => x.clientId != inv.clientId).toList()),
-                        ),
+                    onPressed: () async {
+                      final ok = await mutateSquad(
+                        ref,
+                        squad,
+                        (s) => s.copyWith(pendingInvites: s.pendingInvites.where((x) => x.clientId != inv.clientId).toList()),
+                      );
+                      if (!ok && context.mounted) _showMutateError(context);
+                    },
                     style: OutlinedButton.styleFrom(foregroundColor: AppColors.mute, side: const BorderSide(color: AppColors.line)),
                     child: const Text("Cancel", style: TextStyle(fontSize: 11)),
                   ),
@@ -377,7 +405,14 @@ class _MembersTab extends ConsumerWidget {
             ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () => ref.read(squadsProvider.notifier).dissolve(squad.id),
+            // Deleting the squad row outright is coach/owner-only
+            // (squads_delete_staff_only) — even the Lead can't do it, so
+            // this logs a "dissolved" activity entry instead, matching the
+            // real backend's own intended behavior for this action.
+            onPressed: () async {
+              final ok = await mutateSquad(ref, squad, (s) => s.withActivity("squad_dissolved", actorName: info.name, description: "${info.name} dissolved the Squad"));
+              if (!ok && context.mounted) _showMutateError(context);
+            },
             style: TextButton.styleFrom(foregroundColor: const Color(0xFF6B3B3B), padding: EdgeInsets.zero),
             child: const Text("Dissolve Squad", style: TextStyle(fontSize: 12)),
           ),
@@ -475,14 +510,17 @@ class _PaymentsTab extends ConsumerWidget {
                       ),
                     ),
                     IconButton(
-                      onPressed: () => ref.read(squadsProvider.notifier).update(squad.id, (s) {
-                        final updated = s.copyWith(memberMeta: {...s.memberMeta, c.id: m.copyWith(paymentEnabled: !enabled)});
-                        return updated.withActivity(
-                          "payment_permission_changed",
-                          actorName: info.name,
-                          description: "Payment contribution for ${c.name} ${!enabled ? 'enabled' : 'disabled'}",
-                        );
-                      }),
+                      onPressed: () async {
+                        final ok = await mutateSquad(ref, squad, (s) {
+                          final updated = s.copyWith(memberMeta: {...s.memberMeta, c.id: m.copyWith(paymentEnabled: !enabled)});
+                          return updated.withActivity(
+                            "payment_permission_changed",
+                            actorName: info.name,
+                            description: "Payment contribution for ${c.name} ${!enabled ? 'enabled' : 'disabled'}",
+                          );
+                        });
+                        if (!ok && context.mounted) _showMutateError(context);
+                      },
                       icon: Icon(enabled ? LucideIcons.toggleRight : LucideIcons.toggleLeft, size: 28, color: enabled ? AppColors.gold : AppColors.mute),
                     ),
                   ],
@@ -494,10 +532,11 @@ class _PaymentsTab extends ConsumerWidget {
                       label: "Min. balance before credit applies (\$)",
                       value: m.minBalance == 0 ? "" : "${m.minBalance}",
                       ph: "0",
-                      onChange: (v) => ref.read(squadsProvider.notifier).update(
-                            squad.id,
-                            (s) => s.copyWith(memberMeta: {...s.memberMeta, c.id: m.copyWith(minBalance: num.tryParse(v) ?? 0)}),
-                          ),
+                      onChange: (v) => mutateSquad(
+                        ref,
+                        squad,
+                        (s) => s.copyWith(memberMeta: {...s.memberMeta, c.id: m.copyWith(minBalance: num.tryParse(v) ?? 0)}),
+                      ),
                     ),
                   ),
               ],

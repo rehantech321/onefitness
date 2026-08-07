@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
@@ -46,6 +47,11 @@ class _SessionDetailBody extends ConsumerStatefulWidget {
 
 class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
   bool _adding = false;
+  bool _busy = false;
+
+  void _showError() {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,17 +77,22 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
             ClientSearchPicker(
               roster: roster,
               exclude: active.map((b) => b.clientId).toList(),
-              onSelect: (c) {
-                ref.read(allBookingsProvider.notifier).addBooking(Booking(
-                      id: DateTime.now().microsecondsSinceEpoch.toString(),
-                      clientId: c.id,
-                      trainerId: widget.trainerId,
-                      date: widget.date,
-                      slot: widget.slot,
-                      sessionType: first.sessionType,
-                      discipline: first.discipline,
-                    ));
+              onSelect: (c) async {
                 setState(() => _adding = false);
+                try {
+                  final saved = await SupabaseService.insertBooking(Booking(
+                        id: "",
+                        clientId: c.id,
+                        trainerId: widget.trainerId,
+                        date: widget.date,
+                        slot: widget.slot,
+                        sessionType: first.sessionType,
+                        discipline: first.discipline,
+                      ));
+                  ref.read(allBookingsProvider.notifier).addBooking(saved);
+                } catch (e) {
+                  _showError();
+                }
               },
             ),
           ],
@@ -121,7 +132,19 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                   ),
                   if (!isPast)
                     IconButton(
-                      onPressed: () => ref.read(allBookingsProvider.notifier).cancelBooking(b.id),
+                      onPressed: _busy
+                          ? null
+                          : () async {
+                              setState(() => _busy = true);
+                              try {
+                                await SupabaseService.deleteBooking(b.id);
+                                ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
+                              } catch (e) {
+                                _showError();
+                              } finally {
+                                if (mounted) setState(() => _busy = false);
+                              }
+                            },
                       icon: const Icon(LucideIcons.userMinus, size: 15, color: Color(0xFF6B3B3B)),
                     ),
                 ],
@@ -133,16 +156,23 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
             BtnGhost(full: true, onPressed: () => setState(() => _adding = true), child: const Text("Add a client")),
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: active.isEmpty
+              onPressed: active.isEmpty || _busy
                   ? null
-                  : () {
-                      for (final b in active) {
-                        ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
+                  : () async {
+                      setState(() => _busy = true);
+                      try {
+                        for (final b in active) {
+                          await SupabaseService.deleteBooking(b.id);
+                          ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
+                        }
+                        if (context.mounted) Navigator.of(context).pop();
+                      } catch (e) {
+                        _showError();
+                        if (mounted) setState(() => _busy = false);
                       }
-                      Navigator.of(context).pop();
                     },
               style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFC97F7F), side: const BorderSide(color: Color(0xFF8B3B3B)), minimumSize: const Size.fromHeight(44)),
-              child: const Text("Cancel session"),
+              child: Text(_busy ? "Cancelling…" : "Cancel session"),
             ),
           ],
         ],

@@ -1,24 +1,67 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "package:url_launcher/url_launcher.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
 import "../dashboard/sessions_remaining_badge.dart";
 
-/// Mirrors MembershipsHub.jsx, trimmed to the read side: current plan status
-/// (reusing the same badge shown on the Dashboard) and plan details.
-/// Browsing/purchasing other plans goes through Stripe Checkout in the web
-/// app — out of scope until real payments are wired up here.
-class MembershipHubScreen extends ConsumerWidget {
+/// Mirrors MembershipsHub.jsx — current plan status (reusing the same badge
+/// shown on the Dashboard), plan details, and — new here — real
+/// browse-and-buy for a client with no plan yet, via real Stripe Checkout.
+/// Switching/cancelling an EXISTING paid plan needs cancel-membership
+/// called first (see MembershipsHub.jsx's own stripeSubscriptionId check)
+/// to avoid leaving an old subscription still billing behind the client's
+/// back — that's real complexity for its own pass, so for now (matching
+/// the hint text below) that path still goes through the gym directly.
+class MembershipHubScreen extends ConsumerStatefulWidget {
   const MembershipHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MembershipHubScreen> createState() => _MembershipHubScreenState();
+}
+
+class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
+  String? _busyPlanId;
+  String? _error;
+
+  Future<void> _buy(String clientId, MembershipPlan plan) async {
+    setState(() {
+      _busyPlanId = plan.id;
+      _error = null;
+    });
+    try {
+      if (plan.priceCents <= 0) {
+        // Free plan — no Stripe involved, matches MembershipsHub.jsx's own
+        // direct-assign path for a $0 plan.
+        await SupabaseService.updateClientRow(clientId, membershipPlanId: plan.id);
+        ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(membershipPlanId: plan.id));
+      } else {
+        final returnUrl = Uri.base.origin + Uri.base.path;
+        final url = await SupabaseService.createCheckoutSession(planId: plan.id, returnUrl: returnUrl);
+        // "_self" — a full same-tab redirect to Stripe's hosted page, same
+        // as the web app's own `window.location.href = url` (a new-tab
+        // popup would leave the "return" landing in a tab the client isn't
+        // looking at).
+        await launchUrl(Uri.parse(url), webOnlyWindowName: "_self");
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
+    } finally {
+      if (mounted) setState(() => _busyPlanId = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final info = ref.watch(clientInfoProvider);
     final bookings = ref.watch(clientBookingsProvider);
+    final plans = ref.watch(membershipPlansProvider);
     final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
+    final buyable = plans.where((p) => !p.archived && p.kind != PlanKind.program).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
@@ -68,8 +111,51 @@ class MembershipHubScreen extends ConsumerWidget {
                 ],
               ),
             ),
-          ] else
-            const HintBox(text: "You don't have a membership yet. Visit the front desk or ask your coach to get started."),
+          ] else ...[
+            const HintBox(text: "You don't have a membership yet. Choose a plan below to get started."),
+            if (buyable.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              const SectionLabel("Available Plans"),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                ),
+              ...buyable.map((p) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: AppCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+                              Text(
+                                p.priceCents > 0 ? "\$${(p.priceCents / 100).toStringAsFixed(2)}${p.kind == PlanKind.membership ? '/mo' : ''}" : "Free",
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold),
+                              ),
+                            ],
+                          ),
+                          if (p.maxSessions != null && p.maxSessions! > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                "${p.maxSessions} sessions ${p.kind == PlanKind.membership ? "per month" : "total"}",
+                                style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                              ),
+                            ),
+                          const SizedBox(height: 10),
+                          BtnGold(
+                            full: true,
+                            onPressed: _busyPlanId != null ? null : () => _buy(info.id, p),
+                            child: Text(_busyPlanId == p.id ? "Starting checkout…" : (p.priceCents > 0 ? "Subscribe — redirects to secure checkout" : "Start free plan")),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )),
+            ],
+          ],
         ],
       ),
     );

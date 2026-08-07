@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/challenge_utils.dart";
 import "../../../core/utils/date_utils.dart";
@@ -59,7 +60,16 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
                   challenge: c,
                   showJoin: true,
                   onTap: () => setState(() => _viewId = c.id),
-                  onJoin: () {
+                  onJoin: () async {
+                    final nextParticipants = [...c.participantIds, info.id];
+                    try {
+                      await SupabaseService.updateChallengeRow(c.id, participantIds: nextParticipants);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't join — check your connection and try again.")));
+                      }
+                      return;
+                    }
                     ref.read(challengesProvider.notifier).join(c.id, info.id);
                     setState(() => _viewId = c.id);
                   },

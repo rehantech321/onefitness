@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/exercise_def.dart";
@@ -39,7 +40,15 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
           _editing = null;
           _creatingNew = false;
         }),
-        onSave: (ex) {
+        onSave: (ex) async {
+          try {
+            await SupabaseService.upsertExercise(ex);
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
+            }
+            return;
+          }
           ref.read(exerciseCatalogProvider.notifier).upsert(ex);
           setState(() {
             _editing = null;
@@ -48,8 +57,17 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
         },
         onDelete: _editing == null
             ? null
-            : () {
-                ref.read(exerciseCatalogProvider.notifier).remove(_editing!.id);
+            : () async {
+                final id = _editing!.id;
+                try {
+                  await SupabaseService.deleteExercise(id);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't delete — check your connection and try again.")));
+                  }
+                  return;
+                }
+                ref.read(exerciseCatalogProvider.notifier).remove(id);
                 setState(() => _editing = null);
               },
       );

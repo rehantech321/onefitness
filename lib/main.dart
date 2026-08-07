@@ -19,6 +19,12 @@ Future<void> main() async {
   runApp(const ProviderScope(child: OneFitnessApp()));
 }
 
+/// Lets the Stripe-return check in _RootGate show a SnackBar without
+/// needing a Scaffold ancestor at its own position in the tree (it sits
+/// above every screen's own Scaffold) — the standard MaterialApp pattern
+/// for exactly this.
+final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 class OneFitnessApp extends StatelessWidget {
   const OneFitnessApp({super.key});
 
@@ -28,6 +34,7 @@ class OneFitnessApp extends StatelessWidget {
       title: "ONE Fitness",
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
+      scaffoldMessengerKey: scaffoldMessengerKey,
       home: const _RootGate(),
     );
   }
@@ -40,17 +47,53 @@ class OneFitnessApp extends StatelessWidget {
 /// Before any of that renders, this waits on [supabaseBootstrapProvider] —
 /// the real Supabase session restore + roster/trainers/bookings fetch —
 /// same as App.jsx awaiting its own bootstrap Promise.all before mounting.
-class _RootGate extends ConsumerWidget {
+class _RootGate extends ConsumerStatefulWidget {
   const _RootGate();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_RootGate> createState() => _RootGateState();
+}
+
+class _RootGateState extends ConsumerState<_RootGate> {
+  bool _checkedStripeReturn = false;
+
+  /// One-time check for `?stripe=success`/`?stripe=cancel` on the URL —
+  /// create-checkout-session's `success_url`/`cancel_url` land back on this
+  /// same page (see membership_hub_screen.dart's `returnUrl`). The plan
+  /// itself is only ever granted by stripe-webhook confirming payment
+  /// (never here, and often not instantly), so this deliberately doesn't
+  /// claim the purchase is done — just that Stripe took the payment and
+  /// the membership will show up once the webhook's caught up.
+  void _checkStripeReturn() {
+    if (_checkedStripeReturn) return;
+    _checkedStripeReturn = true;
+    final stripeParam = Uri.base.queryParameters["stripe"];
+    if (stripeParam == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final messenger = scaffoldMessengerKey.currentState;
+      if (messenger == null) return;
+      if (stripeParam == "success") {
+        messenger.showSnackBar(const SnackBar(
+          content: Text("Payment received — your membership will update shortly."),
+          duration: Duration(seconds: 6),
+        ));
+      } else if (stripeParam == "cancel") {
+        messenger.showSnackBar(const SnackBar(content: Text("Checkout was cancelled — nothing was charged.")));
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final bootstrap = ref.watch(supabaseBootstrapProvider);
 
     return bootstrap.when(
       loading: () => const Scaffold(backgroundColor: AppColors.bg, body: Center(child: CircularProgressIndicator(color: AppColors.gold))),
       error: (err, st) => const _RootContent(), // fall back to mock/signed-out state rather than block the app
-      data: (_) => const _RootContent(),
+      data: (_) {
+        _checkStripeReturn();
+        return const _RootContent();
+      },
     );
   }
 }

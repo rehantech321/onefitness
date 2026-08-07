@@ -1,13 +1,21 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/roster_client.dart";
 import "../../../data/models/squad.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/supabase_bootstrap_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../../client/squad/squad_member_search_screen.dart";
+
+void _showMutateError(BuildContext context) {
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
+  }
+}
 
 /// Mirrors SquadTrainerPanel.jsx — staff-mediated management of the ONE
 /// squad this client belongs to (not a squad browser). Coaches/owner can
@@ -51,13 +59,19 @@ class _SquadTabState extends ConsumerState<SquadTab> {
               Text("${info.name} isn't in a Squad yet", style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               const SizedBox(height: 16),
               BtnGold(
-                onPressed: () {
+                onPressed: () async {
                   final newSquad = Squad(
                     id: DateTime.now().microsecondsSinceEpoch.toString(),
                     leadId: info.id,
                     memberIds: [info.id],
                     memberMeta: {info.id: const SquadMemberMeta(paymentEnabled: true)},
                   ).withActivity("squad_created", actorName: info.name, description: "${info.name} created the Squad");
+                  try {
+                    await SupabaseService.insertSquad(newSquad);
+                  } catch (e) {
+                    _showMutateError(context);
+                    return;
+                  }
                   ref.read(squadsProvider.notifier).createSquad(newSquad);
                 },
                 child: Text("Create Squad for ${info.name.split(' ').first}"),
@@ -73,8 +87,8 @@ class _SquadTabState extends ConsumerState<SquadTab> {
         roster: clientRoster,
         squad: squad,
         onCancel: () => setState(() => _searching = false),
-        onSelect: (c) {
-          ref.read(squadsProvider.notifier).update(squad.id, (s) {
+        onSelect: (c) async {
+          final ok = await mutateSquad(ref, squad, (s) {
             final invites = [...s.pendingInvites, SquadInvite(clientId: c.id, sentAt: _nowLabel())];
             var updated = s.copyWith(pendingInvites: invites);
             if (!s.canAddMember() && isOwner) {
@@ -82,6 +96,10 @@ class _SquadTabState extends ConsumerState<SquadTab> {
             }
             return updated.withActivity("invite_sent", actorName: info.name, description: "${c.name} was invited to the Squad");
           });
+          if (!ok) {
+            _showMutateError(context);
+            return;
+          }
           setState(() => _searching = false);
         },
       );
@@ -164,11 +182,14 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                     ),
                     if (isOwner && !lead)
                       IconButton(
-                        onPressed: () => ref.read(squadsProvider.notifier).update(squad.id, (s) {
-                          final newIds = s.memberIds.where((id) => id != c.id).toList();
-                          final newMeta = {...s.memberMeta}..remove(c.id);
-                          return s.copyWith(memberIds: newIds, memberMeta: newMeta).withActivity("member_removed", actorName: "Owner", description: "${c.name} was removed from the Squad");
-                        }),
+                        onPressed: () async {
+                          final ok = await mutateSquad(ref, squad, (s) {
+                            final newIds = s.memberIds.where((id) => id != c.id).toList();
+                            final newMeta = {...s.memberMeta}..remove(c.id);
+                            return s.copyWith(memberIds: newIds, memberMeta: newMeta).withActivity("member_removed", actorName: "Owner", description: "${c.name} was removed from the Squad");
+                          });
+                          if (!ok && context.mounted) _showMutateError(context);
+                        },
                         icon: const Icon(LucideIcons.userMinus, size: 14, color: Color(0xFF6B3B3B)),
                       ),
                   ],
@@ -186,7 +207,10 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                       const SizedBox(width: 12),
                       Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
                       OutlinedButton(
-                        onPressed: () => ref.read(squadsProvider.notifier).update(squad.id, (s) => s.copyWith(pendingInvites: s.pendingInvites.where((x) => x.clientId != inv.clientId).toList())),
+                        onPressed: () async {
+                          final ok = await mutateSquad(ref, squad, (s) => s.copyWith(pendingInvites: s.pendingInvites.where((x) => x.clientId != inv.clientId).toList()));
+                          if (!ok && context.mounted) _showMutateError(context);
+                        },
                         style: OutlinedButton.styleFrom(foregroundColor: AppColors.mute, side: const BorderSide(color: AppColors.line)),
                         child: const Text("Cancel", style: TextStyle(fontSize: 11)),
                       ),
@@ -267,22 +291,27 @@ class _SquadTabState extends ConsumerState<SquadTab> {
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Cancel")),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               final v = int.tryParse(controller.text.trim());
               if (v != null && v > 0) {
-                ref.read(squadsProvider.notifier).update(squad.id, (s) => Squad(
-                      id: s.id,
-                      name: s.name,
-                      leadId: s.leadId,
-                      memberIds: s.memberIds,
-                      memberMeta: s.memberMeta,
-                      maxSize: v,
-                      membership: s.membership,
-                      pendingInvites: s.pendingInvites,
-                      activity: s.activity,
-                    ).withActivity("admin_override", actorName: "Owner", description: "Owner set the Squad size limit to $v"));
+                final ok = await mutateSquad(
+                  ref,
+                  squad,
+                  (s) => Squad(
+                    id: s.id,
+                    name: s.name,
+                    leadId: s.leadId,
+                    memberIds: s.memberIds,
+                    memberMeta: s.memberMeta,
+                    maxSize: v,
+                    membership: s.membership,
+                    pendingInvites: s.pendingInvites,
+                    activity: s.activity,
+                  ).withActivity("admin_override", actorName: "Owner", description: "Owner set the Squad size limit to $v"),
+                );
+                if (!ok && context.mounted) _showMutateError(context);
               }
-              Navigator.of(ctx).pop();
+              if (ctx.mounted) Navigator.of(ctx).pop();
             },
             child: const Text("Save"),
           ),

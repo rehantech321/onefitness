@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
@@ -21,7 +22,17 @@ class MyProfileScreen extends ConsumerWidget {
       initial: matches.first,
       isOwnerEditing: false,
       onCancel: () {},
-      onSave: (t) => ref.read(trainersProvider.notifier).upsert(t),
+      onSave: (t) async {
+        try {
+          await SupabaseService.updateTrainerRow(t.id, name: t.name, email: t.email, phone: t.phone, locationName: t.locationName, locationAddress: t.locationAddress, availability: t.availability);
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
+          }
+          return;
+        }
+        ref.read(trainersProvider.notifier).upsert(t);
+      },
     );
   }
 }

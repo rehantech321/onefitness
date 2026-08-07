@@ -5,13 +5,11 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
+import "coach_signup_screen.dart";
 
-/// Mirrors TrainerLogin.jsx, trimmed to the two sign-in paths that don't
-/// need a second real backend account: coach sign-in (any non-empty
-/// email/password, same UI-only convention as the client auth screen) and
-/// Owner/Admin sign-in — both just set `trainerAuth`. "Create coach
-/// profile" isn't built yet (TrainerForm is an 800+ line staff-onboarding
-/// form, its own sizeable feature).
+/// Mirrors TrainerLogin.jsx: coach sign-in, real coach self-signup (gated
+/// by the staff approval code — see CoachSignupScreen), and Owner/Admin
+/// sign-in.
 class TrainerAuthScreen extends ConsumerStatefulWidget {
   const TrainerAuthScreen({super.key});
 
@@ -24,6 +22,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
   final _password = TextEditingController();
   String? _error;
   bool _busy = false;
+  bool _signingUp = false;
 
   bool _ownerOpen = false;
   final _ownerEmail = TextEditingController();
@@ -101,6 +100,9 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_signingUp) {
+      return CoachSignupScreen(onBack: () => setState(() => _signingUp = false));
+    }
     return Container(
       decoration: const BoxDecoration(
         image: DecorationImage(
@@ -186,9 +188,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                         ),
                       ),
                       BtnGhost(
-                        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Coach sign-up form coming in a later pass.")),
-                        ),
+                        onPressed: () => setState(() => _signingUp = true),
                         full: true,
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,

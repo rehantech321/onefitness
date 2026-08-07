@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
@@ -33,7 +34,20 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
           _editing = null;
           _creating = false;
         }),
-        onSave: (t) {
+        onSave: (t) async {
+          // Creating a brand-new trainer needs a real Supabase Auth account
+          // (sign-up), not just a row write — out of scope for now, so a
+          // new trainer still only lands in local mock state.
+          if (_editing != null) {
+            try {
+              await SupabaseService.updateTrainerRow(t.id, name: t.name, email: t.email, phone: t.phone, locationName: t.locationName, locationAddress: t.locationAddress, availability: t.availability);
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
+              }
+              return;
+            }
+          }
           ref.read(trainersProvider.notifier).upsert(t);
           setState(() {
             _editing = null;

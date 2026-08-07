@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/exercise_prescription.dart";
@@ -47,20 +48,29 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
     final name = await _promptName(context, widget.existing?.name ?? "");
     if (name == null || name.trim().isEmpty) return;
     final program = SavedProgram(id: widget.existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(), name: name.trim(), programDays: _days);
-    if (widget.clientId != null) {
-      ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId!, (r) {
-        final exists = r.savedPrograms.any((p) => p.id == program.id);
-        final list = exists ? r.savedPrograms.map((p) => p.id == program.id ? program : p).toList() : [...r.savedPrograms, program];
-        return r.copyWith(savedPrograms: list);
-      });
-      ref.read(programsLibraryProvider.notifier).add(SavedProgram(id: DateTime.now().microsecondsSinceEpoch.toString(), name: program.name, programDays: _days));
-    } else {
-      final exists = ref.read(programsLibraryProvider).any((p) => p.id == program.id);
-      if (exists) {
-        ref.read(programsLibraryProvider.notifier).update(program.id, (_) => program);
+    try {
+      if (widget.clientId != null) {
+        final clientId = widget.clientId!;
+        final record = ref.read(trainerClientRecordsProvider)[clientId]!;
+        final exists = record.savedPrograms.any((p) => p.id == program.id);
+        final nextSaved = exists ? record.savedPrograms.map((p) => p.id == program.id ? program : p).toList() : [...record.savedPrograms, program];
+        final libraryCopy = SavedProgram(id: DateTime.now().microsecondsSinceEpoch.toString(), name: program.name, programDays: _days);
+        await SupabaseService.updateClientSavedPrograms(clientId, nextSaved);
+        await SupabaseService.upsertProgramLibraryEntry(libraryCopy);
+        ref.read(trainerClientRecordsProvider.notifier).update(clientId, (r) => r.copyWith(savedPrograms: nextSaved));
+        ref.read(programsLibraryProvider.notifier).add(libraryCopy);
       } else {
-        ref.read(programsLibraryProvider.notifier).add(program);
+        final exists = ref.read(programsLibraryProvider).any((p) => p.id == program.id);
+        await SupabaseService.upsertProgramLibraryEntry(program);
+        if (exists) {
+          ref.read(programsLibraryProvider.notifier).update(program.id, (_) => program);
+        } else {
+          ref.read(programsLibraryProvider.notifier).add(program);
+        }
       }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
+      return;
     }
     if (mounted) Navigator.of(context).maybePop();
   }

@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/report_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -49,15 +50,32 @@ class ItemizedSalesReport extends ConsumerWidget {
 }
 
 /// Mirrors FinancialReports.jsx's RealTimeChargesReport — reverse-chron
-/// charge feed with Refund/Waive actions, mocked as local-only mutations
-/// (no real Stripe call exists in this UI-only build).
-class RealTimeChargesReport extends ConsumerWidget {
+/// charge feed with Refund/Waive actions, both real owner-only Edge
+/// Function calls (refund-charge issues an actual Stripe refund in this
+/// project's test-mode Stripe key; waive-charge marks a fee waived).
+class RealTimeChargesReport extends ConsumerStatefulWidget {
   const RealTimeChargesReport({super.key, required this.range});
   final ReportRange range;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final charges = revenueCharges(ref.watch(chargesProvider), range);
+  ConsumerState<RealTimeChargesReport> createState() => _RealTimeChargesReportState();
+}
+
+class _RealTimeChargesReportState extends ConsumerState<RealTimeChargesReport> {
+  String? _busyId;
+
+  Future<void> _refresh() async {
+    final fresh = await SupabaseService.loadCharges();
+    ref.read(chargesProvider.notifier).setAll(fresh);
+  }
+
+  void _showError(String msg) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final charges = revenueCharges(ref.watch(chargesProvider), widget.range);
     if (charges.isEmpty) return const HintBox(text: "No charges in this range.");
     return Column(
       children: charges
@@ -74,11 +92,41 @@ class RealTimeChargesReport extends ConsumerWidget {
                       ),
                     ),
                     if (c.type == "purchase")
-                      TextButton(onPressed: () => ref.read(chargesProvider.notifier).remove(c.id), child: const Text("Refund", style: TextStyle(fontSize: 11, color: Color(0xFFC97F7F))))
+                      TextButton(
+                        onPressed: _busyId != null
+                            ? null
+                            : () async {
+                                setState(() => _busyId = c.id);
+                                try {
+                                  await SupabaseService.refundCharge(c.id);
+                                  await _refresh();
+                                } catch (e) {
+                                  _showError(e.toString().replaceFirst("Exception: ", ""));
+                                } finally {
+                                  if (mounted) setState(() => _busyId = null);
+                                }
+                              },
+                        child: Text(_busyId == c.id ? "Refunding…" : "Refund", style: const TextStyle(fontSize: 11, color: Color(0xFFC97F7F))),
+                      )
                     else if (c.type == "early_termination_fee")
                       c.waivedAt != null
                           ? const Text("Waived", style: TextStyle(fontSize: 11, color: AppColors.mute))
-                          : TextButton(onPressed: () => ref.read(chargesProvider.notifier).waive(c.id), child: const Text("Waive", style: TextStyle(fontSize: 11, color: AppColors.gold))),
+                          : TextButton(
+                              onPressed: _busyId != null
+                                  ? null
+                                  : () async {
+                                      setState(() => _busyId = c.id);
+                                      try {
+                                        await SupabaseService.waiveCharge(c.id);
+                                        await _refresh();
+                                      } catch (e) {
+                                        _showError(e.toString().replaceFirst("Exception: ", ""));
+                                      } finally {
+                                        if (mounted) setState(() => _busyId = null);
+                                      }
+                                    },
+                              child: Text(_busyId == c.id ? "Waiving…" : "Waive", style: const TextStyle(fontSize: 11, color: AppColors.gold)),
+                            ),
                   ],
                 ),
               ))

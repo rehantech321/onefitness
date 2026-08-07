@@ -119,6 +119,8 @@ class ChallengesNotifier extends Notifier<List<Challenge>> {
   void add(Challenge c) => state = [...state, c];
 
   void remove(String id) => state = state.where((c) => c.id != id).toList();
+
+  void setAll(List<Challenge> next) => state = next;
 }
 
 final challengesProvider = NotifierProvider<ChallengesNotifier, List<Challenge>>(ChallengesNotifier.new);
@@ -144,7 +146,12 @@ class SquadsNotifier extends Notifier<List<Squad>> {
   void update(String squadId, Squad Function(Squad) updater) =>
       state = state.map((s) => s.id == squadId ? updater(s) : s).toList();
 
+  /// Real deletion is coach/owner-only (squads_delete_staff_only) — kept for
+  /// the coach-side "Remove Squad" action; the client-side "Dissolve Squad"
+  /// button logs an activity entry instead (see SupabaseService.updateSquadRow).
   void dissolve(String squadId) => state = state.where((s) => s.id != squadId).toList();
+
+  void setAll(List<Squad> next) => state = next;
 }
 
 final squadsProvider = NotifierProvider<SquadsNotifier, List<Squad>>(SquadsNotifier.new);
@@ -160,6 +167,15 @@ class EarnedBadgesNotifier extends Notifier<List<EarnedBadge>> {
 
   void revoke(String badgeId, {required String revokedAt, String? revokedByUserId}) =>
       state = state.map((b) => b.id == badgeId ? b.copyWith(revokedAt: revokedAt, revokedByUserId: revokedByUserId) : b).toList();
+
+  void setAll(List<EarnedBadge> next) => state = next;
+
+  /// Swaps in a freshly-fetched slice for one client after a real
+  /// award/revoke — the server, not local state, is the source of truth
+  /// for what actually landed (id, earnedAt, and any points-sync side
+  /// effect happen server-side).
+  void replaceForClient(String clientId, List<EarnedBadge> fresh) =>
+      state = [...state.where((b) => b.clientId != clientId), ...fresh];
 }
 
 final earnedBadgesProvider = NotifierProvider<EarnedBadgesNotifier, List<EarnedBadge>>(EarnedBadgesNotifier.new);
@@ -172,6 +188,12 @@ class PointsLedgerNotifier extends Notifier<List<PointsLedgerEntry>> {
   List<PointsLedgerEntry> build() => MockData.pointsLedger();
 
   void add(PointsLedgerEntry entry) => state = [...state, entry];
+
+  void setAll(List<PointsLedgerEntry> next) => state = next;
+
+  /// See EarnedBadgesNotifier.replaceForClient's doc comment — same reason.
+  void replaceForClient(String clientId, List<PointsLedgerEntry> fresh) =>
+      state = [...state.where((e) => e.clientId != clientId), ...fresh];
 }
 
 final pointsLedgerProvider = NotifierProvider<PointsLedgerNotifier, List<PointsLedgerEntry>>(PointsLedgerNotifier.new);
