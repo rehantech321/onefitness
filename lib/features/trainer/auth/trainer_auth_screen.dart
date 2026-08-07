@@ -128,166 +128,194 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Exactly half the screen reserved for the photo, so the
-                    // logo lands centered in the top half regardless of how
-                    // tall the (fairly long) staff sign-in form is below it.
-                    SizedBox(height: constraints.maxHeight * 0.5),
+                    // Forces the sign-in card to occupy at least a full
+                    // screen, so the Owner section below stays off-screen
+                    // until the user swipes up to reveal it.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Column(
+                        children: [
+                          // Exactly half the screen reserved for the photo, so
+                          // the logo lands centered in the top half regardless
+                          // of how tall the staff sign-in form is below it.
+                          SizedBox(height: constraints.maxHeight * 0.5),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Center(
+                                  child: Text(
+                                    "Staff",
+                                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 1),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                FieldLabeled(
+                                  label: "Email",
+                                  child: AppField(
+                                    controller: _email,
+                                    placeholder: "name@email.com",
+                                    keyboardType: TextInputType.emailAddress,
+                                    onChanged: (_) => setState(() => _error = null),
+                                  ),
+                                ),
+                                const SizedBox(height: 5),
+                                FieldLabeled(
+                                  label: "Password",
+                                  child: AppField(controller: _password, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
+                                ),
+                                if (_error != null) ...[
+                                  const SizedBox(height: 5),
+                                  Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                                ],
+                                const SizedBox(height: 6),
+                                BtnGold(
+                                  onPressed: _busy ? null : _signIn,
+                                  full: true,
+                                  child: _busy
+                                      ? const Text("Signing in…")
+                                      : const Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [Icon(LucideIcons.user, size: 15), SizedBox(width: 6), Text("Sign in")],
+                                        ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  child: Row(
+                                    children: const [
+                                      Expanded(child: Divider(color: AppColors.line, height: 1)),
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 10),
+                                        child: Text("NEW COACH?", style: TextStyle(color: AppColors.mute, fontSize: 11, letterSpacing: 1.5)),
+                                      ),
+                                      Expanded(child: Divider(color: AppColors.line, height: 1)),
+                                    ],
+                                  ),
+                                ),
+                                BtnGhost(
+                                  onPressed: () => setState(() => _signingUp = true),
+                                  full: true,
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [Icon(LucideIcons.plus, size: 15), SizedBox(width: 6), Text("Create coach profile")],
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                const Center(
+                                  child: Icon(LucideIcons.chevronUp, color: AppColors.mute, size: 18),
+                                ),
+                                const Center(
+                                  child: Text(
+                                    "Swipe up for owner login",
+                                    style: TextStyle(color: AppColors.mute, fontSize: 11, letterSpacing: 0.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Center(
-                            child: Text(
-                              "Staff",
-                              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 1),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          FieldLabeled(
-                            label: "Email",
-                            child: AppField(
-                              controller: _email,
-                              placeholder: "name@email.com",
-                              keyboardType: TextInputType.emailAddress,
-                              onChanged: (_) => setState(() => _error = null),
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          FieldLabeled(
-                            label: "Password",
-                            child: AppField(controller: _password, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
-                          ),
-                          if (_error != null) ...[
-                            const SizedBox(height: 5),
-                            Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
-                          ],
-                          const SizedBox(height: 6),
-                          BtnGold(
-                        onPressed: _busy ? null : _signIn,
-                        full: true,
-                        child: _busy
-                            ? const Text("Signing in…")
-                            : const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [Icon(LucideIcons.user, size: 15), SizedBox(width: 6), Text("Sign in")],
-                              ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: const [
-                            Expanded(child: Divider(color: AppColors.line, height: 1)),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 10),
-                              child: Text("NEW COACH?", style: TextStyle(color: AppColors.mute, fontSize: 11, letterSpacing: 1.5)),
-                            ),
-                            Expanded(child: Divider(color: AppColors.line, height: 1)),
-                          ],
-                        ),
-                      ),
-                      BtnGhost(
-                        onPressed: () => setState(() => _signingUp = true),
-                        full: true,
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [Icon(LucideIcons.plus, size: 15), SizedBox(width: 6), Text("Create coach profile")],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: const [
-                            Expanded(child: Divider(color: AppColors.line, height: 1)),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 10),
-                              child: Text("OWNER", style: TextStyle(color: AppColors.mute, fontSize: 11, letterSpacing: 1.5)),
-                            ),
-                            Expanded(child: Divider(color: AppColors.line, height: 1)),
-                          ],
-                        ),
-                      ),
-                      if (_ownerOpen)
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: AppColors.card,
-                            border: Border.all(color: AppColors.line),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              const Text("Owner / Admin access", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 8),
-                              FieldLabeled(
-                                label: "Email",
-                                child: AppField(
-                                  controller: _ownerEmail,
-                                  placeholder: "name@email.com",
-                                  keyboardType: TextInputType.emailAddress,
-                                  onChanged: (_) => setState(() => _ownerError = null),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Row(
+                              children: const [
+                                Expanded(child: Divider(color: AppColors.line, height: 1)),
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 10),
+                                  child: Text("OWNER", style: TextStyle(color: AppColors.mute, fontSize: 11, letterSpacing: 1.5)),
                                 ),
-                              ),
-                              const SizedBox(height: 5),
-                              FieldLabeled(
-                                label: "Password",
-                                child: AppField(
-                                  controller: _ownerPassword,
-                                  placeholder: "••••••",
-                                  obscureText: true,
-                                  onChanged: (_) => setState(() => _ownerError = null),
-                                ),
-                              ),
-                              if (_ownerError != null) ...[
-                                const SizedBox(height: 8),
-                                Text(_ownerError!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                                Expanded(child: Divider(color: AppColors.line, height: 1)),
                               ],
-                              const SizedBox(height: 8),
-                              Row(
+                            ),
+                          ),
+                          if (_ownerOpen)
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: AppColors.card,
+                                border: Border.all(color: AppColors.line),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  Expanded(
-                                    child: BtnGold(
-                                      onPressed: _ownerBusy ? null : _ownerSignIn,
-                                      full: true,
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(LucideIcons.lock, size: 14),
-                                          const SizedBox(width: 6),
-                                          Text(_ownerBusy ? "Signing in…" : "Enter"),
-                                        ],
-                                      ),
+                                  const Text("Owner / Admin access", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                                  const SizedBox(height: 8),
+                                  FieldLabeled(
+                                    label: "Email",
+                                    child: AppField(
+                                      controller: _ownerEmail,
+                                      placeholder: "name@email.com",
+                                      keyboardType: TextInputType.emailAddress,
+                                      onChanged: (_) => setState(() => _ownerError = null),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  BtnGhost(onPressed: () => setState(() => _ownerOpen = false), child: const Text("Cancel")),
+                                  const SizedBox(height: 5),
+                                  FieldLabeled(
+                                    label: "Password",
+                                    child: AppField(
+                                      controller: _ownerPassword,
+                                      placeholder: "••••••",
+                                      obscureText: true,
+                                      onChanged: (_) => setState(() => _ownerError = null),
+                                    ),
+                                  ),
+                                  if (_ownerError != null) ...[
+                                    const SizedBox(height: 8),
+                                    Text(_ownerError!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                                  ],
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: BtnGold(
+                                          onPressed: _ownerBusy ? null : _ownerSignIn,
+                                          full: true,
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(LucideIcons.lock, size: 14),
+                                              const SizedBox(width: 6),
+                                              Text(_ownerBusy ? "Signing in…" : "Enter"),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      BtnGhost(onPressed: () => setState(() => _ownerOpen = false), child: const Text("Cancel")),
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
+                            )
+                          else
+                            BtnGhost(
+                              onPressed: () => setState(() => _ownerOpen = true),
+                              full: true,
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [Icon(LucideIcons.lock, size: 14), SizedBox(width: 6), Text("Owner / Admin login")],
+                              ),
+                            ),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8),
+                            child: Text(
+                              "Owner access manages all clients, staff, and the schedule.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                            ),
                           ),
-                        )
-                      else
-                        BtnGhost(
-                          onPressed: () => setState(() => _ownerOpen = true),
-                          full: true,
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [Icon(LucideIcons.lock, size: 14), SizedBox(width: 6), Text("Owner / Admin login")],
-                          ),
-                        ),
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8),
-                        child: Text(
-                          "Owner access manages all clients, staff, and the schedule.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
-                        ),
-                      ),
                         ],
                       ),
                     ),
