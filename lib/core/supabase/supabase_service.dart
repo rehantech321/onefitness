@@ -11,6 +11,7 @@ import "../../data/models/comm_message.dart";
 import "../../data/models/earned_badge.dart";
 import "../../data/models/exercise_def.dart";
 import "../../data/models/exercise_prescription.dart";
+import "../../data/models/intake_schema.dart";
 import "../../data/models/meal_def.dart";
 import "../../data/models/membership_plan.dart";
 import "../../data/models/points_ledger_entry.dart";
@@ -661,6 +662,29 @@ class SupabaseService {
         "challengeProgress": progress.map((k, v) => MapEntry(k, v.map((e) => {"value": e.value, "loggedAt": e.loggedAt}).toList())),
       });
 
+  /// `client_records.data.intake` is itself keyed by assessment
+  /// ("personalTraining" | "nutritional" | ...) — a plain
+  /// upsertClientRecordPatch({"intake": {...}}) would replace that whole
+  /// object and wipe out every other already-submitted form, so this reads
+  /// the current nested map, merges just the one key, and writes the full
+  /// blob back (same fetch-then-merge shape as upsertClientRecordPatch
+  /// itself, one level deeper).
+  static Future<void> updateClientIntake(String profileId, String assessmentKey, IntakeRecord record) async {
+    final row = await client.from("client_records").select("data").eq("profile_id", profileId).maybeSingle();
+    final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
+    final currentIntake = (current["intake"] as Map?)?.cast<String, dynamic>() ?? const {};
+    final nextIntake = {
+      ...currentIntake,
+      assessmentKey: {
+        "answers": record.answers,
+        "completed": record.completed,
+        "at": record.at,
+        "by": record.by,
+      },
+    };
+    await client.from("client_records").upsert({"profile_id": profileId, "data": {...current, "intake": nextIntake}});
+  }
+
   /// Inserts and returns the server-assigned row (real id, defaults applied)
   /// — mirrors insertBooking in supabaseData.js. `location` only ever
   /// round-trips a bare name here since that's all `Booking.locationName`
@@ -1249,6 +1273,7 @@ class SupabaseService {
     // unverified — re-check this mapping once a real client has an actual
     // assigned program or logged workout.
     final commsRaw = (j["comms"] as List?) ?? const [];
+    final intakeRaw = (j["intake"] as Map?)?.cast<String, dynamic>() ?? const {};
     return ClientRecord(
       id: id,
       habits: ((j["habits"] as List?) ?? const []).whereType<String>().toList(),
@@ -1263,6 +1288,18 @@ class SupabaseService {
           readByCoach: m["readByCoach"] as bool? ?? false,
         ),
       ),
+      intake: intakeRaw.map((key, v) {
+        final m = (v as Map).cast<String, dynamic>();
+        return MapEntry(
+          key,
+          IntakeRecord(
+            answers: (m["answers"] as Map?)?.cast<String, dynamic>() ?? const {},
+            completed: m["completed"] as bool? ?? false,
+            at: m["at"] as String?,
+            by: m["by"] as String?,
+          ),
+        );
+      }),
     );
   }
 

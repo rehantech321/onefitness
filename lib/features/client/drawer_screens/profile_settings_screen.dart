@@ -101,8 +101,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
 }
 
 String membershipStatusLabel(ClientInfo info, MembershipPlan plan, List<Booking> bookings) {
-  final checkedIn = bookings.where((b) => b.attendanceStatus == "checked-in").toList();
-  final used = sessionsUsedThisPeriod(info, plan, checkedIn);
+  final used = sessionsUsedThisPeriod(info, plan, bookings);
   final max = effectiveMaxSessions(info, plan);
   return "${(max - used).clamp(0, max)}";
 }

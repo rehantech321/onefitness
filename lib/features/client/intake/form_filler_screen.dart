@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -23,6 +24,8 @@ class FormFillerScreen extends ConsumerStatefulWidget {
 
 class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
   late Map<String, dynamic> _answers;
+  bool _saving = false;
+  String? _error;
 
   @override
   void initState() {
@@ -50,12 +53,25 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
     return dep == q.showIfValue;
   }
 
-  void _save() {
-    ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(intake: {
-          ...r.intake,
-          widget.assessmentKey: IntakeRecord(answers: _answers, completed: true, at: stamp(), by: "Client"),
-        }));
-    widget.onBack();
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    final record = IntakeRecord(answers: _answers, completed: true, at: stamp(), by: "Client");
+    try {
+      final profileId = ref.read(clientRecordProvider).id;
+      await SupabaseService.updateClientIntake(profileId, widget.assessmentKey, record);
+      ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(intake: {...r.intake, widget.assessmentKey: record}));
+      widget.onBack();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = "Couldn't save — check your connection and try again.";
+      });
+    }
   }
 
   @override
@@ -101,18 +117,44 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
                   ],
                 ),
               )),
-          BtnGold(
-            onPressed: _save,
-            full: true,
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(LucideIcons.check, size: 16, color: Colors.white),
-                SizedBox(width: 6),
-                Text("Save & mark complete"),
-              ],
+          if (_error != null) ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: AppColors.errorText.withValues(alpha: 0.1),
+                border: Border.all(color: AppColors.errorText.withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
             ),
+          ],
+          BtnGold(
+            onPressed: _saving ? null : _save,
+            full: true,
+            child: _saving
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                      ),
+                      SizedBox(width: 8),
+                      Text("Saving…"),
+                    ],
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(LucideIcons.check, size: 16, color: Colors.white),
+                      SizedBox(width: 6),
+                      Text("Save & mark complete"),
+                    ],
+                  ),
           ),
         ],
       ),

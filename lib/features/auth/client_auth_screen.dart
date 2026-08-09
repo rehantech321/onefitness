@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../core/supabase/supabase_service.dart";
 import "../../core/theme/app_colors.dart";
+import "../../core/utils/auth_error.dart";
 import "../../core/widgets/widgets.dart";
 import "../../data/providers/supabase_bootstrap_provider.dart";
 import "client_signup_screen.dart";
@@ -59,7 +60,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
       print("[client sign-in] failed: $e\n$st");
       if (!mounted) return;
       setState(() {
-        _error = "Incorrect email or password.";
+        _error = authErrorMessage(e);
         _busy = false;
       });
       return;

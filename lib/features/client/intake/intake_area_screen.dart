@@ -6,6 +6,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/intake_forms.dart";
 import "../../../data/models/intake_schema.dart";
 import "../../../data/providers/client_providers.dart";
+import "../shell/client_shell_state.dart";
 import "form_filler_screen.dart";
 
 const _groupIcons = {"training": LucideIcons.clipboardCheck, "nutrition": LucideIcons.apple};
@@ -31,10 +32,13 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialOpenKey != null) {
+    final pending = ref.read(pendingIntakeFormKeyProvider);
+    if (pending != null) ref.read(pendingIntakeFormKeyProvider.notifier).set(null);
+    final key = pending ?? widget.initialOpenKey;
+    if (key != null) {
       for (final group in kIntakeForms) {
         for (final a in group.assessments) {
-          if (a.key == widget.initialOpenKey) _open = a;
+          if (a.key == key) _open = a;
         }
       }
     }

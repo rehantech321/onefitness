@@ -24,12 +24,16 @@ class BookingPickingScreen extends StatelessWidget {
     required this.date,
     required this.onBack,
     required this.onConfirm,
+    this.busy = false,
+    this.error,
   });
 
   final PendingPick pick;
   final String date;
   final VoidCallback onBack;
   final VoidCallback onConfirm;
+  final bool busy;
+  final String? error;
 
   @override
   Widget build(BuildContext context) {
@@ -102,18 +106,44 @@ class BookingPickingScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ),
-          BtnGold(
-            onPressed: onConfirm,
-            full: true,
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(LucideIcons.check, size: 15, color: Colors.white),
-                SizedBox(width: 6),
-                Text("Confirm booking"),
-              ],
+          if (error != null) ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: AppColors.errorText.withValues(alpha: 0.1),
+                border: Border.all(color: AppColors.errorText.withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
             ),
+          ],
+          BtnGold(
+            onPressed: busy ? null : onConfirm,
+            full: true,
+            child: busy
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                      ),
+                      SizedBox(width: 8),
+                      Text("Booking…"),
+                    ],
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(LucideIcons.check, size: 15, color: Colors.white),
+                      SizedBox(width: 6),
+                      Text("Confirm booking"),
+                    ],
+                  ),
           ),
         ],
       ),

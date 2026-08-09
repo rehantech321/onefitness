@@ -23,16 +23,26 @@ import "upcoming_session_card.dart";
 /// booking, the waitlist, in-booking challenge browsing, and the "Meet the
 /// Coach" profile card are not built yet — each is its own sizeable feature.
 class BookingScreen extends ConsumerStatefulWidget {
-  const BookingScreen({super.key, required this.onGoMemberships});
+  const BookingScreen({super.key, required this.onGoMemberships, this.initialDate, this.initialReschedule});
 
   final VoidCallback onGoMemberships;
+
+  /// Set when arriving from a dashboard calendar tap on an empty future
+  /// date (see client_shell.dart's pickCalendarDate) — jumps the date strip
+  /// straight there instead of starting on today.
+  final String? initialDate;
+
+  /// Set when arriving from a "Reschedule" tap (DayDetailScreen or the
+  /// upcoming-sessions list) — pre-fills the type/discipline/date from the
+  /// booking being moved, same as tapping Reschedule from within this screen.
+  final Booking? initialReschedule;
 
   @override
   ConsumerState<BookingScreen> createState() => _BookingScreenState();
 }
 
 class _BookingScreenState extends ConsumerState<BookingScreen> {
-  String _date = isoToday();
+  late String _date = widget.initialReschedule?.date ?? widget.initialDate ?? isoToday();
   String? _chosenType;
   String? _chosenDisc;
   PendingPick? _picking;
@@ -41,6 +51,18 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   dynamic _denied; // BookingCheck?
   bool _showAllUpcoming = false;
   bool _busy = false;
+  String? _bookingError;
+
+  @override
+  void initState() {
+    super.initState();
+    final reschedule = widget.initialReschedule;
+    if (reschedule != null) {
+      _rescheduling = reschedule;
+      _chosenType = reschedule.sessionType;
+      _chosenDisc = reschedule.discipline;
+    }
+  }
 
   void _showError(String msg) {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -88,7 +110,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         return;
       }
     }
-    setState(() => _picking = PendingPick(trainer: t, sessionType: sessionType, discipline: discipline, slot: slot));
+    setState(() {
+      _picking = PendingPick(trainer: t, sessionType: sessionType, discipline: discipline, slot: slot);
+      _bookingError = null;
+    });
   }
 
   Future<void> _confirmBooking() async {
@@ -105,7 +130,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       discipline: pick.discipline,
       locationName: pick.trainer.locationName,
     );
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _bookingError = null;
+    });
     try {
       final saved = await SupabaseService.insertBooking(draft);
       final rescheduling = _rescheduling;
@@ -121,8 +149,16 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         _rescheduling = null;
       });
     } catch (e) {
-      setState(() => _busy = false);
-      _showError("Couldn't book that session — check your connection and try again.");
+      // ignore: avoid_print
+      print("[booking confirm] failed: $e");
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        // Stays visible on the picking screen (not a transient SnackBar) so
+        // a real failure — this device has hit genuine network drops before
+        // — can't get missed and silently look like nothing happened.
+        _bookingError = "Couldn't book that session — check your connection and try again.";
+      });
     }
   }
 
@@ -153,8 +189,13 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       return BookingPickingScreen(
         pick: _picking!,
         date: _date,
-        onBack: () => setState(() => _picking = null),
+        onBack: () => setState(() {
+          _picking = null;
+          _bookingError = null;
+        }),
         onConfirm: _confirmBooking,
+        busy: _busy,
+        error: _bookingError,
       );
     }
 
@@ -290,8 +331,7 @@ class _MembershipBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final checkedIn = bookings.where((b) => b.attendanceStatus == "checked-in").toList();
-    final used = sessionsUsedThisPeriod(info, plan, checkedIn);
+    final used = sessionsUsedThisPeriod(info, plan, bookings);
     final max = effectiveMaxSessions(info, plan);
     final remaining = (max - used).clamp(0, max);
     final color = remaining > 3 ? AppColors.grn : (remaining > 0 ? const Color(0xFFD68A4F) : const Color(0xFFC97F7F));

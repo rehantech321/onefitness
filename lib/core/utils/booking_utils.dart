@@ -1,5 +1,6 @@
 import "../../data/models/booking.dart";
 import "../../data/models/client_info.dart";
+import "../../data/models/client_record.dart";
 import "../../data/models/membership_plan.dart";
 import "../../data/models/trainer.dart";
 import "date_utils.dart";
@@ -68,6 +69,25 @@ String cancelWindow(Booking b) {
 /// Mirrors lib/helpers.js `canReschedule`.
 bool canReschedule(Booking b) => !kBlockRescheduleInWindow || cancelWindow(b) == "free";
 
+enum CalendarDayStatus { done, missed, upcoming }
+
+/// Mirrors schedulingHelpers.js `calendarDayStatus` — single source of truth
+/// for what a client's calendar day "is". Both the Workout Calendar's dot
+/// color and tapping a date key off this, so the two can never disagree. A
+/// booking marked no-show/early-cancel/late-cancel is treated exactly like
+/// an empty day — no dot — since nothing meaningful actually happened; only
+/// a checked-in booking, an unmarked booking, or a logged workout produces
+/// a status.
+CalendarDayStatus? calendarDayStatus(ClientRecord client, ClientInfo info, List<Booking> bookings, String date) {
+  final dayBookings = bookings.where((b) => b.clientId == info.id && b.date == date);
+  final logged = client.loggedOn(date);
+  final checkedIn = dayBookings.any((b) => b.attendanceStatus == "checked-in");
+  if (logged || checkedIn) return CalendarDayStatus.done;
+  final hasActiveBooking = dayBookings.any((b) => !kGiveBackAttendanceStatuses.contains(b.attendanceStatus));
+  if (!hasActiveBooking) return null;
+  return date.compareTo(isoToday()) >= 0 ? CalendarDayStatus.upcoming : CalendarDayStatus.missed;
+}
+
 String lateCancellationFeeLabel() => "\$${(kLateCancellationFeeCents / 100).toStringAsFixed(2)}";
 
 class BookingCheck {
@@ -119,7 +139,7 @@ BookingCheck canBookOffering(
     return BookingCheck(ok: false, reason: "wrong-type", msg: "Your ${plan.name} doesn't cover this session type.");
   }
 
-  final used = sessionsUsedThisPeriod(info, plan, bookings.where((b) => b.attendanceStatus == "checked-in").toList());
+  final used = sessionsUsedThisPeriod(info, plan, bookings);
   final max = effectiveMaxSessions(info, plan);
   if (used >= max) {
     final period = plan.kind == PlanKind.membership ? "this month" : "on your package";

@@ -95,8 +95,7 @@ class SessionsRemainingBadge extends ConsumerWidget {
       );
     }
 
-    final checkedIn = bookings.where((b) => b.attendanceStatus == "checked-in").toList();
-    final used = sessionsUsedThisPeriod(info, plan, checkedIn);
+    final used = sessionsUsedThisPeriod(info, plan, bookings);
     final max = effectiveMaxSessions(info, plan);
     final remaining = (max - used).clamp(0, max);
     final pct = max > 0 ? remaining / max : 0.0;

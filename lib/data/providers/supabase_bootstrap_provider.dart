@@ -194,7 +194,16 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   ref.read(challengesProvider.notifier).setAll(challenges);
   ref.read(squadsProvider.notifier).setAll(squads);
   ref.read(chargesProvider.notifier).setAll(charges);
-  if (platformSettings != null) ref.read(platformSettingsProvider.notifier).update((_) => platformSettings);
+  // `platformSettings` is declared-then-assigned-in-a-try-block above, not
+  // initialized at declaration — Dart doesn't carry a null-promotion for
+  // that shape into a closure literal, so `(_) => platformSettings` below
+  // would infer as `(dynamic) => PlatformSettings?` and throw at runtime
+  // against `PlatformSettingsNotifier.update`'s non-nullable signature.
+  // Re-binding to a plain initialized local fixes the promotion.
+  final resolvedSettings = platformSettings;
+  if (resolvedSettings != null) {
+    ref.read(platformSettingsProvider.notifier).update((_) => resolvedSettings);
+  }
 
   final clientRecords = <String, ClientRecord>{};
   await Future.wait(roster.map((c) async {

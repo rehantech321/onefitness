@@ -3,11 +3,15 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/booking_utils.dart";
+import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/providers/client_providers.dart";
 import "../badges/badge_gallery_screen.dart";
 import "../booking/booking_screen.dart";
+import "../booking/day_detail_screen.dart";
 import "../challenges/challenges_screen.dart";
 import "../chat/chat_screen.dart";
 import "../dashboard/client_dashboard_screen.dart";
@@ -59,6 +63,7 @@ const _titles = {
   "dashboard": "Dashboard",
   "plans": "Plans",
   "booking": "Booking",
+  "day": "Booking",
   "chat": "Chat",
   "memberships": "Membership Hub",
   "nutrition": "Nutrition Plan",
@@ -88,10 +93,41 @@ class ClientShell extends ConsumerWidget {
     final client = ref.watch(clientRecordProvider);
     final bookings = ref.watch(clientBookingsProvider);
     final earnedBadges = ref.watch(earnedBadgesProvider);
+    final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
 
     void go(String key) {
       ref.read(clientScreenProvider.notifier).go(key);
       Navigator.of(context).maybePop(); // closes the drawer if open
+    }
+
+    // Plain nav into Booking (bottom bar / menu) — no stale target left over
+    // from a previous calendar-pick or reschedule.
+    void goBooking() {
+      ref.read(pendingBookingTargetProvider.notifier).set(null);
+      go("booking");
+    }
+
+    void startReschedule(Booking b) {
+      ref.read(pendingBookingTargetProvider.notifier).set(BookingTarget(initialDate: b.date, reschedule: b));
+      go("booking");
+    }
+
+    // Tapping a calendar date — mirrors the dot shown on WorkoutCalendar
+    // (calendarDayStatus is the shared source of truth for both, so the dot
+    // and the tap behavior never disagree): a date WITH a dot (checked-in,
+    // unmarked past booking, or upcoming booking) opens the day-detail
+    // screen. A date with NO dot — including one whose only booking was a
+    // no-show/early-cancel/late-cancel — goes to the booking flow if it's
+    // today or later, or does nothing at all if it's already in the past.
+    void pickCalendarDate(String date) {
+      final status = calendarDayStatus(client, info, bookings, date);
+      if (status != null) {
+        ref.read(pendingDayDetailDateProvider.notifier).set(date);
+        go("day");
+      } else if (date.compareTo(isoToday()) >= 0) {
+        ref.read(pendingBookingTargetProvider.notifier).set(BookingTarget(initialDate: date));
+        go("booking");
+      }
     }
 
     return Scaffold(
@@ -137,17 +173,32 @@ class ClientShell extends ConsumerWidget {
                 "dashboard" => ClientDashboardScreen(
                     client: client,
                     info: info,
+                    plan: plan,
                     bookings: bookings,
-                    onGoBooking: () => go("booking"),
+                    onGoBooking: goBooking,
                     onLogWorkout: () => go("plans"),
-                    onPickDate: (_) {},
+                    onPickDate: pickCalendarDate,
                     onGoHabits: () => go("habits"),
                     earnedBadges: earnedBadges,
                     onGoBadges: () => go("badges"),
+                    onGoToForm: (formKey) {
+                      ref.read(pendingIntakeFormKeyProvider.notifier).set(formKey);
+                      go("forms");
+                    },
                   ),
                 "chat" => const ChatScreen(),
                 "plans" => const PlansScreen(),
-                "booking" => BookingScreen(onGoMemberships: () => go("memberships")),
+                "booking" => BookingScreen(
+                    onGoMemberships: () => go("memberships"),
+                    initialDate: ref.watch(pendingBookingTargetProvider)?.initialDate,
+                    initialReschedule: ref.watch(pendingBookingTargetProvider)?.reschedule,
+                  ),
+                "day" => DayDetailScreen(
+                    date: ref.watch(pendingDayDetailDateProvider) ?? isoToday(),
+                    onBack: () => go("dashboard"),
+                    onReschedule: startReschedule,
+                    onGoPlans: () => go("plans"),
+                  ),
                 "nutrition" => const NutritionTab(),
                 "habits" => const HabitTrackerScreen(),
                 "history" => const HistoryScreen(),
@@ -180,7 +231,7 @@ class ClientShell extends ConsumerWidget {
                 final on = screen == item.key;
                 return Expanded(
                   child: InkWell(
-                    onTap: () => go(item.key),
+                    onTap: item.key == "booking" ? goBooking : () => go(item.key),
                     child: Padding(
                       padding: const EdgeInsets.only(top: 9, bottom: 11),
                       child: Column(

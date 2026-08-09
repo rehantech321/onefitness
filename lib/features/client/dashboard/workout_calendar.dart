@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
@@ -28,29 +29,18 @@ class WorkoutCalendar extends StatefulWidget {
   State<WorkoutCalendar> createState() => _WorkoutCalendarState();
 }
 
-enum _DayStatus { done, missed, upcoming }
-
 class _WorkoutCalendarState extends State<WorkoutCalendar> {
   bool _open = true;
   late DateTime _view = DateTime(DateTime.now().year, DateTime.now().month, 1);
 
   String _iso(int day) => isoDate(DateTime(_view.year, _view.month, day));
 
-  _DayStatus? _statusFor(int day) {
-    final d = _iso(day);
-    final todayStr = isoToday();
-    final logged = widget.client.loggedOn(d);
-    final hasBooking = widget.bookings.any((b) => b.clientId == widget.info.id && b.date == d);
-    if (logged) return _DayStatus.done;
-    if (hasBooking && d.compareTo(todayStr) >= 0) return _DayStatus.upcoming;
-    if (hasBooking && d.compareTo(todayStr) < 0) return _DayStatus.missed;
-    return null;
-  }
+  CalendarDayStatus? _statusFor(int day) => calendarDayStatus(widget.client, widget.info, widget.bookings, _iso(day));
 
-  Color _dotColor(_DayStatus s) => switch (s) {
-        _DayStatus.done => AppColors.calendarDone,
-        _DayStatus.missed => AppColors.calendarMissed,
-        _DayStatus.upcoming => AppColors.calendarUpcoming,
+  Color _dotColor(CalendarDayStatus s) => switch (s) {
+        CalendarDayStatus.done => AppColors.calendarDone,
+        CalendarDayStatus.missed => AppColors.calendarMissed,
+        CalendarDayStatus.upcoming => AppColors.calendarUpcoming,
       };
 
   void _shift(int n) => setState(() => _view = DateTime(_view.year, _view.month + n, 1));
@@ -62,7 +52,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
     final monthName = "${_monthNames[_view.month - 1]} ${_view.year}";
     final todayStr = isoToday();
 
-    final counts = {_DayStatus.done: 0, _DayStatus.missed: 0, _DayStatus.upcoming: 0};
+    final counts = {CalendarDayStatus.done: 0, CalendarDayStatus.missed: 0, CalendarDayStatus.upcoming: 0};
     for (var d = 1; d <= daysInMonth; d++) {
       final s = _statusFor(d);
       if (s != null) counts[s] = counts[s]! + 1;
@@ -82,11 +72,11 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
                   child: Text("Workout Calendar", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 ),
                 if (!_open) ...[
-                  _CountBadge(color: AppColors.calendarDone, value: counts[_DayStatus.done]!),
+                  _CountBadge(color: AppColors.calendarDone, value: counts[CalendarDayStatus.done]!),
                   const SizedBox(width: 10),
-                  _CountBadge(color: AppColors.calendarMissed, value: counts[_DayStatus.missed]!),
+                  _CountBadge(color: AppColors.calendarMissed, value: counts[CalendarDayStatus.missed]!),
                   const SizedBox(width: 10),
-                  _CountBadge(color: AppColors.calendarUpcoming, value: counts[_DayStatus.upcoming]!),
+                  _CountBadge(color: AppColors.calendarUpcoming, value: counts[CalendarDayStatus.upcoming]!),
                   const SizedBox(width: 10),
                 ],
                 Icon(_open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 18, color: AppColors.mute),

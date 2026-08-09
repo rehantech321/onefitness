@@ -6,11 +6,21 @@ import "date_utils.dart";
 /// Session-accounting helpers ported from src/lib/helpers.js and
 /// src/data/membershipPlans.js — trimmed to what the client dashboard needs.
 
-int sessionsUsedThisPeriod(ClientInfo info, MembershipPlan plan, List<Booking> checkedInBookings) {
-  final mine = checkedInBookings.where((b) =>
+/// Mirrors constants/domain.js `GIVE_BACK_ATTENDANCE_STATUSES` — these
+/// attendance outcomes hand the session back, so they don't count against
+/// the plan. Everything else — including a plain upcoming/not-yet-attended
+/// booking — does count, same as the real app.
+const kGiveBackAttendanceStatuses = {"early-cancel", "late-cancel", "no-show"};
+
+/// Takes the client's full booking list (not pre-filtered to checked-in —
+/// an upcoming booking counts against the plan the moment it's made, only
+/// a give-back attendance status or a physical assessment excuses it).
+int sessionsUsedThisPeriod(ClientInfo info, MembershipPlan plan, List<Booking> bookings) {
+  final mine = bookings.where((b) =>
       b.clientId == info.id &&
       plan.allowedTypes.contains(b.sessionType) &&
-      !b.isPhysicalAssessment);
+      !b.isPhysicalAssessment &&
+      !kGiveBackAttendanceStatuses.contains(b.attendanceStatus));
   if (plan.kind == PlanKind.membership) {
     final thisMonth = isoToday().substring(0, 7);
     return mine.where((b) => b.date.substring(0, 7) == thisMonth).length;
