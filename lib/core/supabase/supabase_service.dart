@@ -1273,7 +1273,14 @@ class SupabaseService {
     // unverified — re-check this mapping once a real client has an actual
     // assigned program or logged workout.
     final commsRaw = (j["comms"] as List?) ?? const [];
-    final intakeRaw = (j["intake"] as Map?)?.cast<String, dynamic>() ?? const {};
+    // Real roster data is messier than any one test account suggests — some
+    // client_records rows carry `intake` as an empty array (a stale/older
+    // shape) instead of an object, which `as Map?` would throw on. Checked
+    // with `is` rather than cast so those rows degrade to "no intake" for
+    // that one client instead of crashing the whole roster load (fatal for
+    // a coach signing in, since this parses every client's record).
+    final intakeField = j["intake"];
+    final intakeRaw = intakeField is Map ? intakeField.cast<String, dynamic>() : const <String, dynamic>{};
     return ClientRecord(
       id: id,
       habits: ((j["habits"] as List?) ?? const []).whereType<String>().toList(),
@@ -1288,18 +1295,21 @@ class SupabaseService {
           readByCoach: m["readByCoach"] as bool? ?? false,
         ),
       ),
-      intake: intakeRaw.map((key, v) {
-        final m = (v as Map).cast<String, dynamic>();
-        return MapEntry(
-          key,
-          IntakeRecord(
-            answers: (m["answers"] as Map?)?.cast<String, dynamic>() ?? const {},
-            completed: m["completed"] as bool? ?? false,
-            at: m["at"] as String?,
-            by: m["by"] as String?,
-          ),
-        );
-      }),
+      intake: Map.fromEntries(
+        intakeRaw.entries.where((e) => e.value is Map).map((e) {
+          final m = (e.value as Map).cast<String, dynamic>();
+          final answersField = m["answers"];
+          return MapEntry(
+            e.key,
+            IntakeRecord(
+              answers: answersField is Map ? answersField.cast<String, dynamic>() : const <String, dynamic>{},
+              completed: m["completed"] as bool? ?? false,
+              at: m["at"] as String?,
+              by: m["by"] as String?,
+            ),
+          );
+        }),
+      ),
     );
   }
 
