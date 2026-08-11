@@ -269,7 +269,10 @@ class MockData {
   static const _nutritionPlan = NutritionPlan(
     trainingTargets: MacroTargets(calories: "2500", protein: "30", carbs: "45", fats: "25", water: "128"),
     restTargets: MacroTargets(calories: "2000", protein: "35", carbs: "35", fats: "30", water: "96"),
-    mealBudgets: {"breakfast": "550", "lunch": "700", "dinner": "750", "snacks": "300", "smoothies": "200"},
+    mealBudgets: DaySplit(
+      training: {"breakfast": "550", "lunch": "700", "dinner": "750", "snacks": "300", "smoothies": "200"},
+      rest: {"breakfast": "450", "lunch": "550", "dinner": "600", "snacks": "250", "smoothies": "150"},
+    ),
     breakfast: [
       NutritionMeal(
         id: "meal-b1",

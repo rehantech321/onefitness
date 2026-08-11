@@ -8,6 +8,7 @@ import "../../../core/utils/platform_settings.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/comm_message.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
 enum _Channel { email, inapp, both }
@@ -39,7 +40,14 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
   Widget build(BuildContext context) {
     final trainerAuth = ref.watch(trainerAuthProvider);
     final isOwner = trainerAuth == "owner";
-    final roster = ref.watch(trainerRosterProvider).where((c) => isOwner || c.primaryTrainerId == trainerAuth).toList();
+    // Platform → Coaches, Access & Security controls this — matches
+    // RosterBar's own scoping (see its comment) so Chat and Clients never
+    // disagree about which roster a coach can see.
+    final coachClientScope = ref.watch(platformSettingsProvider).coachClientScope;
+    final roster = ref
+        .watch(trainerRosterProvider)
+        .where((c) => isOwner || coachClientScope != "own" || c.primaryTrainerId == trainerAuth)
+        .toList();
     final records = ref.watch(trainerClientRecordsProvider);
 
     if (_selectedId != null) {

@@ -14,6 +14,7 @@ import "../../data/models/exercise_prescription.dart";
 import "../../data/models/intake_schema.dart";
 import "../../data/models/meal_def.dart";
 import "../../data/models/membership_plan.dart";
+import "../../data/models/nutrition_plan.dart";
 import "../../data/models/points_ledger_entry.dart";
 import "../../data/models/product.dart";
 import "../../data/models/program_day.dart";
@@ -685,6 +686,84 @@ class SupabaseService {
     await client.from("client_records").upsert({"profile_id": profileId, "data": {...current, "intake": nextIntake}});
   }
 
+  static Map<String, dynamic> _macroTargetsToJson(MacroTargets t) => t.asMap();
+
+  static Map<String, dynamic> _targetsSplitToJson(DaySplit<MacroTargets> t) => {
+        "training": _macroTargetsToJson(t.training),
+        "rest": _macroTargetsToJson(t.rest),
+      };
+
+  static Map<String, dynamic> _mealBudgetsSplitToJson(DaySplit<Map<String, String>> mb) => {
+        "training": mb.training,
+        "rest": mb.rest,
+      };
+
+  static Map<String, dynamic> _nutritionMealToJson(NutritionMeal m) => {
+        "id": m.id,
+        "name": m.name,
+        if (m.time != null) "time": m.time,
+        "calories": m.calories,
+        "protein": m.protein,
+        "carbs": m.carbs,
+        "fats": m.fats,
+        if (m.notes != null) "notes": m.notes,
+        "ingredients": m.ingredients.map((i) => {"item": i.item, if (i.qty != null) "qty": i.qty, if (i.unit != null) "unit": i.unit}).toList(),
+      };
+
+  static Map<String, dynamic> _nutritionPlanToJson(NutritionPlan n) => {
+        "targets": _targetsSplitToJson(DaySplit(training: n.trainingTargets, rest: n.restTargets)),
+        "mealBudgets": _mealBudgetsSplitToJson(n.mealBudgets),
+        "breakfast": n.breakfast.map(_nutritionMealToJson).toList(),
+        "lunch": n.lunch.map(_nutritionMealToJson).toList(),
+        "dinner": n.dinner.map(_nutritionMealToJson).toList(),
+        "snacks": n.snacks.map(_nutritionMealToJson).toList(),
+        "smoothies": n.smoothies.map(_nutritionMealToJson).toList(),
+        if (n.guidelines != null) "guidelines": n.guidelines,
+        if (n.extraGroceryItems != null) "extraGroceryItems": n.extraGroceryItems,
+      };
+
+  /// `client_records.data.nutrition` — the client's single active nutrition
+  /// program (targets/meal budgets/suggested meals/guidelines). Whole-object
+  /// replace, matching NutritionBuilder.jsx's own `save = (n) => persist({
+  /// ...client, nutrition: n })` — there's nothing else nested under this
+  /// key to preserve.
+  static Future<void> updateClientNutrition(String profileId, NutritionPlan plan) =>
+      upsertClientRecordPatch(profileId, {"nutrition": _nutritionPlanToJson(plan)});
+
+  /// `client_records.data.savedNutritionPrograms` — the AI-draft review
+  /// queue plus any coach-saved target sets. Whole-list replace (same
+  /// pattern as updateClientSavedPrograms) — callers pass the full list
+  /// including untouched entries.
+  static Future<void> updateClientSavedNutritionPrograms(String profileId, List<NutritionProgramEntry> programs) =>
+      upsertClientRecordPatch(profileId, {
+        "savedNutritionPrograms": programs
+            .map((p) => {
+                  "id": p.id,
+                  "name": p.name,
+                  "type": "nutrition",
+                  "status": p.status,
+                  "source": p.source,
+                  "targets": _targetsSplitToJson(DaySplit(training: p.trainingTargets, rest: p.restTargets)),
+                  "mealBudgets": _mealBudgetsSplitToJson(p.mealBudgets),
+                  if (p.guidelines != null) "guidelines": p.guidelines,
+                  if (p.createdAt != null) "createdAt": p.createdAt,
+                  if (p.createdBy != null) "createdBy": p.createdBy,
+                })
+            .toList(),
+      });
+
+  /// Drafts (or, with forceRegenerate, redrafts) whole-number Training/Rest
+  /// Day calorie & macro targets, water, a per-meal calorie budget split,
+  /// and coaching notes from this client's Nutrition Intake answers via
+  /// Claude — mirrors generateAiNutritionProgram in supabaseData.js. Writes
+  /// straight into client_records server-side (service-role); the caller
+  /// must re-fetch (loadClientRecord) to see the result, same as the web
+  /// app's own refreshClient — nothing here reflects it locally.
+  /// Response is `{ok:true, programId}` or, for an expected non-error
+  /// condition, `{ok:false, reason: "nutrition-intake-incomplete"|"program-exists"}`.
+  static Future<Map<String, dynamic>> generateAiNutritionProgram(String clientId, {bool forceRegenerate = false}) =>
+      _invokeFunction("generate-ai-nutrition-program", {"clientId": clientId, "forceRegenerate": forceRegenerate});
+
   /// Inserts and returns the server-assigned row (real id, defaults applied)
   /// — mirrors insertBooking in supabaseData.js. `location` only ever
   /// round-trips a bare name here since that's all `Booking.locationName`
@@ -1310,6 +1389,107 @@ class SupabaseService {
           );
         }),
       ),
+      nutrition: _nutritionPlanFromJson(j["nutrition"]),
+      savedNutritionPrograms: _safeMap(
+        ((j["savedNutritionPrograms"] as List?) ?? const []).whereType<Map>().where((m) => m["type"] == "nutrition"),
+        (m) => _nutritionProgramEntryFromJson(m.cast<String, dynamic>()),
+      ),
+    );
+  }
+
+  static MacroTargets _macroTargetsFromJson(dynamic j) => j is Map ? MacroTargets.fromJson(j.cast<String, dynamic>()) : const MacroTargets();
+
+  /// Mirrors nutritionHelpers.js `getNutritionTargets` / NutritionBuilder.jsx
+  /// `isSplitMealBudgets`/`dayMealBudgets` — older saved data has no
+  /// training/rest split at all (just the flat values directly), treated
+  /// as the Training Day entry so nothing already set is lost.
+  static DaySplit<MacroTargets> _targetsSplitFromJson(dynamic j) {
+    if (j is! Map) return const DaySplit(training: MacroTargets(), rest: MacroTargets());
+    final m = j.cast<String, dynamic>();
+    if (m["training"] != null || m["rest"] != null) {
+      return DaySplit(training: _macroTargetsFromJson(m["training"]), rest: _macroTargetsFromJson(m["rest"]));
+    }
+    if (m.isNotEmpty) return DaySplit(training: _macroTargetsFromJson(m), rest: const MacroTargets());
+    return const DaySplit(training: MacroTargets(), rest: MacroTargets());
+  }
+
+  static Map<String, String> _mealBudgetMapFromJson(dynamic j) {
+    if (j is! Map) return const {};
+    return j.map((k, v) => MapEntry(k.toString(), v?.toString() ?? ""));
+  }
+
+  static const _mealBudgetKeys = {"breakfast", "lunch", "dinner", "snacks", "smoothies"};
+
+  static DaySplit<Map<String, String>> _mealBudgetsSplitFromJson(dynamic j) {
+    if (j is! Map) return const DaySplit(training: {}, rest: {});
+    final m = j.cast<String, dynamic>();
+    if (m.containsKey("training") || m.containsKey("rest")) {
+      return DaySplit(training: _mealBudgetMapFromJson(m["training"]), rest: _mealBudgetMapFromJson(m["rest"]));
+    }
+    // Flat legacy shape: only treat it as meal-budget keys (not some other
+    // unrelated map) before assuming it's the Training Day budget.
+    if (m.keys.any(_mealBudgetKeys.contains)) return DaySplit(training: _mealBudgetMapFromJson(m), rest: const {});
+    return const DaySplit(training: {}, rest: {});
+  }
+
+  static NutritionMeal? _nutritionMealFromJson(dynamic j) {
+    if (j is! Map) return null;
+    final m = j.cast<String, dynamic>();
+    return NutritionMeal(
+      id: m["id"]?.toString() ?? "",
+      name: m["name"] as String? ?? "",
+      time: m["time"] as String?,
+      calories: _asInt(m["calories"]) ?? 0,
+      protein: (m["protein"] as num?)?.toDouble() ?? 0,
+      carbs: (m["carbs"] as num?)?.toDouble() ?? 0,
+      fats: (m["fats"] as num?)?.toDouble() ?? 0,
+      notes: m["notes"] as String?,
+      ingredients: _safeMap(
+        ((m["ingredients"] as List?) ?? const []).whereType<Map>(),
+        (i) => Ingredient(item: i["item"] as String? ?? "", qty: i["qty"] as num?, unit: i["unit"] as String?),
+      ),
+    );
+  }
+
+  static List<NutritionMeal> _nutritionMealListFromJson(dynamic j) =>
+      j is List ? j.map(_nutritionMealFromJson).whereType<NutritionMeal>().toList() : const [];
+
+  /// `client.nutrition` — real data is either absent entirely (client.nutrition
+  /// == null, no plan assigned) or the shape NutritionBuilder.jsx writes.
+  static NutritionPlan? _nutritionPlanFromJson(dynamic j) {
+    if (j is! Map) return null;
+    final m = j.cast<String, dynamic>();
+    final targets = _targetsSplitFromJson(m["targets"]);
+    return NutritionPlan(
+      trainingTargets: targets.training,
+      restTargets: targets.rest,
+      mealBudgets: _mealBudgetsSplitFromJson(m["mealBudgets"]),
+      breakfast: _nutritionMealListFromJson(m["breakfast"]),
+      lunch: _nutritionMealListFromJson(m["lunch"]),
+      dinner: _nutritionMealListFromJson(m["dinner"]),
+      snacks: _nutritionMealListFromJson(m["snacks"]),
+      smoothies: _nutritionMealListFromJson(m["smoothies"]),
+      guidelines: m["guidelines"] as String?,
+      extraGroceryItems: m["extraGroceryItems"] as String?,
+    );
+  }
+
+  /// One `client.savedNutritionPrograms` entry — see
+  /// generate-ai-nutrition-program's `entry` shape (AI-drafted) or
+  /// SaveProgramDialog's manual-save shape (coach-authored).
+  static NutritionProgramEntry _nutritionProgramEntryFromJson(Map<String, dynamic> j) {
+    final targets = _targetsSplitFromJson(j["targets"]);
+    return NutritionProgramEntry(
+      id: j["id"]?.toString() ?? "",
+      name: j["name"] as String? ?? "",
+      status: j["status"] as String? ?? "draft",
+      source: j["source"] as String? ?? "coach",
+      trainingTargets: targets.training,
+      restTargets: targets.rest,
+      mealBudgets: _mealBudgetsSplitFromJson(j["mealBudgets"]),
+      guidelines: j["guidelines"] as String?,
+      createdAt: j["createdAt"] as String?,
+      createdBy: j["createdBy"] as String?,
     );
   }
 

@@ -92,7 +92,7 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
               }).toList(),
             ),
             const SizedBox(height: 18),
-            _CalorieBudgetPanel(mealBudgets: n.mealBudgets, dailyCalTarget: dailyCal),
+            _CalorieBudgetPanel(mealBudgets: _dayType == "training" ? n.mealBudgets.training : n.mealBudgets.rest, dailyCalTarget: dailyCal),
             const SizedBox(height: 18),
           ],
 

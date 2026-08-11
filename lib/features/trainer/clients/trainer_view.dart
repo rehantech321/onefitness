@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "habits_tab.dart";
+import "intake_tab.dart";
 import "logged_tab.dart";
 import "merit_badges_tab.dart";
 import "notes_tab.dart";
@@ -125,7 +126,9 @@ class _TrainerViewState extends State<TrainerView> {
   Widget _body() {
     switch (_tab) {
       case "profile":
-        return ProfileTab(clientId: widget.clientId);
+        return ProfileTab(clientId: widget.clientId, onGoToIntake: () => _goTab("intake"));
+      case "intake":
+        return IntakeTab(clientId: widget.clientId);
       case "logs":
         return LoggedTab(clientId: widget.clientId);
       case "plans":

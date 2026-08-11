@@ -35,6 +35,7 @@ class ClientRecord {
     this.photos = const [],
     this.trainerNotes = const [],
     this.sessionFeedback = const [],
+    this.savedNutritionPrograms = const [],
   });
 
   final String id;
@@ -98,6 +99,10 @@ class ClientRecord {
   /// Coach-logged post-session feedback (client.sessionFeedback).
   final List<SessionFeedbackEntry> sessionFeedback;
 
+  /// AI-drafted or coach-saved nutrition target sets awaiting review or
+  /// already applied (client.savedNutritionPrograms) — see NutritionBuilder.
+  final List<NutritionProgramEntry> savedNutritionPrograms;
+
   bool loggedOn(String isoDate) => loggedDates.contains(isoDate);
 
   ClientRecord copyWith({
@@ -117,6 +122,7 @@ class ClientRecord {
     List<ProgressPhoto>? photos,
     List<TrainerNote>? trainerNotes,
     List<SessionFeedbackEntry>? sessionFeedback,
+    List<NutritionProgramEntry>? savedNutritionPrograms,
   }) =>
       ClientRecord(
         id: id,
@@ -138,5 +144,6 @@ class ClientRecord {
         photos: photos ?? this.photos,
         trainerNotes: trainerNotes ?? this.trainerNotes,
         sessionFeedback: sessionFeedback ?? this.sessionFeedback,
+        savedNutritionPrograms: savedNutritionPrograms ?? this.savedNutritionPrograms,
       );
 }

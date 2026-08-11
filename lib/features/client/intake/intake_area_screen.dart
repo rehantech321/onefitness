@@ -4,23 +4,37 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/intake_forms.dart";
+import "../../../data/models/client_record.dart";
 import "../../../data/models/intake_schema.dart";
-import "../../../data/providers/client_providers.dart";
 import "../shell/client_shell_state.dart";
 import "form_filler_screen.dart";
 
 const _groupIcons = {"training": LucideIcons.clipboardCheck, "nutrition": LucideIcons.apple};
 const _assessmentIcons = {"personalTraining": LucideIcons.clipboardList, "physical": LucideIcons.dumbbell, "nutritional": LucideIcons.apple};
 
-/// Mirrors IntakeArea.jsx (client side) — lists every client-fillable
-/// assessment grouped by form, showing OPEN/COMPLETE status, drilling into
-/// FormFillerScreen. The Physical Assessment is coach-conducted (a full
-/// movement-screening tool, out of scope here) so it's shown as
-/// informational only, not opened as an editable form.
+/// Mirrors IntakeArea.jsx — lists every client-fillable assessment grouped
+/// by form, showing OPEN/COMPLETE status, drilling into FormFillerScreen.
+/// The Physical Assessment is coach-conducted (a full movement-screening
+/// tool, out of scope here) so it's shown as informational only, not opened
+/// as an editable form. Reused for both the client's own "Assessments" drawer
+/// screen (`who: "client"`, via client_shell.dart) and a coach viewing/editing
+/// a client's intake from their Profile tab (`who: "trainer"`, via IntakeTab)
+/// — see FormFillerScreen's own doc comment for how `who`/[onSaved] route.
 class IntakeAreaScreen extends ConsumerStatefulWidget {
-  const IntakeAreaScreen({super.key, this.initialOpenKey});
+  const IntakeAreaScreen({
+    super.key,
+    this.initialOpenKey,
+    required this.profileId,
+    required this.client,
+    required this.who,
+    required this.onSaved,
+  });
 
   final String? initialOpenKey;
+  final String profileId;
+  final ClientRecord client;
+  final String who; // "client" | "trainer"
+  final void Function(String assessmentKey, IntakeRecord) onSaved;
 
   @override
   ConsumerState<IntakeAreaScreen> createState() => _IntakeAreaScreenState();
@@ -32,7 +46,10 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
   @override
   void initState() {
     super.initState();
-    final pending = ref.read(pendingIntakeFormKeyProvider);
+    // Only the client's own self-serve entry point deep-links into a
+    // specific form this way (a dashboard onboarding-step tap) — a coach
+    // reaching this via IntakeTab always starts on the plain list.
+    final pending = widget.who == "client" ? ref.read(pendingIntakeFormKeyProvider) : null;
     if (pending != null) ref.read(pendingIntakeFormKeyProvider.notifier).set(null);
     final key = pending ?? widget.initialOpenKey;
     if (key != null) {
@@ -46,7 +63,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final client = ref.watch(clientRecordProvider);
+    final client = widget.client;
 
     if (_open != null) {
       final a = _open!;
@@ -67,7 +84,15 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
           ),
         );
       }
-      return FormFillerScreen(assessmentKey: a.key, schema: a.schema!, onBack: () => setState(() => _open = null));
+      return FormFillerScreen(
+        assessmentKey: a.key,
+        schema: a.schema!,
+        onBack: () => setState(() => _open = null),
+        profileId: widget.profileId,
+        client: client,
+        who: widget.who,
+        onSaved: (record) => widget.onSaved(a.key, record),
+      );
     }
 
     return SingleChildScrollView(

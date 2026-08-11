@@ -209,7 +209,12 @@ class ClientShell extends ConsumerWidget {
                 "badges" => BadgeGalleryScreen(clientId: info.id),
                 "settings" => const ProfileSettingsScreen(),
                 "squad" => const SquadDashboardScreen(),
-                "forms" => const IntakeAreaScreen(),
+                "forms" => IntakeAreaScreen(
+                    profileId: info.id,
+                    client: client,
+                    who: "client",
+                    onSaved: (key, record) => ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(intake: {...r.intake, key: record})),
+                  ),
                 "progress" || "photos" || "measurements" => const LogProgressScreen(),
                 _ => PlaceholderScreen(title: _titles[screen] ?? screen),
               },

@@ -5,18 +5,38 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/models/client_record.dart";
 import "../../../data/models/intake_schema.dart";
-import "../../../data/providers/client_providers.dart";
 
 /// Mirrors FormFiller.jsx — a generic schema-driven questionnaire renderer:
 /// text/textarea/single/multi/scale question types, with `showIf`
-/// conditional visibility, saving to `client.intake[key]`.
+/// conditional visibility, saving to `client.intake[key]`. Reused by both
+/// the client filling their own form (`who: "client"`, from
+/// IntakeAreaScreen via client_shell.dart) and a coach filling it on a
+/// client's behalf (`who: "trainer"`, from IntakeTab) — [profileId]/[client]
+/// identify whose record this is, and [onSaved] routes the result back into
+/// whichever provider the caller owns (clientRecordProvider vs.
+/// trainerClientRecordsProvider), matching FormFiller.jsx's own
+/// `by: who === "client" ? "Client" : "Trainer/Coach"`.
 class FormFillerScreen extends ConsumerStatefulWidget {
-  const FormFillerScreen({super.key, required this.assessmentKey, required this.schema, required this.onBack});
+  const FormFillerScreen({
+    super.key,
+    required this.assessmentKey,
+    required this.schema,
+    required this.onBack,
+    required this.profileId,
+    required this.client,
+    required this.who,
+    required this.onSaved,
+  });
 
   final String assessmentKey;
   final IntakeSchema schema;
   final VoidCallback onBack;
+  final String profileId;
+  final ClientRecord client;
+  final String who; // "client" | "trainer"
+  final void Function(IntakeRecord) onSaved;
 
   @override
   ConsumerState<FormFillerScreen> createState() => _FormFillerScreenState();
@@ -30,7 +50,7 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
   @override
   void initState() {
     super.initState();
-    final existing = ref.read(clientRecordProvider).intake[widget.assessmentKey];
+    final existing = widget.client.intake[widget.assessmentKey];
     _answers = Map<String, dynamic>.from(existing?.answers ?? {});
   }
 
@@ -59,11 +79,22 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
       _saving = true;
       _error = null;
     });
-    final record = IntakeRecord(answers: _answers, completed: true, at: stamp(), by: "Client");
+    final record = IntakeRecord(answers: _answers, completed: true, at: stamp(), by: widget.who == "client" ? "Client" : "Trainer/Coach");
     try {
-      final profileId = ref.read(clientRecordProvider).id;
-      await SupabaseService.updateClientIntake(profileId, widget.assessmentKey, record);
-      ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(intake: {...r.intake, widget.assessmentKey: record}));
+      await SupabaseService.updateClientIntake(widget.profileId, widget.assessmentKey, record);
+      widget.onSaved(record);
+      // Nutrition Intake completing kicks off an AI-drafted calorie/macro
+      // target set (training vs. rest day) — fire-and-forget exactly like
+      // IntakeArea.jsx's own trigger; a coach reviews and applies it later
+      // from NutritionBuilder, it's never visible to the client directly.
+      // Fires whether the client or a coach completed it (JS's own trigger
+      // has no `who` check either). Only checks for a prior AI draft (not
+      // any nutrition program at all — most real clients already have a
+      // coach-built plan on file, and that shouldn't block their first AI
+      // target draft from ever generating).
+      if (widget.assessmentKey == "nutritional" && !widget.client.savedNutritionPrograms.any((p) => p.source == "ai")) {
+        SupabaseService.generateAiNutritionProgram(widget.profileId).catchError((_) => <String, dynamic>{});
+      }
       widget.onBack();
     } catch (e) {
       if (!mounted) return;
@@ -86,7 +117,7 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
           Text(widget.schema.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
           const Padding(
             padding: EdgeInsets.only(top: 4, bottom: 16),
-            child: Text("Fill what you can — it saves to your profile.", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+            child: Text("Fill what you can — it saves to the client's profile.", style: TextStyle(fontSize: 12, color: AppColors.mute)),
           ),
           ...widget.schema.sections.map((sec) => Padding(
                 padding: const EdgeInsets.only(bottom: 22),

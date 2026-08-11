@@ -5,6 +5,7 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/client_status_utils.dart";
 import "../../../core/utils/flag_utils.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
 /// Mirrors RosterBar.jsx, trimmed to what's built so far: search, the
@@ -42,7 +43,11 @@ class _RosterBarState extends ConsumerState<RosterBar> {
     final clientRecords = ref.watch(trainerClientRecordsProvider);
     final activeId = ref.watch(selectedClientIdProvider);
 
-    final scoped = isOwner ? roster : roster.where((c) => c.primaryTrainerId == trainerAuth).toList();
+    // Platform → Coaches, Access & Security controls this — owner is never
+    // scoped, and a coach only gets filtered to their own clients if the
+    // owner has explicitly set the scope to "own" (default is "all").
+    final coachClientScope = ref.watch(platformSettingsProvider).coachClientScope;
+    final scoped = (!isOwner && coachClientScope == "own") ? roster.where((c) => c.primaryTrainerId == trainerAuth).toList() : roster;
     final q = _search.text.trim().toLowerCase();
     final visible = q.isEmpty
         ? scoped

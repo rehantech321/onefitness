@@ -7,6 +7,7 @@ import "../../../core/utils/flag_utils.dart";
 import "../../../core/utils/program_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
+import "../../../data/models/intake_schema.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
@@ -18,9 +19,10 @@ import "../../../data/providers/trainer_providers.dart";
 /// OnboardingAlerts, CompletedIntakeLinks, and Add Charge are deferred —
 /// they depend on the intake/flag and billing systems, not yet ported.
 class ProfileTab extends ConsumerStatefulWidget {
-  const ProfileTab({super.key, required this.clientId});
+  const ProfileTab({super.key, required this.clientId, required this.onGoToIntake});
 
   final String clientId;
+  final VoidCallback onGoToIntake;
 
   @override
   ConsumerState<ProfileTab> createState() => _ProfileTabState();
@@ -95,6 +97,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           hasActiveBadges
               ? Padding(padding: const EdgeInsets.only(bottom: 14), child: MeritBadgeRow(clientId: widget.clientId, earnedBadges: earnedBadges))
               : const Padding(padding: EdgeInsets.only(bottom: 14), child: Text("No Merit Badges earned yet.", style: TextStyle(fontSize: 12, color: AppColors.mute))),
+          _IntakeStatusSummary(intake: record?.intake ?? const {}, onTap: widget.onGoToIntake),
           if (record != null) FlagAlert(flag: getHighestFlag(record, info)),
           if (notes.isNotEmpty)
             Container(
@@ -281,6 +284,76 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
 }
 
 typedef ClientInfoUpdater = ClientInfo Function(ClientInfo);
+
+const _kIntakeStatusItems = [
+  ("personalTraining", "Personalized Training Intake"),
+  ("nutritional", "Nutrition Program Intake"),
+  ("physical", "Free Physical Assessment Session"),
+];
+
+/// Mirrors OnboardingAlerts.jsx `IntakeStatusSummary` — always all 3 forms,
+/// in this fixed order, whether complete or not (unlike the client
+/// dashboard's onboarding banner, which drops each step off the list once
+/// done). Tapping any row opens the full Intake list (IntakeTab).
+class _IntakeStatusSummary extends StatelessWidget {
+  const _IntakeStatusSummary({required this.intake, required this.onTap});
+
+  final Map<String, IntakeRecord> intake;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(
+        children: _kIntakeStatusItems.map((item) {
+          final (key, label) = item;
+          final rec = intake[key];
+          final done = rec?.completed ?? false;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 5),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: done ? AppColors.gold.withValues(alpha: 0.06) : AppColors.card,
+                  border: Border.all(color: done ? AppColors.goldDim : AppColors.line),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    done
+                        ? const Icon(LucideIcons.check, size: 16, color: AppColors.gold)
+                        : Container(width: 7, height: 7, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE05555))),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 1),
+                            child: Text(
+                              done ? "Completed by ${rec?.by ?? "Client"}${rec?.at != null ? " · ${rec!.at}" : ""}" : "Not completed yet",
+                              style: TextStyle(fontSize: 11, color: done ? AppColors.gold : AppColors.mute),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
 
 class _ContactRow extends StatelessWidget {
   const _ContactRow({required this.icon, required this.label, required this.value});
