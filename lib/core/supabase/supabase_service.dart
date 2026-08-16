@@ -487,12 +487,35 @@ class SupabaseService {
     return _safeMap(rows, _chargeFromRow);
   }
 
+  /// Owner/coach logging a manual charge against a client (Add Charge) —
+  /// mirrors insertCharge in supabaseData.js. `amount` charges are dollars
+  /// on this trimmed model, matching the `charges.amount` numeric column.
+  static Future<Charge> insertCharge(Charge ch) async {
+    final row = {
+      "client_id": ch.clientId,
+      "client_name": ch.clientName,
+      "type": ch.type,
+      "date": ch.date,
+      "at": ch.at,
+      "amount": ch.amount,
+      "category": ch.category,
+      "description": ch.description,
+      "plan_id": ch.planId,
+      "plan_name": ch.planName,
+      "trainer_id": ch.trainerId,
+      "trainer_name": ch.trainerName,
+    };
+    final data = await client.from("charges").insert(row).select().single();
+    return _chargeFromRow(data);
+  }
+
   static Charge _chargeFromRow(Map<String, dynamic> row) => Charge(
         id: row["id"] as String,
         clientId: row["client_id"] as String,
         clientName: row["client_name"] as String? ?? "",
         type: row["type"] as String? ?? "",
         date: row["date"] as String? ?? "",
+        at: row["at"] as String? ?? "",
         amount: (row["amount"] as num?)?.toDouble(),
         category: row["category"] as String?,
         description: row["description"] as String?,
@@ -556,7 +579,17 @@ class SupabaseService {
   /// in supabaseData.js, trimmed to the fields the app's Edit Profile screen
   /// actually exposes.
   static Future<void> updateClientRow(String id,
-      {String? name, String? email, String? phone, String? photo, String? city, String? birthday, String? membershipPlanId, bool? redeemPointsNextRenewal}) async {
+      {String? name,
+      String? email,
+      String? phone,
+      String? photo,
+      String? city,
+      String? birthday,
+      String? membershipPlanId,
+      bool? redeemPointsNextRenewal,
+      int? sessionCountOverride,
+      String? sessionCountOverrideMonth,
+      bool clearSessionCountOverride = false}) async {
     final profileFields = <String, dynamic>{
       if (name != null) "name": name,
       if (email != null) "email": email,
@@ -569,9 +602,29 @@ class SupabaseService {
       if (birthday != null) "birthday": birthday,
       if (membershipPlanId != null) "membership_plan_id": membershipPlanId,
       if (redeemPointsNextRenewal != null) "redeem_points_next_renewal": redeemPointsNextRenewal,
+      if (clearSessionCountOverride)
+        "session_count_override": null
+      else if (sessionCountOverride != null)
+        "session_count_override": sessionCountOverride,
+      if (clearSessionCountOverride)
+        "session_count_override_month": null
+      else if (sessionCountOverrideMonth != null)
+        "session_count_override_month": sessionCountOverrideMonth,
     };
     if (clientFields.isNotEmpty) await client.from("clients").update(clientFields).eq("profile_id", id);
   }
+
+  /// Owner/coach freezing a client's membership — mirrors freezeMembership
+  /// in supabaseData.js. Pauses real Stripe billing (resumes automatically
+  /// on `endDate`, server-side, no cron needed) and sets the local
+  /// membership_paused* fields the app reads for display/booking access.
+  static Future<void> freezeMembership(String clientId, String startDate, String endDate) =>
+      _invokeFunction("freeze-membership", {"clientId": clientId, "startDate": startDate, "endDate": endDate});
+
+  /// Ends a freeze early — mirrors unfreezeMembership in supabaseData.js.
+  /// Resumes real Stripe billing immediately rather than waiting for the
+  /// originally-scheduled end date.
+  static Future<void> unfreezeMembership(String clientId) => _invokeFunction("unfreeze-membership", {"clientId": clientId});
 
   /// Mirrors sendPasswordReset in supabaseData.js — Supabase Auth emails a
   /// reset link; there's no in-app "change password" for an existing
@@ -944,10 +997,10 @@ class SupabaseService {
   /// client buy a plan"). Returns the Stripe-hosted Checkout URL to send
   /// the browser to — the plan is only ever actually granted later, by
   /// stripe-webhook confirming payment, never here and never client-side.
-  static Future<String> createCheckoutSession({required String planId, required String returnUrl}) async {
+  static Future<String> createCheckoutSession({required String planId, String? returnUrl}) async {
     final data = await _invokeFunction("create-checkout-session", {
       "planId": planId,
-      "returnUrl": returnUrl,
+      if (returnUrl != null) "returnUrl": returnUrl,
       "paymentMethod": "card",
     });
     final url = data["url"] as String?;
@@ -1341,6 +1394,7 @@ class SupabaseService {
       membershipPausedAt: c["membership_paused_at"] as String?,
       membershipFreezeEndsAt: c["membership_freeze_ends_at"] as String?,
       sessionCountOverride: _asInt(c["session_count_override"]),
+      sessionCountOverrideMonth: c["session_count_override_month"] as String?,
       primaryTrainerId: c["primary_trainer_id"] as String?,
       hasOutstandingBalance: c["has_outstanding_balance"] as bool? ?? false,
       stripeSubscriptionId: c["stripe_subscription_id"] as String?,

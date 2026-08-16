@@ -129,6 +129,11 @@ BookingCheck canBookOffering(
     );
   }
 
+  // A coach booking themselves via "Book session — Lead by example" needs
+  // no membership at all — mirrors canAccessService/withinBookingLimits
+  // both short-circuiting to ok:true for clientInfo.isStaff on the web.
+  if (info.isStaff) return const BookingCheck(ok: true);
+
   if (plan == null) {
     return const BookingCheck(ok: false, reason: "no-membership", msg: "You need a membership to book this. Visit the Membership Hub to get started.", noMembership: true);
   }

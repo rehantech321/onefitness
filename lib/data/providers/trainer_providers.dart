@@ -129,9 +129,11 @@ class ChargesNotifier extends Notifier<List<Charge>> {
   @override
   List<Charge> build() => MockData.charges();
 
+  void add(Charge c) => state = [...state, c];
+
   void remove(String id) => state = state.where((c) => c.id != id).toList();
   void waive(String id) => state = state.map((c) => c.id == id ? Charge(
-        id: c.id, clientId: c.clientId, clientName: c.clientName, type: c.type, date: c.date, amount: c.amount,
+        id: c.id, clientId: c.clientId, clientName: c.clientName, type: c.type, date: c.date, at: c.at, amount: c.amount,
         category: c.category, description: c.description, planId: c.planId, planName: c.planName,
         trainerId: c.trainerId, trainerName: c.trainerName, waivedAt: isoToday(),
       ) : c).toList();

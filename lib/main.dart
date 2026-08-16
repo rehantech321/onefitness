@@ -1,3 +1,6 @@
+import "dart:async";
+import "package:app_links/app_links.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "core/supabase/supabase_service.dart";
@@ -56,19 +59,61 @@ class _RootGate extends ConsumerStatefulWidget {
 
 class _RootGateState extends ConsumerState<_RootGate> {
   bool _checkedStripeReturn = false;
+  final AppLinks _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Uri.base's own `?stripe=...` only exists on Flutter web (the browser
+    // reloads this same "page"); on mobile the equivalent is Stripe's
+    // browser handing off to the app's own "onefitness://checkout-return"
+    // deep link instead — see membership_hub_screen.dart's returnUrl and
+    // the matching intent-filter/CFBundleURLTypes entries.
+    if (!kIsWeb) _initDeepLinks();
+  }
+
+  Future<void> _initDeepLinks() async {
+    try {
+      final initial = await _appLinks.getInitialLink();
+      if (initial != null) _handleDeepLink(initial);
+    } catch (_) {
+      // No initial link, or the platform channel isn't ready yet — either
+      // way there's nothing to recover from here.
+    }
+    _linkSub = _appLinks.uriLinkStream.listen(_handleDeepLink, onError: (_) {});
+  }
+
+  void _handleDeepLink(Uri uri) {
+    if (uri.scheme != "onefitness" || uri.host != "checkout-return") return;
+    final stripeParam = uri.queryParameters["stripe"];
+    if (stripeParam == null) return;
+    _showStripeSnack(stripeParam);
+    // A successful payment is only ever actually applied server-side by
+    // stripe-webhook, often with a short delay — re-running the same
+    // fetch+seed used at sign-in gives this landing its best shot at
+    // showing the new membership without the client having to leave and
+    // come back to this screen themselves.
+    if (stripeParam == "success") loadAndSeedCoreData(ref);
+  }
 
   /// One-time check for `?stripe=success`/`?stripe=cancel` on the URL —
   /// create-checkout-session's `success_url`/`cancel_url` land back on this
-  /// same page (see membership_hub_screen.dart's `returnUrl`). The plan
-  /// itself is only ever granted by stripe-webhook confirming payment
+  /// same page on web (see membership_hub_screen.dart's `returnUrl`). The
+  /// plan itself is only ever granted by stripe-webhook confirming payment
   /// (never here, and often not instantly), so this deliberately doesn't
   /// claim the purchase is done — just that Stripe took the payment and
   /// the membership will show up once the webhook's caught up.
   void _checkStripeReturn() {
     if (_checkedStripeReturn) return;
     _checkedStripeReturn = true;
+    if (!kIsWeb) return;
     final stripeParam = Uri.base.queryParameters["stripe"];
     if (stripeParam == null) return;
+    _showStripeSnack(stripeParam);
+  }
+
+  void _showStripeSnack(String stripeParam) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final messenger = scaffoldMessengerKey.currentState;
       if (messenger == null) return;
@@ -81,6 +126,12 @@ class _RootGateState extends ConsumerState<_RootGate> {
         messenger.showSnackBar(const SnackBar(content: Text("Checkout was cancelled — nothing was charged.")));
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _linkSub?.cancel();
+    super.dispose();
   }
 
   @override

@@ -28,8 +28,20 @@ int sessionsUsedThisPeriod(ClientInfo info, MembershipPlan plan, List<Booking> b
   return mine.length; // package: lifetime count against the plan
 }
 
-int effectiveMaxSessions(ClientInfo info, MembershipPlan plan) =>
-    info.sessionCountOverride ?? (plan.maxSessions ?? 0);
+/// Mirrors lib/helpers.js `effectiveMaxSessions` — a membership-kind plan's
+/// override goes stale once the calendar rolls into a new month from the
+/// one it was set in (sessionCountOverrideMonth), falling back to the
+/// plan's own default; a package's override has no month stamp and stays
+/// permanent.
+int effectiveMaxSessions(ClientInfo info, MembershipPlan plan) {
+  final override = info.sessionCountOverride;
+  if (override == null) return plan.maxSessions ?? 0;
+  final month = info.sessionCountOverrideMonth;
+  if (plan.kind == PlanKind.membership && month != null && month != isoToday().substring(0, 7)) {
+    return plan.maxSessions ?? 0;
+  }
+  return override;
+}
 
 const _months = [
   "January", "February", "March", "April", "May", "June",

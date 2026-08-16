@@ -17,12 +17,14 @@ class ClientInfo {
     this.membershipPausedAt,
     this.membershipFreezeEndsAt,
     this.sessionCountOverride,
+    this.sessionCountOverrideMonth,
     this.primaryTrainerId,
     this.hasOutstandingBalance = false,
     this.stripeSubscriptionId,
     this.pendingPlanId,
     this.pendingPlanEffectiveAt,
     this.redeemPointsNextRenewal = false,
+    this.isStaff = false,
   });
 
   final String id;
@@ -38,6 +40,12 @@ class ClientInfo {
   final String? membershipPausedAt;
   final String? membershipFreezeEndsAt;
   final int? sessionCountOverride;
+
+  /// "YYYY-MM" the override above was set in — for a recurring membership,
+  /// scopes it to that one month (see effectiveMaxSessions); a package
+  /// leaves this null and the override stays permanent.
+  final String? sessionCountOverrideMonth;
+
   final String? primaryTrainerId;
 
   /// Non-null only when a real Stripe subscription backs the current plan —
@@ -62,6 +70,13 @@ class ClientInfo {
   /// integration exists yet, so this is only ever flipped by mock data.
   final bool hasOutstandingBalance;
 
+  /// Set only on the synthetic ClientInfo a coach books themselves under
+  /// via "Book session — Lead by example" (self_book_screen.dart) — never
+  /// true for a real client/roster row. Bypasses every membership-access
+  /// check in canBookOffering, same as canAccessService/withinBookingLimits
+  /// on the web.
+  final bool isStaff;
+
   ClientInfo copyWith({
     String? name,
     String? email,
@@ -74,6 +89,7 @@ class ClientInfo {
     String? membershipPausedAt,
     String? membershipFreezeEndsAt,
     int? sessionCountOverride,
+    String? sessionCountOverrideMonth,
     bool clearMembershipPausedAt = false,
     bool clearMembershipFreezeEndsAt = false,
     bool clearSessionCountOverride = false,
@@ -100,11 +116,13 @@ class ClientInfo {
         membershipPausedAt: clearMembershipPausedAt ? null : (membershipPausedAt ?? this.membershipPausedAt),
         membershipFreezeEndsAt: clearMembershipFreezeEndsAt ? null : (membershipFreezeEndsAt ?? this.membershipFreezeEndsAt),
         sessionCountOverride: clearSessionCountOverride ? null : (sessionCountOverride ?? this.sessionCountOverride),
+        sessionCountOverrideMonth: clearSessionCountOverride ? null : (sessionCountOverrideMonth ?? this.sessionCountOverrideMonth),
         primaryTrainerId: primaryTrainerId,
         hasOutstandingBalance: hasOutstandingBalance ?? this.hasOutstandingBalance,
         stripeSubscriptionId: clearStripeSubscriptionId ? null : (stripeSubscriptionId ?? this.stripeSubscriptionId),
         pendingPlanId: clearPendingPlan ? null : (pendingPlanId ?? this.pendingPlanId),
         pendingPlanEffectiveAt: clearPendingPlan ? null : (pendingPlanEffectiveAt ?? this.pendingPlanEffectiveAt),
         redeemPointsNextRenewal: redeemPointsNextRenewal ?? this.redeemPointsNextRenewal,
+        isStaff: isStaff,
       );
 }

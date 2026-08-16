@@ -7,6 +7,7 @@ class Charge {
     required this.clientName,
     required this.type, // "purchase" | "manual" | "early_termination_fee"
     required this.date, // ISO yyyy-MM-dd
+    this.at = "", // stamp() human-readable string, e.g. "Aug 17, 6:00 AM"
     this.amount,
     this.category,
     this.description,
@@ -22,6 +23,7 @@ class Charge {
   final String clientName;
   final String type;
   final String date;
+  final String at;
   final double? amount;
   final String? category;
   final String? description;

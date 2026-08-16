@@ -51,5 +51,16 @@
 		<string>ONE Fitness saves progress photos you choose to your photo library.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleURLName</key>
+				<string>com.onefitness.checkoutreturn</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>onefitness</string>
+				</array>
+			</dict>
+		</array>
 	</dict>
 </plist>

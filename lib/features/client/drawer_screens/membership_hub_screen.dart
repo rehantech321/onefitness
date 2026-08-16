@@ -1,3 +1,4 @@
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:url_launcher/url_launcher.dart";
@@ -43,13 +44,21 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
         await SupabaseService.updateClientRow(clientId, membershipPlanId: plan.id);
         ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(membershipPlanId: plan.id));
       } else {
-        final returnUrl = Uri.base.origin + Uri.base.path;
+        // Uri.base.origin only resolves on Flutter web (the native build's
+        // Uri.base is a non-http asset path and throws on `.origin`) — on
+        // mobile, send the app's own custom-scheme deep link instead, so
+        // the browser hands control back to the app once Stripe redirects
+        // (see AndroidManifest.xml/Info.plist's "onefitness://checkout-return"
+        // intent filter and main.dart's _AppLinksListener). Either way the
+        // plan is only ever granted by stripe-webhook, never by this
+        // "return" landing itself.
+        final returnUrl = kIsWeb ? Uri.base.origin + Uri.base.path : "onefitness://checkout-return";
         final url = await SupabaseService.createCheckoutSession(planId: plan.id, returnUrl: returnUrl);
         // "_self" — a full same-tab redirect to Stripe's hosted page, same
         // as the web app's own `window.location.href = url` (a new-tab
         // popup would leave the "return" landing in a tab the client isn't
-        // looking at).
-        await launchUrl(Uri.parse(url), webOnlyWindowName: "_self");
+        // looking at). On mobile this opens the external browser instead.
+        await launchUrl(Uri.parse(url), webOnlyWindowName: "_self", mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication);
       }
       if (mounted) setState(() => _browsing = false);
     } catch (e) {

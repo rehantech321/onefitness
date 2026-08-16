@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/attendee_utils.dart";
 import "../../../core/utils/attention_utils.dart";
 import "../../../core/utils/client_status_utils.dart";
 import "../../../core/utils/date_utils.dart";
@@ -9,6 +10,7 @@ import "../../../core/utils/domain_labels.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
+import "../../../data/models/client_info.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../../client/booking/date_strip.dart";
@@ -38,6 +40,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
     final trainers = ref.watch(trainersProvider);
     final bookings = ref.watch(allBookingsProvider);
     final clientRecords = ref.watch(trainerClientRecordsProvider);
+    final todayCharges = ref.watch(chargesProvider).where((c) => c.date == isoToday()).toList();
 
     final me = trainers.where((t) => t.id == trainerAuth);
     final myName = isOwner ? "Owner" : (me.isNotEmpty ? me.first.name : "Coach");
@@ -239,9 +242,11 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                     ),
                     const SizedBox(height: 8),
                     ...group.map((b) {
-                      final matches = roster.where((c) => c.id == b.clientId);
-                      final client = matches.isNotEmpty ? matches.first : null;
-                      final rec = clientRecords[b.clientId];
+                      final attendee = resolveAttendee(b.clientId, roster, trainers);
+                      final rosterMatches = attendee.isStaff ? const <ClientInfo>[] : roster.where((c) => c.id == b.clientId).toList();
+                      final rosterClient = rosterMatches.isNotEmpty ? rosterMatches.first : null;
+                      final clickable = !attendee.isStaff && rosterClient != null;
+                      final rec = clickable ? clientRecords[b.clientId] : null;
                       final status = rec != null ? computeClientStatus(rec) : null;
                       final t = trainers.where((x) => x.id == b.trainerId);
                       return AppCard(
@@ -249,7 +254,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             InkWell(
-                              onTap: client != null ? () => openClient(client.id) : null,
+                              onTap: clickable ? () => openClient(rosterClient.id) : null,
                               child: Row(
                                 children: [
                                   SizedBox(
@@ -258,7 +263,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                     child: Stack(
                                       clipBehavior: Clip.none,
                                       children: [
-                                        Avatar(name: client?.name ?? "?", size: 32),
+                                        Avatar(name: attendee.name, size: 32),
                                         if (status != null)
                                           Positioned(bottom: -1, right: -1, child: StatusDot(status: status, size: 9)),
                                       ],
@@ -271,7 +276,8 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                       children: [
                                         Row(
                                           children: [
-                                            Text(client?.name ?? "Removed", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                            Text(attendee.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                                            if (attendee.isStaff) ...[const SizedBox(width: 6), const Tag(text: "Staff")],
                                             if (b.attendanceStatus != null) ...[
                                               const SizedBox(width: 6),
                                               _AttendanceBadge(status: b.attendanceStatus!),
@@ -285,11 +291,11 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                       ],
                                     ),
                                   ),
-                                  if (client != null) const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                                  if (clickable) const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
                                 ],
                               ),
                             ),
-                            if (client != null) ...[
+                            if (clickable) ...[
                               const SizedBox(height: 9),
                               Wrap(
                                 spacing: 5,
@@ -330,6 +336,35 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                 ),
               );
             }),
+          if (todayCharges.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: InkWell(
+                onTap: () => goMode("schedule"),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    border: Border.all(color: const Color(0xFFA8632F)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(LucideIcons.circleSlash, size: 18, color: Color(0xFFD68A4F)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "${todayCharges.length} charge${todayCharges.length != 1 ? "s" : ""} to collect today",
+                          style: const TextStyle(fontSize: 13, color: AppColors.txt),
+                        ),
+                      ),
+                      const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

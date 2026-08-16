@@ -7,6 +7,7 @@ import "../../../data/providers/trainer_providers.dart";
 import "../challenges/coach_challenges_screen.dart";
 import "../chat/coach_chat_screen.dart";
 import "../clients/clients_screen.dart";
+import "../dashboard/self_book_screen.dart";
 import "../dashboard/trainer_home_screen.dart";
 import "../exercises/exercises_screen.dart";
 import "../memberships/manage_memberships_screen.dart";
@@ -63,9 +64,9 @@ const _titles = {
 
 /// Mirrors App.jsx's trainer-side chrome: top bar (hamburger + title),
 /// permission-gated hamburger drawer, and a bottom nav (Staff tab only for
-/// the owner). Each `trainerMode` destination routes to its own screen; the
-/// unmapped default case ("selfbook") is a genuinely unreachable leftover
-/// since nothing in the drawer or bottom nav links to it.
+/// the owner). Each `trainerMode` destination routes to its own screen.
+/// "selfbook" has no drawer/bottom-nav entry of its own — it's reached only
+/// via the "Book session · Lead by example" strip below, same as the web.
 class TrainerShell extends ConsumerWidget {
   const TrainerShell({super.key});
 
@@ -132,6 +133,7 @@ class TrainerShell extends ConsumerWidget {
                 "waivers" => const ManageWaiversScreen(),
                 "platformSettings" => const CustomizePlatformScreen(),
                 "challenges" => const CoachChallengesScreen(),
+                "selfbook" => const SelfBookScreen(),
                 _ => PlaceholderScreen(title: _titles[mode] ?? mode),
               },
             ),
@@ -142,29 +144,72 @@ class TrainerShell extends ConsumerWidget {
         decoration: const BoxDecoration(color: AppColors.bottomBarBg, border: Border(top: BorderSide(color: AppColors.line))),
         child: SafeArea(
           top: false,
-          child: SizedBox(
-            height: 58,
-            child: Row(
-              children: bottomItems.map((item) {
-                final on = mode == item.key;
-                return Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // "Book session · Lead by example" — coach (non-owner) + dashboard
+              // only, mirrors the fixed strip App.jsx renders just above its
+              // own bottom toolbar.
+              if (!isOwner && mode == "dashboard")
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
                   child: InkWell(
-                    onTap: () => go(item.key),
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 9, bottom: 11),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    onTap: () => go("selfbook"),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: AppColors.bottomBarBg,
+                        border: Border.all(color: AppColors.goldDim),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
                         children: [
-                          Icon(item.icon, size: 20, color: on ? AppColors.gold : AppColors.mute),
-                          const SizedBox(height: 3),
-                          Text(item.label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: on ? AppColors.gold : AppColors.mute)),
+                          const Icon(LucideIcons.dumbbell, size: 14, color: AppColors.gold),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("Book session", style: TextStyle(fontSize: 12, color: AppColors.txt, fontWeight: FontWeight.w700, height: 1)),
+                                Padding(
+                                  padding: EdgeInsets.only(top: 3),
+                                  child: Text("Lead by example", style: TextStyle(fontSize: 10, color: AppColors.mute, height: 1)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(LucideIcons.chevronRight, size: 13, color: AppColors.mute),
                         ],
                       ),
                     ),
                   ),
-                );
-              }).toList(),
-            ),
+                ),
+              SizedBox(
+                height: 58,
+                child: Row(
+                  children: bottomItems.map((item) {
+                    final on = mode == item.key;
+                    return Expanded(
+                      child: InkWell(
+                        onTap: () => go(item.key),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 9, bottom: 11),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(item.icon, size: 20, color: on ? AppColors.gold : AppColors.mute),
+                              const SizedBox(height: 3),
+                              Text(item.label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: on ? AppColors.gold : AppColors.mute)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
           ),
         ),
       ),

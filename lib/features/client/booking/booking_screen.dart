@@ -293,7 +293,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           if (plan != null && _rescheduling == null) _MembershipBanner(info: info, plan: plan, bookings: bookings),
 
           if (_chosenType == null)
-            _StepOne(plan: plan, onPick: _pickType)
+            _StepOne(plan: plan, isStaff: info.isStaff, onPick: _pickType)
           else if (_chosenDisc == null)
             _StepTwo(
               chosenType: _chosenType!,
@@ -366,9 +366,10 @@ class _MembershipBanner extends StatelessWidget {
 }
 
 class _StepOne extends StatelessWidget {
-  const _StepOne({required this.plan, required this.onPick});
+  const _StepOne({required this.plan, required this.onPick, this.isStaff = false});
   final MembershipPlan? plan;
   final ValueChanged<String> onPick;
+  final bool isStaff;
 
   @override
   Widget build(BuildContext context) {
@@ -409,7 +410,7 @@ class _StepOne extends StatelessWidget {
               ],
             ),
           ),
-        if (plan == null)
+        if (plan == null && !isStaff)
           const Padding(
             padding: EdgeInsets.only(top: 10),
             child: Text(

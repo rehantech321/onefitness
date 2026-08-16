@@ -33,6 +33,7 @@ dependencies:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
+  app_links: ^6.3.3
   cupertino_icons: ^1.0.8
   flutter_riverpod: ^3.3.2
   intl: ^0.20.3
@@ -53,22 +54,35 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
   flutter_native_splash: ^2.4.6
 
 # Native launch-screen config for `dart run flutter_native_splash:create` —
-# generates the actual iOS/Android splash shown before Flutter's first frame,
-# matching the app's dark theme instead of a default white flash.
+# generates the actual iOS/Android splash shown before Flutter's first frame.
+# White background so the logo (a black mark on a transparent PNG) stays
+# fully visible instead of nearly disappearing against a dark background.
 flutter_native_splash:
-  color: "#0C0C0D"
+  color: "#FFFFFF"
   image: assets/images/logo.png
-  color_dark: "#0C0C0D"
+  color_dark: "#FFFFFF"
   image_dark: assets/images/logo.png
   android_12:
-    color: "#0C0C0D"
+    color: "#FFFFFF"
     image: assets/images/logo.png
-    color_dark: "#0C0C0D"
+    color_dark: "#FFFFFF"
     image_dark: assets/images/logo.png
   web: false
+
+# Store/home-screen app icon for `dart run flutter_launcher_icons`. Icons
+# must be a fully opaque square — assets/images/app_icon.png is the same
+# logo mark pre-composited onto a white square canvas (see the generation
+# note in assets/images/) rather than the raw transparent/non-square
+# assets/images/logo.png used for the splash screen above.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.png"
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
