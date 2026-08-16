@@ -113,3 +113,55 @@ const kBadgeImagePaths = {
   "habit": "assets/images/badges/habit.png",
   "gym_citizen": "assets/images/badges/gym_citizen.png",
 };
+
+class SubBadgeDef {
+  const SubBadgeDef({required this.key, required this.name, required this.description});
+  final String key;
+  final String name;
+  final String description;
+}
+
+/// Gym Citizen's 10 coach-verified sub-badges — deliberately NOT part of
+/// [kMeritBadges] (see that constant's own doc comment for why). Checked
+/// off one at a time by a coach; once all 10 are active, the parent
+/// "gym_citizen" badge is awarded automatically server-side.
+const kGymCitizenSubBadges = <SubBadgeDef>[
+  SubBadgeDef(key: "gym_citizen_rerack", name: "Re-Rack", description: "Returns weights and equipment to their proper locations."),
+  SubBadgeDef(key: "gym_citizen_setup", name: "Setup", description: "Can properly set up the equipment needed for their workout."),
+  SubBadgeDef(key: "gym_citizen_reset", name: "Reset", description: "Resets and clears their training station after use."),
+  SubBadgeDef(key: "gym_citizen_loadup", name: "Load Up", description: "Participates in loading and unloading their own weights."),
+  SubBadgeDef(key: "gym_citizen_knowit", name: "Know It", description: "Knows how to follow their personalized workout/program in the app."),
+  SubBadgeDef(key: "gym_citizen_countreps", name: "Count Reps", description: "Takes responsibility for counting their own repetitions."),
+  SubBadgeDef(key: "gym_citizen_coachable", name: "Coachable", description: "Listens to coaching cues and applies corrections."),
+  SubBadgeDef(key: "gym_citizen_gymaware", name: "Gym Aware", description: "Demonstrates awareness of other clients, coaches, equipment, and surroundings."),
+  SubBadgeDef(key: "gym_citizen_workoutready", name: "Workout Ready", description: "Arrives prepared and can transition through their workout without requiring the coach to manage every step."),
+  SubBadgeDef(key: "gym_citizen_gymcourtesy", name: "Gym Courtesy", description: "Demonstrates courtesy and respect toward coaches, clients, equipment, and the ONE Fitness environment."),
+];
+final kGymCitizenSubBadgeKeys = kGymCitizenSubBadges.map((b) => b.key).toSet();
+
+/// Progress Tracker's 3 sub-badges — earned automatically (no coach
+/// action), one per action logged within the last 6 months. Same
+/// "kept out of kMeritBadges" reasoning as Gym Citizen's.
+const kProgressTrackerSubBadges = <SubBadgeDef>[
+  SubBadgeDef(key: "progress_tracker_photo", name: "Progress Photo", description: "Log a progress photo."),
+  SubBadgeDef(key: "progress_tracker_measurements", name: "Measurements", description: "Log a body measurement."),
+  SubBadgeDef(key: "progress_tracker_workout", name: "Log Workout", description: "Log a workout from your own program."),
+];
+final kProgressTrackerSubBadgeKeys = kProgressTrackerSubBadges.map((b) => b.key).toSet();
+
+/// Keyed by SubBadgeDef.key — mirrors src/constants/badgeAssets.js `SUB_BADGE_IMAGES`.
+const kSubBadgeImagePaths = {
+  "gym_citizen_rerack": "assets/images/badges/gym_citizen_rerack.jpeg",
+  "gym_citizen_setup": "assets/images/badges/gym_citizen_setup.jpeg",
+  "gym_citizen_reset": "assets/images/badges/gym_citizen_reset.jpeg",
+  "gym_citizen_loadup": "assets/images/badges/gym_citizen_loadup.jpeg",
+  "gym_citizen_knowit": "assets/images/badges/gym_citizen_knowit.jpeg",
+  "gym_citizen_countreps": "assets/images/badges/gym_citizen_countreps.jpeg",
+  "gym_citizen_coachable": "assets/images/badges/gym_citizen_coachable.jpeg",
+  "gym_citizen_gymaware": "assets/images/badges/gym_citizen_gymaware.jpeg",
+  "gym_citizen_workoutready": "assets/images/badges/gym_citizen_workoutready.jpeg",
+  "gym_citizen_gymcourtesy": "assets/images/badges/gym_citizen_gymcourtesy.jpeg",
+  "progress_tracker_photo": "assets/images/badges/progress_tracker_photo.png",
+  "progress_tracker_measurements": "assets/images/badges/progress_tracker_measurements.png",
+  "progress_tracker_workout": "assets/images/badges/progress_tracker_workout.png",
+};
