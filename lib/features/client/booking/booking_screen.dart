@@ -20,8 +20,8 @@ import "upcoming_session_card.dart";
 /// Mirrors BookSession.jsx, trimmed to the everyday linear flow: browse
 /// upcoming sessions, pick a session type -> discipline -> time slot,
 /// confirm, or cancel/reschedule an existing booking. Recurring multi-day
-/// booking, the waitlist, in-booking challenge browsing, and the "Meet the
-/// Coach" profile card are not built yet — each is its own sizeable feature.
+/// booking and the waitlist are not built yet — each is its own sizeable
+/// feature.
 class BookingScreen extends ConsumerStatefulWidget {
   const BookingScreen({super.key, required this.onGoMemberships, this.initialDate, this.initialReschedule});
 
@@ -675,6 +675,20 @@ class _StepThreeState extends State<_StepThree> {
                                             ],
                                           ),
                                         ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 5),
+                                        child: GestureDetector(
+                                          onTap: () => CoachProfileCard.show(context, a.trainer),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: const [
+                                              Text("Meet the Coach", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gold)),
+                                              SizedBox(width: 3),
+                                              Icon(LucideIcons.chevronRight, size: 11, color: AppColors.gold),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),

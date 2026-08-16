@@ -258,10 +258,14 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
           title: "Choose your coach",
           children: offering.isEmpty
               ? [HintBox(text: "No coach currently offers ${disciplineLabel(_discipline!)}.")]
-              : offering.map((t) => _OptionCard(label: t.name, onTap: () => setState(() {
-                    _trainerId = t.id;
-                    _step = "pattern";
-                  }))).toList(),
+              : offering.map((t) => _OptionCard(
+                    label: t.name,
+                    onTap: () => setState(() {
+                      _trainerId = t.id;
+                      _step = "pattern";
+                    }),
+                    onMeetCoach: () => CoachProfileCard.show(context, t),
+                  )).toList(),
         );
 
       case "pattern":
@@ -562,11 +566,12 @@ class _StepScaffold extends StatelessWidget {
 }
 
 class _OptionCard extends StatelessWidget {
-  const _OptionCard({required this.label, this.sub, this.onTap, this.disabled = false});
+  const _OptionCard({required this.label, this.sub, this.onTap, this.disabled = false, this.onMeetCoach});
   final String label;
   final String? sub;
   final VoidCallback? onTap;
   final bool disabled;
+  final VoidCallback? onMeetCoach;
 
   @override
   Widget build(BuildContext context) {
@@ -580,6 +585,21 @@ class _OptionCard extends StatelessWidget {
           children: [
             Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             if (sub != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text(sub!, style: const TextStyle(fontSize: 11, color: AppColors.mute))),
+            if (onMeetCoach != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 5),
+                child: GestureDetector(
+                  onTap: onMeetCoach,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text("Meet the Coach", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gold)),
+                      SizedBox(width: 3),
+                      Icon(LucideIcons.chevronRight, size: 11, color: AppColors.gold),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -1351,15 +1351,38 @@ class SupabaseService {
   }
 
   static Trainer _trainerFromRow(Map<String, dynamic> profile, Map<String, dynamic> t) {
+    final locations = _trainerLocationsFromJson(t["locations"]);
+    final firstLocation = locations.isNotEmpty ? locations.first : null;
     return Trainer(
       id: profile["id"] as String,
       name: (profile["name"] as String?) ?? "",
       photo: profile["photo_url"] as String?,
       phone: profile["phone"] as String?,
       email: profile["email"] as String?,
+      locationName: (firstLocation != null && firstLocation.name.isNotEmpty) ? firstLocation.name : null,
+      locationAddress: firstLocation?.address,
+      locations: locations,
+      bio: t["bio"] as String?,
+      beforeAfters: _beforeAftersFromJson(t["before_afters"]),
       availability: _availabilityFromJson(t["availability"]),
       commissionRate: (t["commission_rate"] as num?) ?? 0,
     );
+  }
+
+  static List<TrainerLocation> _trainerLocationsFromJson(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => TrainerLocation(name: (e["name"] as String?) ?? "", address: e["address"] as String?))
+        .toList();
+  }
+
+  static List<TrainerBeforeAfter> _beforeAftersFromJson(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((e) => TrainerBeforeAfter(id: (e["id"] as String?) ?? "", left: e["left"] as String?, right: e["right"] as String?))
+        .toList();
   }
 
   static List<AvailabilityBlock> _availabilityFromJson(dynamic raw) {
