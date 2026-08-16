@@ -482,6 +482,25 @@ class _StepTwo extends StatelessWidget {
   }
 }
 
+class _JumpToChip extends StatelessWidget {
+  const _JumpToChip({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(border: Border.all(color: AppColors.line), color: AppColors.card, borderRadius: BorderRadius.circular(8)),
+        child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.mute)),
+      ),
+    );
+  }
+}
+
 class _SlotAvailability {
   _SlotAvailability({required this.trainer, required this.open, required this.cap, required this.mine});
   final Trainer trainer;
@@ -490,7 +509,7 @@ class _SlotAvailability {
   final bool mine;
 }
 
-class _StepThree extends StatelessWidget {
+class _StepThree extends StatefulWidget {
   const _StepThree({
     required this.date,
     required this.chosenType,
@@ -516,7 +535,33 @@ class _StepThree extends StatelessWidget {
   final void Function(Trainer, String, String, int, bool, bool) onSlotTap;
 
   @override
+  State<_StepThree> createState() => _StepThreeState();
+}
+
+class _StepThreeState extends State<_StepThree> {
+  // Stable per-slot keys (not recreated every build) so "Jump to" can
+  // scroll a specific slot into view via Scrollable.ensureVisible — the
+  // Flutter equivalent of scrollIntoView against a DOM id.
+  final Map<int, GlobalKey> _slotKeys = {};
+  GlobalKey _keyFor(int slot) => _slotKeys.putIfAbsent(slot, GlobalKey.new);
+
+  void _jumpTo(int slot) {
+    final ctx = _slotKeys[slot]?.currentContext;
+    if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final date = widget.date;
+    final chosenType = widget.chosenType;
+    final chosenDisc = widget.chosenDisc;
+    final info = widget.info;
+    final trainers = widget.trainers;
+    final bookings = widget.bookings;
+    final onDateChange = widget.onDateChange;
+    final onChangeType = widget.onChangeType;
+    final onChangeDisc = widget.onChangeDisc;
+    final onSlotTap = widget.onSlotTap;
     final sunday = isSunday(date);
     final wd = weekdayOf(date);
 
@@ -533,6 +578,8 @@ class _StepThree extends StatelessWidget {
       }
     }
     final slots = bySlot.keys.toList()..sort();
+    final firstHour = slots.where((s) => s % 60 == 0).isEmpty ? null : slots.where((s) => s % 60 == 0).first;
+    final firstHalf = slots.where((s) => s % 60 == 30).isEmpty ? null : slots.where((s) => s % 60 == 30).first;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -556,6 +603,21 @@ class _StepThree extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         DateStrip(date: date, onSelect: onDateChange, disablePast: true),
+        if (firstHour != null || firstHalf != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 10, bottom: 4),
+            child: Row(
+              children: [
+                const Text("Jump to:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+                const SizedBox(width: 8),
+                if (firstHour != null) ...[
+                  _JumpToChip(label: "Hour", onTap: () => _jumpTo(firstHour)),
+                  const SizedBox(width: 8),
+                ],
+                if (firstHalf != null) _JumpToChip(label: "Half Hour", onTap: () => _jumpTo(firstHalf)),
+              ],
+            ),
+          ),
         if (sunday)
           const HintBox(text: "ONE Fitness is closed on Sundays. Pick another day.")
         else if (trainers.isEmpty)
@@ -566,6 +628,7 @@ class _StepThree extends StatelessWidget {
           ...slots.map((slot) {
             final avail = bySlot[slot]!;
             return Padding(
+              key: _keyFor(slot),
               padding: const EdgeInsets.only(bottom: 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

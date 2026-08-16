@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 import "package:flutter/material.dart";
 import "../theme/app_colors.dart";
@@ -36,6 +37,11 @@ class Avatar extends StatelessWidget {
       ImageProvider provider;
       if (src!.startsWith("http")) {
         provider = NetworkImage(src!);
+      } else if (src!.startsWith("data:")) {
+        // A profile photo picked in-app (no real object storage — see
+        // updateClientRow's `photo` param) round-trips as a plain base64
+        // data URL in profiles.photo_url, same convention the web app uses.
+        provider = MemoryImage(base64Decode(src!.substring(src!.indexOf(",") + 1)));
       } else {
         provider = FileImage(File(src!));
       }

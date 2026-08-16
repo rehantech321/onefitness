@@ -155,3 +155,14 @@ String weekdayKey(int jsWeekday) => _weekdayKeys[jsWeekday];
 String startOfWeek(String iso) => isoDate(DateTime.parse(iso).subtract(Duration(days: weekdayOf(iso))));
 
 String addDaysIso(String iso, int n) => isoDate(DateTime.parse(iso).add(Duration(days: n)));
+
+/// Mirrors constants/domain.js `isAssessmentType`.
+bool isAssessmentType(String sessionType) => sessionType == "assessment-call" || sessionType == "assessment-in-person";
+
+/// Mirrors AdvancedBookingFlow.jsx `occurrenceDate` — the Nth occurrence of
+/// [weekday] on/after [startDate], N weeks later.
+String occurrenceDate(String startDate, int weekday, int weekIndex) {
+  final startWd = weekdayOf(startDate);
+  final diff = (weekday - startWd + 7) % 7;
+  return addDaysIso(addDaysIso(startDate, diff), weekIndex * 7);
+}

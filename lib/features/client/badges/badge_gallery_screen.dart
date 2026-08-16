@@ -29,9 +29,19 @@ class BadgeGalleryScreen extends ConsumerWidget {
           const SectionLabel("Merit Badges"),
           const Padding(
             padding: EdgeInsets.only(bottom: 14),
-            child: Text(
-              "Merit Badges recognize your consistency, progress, and involvement at One Fitness. Earn badges by completing challenges, tracking your progress, building healthy habits, and being an active part of our community. Collect four or more active Merit Badges to start earning Merit Badge points. Automatic badges are awarded by the app the moment you qualify. Coach Awarded badges are given by your coach or the gym owner.",
-              style: TextStyle(fontSize: 13, color: AppColors.mute, height: 1.6),
+            child: Text.rich(
+              TextSpan(
+                style: TextStyle(fontSize: 13, color: AppColors.mute, height: 1.6),
+                children: [
+                  TextSpan(
+                    text: "Merit Badges recognize your consistency, progress, and involvement at One Fitness. Earn badges by completing challenges, tracking your progress, building healthy habits, and being an active part of our community. Collect five or more active Merit Badges to earn a +5 Merit Badge points bonus. ",
+                  ),
+                  TextSpan(text: "Automatic", style: TextStyle(color: AppColors.txt, fontWeight: FontWeight.w700)),
+                  TextSpan(text: " badges are awarded by the app the moment you qualify. "),
+                  TextSpan(text: "Coach Awarded", style: TextStyle(color: AppColors.txt, fontWeight: FontWeight.w700)),
+                  TextSpan(text: " badges are given by your coach or the gym owner."),
+                ],
+              ),
             ),
           ),
           ...kMeritBadges.map((b) {

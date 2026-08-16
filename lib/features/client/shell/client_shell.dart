@@ -10,6 +10,7 @@ import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/providers/client_providers.dart";
 import "../badges/badge_gallery_screen.dart";
+import "../booking/advanced_booking_screen.dart";
 import "../booking/booking_screen.dart";
 import "../booking/day_detail_screen.dart";
 import "../challenges/challenges_screen.dart";
@@ -64,6 +65,7 @@ const _titles = {
   "plans": "Plans",
   "booking": "Booking",
   "day": "Booking",
+  "advancedBooking": "Advanced Booking",
   "chat": "Chat",
   "memberships": "Membership Hub",
   "nutrition": "Nutrition Plan",
@@ -133,7 +135,9 @@ class ClientShell extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.bg,
       drawer: _ClientDrawer(info: info, screen: screen, onGo: go),
-      body: SafeArea(
+      body: Stack(
+        children: [
+          SafeArea(
         bottom: false,
         child: Column(
           children: [
@@ -199,13 +203,14 @@ class ClientShell extends ConsumerWidget {
                     onReschedule: startReschedule,
                     onGoPlans: () => go("plans"),
                   ),
+                "advancedBooking" => AdvancedBookingScreen(onDone: () => go("booking")),
                 "nutrition" => const NutritionTab(),
                 "habits" => const HabitTrackerScreen(),
                 "history" => const HistoryScreen(),
                 "signatures" => const SignaturesScreen(),
                 "memberships" => const MembershipHubScreen(),
                 "challenges" => const ChallengesScreen(),
-                "rewards" => RewardsScreen(clientId: info.id),
+                "rewards" => RewardsScreen(clientId: info.id, onOpenBadges: () => go("badges")),
                 "badges" => BadgeGalleryScreen(clientId: info.id),
                 "settings" => const ProfileSettingsScreen(),
                 "squad" => const SquadDashboardScreen(),
@@ -221,6 +226,33 @@ class ClientShell extends ConsumerWidget {
             ),
           ],
         ),
+          ),
+          // Advanced Booking — pinned above the bottom bar, Booking tab only.
+          // Scaffold already sizes `body` to exclude bottomNavigationBar, so
+          // bottom: 8 here lands just above it, no extra offset needed.
+          if (screen == "booking")
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 8,
+              child: BtnGold(
+                full: true,
+                onPressed: () {
+                  ref.read(pendingBookingTargetProvider.notifier).set(null);
+                  go("advancedBooking");
+                },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.calendar, size: 15, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text("Advanced Booking"),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: DecoratedBox(
         decoration: const BoxDecoration(

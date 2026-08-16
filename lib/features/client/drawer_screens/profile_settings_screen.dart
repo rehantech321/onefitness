@@ -1,9 +1,11 @@
+import "dart:convert";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/membership_utils.dart";
+import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
@@ -175,6 +177,9 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
   late final _email = TextEditingController(text: ref.read(clientInfoProvider).email ?? "");
   late final _phone = TextEditingController(text: ref.read(clientInfoProvider).phone ?? "");
   late final _city = TextEditingController(text: ref.read(clientInfoProvider).city ?? "");
+  late final _birthday = TextEditingController(text: ref.read(clientInfoProvider).birthday ?? "");
+  String? _photoDataUrl;
+  bool _pickingPhoto = false;
 
   @override
   void dispose() {
@@ -182,24 +187,80 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
     _email.dispose();
     _phone.dispose();
     _city.dispose();
+    _birthday.dispose();
     super.dispose();
   }
 
   bool _saving = false;
   String? _error;
+  bool _resetBusy = false;
+  bool _resetSent = false;
+
+  Future<void> _pickPhoto() async {
+    setState(() => _pickingPhoto = true);
+    final dataUrl = await pickProfilePhotoDataUrl();
+    if (!mounted) return;
+    setState(() {
+      _pickingPhoto = false;
+      if (dataUrl != null) _photoDataUrl = dataUrl;
+    });
+  }
+
+  Future<void> _pickBirthday() async {
+    final now = DateTime.now();
+    final initial = DateTime.tryParse(_birthday.text) ?? DateTime(now.year - 25, now.month, now.day);
+    final picked = await showDatePicker(context: context, initialDate: initial, firstDate: DateTime(now.year - 100), lastDate: now);
+    if (picked != null) setState(() => _birthday.text = "${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}");
+  }
+
+  Future<void> _sendPasswordReset() async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      setState(() => _error = "An email is required before sending a reset link.");
+      return;
+    }
+    setState(() {
+      _resetBusy = true;
+      _error = null;
+    });
+    try {
+      await SupabaseService.sendPasswordReset(email);
+      if (mounted) setState(() => _resetSent = true);
+    } catch (e) {
+      if (mounted) setState(() => _error = "Couldn't send the reset email — check your connection and try again.");
+    } finally {
+      if (mounted) setState(() => _resetBusy = false);
+    }
+  }
 
   Future<void> _save() async {
     final name = _name.text.trim();
     final email = _email.text.trim();
     final phone = _phone.text.trim();
     final city = _city.text.trim();
+    final birthday = _birthday.text.trim();
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
-      await SupabaseService.updateClientRow(ref.read(clientInfoProvider).id, name: name, email: email, phone: phone, city: city);
-      ref.read(clientInfoProvider.notifier).update((info) => info.copyWith(name: name, email: email, phone: phone, city: city));
+      await SupabaseService.updateClientRow(
+        ref.read(clientInfoProvider).id,
+        name: name,
+        email: email,
+        phone: phone,
+        city: city,
+        birthday: birthday.isEmpty ? null : birthday,
+        photo: _photoDataUrl,
+      );
+      ref.read(clientInfoProvider.notifier).update((info) => info.copyWith(
+            name: name,
+            email: email,
+            phone: phone,
+            city: city,
+            birthday: birthday.isEmpty ? null : birthday,
+            photo: _photoDataUrl,
+          ));
       widget.onBack();
     } catch (e) {
       setState(() {
@@ -211,6 +272,7 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
 
   @override
   Widget build(BuildContext context) {
+    final info = ref.watch(clientInfoProvider);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -219,6 +281,38 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
           BackBar(onBack: widget.onBack, title: "Profile Settings"),
           const SizedBox(height: 10),
           const SectionLabel("Edit Profile"),
+          Center(
+            child: Column(
+              children: [
+                GestureDetector(
+                  onTap: _pickingPhoto ? null : _pickPhoto,
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.line, width: 2),
+                      image: _photoDataUrl != null
+                          ? DecorationImage(image: MemoryImage(base64Decode(_photoDataUrl!.substring(_photoDataUrl!.indexOf(",") + 1))), fit: BoxFit.cover)
+                          : null,
+                    ),
+                    child: _photoDataUrl == null ? Avatar(src: info.photo, name: info.name, size: 80) : null,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton.icon(
+                  onPressed: _pickingPhoto ? null : _pickPhoto,
+                  style: TextButton.styleFrom(foregroundColor: AppColors.gold),
+                  icon: const Icon(LucideIcons.image, size: 14),
+                  label: Text(
+                    _pickingPhoto ? "Opening…" : ((_photoDataUrl ?? info.photo) != null ? "Change photo" : "Add photo"),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
           FieldLabeled(label: "Name", child: AppField(controller: _name)),
           const SizedBox(height: 10),
           FieldLabeled(label: "Email", child: AppField(controller: _email, keyboardType: TextInputType.emailAddress)),
@@ -226,6 +320,52 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
           FieldLabeled(label: "Phone", child: AppField(controller: _phone, keyboardType: TextInputType.phone)),
           const SizedBox(height: 10),
           FieldLabeled(label: "City", child: AppField(controller: _city)),
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text("Personalized training near you", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
+          ),
+          const SizedBox(height: 10),
+          FieldLabeled(
+            label: "Birthday",
+            child: InkWell(
+              onTap: _pickBirthday,
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.bg,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                ),
+                child: Text(
+                  _birthday.text.isEmpty ? "Select date" : _birthday.text,
+                  style: TextStyle(fontSize: 14, color: _birthday.text.isEmpty ? AppColors.mute : AppColors.txt),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Container(height: 1, color: AppColors.line, margin: const EdgeInsets.symmetric(vertical: 2)),
+          const SizedBox(height: 14),
+          Text(
+            "Password changes go through email now — send a reset link to ${_email.text.trim().isEmpty ? "this account's email" : _email.text.trim()}.",
+            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+          ),
+          const SizedBox(height: 8),
+          if (_resetSent)
+            const Text("✓ Reset email sent.", style: TextStyle(color: AppColors.gold, fontSize: 13, fontWeight: FontWeight.w600))
+          else
+            BtnGhost(
+              onPressed: _resetBusy ? null : _sendPasswordReset,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.lock, size: 14),
+                  const SizedBox(width: 6),
+                  Text(_resetBusy ? "Sending…" : "Send password reset email"),
+                ],
+              ),
+            ),
           if (_error != null)
             Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12))),
           const SizedBox(height: 18),

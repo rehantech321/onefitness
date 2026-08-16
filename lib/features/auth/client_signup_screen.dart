@@ -1,8 +1,10 @@
+import "dart:convert";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../core/supabase/supabase_service.dart";
 import "../../core/theme/app_colors.dart";
+import "../../core/utils/photo_picker_utils.dart";
 import "../../core/widgets/widgets.dart";
 import "../../data/providers/supabase_bootstrap_provider.dart";
 
@@ -28,21 +30,47 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _password2 = TextEditingController();
   final _phone = TextEditingController();
   final _city = TextEditingController();
   final _birthday = TextEditingController();
+  String? _photoDataUrl;
   String? _error;
   bool _busy = false;
+  bool _pickingPhoto = false;
 
   @override
   void dispose() {
     _name.dispose();
     _email.dispose();
     _password.dispose();
+    _password2.dispose();
     _phone.dispose();
     _city.dispose();
     _birthday.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    setState(() => _pickingPhoto = true);
+    final dataUrl = await pickProfilePhotoDataUrl();
+    if (!mounted) return;
+    setState(() {
+      _pickingPhoto = false;
+      if (dataUrl != null) _photoDataUrl = dataUrl;
+    });
+  }
+
+  Future<void> _pickBirthday() async {
+    final now = DateTime.now();
+    final initial = DateTime.tryParse(_birthday.text) ?? DateTime(now.year - 25, now.month, now.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(now.year - 100),
+      lastDate: now,
+    );
+    if (picked != null) setState(() => _birthday.text = "${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}");
   }
 
   Future<void> _submit() async {
@@ -57,12 +85,16 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
       setState(() => _error = "Password must be at least 6 characters.");
       return;
     }
+    if (password != _password2.text) {
+      setState(() => _error = "Passwords don't match.");
+      return;
+    }
     setState(() {
       _error = null;
       _busy = true;
     });
     try {
-      await SupabaseService.signUpClient(
+      final userId = await SupabaseService.signUpClient(
         email: email,
         password: password,
         name: name,
@@ -70,6 +102,9 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
         city: _city.text.trim().isEmpty ? null : _city.text.trim(),
         birthday: _birthday.text.trim().isEmpty ? null : _birthday.text.trim(),
       );
+      if (_photoDataUrl != null) {
+        await SupabaseService.updateClientRow(userId, photo: _photoDataUrl);
+      }
       await loadAndSeedCoreData(ref);
     } catch (e) {
       if (!mounted) return;
@@ -98,7 +133,37 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                 "Set up your account to start booking sessions and tracking your progress.",
                 style: TextStyle(color: AppColors.mute, fontSize: 12, height: 1.5),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
+              Center(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _pickingPhoto ? null : _pickPhoto,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.line, width: 2),
+                          image: _photoDataUrl != null
+                              ? DecorationImage(image: MemoryImage(base64Decode(_photoDataUrl!.substring(_photoDataUrl!.indexOf(",") + 1))), fit: BoxFit.cover)
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: _photoDataUrl == null ? const Icon(LucideIcons.user, size: 30, color: AppColors.mute) : null,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton.icon(
+                      onPressed: _pickingPhoto ? null : _pickPhoto,
+                      style: TextButton.styleFrom(foregroundColor: AppColors.gold),
+                      icon: const Icon(LucideIcons.image, size: 14),
+                      label: Text(_pickingPhoto ? "Opening…" : (_photoDataUrl != null ? "Change photo" : "Add photo"), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
               FieldLabeled(label: "Full name", child: AppField(controller: _name, onChanged: (_) => setState(() => _error = null))),
               const SizedBox(height: 10),
               FieldLabeled(
@@ -111,11 +176,41 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                 child: AppField(controller: _password, placeholder: "At least 6 characters", obscureText: true, onChanged: (_) => setState(() => _error = null)),
               ),
               const SizedBox(height: 10),
+              FieldLabeled(
+                label: "Confirm password",
+                child: AppField(controller: _password2, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
+              ),
+              const SizedBox(height: 10),
               FieldLabeled(label: "Phone (optional)", child: AppField(controller: _phone, keyboardType: TextInputType.phone)),
               const SizedBox(height: 10),
-              FieldLabeled(label: "City (optional)", child: AppField(controller: _city)),
+              FieldLabeled(
+                label: "City (optional)",
+                child: AppField(controller: _city),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text("Personalized training near you", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
+              ),
               const SizedBox(height: 10),
-              FieldLabeled(label: "Birthday (optional, YYYY-MM-DD)", child: AppField(controller: _birthday)),
+              FieldLabeled(
+                label: "Birthday (optional)",
+                child: InkWell(
+                  onTap: _pickBirthday,
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: AppColors.bg,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                    ),
+                    child: Text(
+                      _birthday.text.isEmpty ? "Select date" : _birthday.text,
+                      style: TextStyle(fontSize: 14, color: _birthday.text.isEmpty ? AppColors.mute : AppColors.txt),
+                    ),
+                  ),
+                ),
+              ),
               if (_error != null) ...[
                 const SizedBox(height: 10),
                 Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),

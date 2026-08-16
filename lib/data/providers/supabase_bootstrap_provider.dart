@@ -16,6 +16,7 @@ import "../models/product.dart";
 import "../models/saved_program.dart";
 import "../models/squad.dart";
 import "../models/trainer.dart";
+import "../models/waitlist_entry.dart";
 import "../models/waiver_doc.dart";
 import "client_providers.dart";
 import "platform_settings_provider.dart";
@@ -119,6 +120,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final List<Challenge> challenges;
   final List<Squad> squads;
   final List<Charge> charges;
+  final List<WaitlistEntry> waitlist;
   final PlatformSettings? platformSettings;
   try {
     // Firing all 16 requests before awaiting any of them (rather than one
@@ -143,6 +145,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     final challengesF = SupabaseService.loadChallenges();
     final squadsF = SupabaseService.loadSquads();
     final chargesF = SupabaseService.loadCharges();
+    final waitlistF = SupabaseService.loadWaitlist();
     final platformSettingsF = SupabaseService.loadPlatformSettings();
 
     roster = await rosterF;
@@ -160,6 +163,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     challenges = await challengesF;
     squads = await squadsF;
     charges = await chargesF;
+    waitlist = await waitlistF;
     platformSettings = await platformSettingsF;
   } catch (e, st) {
     // Anonymous caller blocked outright by RLS on one of these tables (vs.
@@ -194,6 +198,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   ref.read(challengesProvider.notifier).setAll(challenges);
   ref.read(squadsProvider.notifier).setAll(squads);
   ref.read(chargesProvider.notifier).setAll(charges);
+  ref.read(waitlistProvider.notifier).setAll(waitlist);
   // `platformSettings` is declared-then-assigned-in-a-try-block above, not
   // initialized at declaration — Dart doesn't carry a null-promotion for
   // that shape into a closure literal, so `(_) => platformSettings` below

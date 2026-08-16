@@ -12,6 +12,7 @@ class MembershipPlan {
     this.allowedTypes = const [],
     this.priceCents = 0,
     this.archived = false,
+    this.paymentType,
   });
 
   final String id;
@@ -25,4 +26,13 @@ class MembershipPlan {
   /// package/program plans. Drives Reports' revenue/payroll math.
   final int priceCents;
   final bool archived;
+
+  /// "subscription" | "one-time" | null. Plans created before this field
+  /// existed have neither — see [effectivePaymentType].
+  final String? paymentType;
 }
+
+/// Mirrors membershipPlans.js `planPaymentType` — a plan with no explicit
+/// paymentType defaults to "one-time" for a package, "subscription"
+/// otherwise (memberships, and programs which are never sold directly).
+String effectivePaymentType(MembershipPlan p) => p.paymentType ?? (p.kind == PlanKind.package ? "one-time" : "subscription");

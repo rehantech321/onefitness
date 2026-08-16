@@ -13,6 +13,7 @@ import "../models/meal_def.dart";
 import "../models/nutrition_library_entry.dart";
 import "../models/product.dart";
 import "../models/saved_program.dart";
+import "../models/waitlist_entry.dart";
 import "../models/waiver_doc.dart";
 
 /// The signed-in coach/owner's auth value — null (signed out), "owner", or a
@@ -75,6 +76,21 @@ class AllBookingsNotifier extends Notifier<List<Booking>> {
 }
 
 final allBookingsProvider = NotifierProvider<AllBookingsNotifier, List<Booking>>(AllBookingsNotifier.new);
+
+/// Two statuses in one list (App.jsx `waitlist`): "waiting" (single-slot,
+/// join-a-full-session) and "pending-approval" (Advanced Booking recurring
+/// series requests, reviewed on the owner's Waitlist screen). Shared between
+/// the client side (their own requests) and the owner side (everyone's).
+class WaitlistNotifier extends Notifier<List<WaitlistEntry>> {
+  @override
+  List<WaitlistEntry> build() => [];
+
+  void add(WaitlistEntry e) => state = [...state, e];
+  void remove(String id) => state = state.where((w) => w.id != id).toList();
+  void setAll(List<WaitlistEntry> next) => state = next;
+}
+
+final waitlistProvider = NotifierProvider<WaitlistNotifier, List<WaitlistEntry>>(WaitlistNotifier.new);
 
 /// Coach blocked-time-off entries (App.jsx blocked-time state) — starts
 /// empty; no blocks exist in the mock seed data.

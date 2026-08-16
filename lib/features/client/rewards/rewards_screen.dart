@@ -6,16 +6,20 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/points_ledger_utils.dart";
 import "../../../core/utils/rewards_domain.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/models/merit_badge_def.dart";
 import "../../../data/providers/client_providers.dart";
 
-/// Mirrors RewardsScreen.jsx — balance, an expiry banner, a simplified
-/// redeem action (the source's Stripe-subscription-vs-not branching is
-/// backend-driven; here redeeming just writes a `redemption_balance`
-/// ledger row), the static "Ways to Earn" list, and the full ledger.
+/// Mirrors RewardsScreen.jsx — balance, an expiry banner, a real redeem
+/// action (branches on whether this client has an active Stripe
+/// subscription, same as the source: an active subscriber redeems
+/// immediately via a Stripe balance credit, everyone else just flips a
+/// flag applied automatically at their next purchase), a Merit Badges
+/// progress card, the static "Ways to Earn" list, and the full ledger.
 class RewardsScreen extends ConsumerStatefulWidget {
-  const RewardsScreen({super.key, required this.clientId});
+  const RewardsScreen({super.key, required this.clientId, this.onOpenBadges});
 
   final String clientId;
+  final VoidCallback? onOpenBadges;
 
   @override
   ConsumerState<RewardsScreen> createState() => _RewardsScreenState();
@@ -23,9 +27,44 @@ class RewardsScreen extends ConsumerStatefulWidget {
 
 class _RewardsScreenState extends ConsumerState<RewardsScreen> {
   bool _redeeming = false;
+  bool _togglingFlag = false;
+
+  Future<void> _redeemNow() async {
+    setState(() => _redeeming = true);
+    try {
+      await SupabaseService.redeemPoints(widget.clientId);
+      final fresh = await SupabaseService.loadPointsLedgerFor(widget.clientId);
+      ref.read(pointsLedgerProvider.notifier).replaceForClient(widget.clientId, fresh);
+      setState(() => _redeeming = false);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Points redeemed — the discount will apply to your next bill.")));
+      }
+    } catch (e) {
+      setState(() => _redeeming = false);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))));
+      }
+    }
+  }
+
+  Future<void> _toggleRedeemFlag(bool next) async {
+    setState(() => _togglingFlag = true);
+    try {
+      await SupabaseService.updateClientRow(widget.clientId, redeemPointsNextRenewal: next);
+      ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(redeemPointsNextRenewal: next));
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))));
+      }
+    } finally {
+      if (mounted) setState(() => _togglingFlag = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final info = ref.watch(clientInfoProvider);
+    final earnedBadges = ref.watch(earnedBadgesProvider);
     final ledger = ref.watch(pointsLedgerProvider);
     final myLedger = ledger.where((l) => l.clientId == widget.clientId).toList();
     final replay = replayLedger(myLedger);
@@ -33,6 +72,18 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
     final expiringPoints = expiringSoon.fold<int>(0, (s, l) => s + l.remaining);
     final earliestExpiry = expiringSoon.isEmpty ? null : (expiringSoon.map((l) => l.expiresAt!).toList()..sort()).first;
     final redemptionPlan = planRedemption(replay.lots, capPoints: kRewardMaxRedeemPoints, minPoints: kRewardMinRedeemPoints);
+
+    // Only a real top-level Merit Badge counts here — Gym Citizen's 10
+    // coach-checked sub-badges aren't in kMeritBadges, so this exclusion
+    // falls out of the catalog lookup for free (see merit_badge_def.dart).
+    final knownKeys = kMeritBadges.map((b) => b.key).toSet();
+    final activeBadgeCount = earnedBadges
+        .where((b) => b.clientId == widget.clientId && b.isActive && knownKeys.contains(b.badgeKey))
+        .map((b) => b.badgeKey)
+        .toSet()
+        .length;
+    final badgesEarned = activeBadgeCount >= kMeritBadgeMinActiveForPoints;
+    final badgesRemaining = kMeritBadgeMinActiveForPoints - activeBadgeCount;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
@@ -82,36 +133,95 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "Redeeming applies a discount toward your next purchase or renewal. Each point stays available for 6 months from the day you earned it.",
+                  "Turn the toggle on to use your points toward your next purchase or renewal automatically. Leave it off to keep accumulating points — each point stays available for 6 months from the day you earned it.",
                   style: TextStyle(fontSize: 12, color: AppColors.txt, height: 1.5),
                 ),
                 const SizedBox(height: 12),
                 if (redemptionPlan != null)
-                  BtnGold(
-                    full: true,
-                    onPressed: _redeeming
-                        ? null
-                        : () async {
-                            setState(() => _redeeming = true);
-                            try {
-                              await SupabaseService.redeemPoints(widget.clientId);
-                              final fresh = await SupabaseService.loadPointsLedgerFor(widget.clientId);
-                              ref.read(pointsLedgerProvider.notifier).replaceForClient(widget.clientId, fresh);
-                              setState(() => _redeeming = false);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Points redeemed — the discount will apply to your next bill.")));
-                              }
-                            } catch (e) {
-                              setState(() => _redeeming = false);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))));
-                              }
-                            }
-                          },
-                    child: Text(_redeeming ? "Redeeming…" : "Redeem ${redemptionPlan.points} points now"),
-                  )
+                  if (info.stripeSubscriptionId != null) ...[
+                    _ToggleRow(
+                      label: "Redeem ${redemptionPlan.points} points now",
+                      hint: "Applies a discount off your next bill immediately — your subscription is already active, so this can't wait for a future renewal the way a new purchase can.",
+                      value: false,
+                      onChanged: (next) {
+                        if (next && !_redeeming) _redeemNow();
+                      },
+                    ),
+                    if (_redeeming) const Padding(padding: EdgeInsets.only(top: 6), child: Text("Redeeming…", style: TextStyle(fontSize: 12, color: AppColors.gold))),
+                  ] else
+                    _ToggleRow(
+                      label: "Redeem ${redemptionPlan.points} points on my next purchase",
+                      hint: "Applies automatically as a discount at checkout.",
+                      value: info.redeemPointsNextRenewal,
+                      onChanged: _togglingFlag ? null : _toggleRedeemFlag,
+                    )
                 else
                   Text("You need at least $kRewardMinRedeemPoints points to redeem (up to $kRewardMaxRedeemPoints at once).", style: const TextStyle(fontSize: 13, color: AppColors.mute)),
+              ],
+            ),
+          ),
+          const SectionLabel("Merit Badges"),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            badgesEarned
+                                ? (activeBadgeCount == kMeritBadgeMinActiveForPoints
+                                    ? "$activeBadgeCount of $kMeritBadgeMinActiveForPoints Merit Badges"
+                                    : "$activeBadgeCount Active Merit Badges")
+                                : "$activeBadgeCount of $kMeritBadgeMinActiveForPoints required badges",
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.txt),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              badgesEarned
+                                  ? (activeBadgeCount == kMeritBadgeMinActiveForPoints
+                                      ? "+$kMeritBadgeBonusPoints Points Earned"
+                                      : "+$kMeritBadgeBonusPoints Merit Badge Points")
+                                  : "Earn $badgesRemaining more Merit Badge${badgesRemaining == 1 ? "" : "s"} to receive +$kMeritBadgeBonusPoints points.",
+                              style: TextStyle(fontSize: 12, fontWeight: badgesEarned ? FontWeight.w700 : FontWeight.w400, color: badgesEarned ? AppColors.grn : AppColors.mute),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (earnedBadges.any((b) => b.clientId == widget.clientId && b.isActive)) ...[
+                  const SizedBox(height: 12),
+                  MeritBadgeRow(clientId: widget.clientId, earnedBadges: earnedBadges),
+                ],
+                if (widget.onOpenBadges != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: earnedBadges.any((b) => b.clientId == widget.clientId && b.isActive) ? 10 : 12),
+                    child: InkWell(
+                      onTap: widget.onOpenBadges,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        decoration: BoxDecoration(border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(8)),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text("See all Merit Badges", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold)),
+                            SizedBox(width: 4),
+                            Icon(LucideIcons.chevronRight, size: 13, color: AppColors.gold),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -145,6 +255,51 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
           const SectionLabel("History"),
           LedgerTable(rows: myLedger, emptyText: "No points activity yet — see Ways to Earn above to get started."),
         ],
+      ),
+    );
+  }
+}
+
+/// Mirrors FormPrimitives.jsx `ToggleRow` — a full-width tappable row with a
+/// label/hint and a toggle icon on the right, instead of a native Switch
+/// (matches the source's own custom look).
+class _ToggleRow extends StatelessWidget {
+  const _ToggleRow({required this.label, this.hint, required this.value, required this.onChanged});
+
+  final String label;
+  final String? hint;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onChanged == null ? null : () => onChanged!(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.txt)),
+                  if (hint != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              value ? LucideIcons.toggleRight : LucideIcons.toggleLeft,
+              size: 28,
+              color: value ? AppColors.gold : AppColors.mute,
+            ),
+          ],
+        ),
       ),
     );
   }

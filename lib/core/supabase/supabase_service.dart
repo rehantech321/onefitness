@@ -22,6 +22,7 @@ import "../../data/models/saved_program.dart";
 import "../../data/models/squad.dart";
 import "../../data/models/trainer.dart";
 import "../../data/models/trainer_note.dart";
+import "../../data/models/waitlist_entry.dart";
 import "../../data/models/waiver_doc.dart";
 import "../../data/providers/platform_settings_provider.dart";
 import "supabase_config.dart";
@@ -554,19 +555,29 @@ class SupabaseService {
   /// `profiles`, city on `clients`) — mirrors updateClientRow's field split
   /// in supabaseData.js, trimmed to the fields the app's Edit Profile screen
   /// actually exposes.
-  static Future<void> updateClientRow(String id, {String? name, String? email, String? phone, String? city, String? membershipPlanId}) async {
+  static Future<void> updateClientRow(String id,
+      {String? name, String? email, String? phone, String? photo, String? city, String? birthday, String? membershipPlanId, bool? redeemPointsNextRenewal}) async {
     final profileFields = <String, dynamic>{
       if (name != null) "name": name,
       if (email != null) "email": email,
       if (phone != null) "phone": phone,
+      if (photo != null) "photo_url": photo,
     };
     if (profileFields.isNotEmpty) await client.from("profiles").update(profileFields).eq("id", id);
     final clientFields = <String, dynamic>{
       if (city != null) "city": city,
+      if (birthday != null) "birthday": birthday,
       if (membershipPlanId != null) "membership_plan_id": membershipPlanId,
+      if (redeemPointsNextRenewal != null) "redeem_points_next_renewal": redeemPointsNextRenewal,
     };
     if (clientFields.isNotEmpty) await client.from("clients").update(clientFields).eq("profile_id", id);
   }
+
+  /// Mirrors sendPasswordReset in supabaseData.js — Supabase Auth emails a
+  /// reset link; there's no in-app "change password" for an existing
+  /// account (a brand-new signup sets the initial password directly, see
+  /// signUpClient/signUpCoach).
+  static Future<void> sendPasswordReset(String email) => client.auth.resetPasswordForEmail(email);
 
   /// A coach editing their own profile. `locations` is a list on the real
   /// schema (see `_locationNameFrom`'s doc comment on `bookings.location`
@@ -787,6 +798,52 @@ class SupabaseService {
     await client.from("bookings").delete().eq("id", id);
   }
 
+  static WaitlistEntry _waitlistFromRow(Map<String, dynamic> row) => WaitlistEntry(
+        id: row["id"] as String,
+        clientId: row["client_id"] as String,
+        clientName: row["client_name"] as String? ?? "",
+        trainerId: row["trainer_id"] as String,
+        trainerName: row["trainer_name"] as String? ?? "",
+        date: row["date"] as String,
+        slot: _asInt(row["slot"]) ?? 0,
+        sessionType: row["session_type"] as String,
+        discipline: row["discipline"] as String?,
+        status: row["status"] as String,
+        position: _asInt(row["position"]),
+        addedAt: row["added_at"] as String?,
+        requestedAt: row["requested_at"] as String?,
+        seriesId: row["series_id"] as String?,
+      );
+
+  static Future<List<WaitlistEntry>> loadWaitlist() async {
+    final rows = await client.from("waitlist").select();
+    return _safeMap(rows, _waitlistFromRow);
+  }
+
+  static Future<WaitlistEntry> insertWaitlistEntry(WaitlistEntry e) async {
+    final row = {
+      "client_id": e.clientId,
+      "client_name": e.clientName,
+      "trainer_id": e.trainerId,
+      "trainer_name": e.trainerName,
+      "date": e.date,
+      "slot": e.slot,
+      "session_type": e.sessionType,
+      "discipline": e.discipline,
+      "status": e.status,
+      "position": e.position,
+      "added_at": e.addedAt,
+      "requested_at": e.requestedAt,
+      "series_id": e.seriesId,
+    };
+    final data = await client.from("waitlist").insert(row).select().single();
+    return _waitlistFromRow(data);
+  }
+
+  static Future<void> deleteWaitlistEntry(String id) async {
+    await client.from("waitlist").delete().eq("id", id);
+  }
+
   /// `created_by` defaults server-side to auth.uid() — the owner's app-side
   /// identifier is the literal string "owner", not their real uuid, so it's
   /// never sent from here (same reasoning as insertBlockedTime's JS
@@ -897,6 +954,24 @@ class SupabaseService {
     if (url == null) throw Exception("Couldn't start checkout.");
     return url;
   }
+
+  /// Client's own membership cancellation — mirrors cancelMembership in
+  /// supabaseData.js. preview:true returns what WOULD happen
+  /// ({feeCents, renewsAt, noticeDaysRequired}) without actually canceling,
+  /// so the UI can show the early-termination fee before the client confirms.
+  /// A real (non-preview) call returns {ok:true, feeCents}.
+  static Future<Map<String, dynamic>> cancelMembership({bool preview = false}) =>
+      _invokeFunction("cancel-membership", {"preview": preview});
+
+  /// Client's own upgrade/downgrade of an EXISTING paid subscription —
+  /// mirrors changeMembershipPlan in supabaseData.js. timing: "immediate"
+  /// (real Stripe proration, applied right now) or "end_of_cycle" (switches
+  /// automatically at the next renewal via a Stripe Subscription Schedule —
+  /// returns an `effectiveAt` date). Only valid when the client already has
+  /// a real Stripe subscription and the new plan is also a paid
+  /// subscription — MembershipHubScreen gates this itself before calling.
+  static Future<Map<String, dynamic>> changeMembershipPlan({required String newPlanId, required String timing}) =>
+      _invokeFunction("change-membership-plan", {"newPlanId": newPlanId, "timing": timing});
 
   static Map<String, Map<String, dynamic>> _platformSettingsTabPatch(PlatformSettings s) => {
         "access": {
@@ -1268,6 +1343,10 @@ class SupabaseService {
       sessionCountOverride: _asInt(c["session_count_override"]),
       primaryTrainerId: c["primary_trainer_id"] as String?,
       hasOutstandingBalance: c["has_outstanding_balance"] as bool? ?? false,
+      stripeSubscriptionId: c["stripe_subscription_id"] as String?,
+      pendingPlanId: c["pending_plan_id"] as String?,
+      pendingPlanEffectiveAt: c["pending_plan_effective_at"] as String?,
+      redeemPointsNextRenewal: c["redeem_points_next_renewal"] as bool? ?? false,
     );
   }
 
@@ -1504,6 +1583,7 @@ class SupabaseService {
       allowedTypes: ((j["allowedTypes"] as List?) ?? const []).whereType<String>().toList(),
       priceCents: _asInt(j["priceCents"]) ?? 0,
       archived: j["archived"] as bool? ?? false,
+      paymentType: j["paymentType"] as String?,
     );
   }
 }

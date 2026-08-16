@@ -88,8 +88,16 @@ MeritBadgeDef? meritBadgeByKey(String key) {
   return null;
 }
 
-const kMeritBadgeMinActiveForPoints = 4;
-const kMeritBadgePointsPerActiveBadge = 3;
+/// Mirrors constants/meritBadges.js `MERIT_BADGE_MIN_ACTIVE_FOR_POINTS`/
+/// `MERIT_BADGE_BONUS_POINTS` — fewer than the minimum active (non-revoked)
+/// badges earns 0 bonus points; at or above it, a flat bonus (not
+/// per-badge, and not additional for more badges beyond the minimum).
+/// Gym Citizen's 10 coach-checked sub-badges (gym_citizen_rerack, ...)
+/// never count toward this — they aren't in [kMeritBadges] at all, so
+/// filtering an earned-badge-key set against that catalog already excludes
+/// them, same as MeritBadgeRow's own display filtering.
+const kMeritBadgeMinActiveForPoints = 5;
+const kMeritBadgeBonusPoints = 5;
 
 /// Keyed by MeritBadgeDef.key — mirrors src/constants/badgeAssets.js.
 const kBadgeImagePaths = {
