@@ -339,6 +339,10 @@ class SupabaseService {
         // own entry shape (confirmed against a real row).
         coachName: j["createdBy"] as String?,
         programDays: _safeMap(((j["programDays"] as List?) ?? const []).whereType<Map>(), _programDayFromJson),
+        createdAt: j["createdAt"] as String?,
+        modifiedAt: j["modifiedAt"] as String?,
+        assignedClientId: j["assignedClientId"] as String?,
+        assignedClientName: j["assignedClientName"] as String?,
       );
 
   static ProgramDay _programDayFromJson(Map<String, dynamic> j) => ProgramDay(
@@ -361,6 +365,8 @@ class SupabaseService {
         notes: j["notes"] as String?,
         laterality: j["laterality"] as String? ?? "bilateral",
         supersetId: j["supersetId"] as String?,
+        clientNoteText: j["clientFlag"] is Map ? (j["clientFlag"] as Map)["note"] as String? : null,
+        clientNoteAt: j["clientFlag"] is Map ? (j["clientFlag"] as Map)["at"] as String? : null,
       );
 
   static Future<List<MealDef>> loadCustomMeals() async {
@@ -715,6 +721,12 @@ class SupabaseService {
   /// programs_library — see upsertProgramLibraryEntry.
   static Future<void> updateClientSavedPrograms(String profileId, List<SavedProgram> programs) =>
       upsertClientRecordPatch(profileId, {"savedPrograms": programs.map(_savedProgramToJson).toList()});
+
+  /// The client's live, currently-being-built workout split
+  /// (client.programDays) — mirrors ProgramBuilder.jsx's `persist`, called
+  /// on every single day/exercise edit, not just an explicit "Save".
+  static Future<void> updateClientProgramDays(String profileId, List<ProgramDay> days) =>
+      upsertClientRecordPatch(profileId, {"programDays": days.map(_programDayToJson).toList()});
 
   /// `client_records.data.challengeProgress` — keyed by challenge id, each a
   /// list of manually-logged entries (ClientChallengeDetail.jsx). Not
@@ -1174,6 +1186,10 @@ class SupabaseService {
         "status": p.status,
         "createdBy": p.coachName,
         "programDays": p.programDays.map(_programDayToJson).toList(),
+        "createdAt": p.createdAt,
+        "modifiedAt": p.modifiedAt,
+        "assignedClientId": p.assignedClientId,
+        "assignedClientName": p.assignedClientName,
       };
 
   static Map<String, dynamic> _programDayToJson(ProgramDay d) => {
@@ -1196,6 +1212,7 @@ class SupabaseService {
         "notes": e.notes,
         "laterality": e.laterality,
         "supersetId": e.supersetId,
+        "clientFlag": e.clientNoteText != null ? {"note": e.clientNoteText, "at": e.clientNoteAt} : null,
       };
 
   static Future<void> upsertProgramLibraryEntry(SavedProgram p) => _mergeJsonbUpsert("programs_library", p.id, _savedProgramToJson(p));
@@ -1499,14 +1516,15 @@ class SupabaseService {
     // optional here — an older or partially-populated record just falls
     // back to this model's own defaults for whatever isn't present.
     //
-    // Confirmed against a real (near-empty) record: the top-level keys are
-    // `program` (singular) and `logs` — NOT `savedPrograms`/`workoutLogs`
-    // like this model's field names — plus `comms` and `tourSeen`. Every
-    // real example seen so far had empty arrays for `program`/`logs`, so
-    // their *item* shape (and therefore whether this model's
-    // SavedProgram/WorkoutLogEntry field names are right) is still
-    // unverified — re-check this mapping once a real client has an actual
-    // assigned program or logged workout.
+    // savedPrograms/programDays confirmed against programHelpers.js
+    // (getProgramDays reads client.programDays, falling back to the legacy
+    // singular client.program only for pre-migration records — that legacy
+    // shape isn't modeled here since nothing in this app still writes it)
+    // and SaveProgramDialog.jsx's client.savedPrograms entry shape.
+    // workoutLogs/photos/measurements/signatures/challengeProgress/
+    // trainerNotes/sessionFeedback/habitLogByDate/etc. are NOT parsed here
+    // yet — still open gaps beyond this pass's scope, tracked for a future
+    // audit of this parser.
     final commsRaw = (j["comms"] as List?) ?? const [];
     // Real roster data is messier than any one test account suggests — some
     // client_records rows carry `intake` as an empty array (a stale/older
@@ -1550,6 +1568,8 @@ class SupabaseService {
         ((j["savedNutritionPrograms"] as List?) ?? const []).whereType<Map>().where((m) => m["type"] == "nutrition"),
         (m) => _nutritionProgramEntryFromJson(m.cast<String, dynamic>()),
       ),
+      savedPrograms: _safeMap(((j["savedPrograms"] as List?) ?? const []).whereType<Map>(), (m) => _savedProgramFromJson(m.cast<String, dynamic>())),
+      programDays: _safeMap(((j["programDays"] as List?) ?? const []).whereType<Map>(), (m) => _programDayFromJson(m.cast<String, dynamic>())),
     );
   }
 

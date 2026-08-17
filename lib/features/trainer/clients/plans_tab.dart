@@ -5,13 +5,17 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/saved_program.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../programs/nutrition_builder_screen.dart";
 import "../programs/program_builder_screen.dart";
 
-/// Mirrors PlansArea.jsx — 3 sub-tabs: Training (ProgramBuilder), Nutrition
-/// (NutritionBuilder), Programs (this client's assigned programs + the
-/// shared template library, with Assign/Delete).
+/// Mirrors PlansArea.jsx — 3 sub-tabs: Training (ProgramBuilder, shown
+/// inline — no separate "build" gate), Nutrition (NutritionBuilder),
+/// Programs (this client's assigned programs + the shared template
+/// library, with Assign/Delete). Gated entirely behind "Coaches can edit
+/// client workouts" (Settings → Customize Platform → Coaches) for a
+/// non-owner coach — the owner can always edit.
 class PlansTab extends ConsumerStatefulWidget {
   const PlansTab({super.key, required this.clientId});
 
@@ -23,7 +27,6 @@ class PlansTab extends ConsumerStatefulWidget {
 
 class _PlansTabState extends ConsumerState<PlansTab> {
   String _sub = "training";
-  bool _buildingWorkout = false;
   bool _buildingNutrition = false;
 
   @override
@@ -32,10 +35,18 @@ class _PlansTabState extends ConsumerState<PlansTab> {
     final record = records[widget.clientId];
     if (record == null) return const SizedBox.shrink();
 
-    if (_buildingWorkout) {
-      final active = record.savedPrograms.where((p) => p.status == "active");
-      return ProgramBuilderScreen(clientId: widget.clientId, existing: active.isNotEmpty ? active.first : null);
+    final isOwner = ref.watch(trainerAuthProvider) == "owner";
+    final canEdit = isOwner || ref.watch(platformSettingsProvider).coachCanEditClientWorkouts;
+    if (!canEdit) {
+      return const Padding(
+        padding: EdgeInsets.all(18),
+        child: HintBox(
+          text: "Workout and nutrition program editing is turned off for coaches right now — the owner can turn it "
+              "back on in Settings → Customize Platform, or edit this client's programs from the owner account.",
+        ),
+      );
     }
+
     if (_buildingNutrition) {
       return NutritionBuilderScreen(clientId: widget.clientId, existing: record.nutrition);
     }
@@ -67,56 +78,37 @@ class _PlansTabState extends ConsumerState<PlansTab> {
           ),
         ),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_sub == "training") ...[
-                  if (record.savedPrograms.isEmpty)
-                    const HintBox(text: "No workout program assigned yet.")
-                  else
-                    ...record.savedPrograms.map((p) => AppCard(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                                    Text("${p.programDays.length} day${p.programDays.length == 1 ? '' : 's'}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
-                                  ],
-                                ),
-                              ),
-                              Tag(text: p.status, gold: p.status == "active"),
-                            ],
-                          ),
-                        )),
-                  const SizedBox(height: 8),
-                  BtnGold(full: true, onPressed: () => setState(() => _buildingWorkout = true), child: const Text("Build / Edit Program")),
-                ],
-                if (_sub == "nutrition") ...[
-                  if (record.nutrition == null)
-                    const HintBox(text: "No nutrition program assigned yet.")
-                  else
-                    AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text("Assigned nutrition program", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                          const SizedBox(height: 4),
-                          Text("Training target: ${record.nutrition!.trainingTargets.calories ?? '—'} kcal", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
-                          Text("Rest target: ${record.nutrition!.restTargets.calories ?? '—'} kcal", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
-                        ],
+          child: switch (_sub) {
+            "training" => ProgramBuilderScreen(clientId: widget.clientId),
+            "nutrition" => SingleChildScrollView(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (record.nutrition == null)
+                      const HintBox(text: "No nutrition program assigned yet.")
+                    else
+                      AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Assigned nutrition program", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                            const SizedBox(height: 4),
+                            Text("Training target: ${record.nutrition!.trainingTargets.calories ?? '—'} kcal", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                            Text("Rest target: ${record.nutrition!.restTargets.calories ?? '—'} kcal", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                          ],
+                        ),
                       ),
-                    ),
-                  const SizedBox(height: 8),
-                  BtnGold(full: true, onPressed: () => setState(() => _buildingNutrition = true), child: const Text("Build / Edit Nutrition")),
-                ],
-                if (_sub == "programs") _ProgramsLibrarySection(clientId: widget.clientId, record: record),
-              ],
-            ),
-          ),
+                    const SizedBox(height: 8),
+                    BtnGold(full: true, onPressed: () => setState(() => _buildingNutrition = true), child: const Text("Build / Edit Nutrition")),
+                  ],
+                ),
+              ),
+            _ => SingleChildScrollView(
+                padding: const EdgeInsets.all(18),
+                child: _ProgramsLibrarySection(clientId: widget.clientId, record: record),
+              ),
+          },
         ),
       ],
     );

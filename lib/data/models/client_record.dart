@@ -5,6 +5,7 @@ import "habit_log_entry.dart";
 import "intake_schema.dart";
 import "measurement.dart";
 import "nutrition_plan.dart";
+import "program_day.dart";
 import "progress_photo.dart";
 import "saved_program.dart";
 import "session_feedback.dart";
@@ -26,6 +27,7 @@ class ClientRecord {
     this.onboardingComplete = true,
     this.comms = const [],
     this.savedPrograms = const [],
+    this.programDays = const [],
     this.workoutLogs = const [],
     this.nutrition,
     this.signatures = const [],
@@ -67,8 +69,16 @@ class ClientRecord {
   /// Newest-first communication log (Comms.jsx `client.comms`).
   final List<CommMessage> comms;
 
-  /// Active workout program(s) assigned by the coach (client.savedPrograms).
+  /// Named/assigned workout program snapshots (client.savedPrograms) — the
+  /// history shown in the Programs sub-tab, distinct from [programDays]
+  /// below (the live split currently being built/edited).
   final List<SavedProgram> savedPrograms;
+
+  /// The client's live, currently-being-built workout split
+  /// (client.programDays) — what the Training sub-tab's builder actually
+  /// edits, auto-saved on every change. "Save program" snapshots this into
+  /// [savedPrograms] (+ the shared library) under a name and clears it.
+  final List<ProgramDay> programDays;
 
   /// Completed logged sessions (client.workoutLogs) — drives "Last Wt"
   /// reference values and the per-cycle completed-day checkmarks.
@@ -108,6 +118,7 @@ class ClientRecord {
   ClientRecord copyWith({
     List<CommMessage>? comms,
     List<SavedProgram>? savedPrograms,
+    List<ProgramDay>? programDays,
     List<WorkoutLogEntry>? workoutLogs,
     List<String>? loggedDates,
     List<String>? habits,
@@ -135,6 +146,7 @@ class ClientRecord {
         onboardingComplete: onboardingComplete,
         comms: comms ?? this.comms,
         savedPrograms: savedPrograms ?? this.savedPrograms,
+        programDays: programDays ?? this.programDays,
         workoutLogs: workoutLogs ?? this.workoutLogs,
         nutrition: clearNutrition ? null : (nutrition ?? this.nutrition),
         signatures: signatures ?? this.signatures,
