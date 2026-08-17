@@ -382,8 +382,9 @@ class SupabaseService {
         protein: (j["protein"] as num?)?.toDouble() ?? 0,
         carbs: (j["carbs"] as num?)?.toDouble() ?? 0,
         fats: (j["fats"] as num?)?.toDouble() ?? 0,
-        ingredients: ((j["ingredients"] as List?) ?? const []).whereType<String>().toList(),
+        ingredients: _safeMap(((j["ingredients"] as List?) ?? const []).whereType<Map>(), _ingredientFromJson),
         instructions: j["instructions"] as String?,
+        notes: j["notes"] as String?,
         dietTags: ((j["dietTags"] as List?) ?? const []).whereType<String>().toList(),
         isCustom: j["isCustom"] as bool? ?? true,
       );
@@ -774,6 +775,8 @@ class SupabaseService {
         "rest": mb.rest,
       };
 
+  static Map<String, dynamic> _ingredientToJson(Ingredient i) => i.toJson();
+
   static Map<String, dynamic> _nutritionMealToJson(NutritionMeal m) => {
         "id": m.id,
         "name": m.name,
@@ -783,7 +786,14 @@ class SupabaseService {
         "carbs": m.carbs,
         "fats": m.fats,
         if (m.notes != null) "notes": m.notes,
-        "ingredients": m.ingredients.map((i) => {"item": i.item, if (i.qty != null) "qty": i.qty, if (i.unit != null) "unit": i.unit}).toList(),
+        if (m.instructions != null) "instructions": m.instructions,
+        "isCustom": m.isCustom,
+        "ingredients": m.ingredients.map(_ingredientToJson).toList(),
+        if (m.targetCalories != null) "targetCalories": m.targetCalories,
+        if (m.scale != null) "scale": m.scale,
+        if (m.scaledIngredients != null) "scaledIngredients": m.scaledIngredients!.map(_ingredientToJson).toList(),
+        if (m.scaledMacros != null) "scaledMacros": m.scaledMacros!.toJson(),
+        if (m.overrides.isNotEmpty) "overrides": m.overrides.map((k, v) => MapEntry(k.toString(), v)),
       };
 
   static Map<String, dynamic> _nutritionPlanToJson(NutritionPlan n) => {
@@ -796,6 +806,7 @@ class SupabaseService {
         "smoothies": n.smoothies.map(_nutritionMealToJson).toList(),
         if (n.guidelines != null) "guidelines": n.guidelines,
         if (n.extraGroceryItems != null) "extraGroceryItems": n.extraGroceryItems,
+        "attachments": n.attachments.map((a) => {"id": a.id, "name": a.name, "dataUrl": a.dataUrl, "size": a.size}).toList(),
       };
 
   /// `client_records.data.nutrition` — the client's single active nutrition
@@ -1229,8 +1240,9 @@ class SupabaseService {
         "protein": m.protein,
         "carbs": m.carbs,
         "fats": m.fats,
-        "ingredients": m.ingredients,
+        "ingredients": m.ingredients.map(_ingredientToJson).toList(),
         "instructions": m.instructions,
+        "notes": m.notes,
         "dietTags": m.dietTags,
         "isCustom": m.isCustom,
       };
@@ -1608,9 +1620,12 @@ class SupabaseService {
     return const DaySplit(training: {}, rest: {});
   }
 
+  static Ingredient _ingredientFromJson(Map j) => Ingredient.fromJson(j.cast<String, dynamic>());
+
   static NutritionMeal? _nutritionMealFromJson(dynamic j) {
     if (j is! Map) return null;
     final m = j.cast<String, dynamic>();
+    final overridesRaw = m["overrides"];
     return NutritionMeal(
       id: m["id"]?.toString() ?? "",
       name: m["name"] as String? ?? "",
@@ -1620,10 +1635,16 @@ class SupabaseService {
       carbs: (m["carbs"] as num?)?.toDouble() ?? 0,
       fats: (m["fats"] as num?)?.toDouble() ?? 0,
       notes: m["notes"] as String?,
-      ingredients: _safeMap(
-        ((m["ingredients"] as List?) ?? const []).whereType<Map>(),
-        (i) => Ingredient(item: i["item"] as String? ?? "", qty: i["qty"] as num?, unit: i["unit"] as String?),
-      ),
+      instructions: m["instructions"] as String?,
+      isCustom: m["isCustom"] as bool? ?? false,
+      ingredients: _safeMap(((m["ingredients"] as List?) ?? const []).whereType<Map>(), _ingredientFromJson),
+      targetCalories: _asInt(m["targetCalories"]),
+      scale: (m["scale"] as num?)?.toDouble(),
+      scaledIngredients: m["scaledIngredients"] is List
+          ? _safeMap((m["scaledIngredients"] as List).whereType<Map>(), _ingredientFromJson)
+          : null,
+      scaledMacros: MacroSnapshot.fromJson(m["scaledMacros"]),
+      overrides: overridesRaw is Map ? overridesRaw.map((k, v) => MapEntry(int.tryParse(k.toString()) ?? 0, v.toString())) : const {},
     );
   }
 
@@ -1647,6 +1668,15 @@ class SupabaseService {
       smoothies: _nutritionMealListFromJson(m["smoothies"]),
       guidelines: m["guidelines"] as String?,
       extraGroceryItems: m["extraGroceryItems"] as String?,
+      attachments: _safeMap(
+        ((m["attachments"] as List?) ?? const []).whereType<Map>(),
+        (a) => NutritionAttachment(
+          id: a["id"]?.toString() ?? "",
+          name: a["name"] as String? ?? "",
+          dataUrl: a["dataUrl"] as String? ?? "",
+          size: _asInt(a["size"]) ?? 0,
+        ),
+      ),
     );
   }
 

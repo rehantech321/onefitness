@@ -1,5 +1,6 @@
-/// Mirrors one entry in the meal database catalog (src/data/mealDatabase.js),
-/// trimmed to the fields the coach-facing nutrition builder needs.
+import "nutrition_plan.dart";
+
+/// Mirrors one entry in the meal database catalog (src/data/mealDatabase.js).
 class MealDef {
   const MealDef({
     required this.id,
@@ -11,6 +12,7 @@ class MealDef {
     this.fats = 0,
     this.ingredients = const [],
     this.instructions,
+    this.notes,
     this.dietTags = const [],
     this.isCustom = false,
   });
@@ -22,14 +24,42 @@ class MealDef {
   final double protein;
   final double carbs;
   final double fats;
-  final List<String> ingredients;
+  final List<Ingredient> ingredients;
   final String? instructions;
+  final String? notes;
   final List<String> dietTags;
   final bool isCustom;
 }
 
-/// Mirrors constants/domain.js `DIET_TAGS`.
-const kDietTags = [
-  "High Protein", "Low Carb", "Vegetarian", "Vegan", "Gluten Free", "Dairy Free",
-  "Keto", "Paleo", "Quick", "Meal Prep", "Budget", "Kid Friendly",
+/// Mirrors mealDatabase.js `DIET_TAGS` — the real diet-filter taxonomy (raw
+/// keys stored on each meal/on client diet filters; `label` is display-only).
+const kDietTags = <(String, String)>[
+  ("omnivore", "Omnivore / No Restriction"),
+  ("vegetarian", "Vegetarian"),
+  ("vegan", "Vegan"),
+  ("pescatarian", "Pescatarian"),
+  ("halal", "Halal"),
+  ("kosher", "Kosher"),
+  ("no-pork", "No Pork"),
+  ("no-beef", "No Beef"),
+  ("keto", "Keto"),
+  ("paleo", "Paleo"),
+  ("high-protein", "High-Protein"),
+  ("low-carb", "Low-Carb"),
+];
+
+String dietTagLabel(String key) => kDietTags.firstWhere((t) => t.$1 == key, orElse: () => (key, key)).$2;
+
+/// Mirrors mealDatabase.js `INGREDIENT_CATEGORIES` — grocery-list bucketing
+/// order/labels.
+const kIngredientCategories = <(String, String)>[
+  ("proteins", "Proteins"),
+  ("vegetables", "Vegetables"),
+  ("fruits", "Fruits"),
+  ("grains", "Grains & Starches"),
+  ("dairy", "Dairy & Alternatives"),
+  ("fats", "Healthy Fats"),
+  ("pantry", "Pantry Items"),
+  ("spices", "Seasonings & Spices"),
+  ("beverages", "Beverages"),
 ];

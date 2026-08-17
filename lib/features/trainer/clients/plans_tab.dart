@@ -27,7 +27,6 @@ class PlansTab extends ConsumerStatefulWidget {
 
 class _PlansTabState extends ConsumerState<PlansTab> {
   String _sub = "training";
-  bool _buildingNutrition = false;
 
   @override
   Widget build(BuildContext context) {
@@ -45,10 +44,6 @@ class _PlansTabState extends ConsumerState<PlansTab> {
               "back on in Settings → Customize Platform, or edit this client's programs from the owner account.",
         ),
       );
-    }
-
-    if (_buildingNutrition) {
-      return NutritionBuilderScreen(clientId: widget.clientId, existing: record.nutrition);
     }
 
     return Column(
@@ -80,30 +75,7 @@ class _PlansTabState extends ConsumerState<PlansTab> {
         Expanded(
           child: switch (_sub) {
             "training" => ProgramBuilderScreen(clientId: widget.clientId),
-            "nutrition" => SingleChildScrollView(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (record.nutrition == null)
-                      const HintBox(text: "No nutrition program assigned yet.")
-                    else
-                      AppCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Assigned nutrition program", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                            const SizedBox(height: 4),
-                            Text("Training target: ${record.nutrition!.trainingTargets.calories ?? '—'} kcal", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
-                            Text("Rest target: ${record.nutrition!.restTargets.calories ?? '—'} kcal", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
-                          ],
-                        ),
-                      ),
-                    const SizedBox(height: 8),
-                    BtnGold(full: true, onPressed: () => setState(() => _buildingNutrition = true), child: const Text("Build / Edit Nutrition")),
-                  ],
-                ),
-              ),
+            "nutrition" => NutritionBuilderScreen(clientId: widget.clientId, existing: record.nutrition),
             _ => SingleChildScrollView(
                 padding: const EdgeInsets.all(18),
                 child: _ProgramsLibrarySection(clientId: widget.clientId, record: record),

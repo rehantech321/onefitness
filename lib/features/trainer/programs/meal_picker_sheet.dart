@@ -88,15 +88,15 @@ class _MealPickerBodyState extends ConsumerState<_MealPickerBody> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: kDietTags.map((t) {
-                final on = _tags.contains(t);
+                final on = _tags.contains(t.$1);
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: InkWell(
-                    onTap: () => setState(() => on ? _tags.remove(t) : _tags.add(t)),
+                    onTap: () => setState(() => on ? _tags.remove(t.$1) : _tags.add(t.$1)),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                       decoration: BoxDecoration(color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card, border: Border.all(color: on ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(14)),
-                      child: Text(t, style: TextStyle(fontSize: 10, color: on ? AppColors.gold : AppColors.mute)),
+                      child: Text(t.$2, style: TextStyle(fontSize: 10, color: on ? AppColors.gold : AppColors.mute)),
                     ),
                   ),
                 );
