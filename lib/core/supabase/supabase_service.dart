@@ -763,6 +763,23 @@ class SupabaseService {
     await client.from("client_records").upsert({"profile_id": profileId, "data": {...current, "intake": nextIntake}});
   }
 
+  /// `client_records.data.tourSeen` — one-time "seen" flags for the
+  /// Dashboard/Drawer coachmark walkthroughs (Coachmark.jsx), keyed
+  /// {dashboard, drawer} same as the web. Fetch-then-merge for the same
+  /// reason as updateClientIntake: a plain patch would blank out whichever
+  /// of the two flags isn't being set here.
+  static Future<void> updateClientTourSeen(String profileId, {bool? dashboard, bool? drawer}) async {
+    final row = await client.from("client_records").select("data").eq("profile_id", profileId).maybeSingle();
+    final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
+    final currentTourSeen = (current["tourSeen"] as Map?)?.cast<String, dynamic>() ?? const {};
+    final nextTourSeen = {
+      ...currentTourSeen,
+      if (dashboard != null) "dashboard": dashboard,
+      if (drawer != null) "drawer": drawer,
+    };
+    await client.from("client_records").upsert({"profile_id": profileId, "data": {...current, "tourSeen": nextTourSeen}});
+  }
+
   static Map<String, dynamic> _macroTargetsToJson(MacroTargets t) => t.asMap();
 
   static Map<String, dynamic> _targetsSplitToJson(DaySplit<MacroTargets> t) => {
@@ -1582,6 +1599,8 @@ class SupabaseService {
       ),
       savedPrograms: _safeMap(((j["savedPrograms"] as List?) ?? const []).whereType<Map>(), (m) => _savedProgramFromJson(m.cast<String, dynamic>())),
       programDays: _safeMap(((j["programDays"] as List?) ?? const []).whereType<Map>(), (m) => _programDayFromJson(m.cast<String, dynamic>())),
+      tourSeenDashboard: j["tourSeen"] is Map ? (j["tourSeen"] as Map)["dashboard"] as bool? ?? false : false,
+      tourSeenDrawer: j["tourSeen"] is Map ? (j["tourSeen"] as Map)["drawer"] as bool? ?? false : false,
     );
   }
 

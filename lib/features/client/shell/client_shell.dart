@@ -8,6 +8,7 @@ import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
+import "../../../data/models/tour_step.dart";
 import "../../../data/providers/client_providers.dart";
 import "../badges/badge_gallery_screen.dart";
 import "../booking/advanced_booking_screen.dart";
@@ -85,17 +86,60 @@ const _titles = {
 /// nav wrapping a screen-keyed content area. Uses Scaffold's own drawer /
 /// bottomNavigationBar slots (rather than a hand-rolled Stack overlay) so
 /// sizing/safe-area/z-order are all handled by the framework.
-class ClientShell extends ConsumerWidget {
+class ClientShell extends ConsumerStatefulWidget {
   const ClientShell({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ClientShell> createState() => _ClientShellState();
+}
+
+class _ClientShellState extends ConsumerState<ClientShell> {
+  OverlayEntry? _dashboardTourEntry;
+
+  /// Mirrors ClientShell.jsx's `screen === "dashboard" && !drawer &&
+  /// !client.tourSeen?.dashboard` — a plain declarative render tied to
+  /// `screen`, so (unlike the drawer tour, which only ever gets one chance
+  /// per Drawer open) it reappears every time the client lands back on the
+  /// dashboard until they actually Skip/finish it.
+  void _syncDashboardTour(String screen, bool tourSeenDashboard) {
+    final shouldShow = screen == "dashboard" && !tourSeenDashboard;
+    if (shouldShow && _dashboardTourEntry == null) {
+      final entry = OverlayEntry(
+        builder: (ctx) => CoachmarkOverlay(steps: kDashboardTourSteps, keys: kDashboardTourKeys, onDone: _finishDashboardTour),
+      );
+      _dashboardTourEntry = entry;
+      Overlay.of(context, rootOverlay: true).insert(entry);
+    } else if (!shouldShow && _dashboardTourEntry != null) {
+      _dashboardTourEntry!.remove();
+      _dashboardTourEntry = null;
+    }
+  }
+
+  void _finishDashboardTour() {
+    _dashboardTourEntry?.remove();
+    _dashboardTourEntry = null;
+    final id = ref.read(clientInfoProvider).id;
+    ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(tourSeenDashboard: true));
+    SupabaseService.updateClientTourSeen(id, dashboard: true).catchError((Object _) {});
+  }
+
+  @override
+  void dispose() {
+    _dashboardTourEntry?.remove();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final screen = ref.watch(clientScreenProvider);
     final info = ref.watch(clientInfoProvider);
     final client = ref.watch(clientRecordProvider);
     final bookings = ref.watch(clientBookingsProvider);
     final earnedBadges = ref.watch(earnedBadgesProvider);
     final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncDashboardTour(screen, client.tourSeenDashboard);
+    });
 
     void go(String key) {
       ref.read(clientScreenProvider.notifier).go(key);
@@ -152,6 +196,7 @@ class ClientShell extends ConsumerWidget {
                 child: Row(
                   children: [
                     Builder(
+                      key: kDashboardTourKeys["dash-hamburger"],
                       builder: (context) => IconButton(
                         onPressed: () => Scaffold.of(context).openDrawer(),
                         icon: const Icon(LucideIcons.menu, size: 22, color: AppColors.txt),
@@ -267,6 +312,7 @@ class ClientShell extends ConsumerWidget {
               children: _bottomItems.map((item) {
                 final on = screen == item.key;
                 return Expanded(
+                  key: kDashboardTourKeys["dash-nav-${item.key}"],
                   child: InkWell(
                     onTap: item.key == "booking" ? goBooking : () => go(item.key),
                     child: Padding(
@@ -298,7 +344,7 @@ class ClientShell extends ConsumerWidget {
   }
 }
 
-class _ClientDrawer extends ConsumerWidget {
+class _ClientDrawer extends ConsumerStatefulWidget {
   const _ClientDrawer({required this.info, required this.screen, required this.onGo});
 
   final ClientInfo info;
@@ -306,7 +352,51 @@ class _ClientDrawer extends ConsumerWidget {
   final void Function(String) onGo;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ClientDrawer> createState() => _ClientDrawerState();
+}
+
+class _ClientDrawerState extends ConsumerState<_ClientDrawer> {
+  OverlayEntry? _tourEntry;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mirrors ClientShell.jsx's `drawer && !client.tourSeen?.drawer` — the
+    // Drawer route only exists while open, so (unlike the dashboard tour)
+    // this only ever gets one chance to show per open: inserted here on
+    // mount, removed in dispose() whichever way the Drawer closes (Skip/
+    // Got it, swipe-to-dismiss, tapping outside, or the back button).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !ref.read(clientRecordProvider).tourSeenDrawer) _showTour();
+    });
+  }
+
+  void _showTour() {
+    final entry = OverlayEntry(
+      builder: (ctx) => CoachmarkOverlay(steps: kDrawerTourSteps, keys: kDrawerTourKeys, onDone: _finishTour),
+    );
+    _tourEntry = entry;
+    Overlay.of(context, rootOverlay: true).insert(entry);
+  }
+
+  void _finishTour() {
+    _tourEntry?.remove();
+    _tourEntry = null;
+    ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(tourSeenDrawer: true));
+    SupabaseService.updateClientTourSeen(widget.info.id, drawer: true).catchError((Object _) {});
+  }
+
+  @override
+  void dispose() {
+    _tourEntry?.remove();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final info = widget.info;
+    final screen = widget.screen;
+    final onGo = widget.onGo;
     return Drawer(
       backgroundColor: AppColors.drawerBg,
       width: 270,
@@ -349,6 +439,7 @@ class _ClientDrawer extends ConsumerWidget {
                   children: _drawerItems.map((item) {
                     final on = screen == item.key;
                     return InkWell(
+                      key: kDrawerTourKeys["drawer-${item.key}"],
                       onTap: () => onGo(item.key),
                       borderRadius: BorderRadius.circular(8),
                       child: Container(

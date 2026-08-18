@@ -9,6 +9,7 @@ export "avatar.dart";
 export "back_bar.dart";
 export "badge_earned_modal.dart";
 export "coach_profile_card.dart";
+export "coachmark_overlay.dart";
 export "collapsible_section.dart";
 export "flag_alert.dart";
 export "hint_box.dart";

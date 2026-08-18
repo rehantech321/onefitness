@@ -134,6 +134,8 @@ class ClientRecord {
     List<TrainerNote>? trainerNotes,
     List<SessionFeedbackEntry>? sessionFeedback,
     List<NutritionProgramEntry>? savedNutritionPrograms,
+    bool? tourSeenDashboard,
+    bool? tourSeenDrawer,
   }) =>
       ClientRecord(
         id: id,
@@ -141,8 +143,8 @@ class ClientRecord {
         habits: habits ?? this.habits,
         customHabits: customHabits ?? this.customHabits,
         habitLogByDate: habitLogByDate ?? this.habitLogByDate,
-        tourSeenDashboard: tourSeenDashboard,
-        tourSeenDrawer: tourSeenDrawer,
+        tourSeenDashboard: tourSeenDashboard ?? this.tourSeenDashboard,
+        tourSeenDrawer: tourSeenDrawer ?? this.tourSeenDrawer,
         onboardingComplete: onboardingComplete,
         comms: comms ?? this.comms,
         savedPrograms: savedPrograms ?? this.savedPrograms,
