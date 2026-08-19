@@ -140,6 +140,9 @@ BookingCheck canBookOffering(
   if (info.membershipPaused) {
     return const BookingCheck(ok: false, reason: "paused", msg: "Your membership is currently paused — ask your gym to resume it before booking.");
   }
+  if (info.membershipCancelsAt != null && date.compareTo(info.membershipCancelsAt!) > 0) {
+    return BookingCheck(ok: false, reason: "membership-ending", msg: "Your membership ends on ${info.membershipCancelsAt} — you can't book sessions after that date.");
+  }
   if (!plan.allowedTypes.contains(sessionType)) {
     return BookingCheck(ok: false, reason: "wrong-type", msg: "Your ${plan.name} doesn't cover this session type.");
   }
@@ -163,6 +166,14 @@ String addDaysIso(String iso, int n) => isoDate(DateTime.parse(iso).add(Duration
 
 /// Mirrors constants/domain.js `isAssessmentType`.
 bool isAssessmentType(String sessionType) => sessionType == "assessment-call" || sessionType == "assessment-in-person";
+
+/// Mirrors lib/format.js `cityFromAddress` — best-effort city extraction
+/// from a "Street, City, State ZIP" address string.
+String? cityFromAddress(String? address) {
+  if (address == null || address.isEmpty) return null;
+  final parts = address.split(",");
+  return parts.length >= 2 ? parts[1].trim() : address;
+}
 
 /// Mirrors AdvancedBookingFlow.jsx `occurrenceDate` — the Nth occurrence of
 /// [weekday] on/after [startDate], N weeks later.

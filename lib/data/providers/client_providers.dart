@@ -23,6 +23,19 @@ class ClientSignedIn extends Notifier<bool> {
 
 final clientSignedInProvider = NotifierProvider<ClientSignedIn, bool>(ClientSignedIn.new);
 
+/// Whether ClientAuthScreen is currently showing ClientSignupScreen instead
+/// of its sign-in form — read by the root shell to hide the Coach/Client
+/// header toggle on the create-profile page (the user has already committed
+/// to signing up as a client, so switching modes mid-form doesn't apply).
+class ClientSigningUp extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) => state = value;
+}
+
+final clientSigningUpProvider = NotifierProvider<ClientSigningUp, bool>(ClientSigningUp.new);
+
 /// The signed-in client's roster/account record (App.jsx `info`).
 class ClientInfoNotifier extends Notifier<ClientInfo> {
   @override

@@ -19,13 +19,24 @@ import "../../../data/providers/trainer_providers.dart";
 
 const _kWeekdayOptions = [(1, "Mon"), (2, "Tue"), (3, "Wed"), (4, "Thu"), (5, "Fri"), (6, "Sat")]; // Sunday closed, same as everywhere else
 
+/// One "days of the week + time" combination — the client can stack
+/// several of these (e.g. "Mon/Wed 6am" + "Fri 5pm") instead of a single
+/// shared time across every chosen day.
+class _Bracket {
+  _Bracket({List<int>? days, this.time = 9 * 60}) : days = days ?? [];
+  final List<int> days;
+  int time;
+}
+
 class _Occurrence {
-  _Occurrence({required this.date, required this.weekday, required this.status, this.reason, this.decision});
+  _Occurrence({required this.date, required this.weekday, required this.slot, required this.status, this.reason, this.decision, this.trainerId});
   final String date;
   final int weekday;
+  final int slot;
   String status; // "bookable" | "full" | "skipped"
   String? reason;
   String? decision; // "waitlist" | "skip" — "full" only
+  String? trainerId; // set once resolved (auto-matched coach), null while "full"/"skipped"
 }
 
 class _Summary {
@@ -35,10 +46,17 @@ class _Summary {
   final int skipped;
 }
 
-/// Mirrors AdvancedBookingFlow.jsx — set a weekly pattern (days + time) and
-/// book every matching occurrence over a chosen range at once, instead of
-/// picking one session at a time. A full slot can be requested for the
-/// owner's waitlist (status "pending-approval") rather than skipped outright.
+/// Mirrors AdvancedBookingFlow.jsx — set a weekly pattern (one or more
+/// day/time brackets) and book every matching occurrence over a chosen
+/// range at once, instead of picking one session at a time. Diverges from
+/// the web source by design, per product direction: no explicit "choose
+/// your coach" step — the client's own city (already collected at
+/// signup) narrows which coaches are considered, and each occurrence
+/// auto-matches whichever eligible coach actually teaches that day/time
+/// and has room, the same way the regular (non-advanced) booking screen
+/// already shows a coach per slot rather than asking upfront. A full slot
+/// can still be requested for the owner's waitlist ("pending-approval")
+/// rather than skipped outright.
 class AdvancedBookingScreen extends ConsumerStatefulWidget {
   const AdvancedBookingScreen({super.key, required this.onDone});
 
@@ -49,25 +67,17 @@ class AdvancedBookingScreen extends ConsumerStatefulWidget {
 }
 
 class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
-  String _step = "type"; // type | discipline | coach | pattern | range | gate | review | summary
+  String _step = "type"; // type | discipline | pattern | range | review | summary
   String? _sessionType;
   String? _discipline;
-  String? _trainerId;
-  final List<int> _days = [];
-  int _timeSlot = 9 * 60; // minutes from midnight, default 9:00 AM
+  List<Trainer> _eligibleTrainers = [];
+  final List<_Bracket> _brackets = [_Bracket()];
   String? _rangeChoice;
-  List<int> _availableWeekdays = [];
-  List<int> _unavailableWeekdays = [];
   List<_Occurrence> _occurrences = [];
   bool _busy = false;
   _Summary? _summary;
 
   void _back() => widget.onDone();
-
-  Trainer? _trainerOf(List<Trainer> trainers) {
-    final matches = trainers.where((t) => t.id == _trainerId);
-    return matches.isNotEmpty ? matches.first : null;
-  }
 
   Widget _breadcrumb(VoidCallback onBack) => TextButton.icon(
         onPressed: onBack,
@@ -81,70 +91,95 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
         label: const Text("Back", style: TextStyle(fontSize: 13)),
       );
 
-  void _computeOccurrences({
-    required ClientInfo info,
-    required MembershipPlan plan,
-    required List<Booking> bookings,
-    required Trainer trainer,
-  }) {
-    final slot = _timeSlot;
+  /// Narrows to coaches in the client's own city offering this session
+  /// type + discipline at all — "city auto-detected" replaces the old
+  /// explicit coach picker. Falls back to every coach offering it if the
+  /// client has no city on file, or none of them match it, rather than
+  /// hard-blocking booking over a missing/mistyped city string.
+  List<Trainer> _matchCoaches(List<Trainer> trainers, String? city) {
+    bool offersIt(Trainer t) {
+      for (var wd = 0; wd <= 6; wd++) {
+        if (trainerOfferings(t, wd).any((o) => o.sessionType == _sessionType && o.discipline == _discipline)) return true;
+      }
+      return false;
+    }
+
+    final offering = trainers.where(offersIt).toList();
+    if (city == null || city.trim().isEmpty) return offering;
+    final inCity = offering.where((t) {
+      final trainerCity = cityFromAddress(t.locationAddress);
+      return trainerCity != null && trainerCity.trim().toLowerCase() == city.trim().toLowerCase();
+    }).toList();
+    return inCity.isNotEmpty ? inCity : offering;
+  }
+
+  void _computeOccurrences({required ClientInfo info, required MembershipPlan plan, required List<Booking> bookings}) {
     final remaining = (effectiveMaxSessions(info, plan) - sessionsUsedThisPeriod(info, plan, bookings)).clamp(0, 1 << 30);
     final noBudgetCap = isAssessmentType(_sessionType!);
+    final totalWeeklySlots = _brackets.fold<int>(0, (sum, b) => sum + b.days.length);
     final weeksCount = _rangeChoice == "2w"
         ? 2
         : _rangeChoice == "4w"
             ? 4
-            : (remaining / (_availableWeekdays.isEmpty ? 1 : _availableWeekdays.length)).ceil().clamp(1, 1 << 30);
+            : (remaining / (totalWeeklySlots == 0 ? 1 : totalWeeklySlots)).ceil().clamp(1, 1 << 30);
 
-    final candidates = <(String, int)>[];
+    final candidates = <(String, int, int)>[]; // date, weekday, slot
     for (var w = 0; w < weeksCount; w++) {
-      for (final wd in _availableWeekdays) {
-        final date = occurrenceDate(isoToday(), wd, w);
-        if (date.compareTo(isoToday()) >= 0) candidates.add((date, wd));
+      for (final bracket in _brackets) {
+        for (final wd in bracket.days) {
+          final date = occurrenceDate(isoToday(), wd, w);
+          if (date.compareTo(isoToday()) >= 0) candidates.add((date, wd, bracket.time));
+        }
       }
     }
-    candidates.sort((a, b) => a.$1.compareTo(b.$1));
+    candidates.sort((a, b) {
+      final byDate = a.$1.compareTo(b.$1);
+      return byDate != 0 ? byDate : a.$3.compareTo(b.$3);
+    });
 
     final provisional = [...bookings];
     var usedBudget = 0;
     _occurrences = candidates.map((c) {
-      final atCap = bookedCount(provisional, trainer.id, c.$1, slot) >= capFor(_sessionType!);
-      final budgetLeft = noBudgetCap ? true : (remaining - usedBudget) > 0;
-      final check = canBookOffering(info, _sessionType!, provisional, c.$1, slot, plan);
-      if (check.ok && !atCap && budgetLeft) {
-        provisional.add(Booking(
-          id: "",
-          clientId: info.id,
-          trainerId: trainer.id,
-          date: c.$1,
-          slot: slot,
-          sessionType: _sessionType!,
-          discipline: _discipline!,
-        ));
-        if (!noBudgetCap) usedBudget++;
-        return _Occurrence(date: c.$1, weekday: c.$2, status: "bookable");
+      final date = c.$1, weekday = c.$2, slot = c.$3;
+
+      Trainer? match;
+      var anyOffered = false;
+      for (final t in _eligibleTrainers) {
+        final offers = trainerOfferings(t, weekday).any((o) => o.sessionType == _sessionType && o.discipline == _discipline && o.slot == slot);
+        if (!offers) continue;
+        anyOffered = true;
+        if (bookedCount(provisional, t.id, date, slot) < capFor(_sessionType!)) {
+          match = t;
+          break;
+        }
       }
-      if (atCap) return _Occurrence(date: c.$1, weekday: c.$2, status: "full");
-      return _Occurrence(date: c.$1, weekday: c.$2, status: "skipped", reason: !budgetLeft ? "No sessions left in your plan" : (check.msg ?? check.reason ?? "Unavailable"));
+
+      if (match == null) {
+        if (!anyOffered) {
+          return _Occurrence(date: date, weekday: weekday, slot: slot, status: "skipped", reason: "No coach offers this at that time");
+        }
+        return _Occurrence(date: date, weekday: weekday, slot: slot, status: "full");
+      }
+
+      final budgetLeft = noBudgetCap ? true : (remaining - usedBudget) > 0;
+      final check = canBookOffering(info, _sessionType!, provisional, date, slot, plan);
+      if (check.ok && budgetLeft) {
+        provisional.add(Booking(id: "", clientId: info.id, trainerId: match.id, date: date, slot: slot, sessionType: _sessionType!, discipline: _discipline!));
+        if (!noBudgetCap) usedBudget++;
+        return _Occurrence(date: date, weekday: weekday, slot: slot, status: "bookable", trainerId: match.id);
+      }
+      return _Occurrence(date: date, weekday: weekday, slot: slot, status: "skipped", reason: !budgetLeft ? "No sessions left in your plan" : (check.msg ?? check.reason ?? "Unavailable"));
     }).toList();
   }
 
-  Future<void> _confirm({required ClientInfo info, required Trainer trainer}) async {
+  Future<void> _confirm({required ClientInfo info, required List<Trainer> trainers}) async {
     setState(() => _busy = true);
     final seriesId = const Uuid().v4();
     var booked = 0, waitlisted = 0;
     var skipped = _occurrences.where((o) => o.status == "skipped").length;
     for (final o in _occurrences) {
-      if (o.status == "bookable") {
-        final draft = Booking(
-          id: "",
-          clientId: info.id,
-          trainerId: trainer.id,
-          date: o.date,
-          slot: _timeSlot,
-          sessionType: _sessionType!,
-          discipline: _discipline!,
-        );
+      if (o.status == "bookable" && o.trainerId != null) {
+        final draft = Booking(id: "", clientId: info.id, trainerId: o.trainerId!, date: o.date, slot: o.slot, sessionType: _sessionType!, discipline: _discipline!);
         try {
           final saved = await SupabaseService.insertBooking(draft);
           ref.read(clientBookingsProvider.notifier).addBooking(saved);
@@ -154,15 +189,30 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
           skipped++;
         }
       } else if (o.status == "full" && o.decision == "waitlist") {
+        // A "full" occurrence never resolved to a specific coach — request
+        // the waitlist against whichever eligible coach actually teaches
+        // this slot (there's always at least one, or it would have been
+        // "skipped" instead).
+        Trainer? anyTeaching;
+        for (final t in _eligibleTrainers) {
+          if (trainerOfferings(t, o.weekday).any((of) => of.sessionType == _sessionType && of.discipline == _discipline && of.slot == o.slot)) {
+            anyTeaching = t;
+            break;
+          }
+        }
+        if (anyTeaching == null) {
+          skipped++;
+          continue;
+        }
         try {
           final entry = await SupabaseService.insertWaitlistEntry(WaitlistEntry(
             id: "",
             clientId: info.id,
             clientName: info.name,
-            trainerId: trainer.id,
-            trainerName: trainer.name,
+            trainerId: anyTeaching.id,
+            trainerName: anyTeaching.name,
             date: o.date,
-            slot: _timeSlot,
+            slot: o.slot,
             sessionType: _sessionType!,
             discipline: _discipline,
             status: "pending-approval",
@@ -240,136 +290,86 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
           title: "Discipline",
           children: options.isEmpty
               ? [HintBox(text: "No ${sessionTypeLabel(_sessionType!).toLowerCase()} sessions are set up yet.")]
-              : options.map((e) => _OptionCard(label: e.value, onTap: () => setState(() {
-                    _discipline = e.key;
-                    _step = "coach";
-                  }))).toList(),
-        );
-
-      case "coach":
-        final offering = trainers.where((t) {
-          for (var wd = 0; wd <= 6; wd++) {
-            if (trainerOfferings(t, wd).any((o) => o.sessionType == _sessionType && o.discipline == _discipline)) return true;
-          }
-          return false;
-        }).toList();
-        return _StepScaffold(
-          breadcrumb: _breadcrumb(() => setState(() => _step = "discipline")),
-          title: "Choose your coach",
-          children: offering.isEmpty
-              ? [HintBox(text: "No coach currently offers ${disciplineLabel(_discipline!)}.")]
-              : offering.map((t) => _OptionCard(
-                    label: t.name,
+              : options.map((e) => _OptionCard(
+                    label: e.value,
                     onTap: () => setState(() {
-                      _trainerId = t.id;
+                      _discipline = e.key;
+                      _eligibleTrainers = _matchCoaches(trainers, info.city);
+                      _brackets
+                        ..clear()
+                        ..add(_Bracket());
                       _step = "pattern";
                     }),
-                    onMeetCoach: () => CoachProfileCard.show(context, t),
                   )).toList(),
         );
 
       case "pattern":
-        final trainer = _trainerOf(trainers);
-        return StatefulBuilder(builder: (context, setLocalState) {
-          void toggleDay(int d) => setState(() {
-                if (_days.contains(d)) {
-                  _days.remove(d);
-                } else {
-                  _days.add(d);
-                }
-              });
-          return SingleChildScrollView(
+        if (_eligibleTrainers.isEmpty) {
+          return Padding(
             padding: const EdgeInsets.all(18),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _breadcrumb(() => setState(() => _step = "coach")),
+                _breadcrumb(() => setState(() => _step = "discipline")),
                 const SizedBox(height: 10),
-                const SectionLabel("Set your weekly pattern"),
-                Text(
-                  "${sessionTypeLabel(_sessionType!)} · ${disciplineLabel(_discipline!)} · ${trainer?.name ?? ""}",
-                  style: const TextStyle(fontSize: 12, color: AppColors.mute),
-                ),
-                const SizedBox(height: 16),
-                const Text("Days of the week", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: _kWeekdayOptions.map((opt) {
-                    final on = _days.contains(opt.$1);
-                    return InkWell(
-                      onTap: () => toggleDay(opt.$1),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: on ? AppColors.gold : AppColors.line),
-                          color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
-                        ),
-                        child: Text(opt.$2, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: on ? AppColors.gold : AppColors.mute)),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                const Text("Time", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: () async {
-                    final picked = await showTimePicker(
-                      context: context,
-                      initialTime: TimeOfDay(hour: _timeSlot ~/ 60, minute: _timeSlot % 60),
-                    );
-                    if (picked != null) setState(() => _timeSlot = picked.hour * 60 + picked.minute);
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
-                    child: Text(fmtSlot(_timeSlot), style: const TextStyle(fontSize: 14, color: AppColors.txt)),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    "Any time — if ${trainer?.name ?? "your coach"} doesn't normally teach at this time on a chosen day, we'll flag it before booking anything.",
-                    style: const TextStyle(fontSize: 11, color: AppColors.mute),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                BtnGold(
-                  onPressed: _days.isEmpty ? null : () => setState(() => _step = "range"),
-                  full: true,
-                  child: const Text("Next"),
-                ),
+                HintBox(text: "No coach currently offers ${disciplineLabel(_discipline!)}."),
               ],
             ),
           );
-        });
+        }
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _breadcrumb(() => setState(() => _step = "discipline")),
+              const SizedBox(height: 10),
+              const SectionLabel("Set your weekly pattern"),
+              Text(
+                "${sessionTypeLabel(_sessionType!)} · ${disciplineLabel(_discipline!)} · ${info.city?.trim().isNotEmpty == true ? info.city : "Any location"}",
+                style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              ),
+              const SizedBox(height: 16),
+              ..._brackets.asMap().entries.map((entry) => _BracketEditor(
+                    index: entry.key,
+                    bracket: entry.value,
+                    canRemove: _brackets.length > 1,
+                    onChanged: () => setState(() {}),
+                    onRemove: () => setState(() => _brackets.removeAt(entry.key)),
+                  )),
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 4),
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _brackets.add(_Bracket())),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.gold, padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
+                  icon: const Icon(LucideIcons.plus, size: 15),
+                  label: const Text("Add Another Bracket", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 6, bottom: 16),
+                child: Text(
+                  "Any time — if it isn't normally taught on a chosen day, we'll auto-match you with another coach or flag it before booking anything.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
+                ),
+              ),
+              BtnGold(
+                onPressed: _brackets.any((b) => b.days.isNotEmpty) ? () => setState(() => _step = "range") : null,
+                full: true,
+                child: const Text("Next"),
+              ),
+            ],
+          ),
+        );
 
       case "range":
         final remaining = (effectiveMaxSessions(info, plan) - sessionsUsedThisPeriod(info, plan, bookings)).clamp(0, 1 << 30);
         void chooseRange(String choice) {
-          final trainer = _trainerOf(trainers);
-          if (trainer == null) return;
-          final avail = <int>[], unavail = <int>[];
-          for (final wd in _days) {
-            final offered = trainerOfferings(trainer, wd).any((o) => o.sessionType == _sessionType && o.discipline == _discipline && o.slot == _timeSlot);
-            (offered ? avail : unavail).add(wd);
-          }
           setState(() {
             _rangeChoice = choice;
-            _availableWeekdays = avail;
-            _unavailableWeekdays = unavail;
-            if (unavail.isNotEmpty) {
-              _step = "gate";
-            } else {
-              _occurrences = [];
-              if (avail.isNotEmpty) _computeOccurrences(info: info, plan: plan, bookings: bookings, trainer: trainer);
-              _step = "review";
-            }
+            _occurrences = [];
+            _computeOccurrences(info: info, plan: plan, bookings: bookings);
+            _step = "review";
           });
         }
 
@@ -389,51 +389,16 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
           ],
         );
 
-      case "gate":
-        final dayLabels = _unavailableWeekdays.map((wd) => _kWeekdayOptions.firstWhere((o) => o.$1 == wd).$2).join("/");
-        final trainer = _trainerOf(trainers);
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(18, 40, 18, 18),
-          child: Column(
-            children: [
-              const Icon(LucideIcons.circleSlash, size: 36, color: Color(0xFFD68A4F)),
-              const SizedBox(height: 16),
-              Text("$dayLabels at ${fmtSlot(_timeSlot)} isn't available", style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800), textAlign: TextAlign.center),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  "${trainer?.name ?? "Your coach"} doesn't teach ${sessionTypeLabel(_sessionType!)} · ${disciplineLabel(_discipline!)} at that time on $dayLabels."
-                  "${_availableWeekdays.isNotEmpty ? " You can continue with your other selected days, or cancel this request." : " None of your selected days are available with this coach at this time."}",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13, color: AppColors.mute, height: 1.6),
-                ),
-              ),
-              const SizedBox(height: 26),
-              if (_availableWeekdays.isNotEmpty)
-                BtnGold(
-                  full: true,
-                  onPressed: () {
-                    if (trainer == null) return;
-                    setState(() {
-                      _occurrences = [];
-                      _computeOccurrences(info: info, plan: plan, bookings: bookings, trainer: trainer);
-                      _step = "review";
-                    });
-                  },
-                  child: Text("Continue without $dayLabels"),
-                ),
-              const SizedBox(height: 10),
-              BtnGhost(full: true, onPressed: _back, child: const Text("Cancel request")),
-            ],
-          ),
-        );
-
       case "review":
-        final trainer = _trainerOf(trainers);
         final bookableCount = _occurrences.where((o) => o.status == "bookable").length;
         final fullOnes = _occurrences.where((o) => o.status == "full").toList();
         final unresolvedFull = fullOnes.any((o) => o.decision == null);
+        Trainer? trainerFor(String? id) {
+          if (id == null) return null;
+          final m = trainers.where((t) => t.id == id);
+          return m.isNotEmpty ? m.first : null;
+        }
+
         return SingleChildScrollView(
           padding: const EdgeInsets.all(18),
           child: Column(
@@ -443,7 +408,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
               const SizedBox(height: 10),
               SectionLabel("Review — ${_occurrences.length} session${_occurrences.length != 1 ? "s" : ""} in range"),
               Text(
-                "${sessionTypeLabel(_sessionType!)} · ${disciplineLabel(_discipline!)} · ${trainer?.name ?? ""} · ${fmtSlot(_timeSlot)}",
+                "${sessionTypeLabel(_sessionType!)} · ${disciplineLabel(_discipline!)}",
                 style: const TextStyle(fontSize: 12, color: AppColors.mute),
               ),
               const SizedBox(height: 14),
@@ -451,6 +416,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
                 const HintBox(text: "No sessions in range.")
               else
                 ..._occurrences.map((o) {
+                  final coach = trainerFor(o.trainerId);
                   return AppCard(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -459,9 +425,9 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(o.date, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                              Text("${o.date} · ${fmtSlot(o.slot)}", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                               if (o.status == "bookable")
-                                const Padding(padding: EdgeInsets.only(top: 2), child: Text("✓ Will be booked", style: TextStyle(fontSize: 11, color: Color(0xFF4EC97A)))),
+                                Padding(padding: const EdgeInsets.only(top: 2), child: Text("✓ Will be booked${coach != null ? " with ${coach.name}" : ""}", style: const TextStyle(fontSize: 11, color: Color(0xFF4EC97A)))),
                               if (o.status == "skipped")
                                 Padding(padding: const EdgeInsets.only(top: 2), child: Text("Skipped — ${o.reason}", style: const TextStyle(fontSize: 11, color: AppColors.mute))),
                               if (o.status == "full")
@@ -492,7 +458,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
               const SizedBox(height: 14),
               BtnGold(
                 full: true,
-                onPressed: (_busy || _occurrences.isEmpty || unresolvedFull || trainer == null) ? null : () => _confirm(info: info, trainer: trainer),
+                onPressed: (_busy || _occurrences.isEmpty || unresolvedFull) ? null : () => _confirm(info: info, trainers: trainers),
                 child: Text(_busy ? "Booking…" : unresolvedFull ? "Resolve full sessions above" : "Confirm $bookableCount booking${bookableCount != 1 ? "s" : ""}"),
               ),
             ],
@@ -566,12 +532,11 @@ class _StepScaffold extends StatelessWidget {
 }
 
 class _OptionCard extends StatelessWidget {
-  const _OptionCard({required this.label, this.sub, this.onTap, this.disabled = false, this.onMeetCoach});
+  const _OptionCard({required this.label, this.sub, this.onTap, this.disabled = false});
   final String label;
   final String? sub;
   final VoidCallback? onTap;
   final bool disabled;
-  final VoidCallback? onMeetCoach;
 
   @override
   Widget build(BuildContext context) {
@@ -585,21 +550,6 @@ class _OptionCard extends StatelessWidget {
           children: [
             Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             if (sub != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text(sub!, style: const TextStyle(fontSize: 11, color: AppColors.mute))),
-            if (onMeetCoach != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 5),
-                child: GestureDetector(
-                  onTap: onMeetCoach,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text("Meet the Coach", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gold)),
-                      SizedBox(width: 3),
-                      Icon(LucideIcons.chevronRight, size: 11, color: AppColors.gold),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -627,6 +577,95 @@ class _DecisionChip extends StatelessWidget {
           color: selected ? color.withValues(alpha: 0.12) : Colors.transparent,
         ),
         child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: selected ? color : AppColors.mute)),
+      ),
+    );
+  }
+}
+
+/// One day/time bracket's editor — days-of-week chips + a time field,
+/// mirroring the pattern step's original single-bracket UI, repeated once
+/// per bracket the client has added.
+class _BracketEditor extends StatelessWidget {
+  const _BracketEditor({required this.index, required this.bracket, required this.canRemove, required this.onChanged, required this.onRemove});
+  final int index;
+  final _Bracket bracket;
+  final bool canRemove;
+  final VoidCallback onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    void toggleDay(int d) {
+      if (bracket.days.contains(d)) {
+        bracket.days.remove(d);
+      } else {
+        bracket.days.add(d);
+      }
+      onChanged();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(10)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Bracket ${index + 1}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.mute)),
+              if (canRemove)
+                InkWell(
+                  onTap: onRemove,
+                  child: const Text("Remove", style: TextStyle(fontSize: 11, color: AppColors.errorText, decoration: TextDecoration.underline)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text("Days of the week", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _kWeekdayOptions.map((opt) {
+              final on = bracket.days.contains(opt.$1);
+              return InkWell(
+                onTap: () => toggleDay(opt.$1),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: on ? AppColors.gold : AppColors.line),
+                    color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                  ),
+                  child: Text(opt.$2, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: on ? AppColors.gold : AppColors.mute)),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+          const Text("Time", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Builder(builder: (context) {
+            return InkWell(
+              onTap: () async {
+                final picked = await showTimePicker(context: context, initialTime: TimeOfDay(hour: bracket.time ~/ 60, minute: bracket.time % 60));
+                if (picked != null) {
+                  bracket.time = picked.hour * 60 + picked.minute;
+                  onChanged();
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
+                child: Text(fmtSlot(bracket.time), style: const TextStyle(fontSize: 14, color: AppColors.txt)),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

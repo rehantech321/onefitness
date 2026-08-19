@@ -109,11 +109,26 @@ class SupabaseService {
   }
 
   /// { code, expiresAt, generatedAt, usedAt } or null — the current staff
-  /// approval code a prospective coach needs to self-signup. No UI exists
-  /// yet to generate/rotate this (see Part 7's own scoping note); it's
-  /// whatever the owner most recently set directly.
+  /// approval code a prospective coach needs to self-signup.
   static Future<Map<String, dynamic>?> loadCoachApprovalCode() async {
     return client.from("coach_approval_code").select().maybeSingle();
+  }
+
+  /// Owner generated a new coach approval code — mirrors saveCoachCode in
+  /// supabaseData.js (singleton row, id: true).
+  static Future<void> saveCoachApprovalCode({
+    required String code,
+    String? expiresAt,
+    String? generatedAt,
+    String? usedAt,
+  }) async {
+    await client.from("coach_approval_code").upsert({
+      "id": true,
+      "code": code,
+      "expires_at": expiresAt,
+      "generated_at": generatedAt,
+      "used_at": usedAt,
+    });
   }
 
   /// Real coach self-signup — mirrors signUpCoach in supabaseData.js.
@@ -1058,11 +1073,13 @@ class SupabaseService {
 
   /// Client's own upgrade/downgrade of an EXISTING paid subscription —
   /// mirrors changeMembershipPlan in supabaseData.js. timing: "immediate"
-  /// (real Stripe proration, applied right now) or "end_of_cycle" (switches
-  /// automatically at the next renewal via a Stripe Subscription Schedule —
-  /// returns an `effectiveAt` date). Only valid when the client already has
-  /// a real Stripe subscription and the new plan is also a paid
-  /// subscription — MembershipHubScreen gates this itself before calling.
+  /// (real Stripe proration, applied right now), "immediate_reset" (no
+  /// proration — resets the billing cycle to start today at the new
+  /// plan's full price), or "end_of_cycle" (switches automatically at the
+  /// next renewal via a Stripe Subscription Schedule — returns an
+  /// `effectiveAt` date). Only valid when the client already has a real
+  /// Stripe subscription and the new plan is also a paid subscription —
+  /// MembershipHubScreen gates this itself before calling.
   static Future<Map<String, dynamic>> changeMembershipPlan({required String newPlanId, required String timing}) =>
       _invokeFunction("change-membership-plan", {"newPlanId": newPlanId, "timing": timing});
 
@@ -1446,6 +1463,7 @@ class SupabaseService {
       stripeSubscriptionId: c["stripe_subscription_id"] as String?,
       pendingPlanId: c["pending_plan_id"] as String?,
       pendingPlanEffectiveAt: c["pending_plan_effective_at"] as String?,
+      membershipCancelsAt: c["membership_cancels_at"] as String?,
       redeemPointsNextRenewal: c["redeem_points_next_renewal"] as bool? ?? false,
     );
   }

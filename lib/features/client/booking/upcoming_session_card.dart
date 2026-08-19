@@ -138,16 +138,29 @@ class _UpcomingSessionCardState extends State<UpcomingSessionCard> {
                   const SizedBox(height: 4),
                   SizedBox(
                     width: double.infinity,
+                    // Plain "Cancel" only outside the fee window — inside it,
+                    // the button itself says "Late Cancel" so the fee is
+                    // obvious before they even tap it, not just buried in
+                    // the confirm screen that follows.
                     child: OutlinedButton(
                       onPressed: () => widget.onCancel(b),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.errorText,
-                        side: const BorderSide(color: AppColors.line),
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text("Cancel", maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                      style: charged
+                          ? OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFD68A4F),
+                              backgroundColor: const Color(0x1AC9784A),
+                              side: const BorderSide(color: Color(0xFFA8632F)),
+                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            )
+                          : OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.errorText,
+                              side: const BorderSide(color: AppColors.line),
+                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                      child: Text(charged ? "Late Cancel" : "Cancel", maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ],

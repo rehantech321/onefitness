@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/utils/booking_utils.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/trainer.dart";
@@ -30,7 +31,7 @@ class SelfBookScreen extends ConsumerWidget {
     final selfInfo = ClientInfo(
       id: authId,
       name: me.isNotEmpty ? me.first.name : "You",
-      city: me.isNotEmpty ? _cityFromAddress(me.first.locationAddress) : null,
+      city: me.isNotEmpty ? cityFromAddress(me.first.locationAddress) : null,
       isStaff: true,
     );
     final otherTrainers = trainers.where((t) => t.id != authId).toList();
@@ -53,13 +54,6 @@ class SelfBookScreen extends ConsumerWidget {
       child: BookingScreen(onGoMemberships: () {}),
     );
   }
-}
-
-/// Mirrors lib/format.js `cityFromAddress`.
-String? _cityFromAddress(String? address) {
-  if (address == null || address.isEmpty) return null;
-  final parts = address.split(",");
-  return parts.length >= 2 ? parts[1].trim() : address;
 }
 
 class _StaticClientInfoNotifier extends ClientInfoNotifier {

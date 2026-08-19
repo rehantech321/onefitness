@@ -6,6 +6,7 @@ import "../../core/supabase/supabase_service.dart";
 import "../../core/theme/app_colors.dart";
 import "../../core/utils/photo_picker_utils.dart";
 import "../../core/widgets/widgets.dart";
+import "../../data/providers/client_providers.dart";
 import "../../data/providers/supabase_bootstrap_provider.dart";
 
 /// Real self-signup — creates an actual Supabase Auth account + `clients`
@@ -53,7 +54,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
 
   Future<void> _pickPhoto() async {
     setState(() => _pickingPhoto = true);
-    final dataUrl = await pickProfilePhotoDataUrl();
+    final dataUrl = await pickProfilePhotoDataUrl(context);
     if (!mounted) return;
     setState(() {
       _pickingPhoto = false;
@@ -77,8 +78,10 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
     final name = _name.text.trim();
     final email = _email.text.trim();
     final password = _password.text;
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      setState(() => _error = "Name, email, and password are required.");
+    final phone = _phone.text.trim();
+    final city = _city.text.trim();
+    if (name.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty || city.isEmpty) {
+      setState(() => _error = "Name, email, password, phone number, and city are all required.");
       return;
     }
     if (password.length < 6) {
@@ -98,13 +101,14 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
         email: email,
         password: password,
         name: name,
-        phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-        city: _city.text.trim().isEmpty ? null : _city.text.trim(),
+        phone: phone,
+        city: city,
         birthday: _birthday.text.trim().isEmpty ? null : _birthday.text.trim(),
       );
       if (_photoDataUrl != null) {
         await SupabaseService.updateClientRow(userId, photo: _photoDataUrl);
       }
+      ref.read(clientSigningUpProvider.notifier).set(false);
       await loadAndSeedCoreData(ref);
     } catch (e) {
       if (!mounted) return;
@@ -181,11 +185,11 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                 child: AppField(controller: _password2, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
               ),
               const SizedBox(height: 10),
-              FieldLabeled(label: "Phone (optional)", child: AppField(controller: _phone, keyboardType: TextInputType.phone)),
+              FieldLabeled(label: "Phone number", child: AppField(controller: _phone, keyboardType: TextInputType.phone, onChanged: (_) => setState(() => _error = null))),
               const SizedBox(height: 10),
               FieldLabeled(
-                label: "City (optional)",
-                child: AppField(controller: _city),
+                label: "City",
+                child: AppField(controller: _city, onChanged: (_) => setState(() => _error = null)),
               ),
               const Padding(
                 padding: EdgeInsets.only(top: 4),

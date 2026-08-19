@@ -16,6 +16,12 @@ const _months = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 
+/// Mirrors lib/format.js `niceDate` — "2026-08-26" -> "Wed, Aug 26".
+String niceDate(String iso) {
+  final d = DateTime.parse(iso);
+  return "${_weekdays[d.weekday % 7].substring(0, 3)}, ${_months[d.month - 1]} ${d.day}";
+}
+
 /// Mirrors lib/helpers.js `dayLabel` — e.g. "Sunday, Jul 27".
 String dayLabel(String iso) {
   final d = DateTime.parse(iso);

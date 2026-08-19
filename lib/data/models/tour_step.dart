@@ -24,18 +24,17 @@ const kDashboardTourSteps = [
 /// Mirrors tourSteps.js `DRAWER_TOUR_STEPS` — shown once, the first time a
 /// client opens the hamburger drawer, spotlighting each menu item in order.
 const kDrawerTourSteps = [
-  TourStep("drawer-chat", "Chat", "Message your coach directly."),
-  TourStep("drawer-nutrition", "Nutrition Plan", "Your meals and daily nutrition targets."),
-  TourStep("drawer-plans", "Workout Plan", "Your full training program, day by day."),
   TourStep("drawer-progress", "Log Progress", "Log your weight, photos, and measurements over time."),
+  TourStep("drawer-plans", "Workout Plan", "Your full training program, day by day."),
+  TourStep("drawer-nutrition", "Nutrition Plan", "Your meals and daily nutrition targets."),
   TourStep("drawer-habits", "Habit Tracker", "Check off your daily habits and build your streak."),
-  TourStep("drawer-challenges", "Challenges", "Join gym-wide challenges and see the leaderboard."),
   TourStep("drawer-history", "History", "Every workout you've logged, all in one place."),
   TourStep("drawer-forms", "Assessments", "Fill out or review your intake and assessment forms."),
+  TourStep("drawer-challenges", "Challenges", "Join gym-wide challenges and see the leaderboard."),
   TourStep("drawer-squad", "My Squad", "See your training squad and their progress."),
+  TourStep("drawer-memberships", "Membership Hub", "Your plan, sessions remaining, and upgrade options."),
   TourStep("drawer-signatures", "Signatures", "View your signed agreements and waivers."),
   TourStep("drawer-settings", "Profile Settings", "Update your personal info and photo."),
-  TourStep("drawer-memberships", "Membership Hub", "Your plan, sessions remaining, and upgrade options."),
 ];
 
 /// GlobalKeys must be stable across rebuilds (not recreated inside build()),

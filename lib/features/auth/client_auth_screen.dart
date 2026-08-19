@@ -5,6 +5,7 @@ import "../../core/supabase/supabase_service.dart";
 import "../../core/theme/app_colors.dart";
 import "../../core/utils/auth_error.dart";
 import "../../core/widgets/widgets.dart";
+import "../../data/providers/client_providers.dart";
 import "../../data/providers/supabase_bootstrap_provider.dart";
 import "client_signup_screen.dart";
 
@@ -25,7 +26,6 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
   final _password = TextEditingController();
   String? _error;
   bool _busy = false;
-  bool _signingUp = false;
 
   @override
   void dispose() {
@@ -70,8 +70,8 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_signingUp) {
-      return ClientSignupScreen(onBack: () => setState(() => _signingUp = false));
+    if (ref.watch(clientSigningUpProvider)) {
+      return ClientSignupScreen(onBack: () => ref.read(clientSigningUpProvider.notifier).set(false));
     }
     return Scaffold(
       body: Container(
@@ -193,7 +193,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                                 ),
                               ),
                               BtnGhost(
-                                onPressed: () => setState(() => _signingUp = true),
+                                onPressed: () => ref.read(clientSigningUpProvider.notifier).set(true),
                                 full: true,
                                 child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,

@@ -156,10 +156,11 @@ class _RootContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final role = ref.watch(roleProvider);
     final clientSignedIn = ref.watch(clientSignedInProvider);
+    final clientSigningUp = ref.watch(clientSigningUpProvider);
     final trainerAuth = ref.watch(trainerAuthProvider);
 
     final staffSignedIn = role == "trainer" && trainerAuth != null;
-    final showHeader = !((role == "client" && clientSignedIn) || staffSignedIn);
+    final showHeader = !((role == "client" && (clientSignedIn || clientSigningUp)) || staffSignedIn);
     final body = role == "trainer" ? (trainerAuth == null ? const TrainerAuthScreen() : const TrainerShell()) : (clientSignedIn ? const ClientShell() : const ClientAuthScreen());
 
     if (!showHeader) return body;

@@ -45,20 +45,19 @@ const _bottomItems = [
 ];
 
 const _drawerItems = [
-  _NavItem("chat", "Chat", LucideIcons.messageSquare),
-  _NavItem("nutrition", "Nutrition Plan", LucideIcons.apple),
-  _NavItem("plans", "Workout Plan", LucideIcons.clipboardList),
   _NavItem("progress", "Log Progress", LucideIcons.barChart2),
+  _NavItem("plans", "Workout Plan", LucideIcons.clipboardList),
+  _NavItem("nutrition", "Nutrition Plan", LucideIcons.apple),
   _NavItem("habits", "Habit Tracker", LucideIcons.flame),
-  _NavItem("challenges", "Challenges", LucideIcons.trophy),
-  _NavItem("rewards", "Rewards", LucideIcons.gift),
-  _NavItem("badges", "Merit Badges", LucideIcons.award),
   _NavItem("history", "History", LucideIcons.history),
   _NavItem("forms", "Assessments", LucideIcons.fileText),
+  _NavItem("rewards", "Rewards", LucideIcons.gift),
+  _NavItem("badges", "Merit Badges", LucideIcons.award),
+  _NavItem("challenges", "Challenges", LucideIcons.trophy),
   _NavItem("squad", "My Squad", LucideIcons.users2),
+  _NavItem("memberships", "Membership Hub", LucideIcons.creditCard),
   _NavItem("signatures", "Signatures", LucideIcons.fileSignature),
   _NavItem("settings", "Profile Settings", LucideIcons.settings2),
-  _NavItem("memberships", "Membership Hub", LucideIcons.creditCard),
 ];
 
 const _titles = {

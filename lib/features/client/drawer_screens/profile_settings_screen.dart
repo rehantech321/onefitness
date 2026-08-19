@@ -198,7 +198,7 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
 
   Future<void> _pickPhoto() async {
     setState(() => _pickingPhoto = true);
-    final dataUrl = await pickProfilePhotoDataUrl();
+    final dataUrl = await pickProfilePhotoDataUrl(context);
     if (!mounted) return;
     setState(() {
       _pickingPhoto = false;

@@ -23,6 +23,7 @@ class ClientInfo {
     this.stripeSubscriptionId,
     this.pendingPlanId,
     this.pendingPlanEffectiveAt,
+    this.membershipCancelsAt,
     this.redeemPointsNextRenewal = false,
     this.isStaff = false,
   });
@@ -58,6 +59,13 @@ class ClientInfo {
   /// the plan it'll switch to, and the date that happens.
   final String? pendingPlanId;
   final String? pendingPlanEffectiveAt;
+
+  /// Set once the client has confirmed Cancel (Membership Hub) — the real
+  /// Stripe subscription is scheduled to end on this date (cancel_at_period_
+  /// end:true, see cancel-membership) rather than ending immediately; access
+  /// and booking eligibility both key off this date until then. Cleared
+  /// server-side once Stripe actually finalizes the end (stripe-webhook).
+  final String? membershipCancelsAt;
 
   /// "Redeem points automatically at my next purchase/renewal" flag — the
   /// non-Stripe-subscription redemption path (an active subscriber redeems
@@ -100,6 +108,8 @@ class ClientInfo {
     String? pendingPlanId,
     String? pendingPlanEffectiveAt,
     bool clearPendingPlan = false,
+    String? membershipCancelsAt,
+    bool clearMembershipCancelsAt = false,
     bool? redeemPointsNextRenewal,
   }) =>
       ClientInfo(
@@ -122,6 +132,7 @@ class ClientInfo {
         stripeSubscriptionId: clearStripeSubscriptionId ? null : (stripeSubscriptionId ?? this.stripeSubscriptionId),
         pendingPlanId: clearPendingPlan ? null : (pendingPlanId ?? this.pendingPlanId),
         pendingPlanEffectiveAt: clearPendingPlan ? null : (pendingPlanEffectiveAt ?? this.pendingPlanEffectiveAt),
+        membershipCancelsAt: clearMembershipCancelsAt ? null : (membershipCancelsAt ?? this.membershipCancelsAt),
         redeemPointsNextRenewal: redeemPointsNextRenewal ?? this.redeemPointsNextRenewal,
         isStaff: isStaff,
       );
