@@ -1,4 +1,4 @@
-package com.onefitnessworkout.portal.own
+package com.sajiddev.onefitness
 
 import io.flutter.embedding.android.FlutterActivity
 
