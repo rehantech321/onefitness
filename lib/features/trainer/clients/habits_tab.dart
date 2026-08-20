@@ -1,41 +1,54 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/habit_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/trainer_providers.dart";
 
-/// Mirrors HabitTrackerPage.jsx's `isCoach` mode (read-only habit log) plus
-/// HabitSettingsPanel (configuring which habits this client tracks).
-class HabitsTab extends ConsumerWidget {
+/// Mirrors HabitTrackerPage.jsx's `isCoach` mode (read-only habit log, with
+/// a genuinely non-interactive Daily Check-In — matches the web's
+/// `disabled={isCoach}` on every rating button) plus HabitSettingsPanel
+/// (configuring which habits this client tracks). Every toggle/add/remove
+/// below writes to client_records.data.habitSettings for real via
+/// SupabaseService.updateClientHabitSettings, same as the web's
+/// `persist({...client, habitSettings})`.
+class HabitsTab extends ConsumerStatefulWidget {
   const HabitsTab({super.key, required this.clientId});
 
   final String clientId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HabitsTab> createState() => _HabitsTabState();
+}
+
+class _HabitsTabState extends ConsumerState<HabitsTab> {
+  late String _dateTab = isoToday();
+
+  Future<void> _writeHabitSettings(List<String> enabled, List<HabitDef> custom) async {
+    ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId, (r) => r.copyWith(habits: enabled, customHabits: custom));
+    try {
+      await SupabaseService.updateClientHabitSettings(widget.clientId, enabled: enabled, custom: custom);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final roster = ref.watch(trainerRosterProvider);
-    final matches = roster.where((c) => c.id == clientId);
+    final matches = roster.where((c) => c.id == widget.clientId);
     if (matches.isEmpty) return const SizedBox.shrink();
     final name = matches.first.name;
     final records = ref.watch(trainerClientRecordsProvider);
-    final record = records[clientId];
+    final record = records[widget.clientId];
     if (record == null) return const SizedBox.shrink();
 
     final habits = getClientHabits(record);
-    final log = getHabitLog(record, DateTime.now().toIso8601String().substring(0, 10));
+    final log = getHabitLog(record, _dateTab);
     final streak = habitStreak(record);
     final weekScore = weeklyConsistencyScore(record);
     final doneToday = habits.where((h) => log.checked[h.id] == true).length;
-
-    void updateRecord(void Function(_RecMut m) mutate) {
-      ref.read(trainerClientRecordsProvider.notifier).update(clientId, (r) {
-        final m = _RecMut(r.habits, r.customHabits);
-        mutate(m);
-        return r.copyWith(habits: m.enabled, customHabits: m.custom);
-      });
-    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
@@ -43,23 +56,40 @@ class HabitsTab extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionLabel("Habit Tracker — $name"),
-          if (habits.isNotEmpty) ...[
-            AppCard(
-              child: Text(
-                "Weekly score: $weekScore% · Streak: $streak days",
-                style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
-              ),
+          AppCard(
+            child: Text(
+              "Weekly score: $weekScore% · Streak: $streak days",
+              style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
             ),
-            Row(
+          ),
+          Row(
+            children: [
+              HabitStatBox(value: "$streak", label: "Day Streak", color: AppColors.grn),
+              const SizedBox(width: 8),
+              HabitStatBox(value: "$weekScore%", label: "Weekly Score", color: AppColors.gold),
+              const SizedBox(width: 8),
+              HabitStatBox(value: "$doneToday/${habits.length}", label: "Today", color: AppColors.txt),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
+            child: Row(
               children: [
-                _StatBox(value: "$streak", label: "Day Streak", color: AppColors.grn),
-                const SizedBox(width: 8),
-                _StatBox(value: "$weekScore%", label: "Weekly Score", color: AppColors.gold),
-                const SizedBox(width: 8),
-                _StatBox(value: "$doneToday/${habits.length}", label: "Today", color: AppColors.txt),
+                HabitDateTabButton(label: "Today", selected: _dateTab == isoToday(), onTap: () => setState(() => _dateTab = isoToday())),
+                HabitDateTabButton(label: "Yesterday", selected: _dateTab == yesterdayIso(), onTap: () => setState(() => _dateTab = yesterdayIso())),
               ],
             ),
-            const SizedBox(height: 16),
+          ),
+          const SizedBox(height: 16),
+          SectionLabel("Habits — ${niceHabitDate(_dateTab)}"),
+          if (habits.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 8, bottom: 8),
+              child: HintBox(text: "No habits assigned yet. A coach can assign habits from the client profile."),
+            )
+          else
             ...habits.map((h) {
               final done = log.checked[h.id] == true;
               return Container(
@@ -80,15 +110,25 @@ class HabitsTab extends ConsumerWidget {
                 ),
               );
             }),
-          ] else
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: HintBox(text: "This client has no habits configured yet. Turn some on below."),
+          Container(
+            margin: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("DAILY CHECK-IN", style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                const SizedBox(height: 12),
+                HabitRatingRow(label: "\u{26A1} Energy Level", value: log.energy, onChange: (_) {}, disabled: true),
+                const SizedBox(height: 14),
+                HabitRatingRow(label: "\u{1F525} Motivation Level", value: log.motivation, onChange: (_) {}, disabled: true),
+              ],
             ),
+          ),
           const Padding(
-            padding: EdgeInsets.only(top: 4, bottom: 12),
+            padding: EdgeInsets.only(top: 12, bottom: 4),
             child: Text(
-              "Coach view — read-only. Use the settings below to assign/remove habits.",
+              "Coach view — read-only. To assign/remove habits, use the settings below.",
               style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
             ),
           ),
@@ -100,29 +140,43 @@ class HabitsTab extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SectionLabel("Manage Habits for This Client"),
+                const Text(
+                  "Turn on the habits you want this client to track. Only the habits you designate here will appear on their dashboard — if none are on, they'll see no habit tile. You can also create custom habits below.",
+                  style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
+                ),
+                const SizedBox(height: 12),
                 const Text("DEFAULT HABITS", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: kDefaultHabits.map((h) {
-                    final on = record.habits.contains(h.id);
-                    return InkWell(
-                      onTap: () => updateRecord((m) => on ? m.enabled.remove(h.id) : m.enabled.add(h.id)),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: on ? AppColors.gold.withValues(alpha: 0.12) : AppColors.card,
-                          border: Border.all(color: on ? AppColors.gold : AppColors.line),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text("${h.emoji} ${h.label}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: on ? AppColors.gold : AppColors.txt)),
+                ...kDefaultHabits.map((h) {
+                  final on = record.habits.contains(h.id);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: InkWell(
+                      onTap: () => _writeHabitSettings(
+                        on ? (record.habits.where((x) => x != h.id).toList()) : [...record.habits, h.id],
+                        record.customHabits,
                       ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 18),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: on ? AppColors.grn.withValues(alpha: 0.08) : AppColors.card,
+                          border: Border.all(color: on ? AppColors.grn : AppColors.line),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(h.emoji, style: const TextStyle(fontSize: 16)),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(h.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                            Text(on ? "ON" : "OFF", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: on ? AppColors.grn : AppColors.mute)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(height: 12),
                 const Text("CUSTOM HABITS", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
                 const SizedBox(height: 8),
                 ...record.customHabits.map((h) => AppCard(
@@ -132,46 +186,22 @@ class HabitsTab extends ConsumerWidget {
                           const SizedBox(width: 10),
                           Expanded(child: Text(h.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
                           IconButton(
-                            onPressed: () => updateRecord((m) => m.custom.removeWhere((x) => x.id == h.id)),
+                            onPressed: () => _writeHabitSettings(record.habits, record.customHabits.where((x) => x.id != h.id).toList()),
                             icon: const Icon(LucideIcons.trash2, size: 15, color: Color(0xFF6B3B3B)),
                           ),
                         ],
                       ),
                     )),
-                _AddCustomHabitRow(onAdd: (label, emoji) => updateRecord((m) => m.custom.add(HabitDef(id: DateTime.now().microsecondsSinceEpoch.toString(), label: label, emoji: emoji)))),
+                _AddCustomHabitRow(
+                  onAdd: (label, emoji) => _writeHabitSettings(
+                    record.habits,
+                    [...record.customHabits, HabitDef(id: "${DateTime.now().microsecondsSinceEpoch}", label: label, emoji: emoji)],
+                  ),
+                ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RecMut {
-  _RecMut(List<String> habits, List<HabitDef> custom) : enabled = [...habits], custom = [...custom];
-  final List<String> enabled;
-  final List<HabitDef> custom;
-}
-
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.value, required this.label, required this.color});
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(12)),
-        child: Column(
-          children: [
-            Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color)),
-            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.mute)),
-          ],
-        ),
       ),
     );
   }
@@ -204,7 +234,7 @@ class _AddCustomHabitRowState extends State<_AddCustomHabitRow> {
         children: [
           SizedBox(width: 52, child: AppField(controller: _emoji)),
           const SizedBox(width: 8),
-          Expanded(child: AppField(controller: _label, placeholder: "New habit label…")),
+          Expanded(child: AppField(controller: _label, placeholder: "Custom habit name…")),
           const SizedBox(width: 8),
           BtnGhost(
             onPressed: () {

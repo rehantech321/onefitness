@@ -2,7 +2,6 @@ import "package:flutter/material.dart";
 import "package:intl/intl.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
-import "../../../core/widgets/sub_badge_icon.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/earned_badge.dart";
 import "../../../data/models/merit_badge_def.dart";

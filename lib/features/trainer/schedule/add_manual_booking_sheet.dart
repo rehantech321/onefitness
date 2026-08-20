@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/scheduling_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -45,16 +46,37 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
   String? _trainerId;
   String _sessionType = "semi-private";
   String _discipline = "personal-training";
-  late final _date = TextEditingController(text: widget.initialDate);
+
+  // A session can never be booked into the past — clamp whatever initial
+  // date came in (e.g. a previously-tapped past calendar day) up to today,
+  // same as the client-facing flow's own "never book the past" rule.
+  late DateTime _date = () {
+    final parsed = DateTime.tryParse(widget.initialDate) ?? DateTime.now();
+    final today = DateTime.now();
+    final todayMidnight = DateTime(today.year, today.month, today.day);
+    final parsedMidnight = DateTime(parsed.year, parsed.month, parsed.day);
+    return parsedMidnight.isBefore(todayMidnight) ? todayMidnight : parsedMidnight;
+  }();
   final _time = TextEditingController(text: "09:00");
   String? _error;
   bool _saving = false;
 
   @override
   void dispose() {
-    _date.dispose();
     _time.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final firstDate = DateTime(now.year, now.month, now.day);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date.isBefore(firstDate) ? firstDate : _date,
+      firstDate: firstDate,
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked != null) setState(() => _date = picked);
   }
 
   int? get _slotMinutes {
@@ -127,7 +149,19 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: FieldLabeled(label: "Date (YYYY-MM-DD)", child: AppField(controller: _date))),
+              Expanded(
+                child: FieldLabeled(
+                  label: "Date",
+                  child: InkWell(
+                    onTap: _pickDate,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
+                      child: Text(isoDate(_date), style: const TextStyle(fontSize: 14, color: AppColors.txt)),
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
               Expanded(child: FieldLabeled(label: "Time (HH:MM, 24h)", child: AppField(controller: _time))),
             ],
@@ -142,17 +176,22 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
                 : () async {
                     final slot = _slotMinutes;
                     final trainerId = _trainerId;
-                    if (slot == null || trainerId == null || _date.text.trim().isEmpty) {
+                    if (slot == null || trainerId == null) {
                       setState(() => _error = "Coach, date, and time are all required.");
                       return;
                     }
+                    final dateIso = isoDate(_date);
+                    if (dateIso.compareTo(isoToday()) < 0) {
+                      setState(() => _error = "You can't book a session in the past.");
+                      return;
+                    }
                     final effectiveDiscipline = isAssessment ? "programmer" : _discipline;
-                    final conflict = findTrainerConflict(bookings, trainerId, _date.text.trim(), slot, _sessionType, effectiveDiscipline);
+                    final conflict = findTrainerConflict(bookings, trainerId, dateIso, slot, _sessionType, effectiveDiscipline);
                     if (conflict != null && !isOwner) {
                       setState(() => _error = "This coach already has a different session at that time — contact the owner to override.");
                       return;
                     }
-                    final cap = capacityInfo(bookings, trainerId, _date.text.trim(), slot, _sessionType);
+                    final cap = capacityInfo(bookings, trainerId, dateIso, slot, _sessionType);
                     if (cap.atCap && conflict == null && !isOwner) {
                       setState(() => _error = "That session is already at capacity (${cap.cap}) — contact the owner to override.");
                       return;
@@ -166,7 +205,7 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
                             id: "",
                             clientId: _client!.id,
                             trainerId: trainerId,
-                            date: _date.text.trim(),
+                            date: dateIso,
                             slot: slot,
                             sessionType: _sessionType,
                             discipline: effectiveDiscipline,

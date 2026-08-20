@@ -38,6 +38,17 @@ String fmtSlot(int minutes) {
   return "$h12:${m.toString().padLeft(2, '0')} $ampm";
 }
 
+/// Mirrors schedulingHelpers.js `fmtSlotShort` — a compact form used in
+/// availability-block day summaries, e.g. "7a 8:30a 6p".
+String fmtSlotShort(int minutes) {
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  final h12 = h % 12 == 0 ? 12 : h % 12;
+  final mm = m == 0 ? "" : ":${m.toString().padLeft(2, '0')}";
+  final ampm = h < 12 ? "a" : "p";
+  return "$h12$mm$ampm";
+}
+
 /// Mirrors lib/format.js `stamp()` — "Jul 27, 3:45 PM", used as the display
 /// timestamp on logged chat messages.
 String stamp([DateTime? at]) {

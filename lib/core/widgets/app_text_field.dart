@@ -10,6 +10,9 @@ class AppField extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType,
     this.onChanged,
+    this.minLines,
+    this.maxLines = 1,
+    this.maxLength,
   });
 
   final TextEditingController? controller;
@@ -17,6 +20,9 @@ class AppField extends StatelessWidget {
   final bool obscureText;
   final TextInputType? keyboardType;
   final ValueChanged<String>? onChanged;
+  final int? minLines;
+  final int? maxLines;
+  final int? maxLength;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +31,10 @@ class AppField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       onChanged: onChanged,
+      minLines: minLines,
+      maxLines: maxLines,
+      maxLength: maxLength,
+      buildCounter: maxLength == null ? null : (context, {required currentLength, required isFocused, maxLength}) => null,
       style: const TextStyle(color: AppColors.txt, fontSize: 14),
       cursorColor: AppColors.gold,
       decoration: InputDecoration(

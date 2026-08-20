@@ -9,7 +9,10 @@ import "../../../data/models/merit_badge_def.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
 
-final _coachAwardable = kMeritBadges.where((b) => b.category == "coach").toList();
+// Gym Citizen is no longer directly one-click-awardable — it's derived from
+// the 10 sub-badges (see the dedicated entry card / _GymCitizenChecklist
+// below) — so it's excluded from the generic "Award a badge" panel.
+final _coachAwardable = kMeritBadges.where((b) => b.category == "coach" && b.key != "gym_citizen").toList();
 
 /// Mirrors MeritBadgesTab.jsx — coach/owner client-profile tab (More →
 /// Badges). Award a coach-category badge, remove an active coach-awarded
@@ -28,6 +31,42 @@ class MeritBadgesTab extends ConsumerStatefulWidget {
 
 class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
   String? _forcePick;
+  bool _showGymCitizen = false;
+  String? _expiryCheckedForId;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkGymCitizenExpiry();
+  }
+
+  @override
+  void didUpdateWidget(covariant MeritBadgesTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.clientId != widget.clientId) _checkGymCitizenExpiry();
+  }
+
+  // A coach opening this tab is also "someone looking" — catches expiry for
+  // a client who never opens their own dashboard. Mirrors the identical
+  // opportunistic calls on the client's own dashboard/profile screens.
+  Future<void> _checkGymCitizenExpiry() async {
+    if (_expiryCheckedForId == widget.clientId) return;
+    _expiryCheckedForId = widget.clientId;
+    try {
+      final r = await SupabaseService.checkGymCitizenExpiry(widget.clientId);
+      final expired = (r["expiredCount"] as num?) ?? 0;
+      if (expired > 0 && mounted) await _refreshBadgesAndPoints();
+    } catch (_) {}
+  }
+
+  Future<void> _refreshBadgesAndPoints() async {
+    // grant/force-award/revoke all resync points_ledger server-side too
+    // (active-badge-count points) — see syncMeritBadgePoints.
+    final freshBadges = await SupabaseService.loadMeritBadgesFor(widget.clientId);
+    ref.read(earnedBadgesProvider.notifier).replaceForClient(widget.clientId, freshBadges);
+    final freshPoints = await SupabaseService.loadPointsLedgerFor(widget.clientId);
+    ref.read(pointsLedgerProvider.notifier).replaceForClient(widget.clientId, freshPoints);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,20 +81,28 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
 
     final all = ref.watch(earnedBadgesProvider);
     final myBadges = all.where((b) => b.clientId == widget.clientId).toList();
-    final activeBadges = myBadges.where((b) => b.isActive).toList()..sort((a, b) => b.earnedAt.compareTo(a.earnedAt));
-    final historyBadges = myBadges.where((b) => !b.isActive).toList()..sort((a, b) => (b.revokedAt ?? "").compareTo(a.revokedAt ?? ""));
+    // Gym Citizen's 10 sub-badge rows live in the same table but aren't real
+    // catalog badges — excluded here so they never leak into these two
+    // generic grids with a broken icon/raw slug name; they get their own
+    // dedicated rendering in _GymCitizenChecklist instead.
+    final activeBadges = myBadges.where((b) => b.isActive && kMeritBadges.any((m) => m.key == b.badgeKey)).toList()
+      ..sort((a, b) => b.earnedAt.compareTo(a.earnedAt));
+    final historyBadges = myBadges.where((b) => !b.isActive && kMeritBadges.any((m) => m.key == b.badgeKey)).toList()
+      ..sort((a, b) => (b.revokedAt ?? "").compareTo(a.revokedAt ?? ""));
     final activeKeys = activeBadges.map((b) => b.badgeKey).toSet();
     final awardable = _coachAwardable.where((b) => !activeKeys.contains(b.key)).toList();
     final forceAssignable = kMeritBadges.where((b) => !activeKeys.contains(b.key)).toList();
+    final gymCitizenActiveSubCount = myBadges.where((b) => b.isActive && kGymCitizenSubBadgeKeys.contains(b.badgeKey)).length;
 
-    Future<void> refreshBadgesAndPoints() async {
-      // grant/force-award/revoke all resync points_ledger server-side too
-      // (active-badge-count points) — see syncMeritBadgePoints.
-      final freshBadges = await SupabaseService.loadMeritBadgesFor(widget.clientId);
-      ref.read(earnedBadgesProvider.notifier).replaceForClient(widget.clientId, freshBadges);
-      final freshPoints = await SupabaseService.loadPointsLedgerFor(widget.clientId);
-      ref.read(pointsLedgerProvider.notifier).replaceForClient(widget.clientId, freshPoints);
+    if (_showGymCitizen) {
+      return _GymCitizenChecklist(
+        clientId: widget.clientId,
+        staffNames: staffNames,
+        onBack: () => setState(() => _showGymCitizen = false),
+      );
     }
+
+    Future<void> refreshBadgesAndPoints() => _refreshBadgesAndPoints();
 
     void showFailure(Object e) {
       if (context.mounted) {
@@ -108,6 +155,42 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SectionLabel("Merit Badges — ${info.name}"),
+          InkWell(
+            onTap: () => setState(() => _showGymCitizen = true),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0x1433733F),
+                border: Border.all(color: AppColors.goldDim),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  if (gymCitizenActiveSubCount > 0 && gymCitizenActiveSubCount < 10)
+                    GymCitizenProgressRing(
+                      activeCount: gymCitizenActiveSubCount,
+                      size: 30,
+                      child: const MeritBadgeShield(badgeKey: "gym_citizen", size: 20, grayscale: true),
+                    )
+                  else
+                    MeritBadgeShield(badgeKey: "gym_citizen", size: 30, grayscale: gymCitizenActiveSubCount < 10),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Gym Citizen — $gymCitizenActiveSubCount/10 verified", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
+                        const Text("Check off the 10 sub-badges — the badge itself awards automatically at 10/10.", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+                      ],
+                    ),
+                  ),
+                  const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
+                ],
+              ),
+            ),
+          ),
           if (isOwner && forceAssignable.isNotEmpty)
             AppCard(
               borderColor: AppColors.gold,
@@ -316,4 +399,152 @@ Future<String?> _promptText(BuildContext context, String label) {
       ],
     ),
   );
+}
+
+const _monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+String _fmtBadgeDate(String? iso) {
+  if (iso == null) return "—";
+  final d = DateTime.tryParse(iso);
+  if (d == null) return "—";
+  return "${_monthNames[d.month - 1]} ${d.day}, ${d.year}";
+}
+
+/// Mirrors GymCitizenChecklist.jsx — coach-facing checklist behind
+/// MeritBadgesTab's "Gym Citizen" entry card. Each row is its own
+/// award/revoke call (grant-merit-badge/revoke-merit-badge, same edge
+/// functions every other coach badge uses) — deliberately no confirm dialog
+/// or note prompt on either action, unlike the single-badge award/revoke
+/// flow above: this is meant to be checked off quickly, live, during a
+/// session. The parent "gym_citizen" badge is awarded/revoked server-side
+/// automatically as the active count crosses 10 — this screen only ever
+/// touches the 10 sub-badge rows directly.
+class _GymCitizenChecklist extends ConsumerStatefulWidget {
+  const _GymCitizenChecklist({required this.clientId, required this.staffNames, required this.onBack});
+
+  final String clientId;
+  final Map<String, String> staffNames;
+  final VoidCallback onBack;
+
+  @override
+  ConsumerState<_GymCitizenChecklist> createState() => _GymCitizenChecklistState();
+}
+
+class _GymCitizenChecklistState extends ConsumerState<_GymCitizenChecklist> {
+  String? _busyKey;
+
+  Future<void> _toggle(SubBadgeDef sub, EarnedBadge? active) async {
+    setState(() => _busyKey = sub.key);
+    try {
+      if (active != null) {
+        await SupabaseService.revokeMeritBadge(active.id);
+      } else {
+        await SupabaseService.grantMeritBadge(widget.clientId, sub.key, null);
+      }
+      final freshBadges = await SupabaseService.loadMeritBadgesFor(widget.clientId);
+      ref.read(earnedBadgesProvider.notifier).replaceForClient(widget.clientId, freshBadges);
+      final freshPoints = await SupabaseService.loadPointsLedgerFor(widget.clientId);
+      ref.read(pointsLedgerProvider.notifier).replaceForClient(widget.clientId, freshPoints);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))));
+      }
+    } finally {
+      if (mounted) setState(() => _busyKey = null);
+    }
+  }
+
+  // Expiry is computed here purely for display — the real 6-month sweep
+  // runs server-side (check-gym-citizen-expiry), this just shows the coach
+  // when it'll happen.
+  String _fmtExpiry(String iso) {
+    final d = DateTime.tryParse(iso);
+    if (d == null) return "—";
+    return _fmtBadgeDate(DateTime(d.year, d.month + 6, d.day).toIso8601String());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final all = ref.watch(earnedBadgesProvider);
+    final myBadges = all.where((b) => b.clientId == widget.clientId && b.isActive).toList();
+    final activeCount = kGymCitizenSubBadges.where((sub) => myBadges.any((b) => b.badgeKey == sub.key)).length;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextButton.icon(
+            onPressed: widget.onBack,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.mute,
+              padding: EdgeInsets.zero,
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: const Icon(LucideIcons.chevronLeft, size: 15),
+            label: const Text("Back", style: TextStyle(fontSize: 13)),
+          ),
+          const SizedBox(height: 14),
+          SectionLabel("Gym Citizen Progress: $activeCount/10"),
+          const SizedBox(height: 4),
+          const Text(
+            "Check off each behavior as you verify it. The Gym Citizen badge itself is awarded automatically once all 10 are checked, and removed automatically if any drop back off.",
+            style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
+          ),
+          const SizedBox(height: 14),
+          ...kGymCitizenSubBadges.map((sub) {
+            final matches = myBadges.where((b) => b.badgeKey == sub.key);
+            final row = matches.isEmpty ? null : matches.first;
+            final busy = _busyKey == sub.key;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Opacity(
+                opacity: busy ? 0.6 : 1,
+                child: AppCard(
+                  borderColor: row != null ? AppColors.gold : AppColors.line,
+                  onTap: busy ? null : () => _toggle(sub, row),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SubBadgeIcon(subBadgeKey: sub.key, size: 36, earned: row != null),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(sub.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: row != null ? AppColors.gold : AppColors.txt)),
+                            Text(sub.description, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.5)),
+                            if (row != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  "Verified ${_fmtBadgeDate(row.earnedAt)} by ${widget.staffNames[row.grantedByUserId] ?? 'a coach'} · expires ${_fmtExpiry(row.earnedAt)}",
+                                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 22,
+                        height: 22,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: row != null ? AppColors.gold : AppColors.line, width: 1.5),
+                          color: row != null ? AppColors.gold : Colors.transparent,
+                        ),
+                        child: row != null ? const Icon(LucideIcons.check, size: 14, color: Colors.white) : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
 }

@@ -11,6 +11,8 @@ import "../../data/models/comm_message.dart";
 import "../../data/models/earned_badge.dart";
 import "../../data/models/exercise_def.dart";
 import "../../data/models/exercise_prescription.dart";
+import "../../data/models/habit_def.dart";
+import "../../data/models/habit_log_entry.dart";
 import "../../data/models/intake_schema.dart";
 import "../../data/models/meal_def.dart";
 import "../../data/models/membership_plan.dart";
@@ -144,6 +146,10 @@ class SupabaseService {
     required String name,
     String? phone,
     required String approvalCode,
+    String? photo,
+    List<String>? disciplines,
+    String? locationName,
+    String? locationAddress,
   }) async {
     final res = await client.auth.signUp(
       email: email,
@@ -152,7 +158,18 @@ class SupabaseService {
     );
     final userId = res.user?.id;
     if (userId == null) throw Exception("Sign-up failed — no account was created.");
-    await client.from("trainers").insert({"profile_id": userId, "reviewed_by_owner": false});
+    await client.from("trainers").insert({
+      "profile_id": userId,
+      "reviewed_by_owner": false,
+      if (disciplines != null && disciplines.isNotEmpty) "disciplines": disciplines,
+      if (locationName != null || locationAddress != null)
+        "locations": [
+          {"id": "loc-main", "name": locationName ?? "", "address": locationAddress ?? ""},
+        ],
+    });
+    if (photo != null) {
+      await client.from("profiles").update({"photo_url": photo}).eq("id", userId);
+    }
     try {
       await client.rpc("mark_coach_code_used", params: {"entered_code": approvalCode});
     } catch (e) {
@@ -349,6 +366,7 @@ class SupabaseService {
         id: j["id"] as String,
         name: j["name"] as String? ?? "",
         status: j["status"] as String? ?? "active",
+        source: j["source"] as String?,
         // `createdBy` holds the coach's display *name*, not a user id — a
         // naming quirk carried over verbatim from SaveProgramDialog.jsx's
         // own entry shape (confirmed against a real row).
@@ -663,25 +681,51 @@ class SupabaseService {
     String? name,
     String? email,
     String? phone,
+    String? photo,
+    List<String>? disciplines,
+    List<String>? sessionTypes,
+    List<TrainerLocation>? locations,
     String? locationName,
     String? locationAddress,
+    String? bio,
+    List<TrainerBeforeAfter>? beforeAfters,
     List<AvailabilityBlock>? availability,
   }) async {
     final profileFields = <String, dynamic>{
       if (name != null) "name": name,
       if (email != null) "email": email,
       if (phone != null) "phone": phone,
+      if (photo != null) "photo_url": photo,
     };
     if (profileFields.isNotEmpty) await client.from("profiles").update(profileFields).eq("id", id);
     final trainerFields = <String, dynamic>{
-      if (locationName != null || locationAddress != null)
+      if (disciplines != null) "disciplines": disciplines,
+      if (sessionTypes != null) "session_types": sessionTypes,
+      if (locations != null)
+        "locations": locations.map(_trainerLocationToJson).toList()
+      else if (locationName != null || locationAddress != null)
         "locations": [
           {"id": "loc-main", "name": locationName ?? "", "address": locationAddress ?? ""},
         ],
+      if (bio != null) "bio": bio,
+      if (beforeAfters != null) "before_afters": beforeAfters.map(_beforeAfterToJson).toList(),
       if (availability != null) "availability": availability.map(_availabilityToJson).toList(),
     };
     if (trainerFields.isNotEmpty) await client.from("trainers").update(trainerFields).eq("profile_id", id);
   }
+
+  static Map<String, dynamic> _trainerLocationToJson(TrainerLocation l) => {
+        "id": l.id,
+        "name": l.name,
+        if (l.address != null) "address": l.address,
+        if (l.hint != null) "hint": l.hint,
+      };
+
+  static Map<String, dynamic> _beforeAfterToJson(TrainerBeforeAfter b) => {
+        "id": b.id,
+        if (b.left != null) "left": b.left,
+        if (b.right != null) "right": b.right,
+      };
 
   static Map<String, dynamic> _availabilityToJson(AvailabilityBlock b) => {
         "sessionType": b.sessionType,
@@ -700,6 +744,30 @@ class SupabaseService {
     final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
     final next = {...current, ...patch};
     await client.from("client_records").upsert({"profile_id": profileId, "data": next});
+  }
+
+  /// Mirrors HabitSettingsPanel.jsx's toggle/addCustom/removeCustom — all
+  /// three just rewrite the whole `habitSettings` object, so one write
+  /// covers every caller.
+  static Future<void> updateClientHabitSettings(String clientId, {required List<String> enabled, required List<HabitDef> custom}) =>
+      upsertClientRecordPatch(clientId, {
+        "habitSettings": {
+          "enabled": enabled,
+          "custom": custom.map((h) => {"id": h.id, "label": h.label, "emoji": h.emoji, "custom": true}).toList(),
+        },
+      });
+
+  /// Mirrors habitHelpers.js `saveHabitLog` — `client.habitLogs` is a flat
+  /// array keyed by `date`, not a map, so this re-fetches it, replaces
+  /// whichever entry (if any) already exists for [date], and writes the
+  /// whole array back — same shape as upsertClientRecordPatch but the
+  /// array-level merge means it can't just delegate to that helper.
+  static Future<void> updateClientHabitLog(String clientId, String date, HabitLogEntry entry) async {
+    final row = await client.from("client_records").select("data").eq("profile_id", clientId).maybeSingle();
+    final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
+    final logs = ((current["habitLogs"] as List?) ?? const []).whereType<Map>().where((m) => m["date"]?.toString() != date).toList();
+    logs.add({"date": date, "checked": entry.checked, "energy": entry.energy, "motivation": entry.motivation});
+    await client.from("client_records").upsert({"profile_id": clientId, "data": {...current, "habitLogs": logs}});
   }
 
   static Map<String, dynamic> _commMessageToJson(CommMessage m) => {
@@ -883,6 +951,14 @@ class SupabaseService {
   static Future<Map<String, dynamic>> generateAiNutritionProgram(String clientId, {bool forceRegenerate = false}) =>
       _invokeFunction("generate-ai-nutrition-program", {"clientId": clientId, "forceRegenerate": forceRegenerate});
 
+  /// Claude — mirrors generateAiWorkoutProgram in supabaseData.js. Writes a
+  /// draft straight into client_records.data.savedPrograms server-side
+  /// (service-role, `{source:"ai", status:"draft"}`); the caller must
+  /// re-fetch (loadClientRecord) to see the result. Response is
+  /// `{ok:true, programId}` or `{ok:false, reason: "intakes-incomplete"|"program-exists"}`.
+  static Future<Map<String, dynamic>> generateAiWorkoutProgram(String clientId, {bool forceRegenerate = false}) =>
+      _invokeFunction("generate-ai-workout-program", {"clientId": clientId, "forceRegenerate": forceRegenerate});
+
   /// Inserts and returns the server-assigned row (real id, defaults applied)
   /// — mirrors insertBooking in supabaseData.js. `location` only ever
   /// round-trips a bare name here since that's all `Booking.locationName`
@@ -1013,6 +1089,14 @@ class SupabaseService {
   /// real Stripe), which is expected until Part 8 wires real payments.
   static Future<Map<String, dynamic>> redeemPoints(String clientId) => _invokeFunction("redeem-points", {"clientId": clientId});
 
+  /// Client-triggered automatic eligibility check — mirrors awardMeritBadge
+  /// in supabaseData.js. Safe to call speculatively/repeatedly (idempotent
+  /// server-side); returns `{ok:true, badgeKey}` on a genuinely fresh award
+  /// or `{ok:true, alreadyEarned:true}`/an error otherwise — callers treat a
+  /// thrown error as "not eligible yet", not a failure worth surfacing.
+  static Future<Map<String, dynamic>> awardMeritBadge(String clientId, String badgeKey, {String? sourceRefId}) =>
+      _invokeFunction("award-merit-badge", {"clientId": clientId, "badgeKey": badgeKey, if (sourceRefId != null) "sourceRefId": sourceRefId});
+
   /// Coach/owner manual award — badgeKey must be one of MERIT_BADGES'
   /// category:"coach" entries (Record Breaker, Gym Citizen).
   static Future<Map<String, dynamic>> grantMeritBadge(String clientId, String badgeKey, String? note) =>
@@ -1026,6 +1110,11 @@ class SupabaseService {
   /// Coach/owner-only removal — only ever allowed for a coach-awarded badge;
   /// the server re-verifies this itself. Soft-delete (revoked_at set).
   static Future<void> revokeMeritBadge(String badgeId) => _invokeFunction("revoke-merit-badge", {"badgeId": badgeId});
+
+  /// Opportunistic 6-month expiry sweep for Gym Citizen's 10 sub-badges —
+  /// safe to call speculatively on every dashboard/profile/badges-tab load;
+  /// a no-op when nothing's actually stale. Returns `{expiredCount}`.
+  static Future<Map<String, dynamic>> checkGymCitizenExpiry(String clientId) => _invokeFunction("check-gym-citizen-expiry", {"clientId": clientId});
 
   /// Owner-only real Stripe refund (test-mode key in this project) — only
   /// valid for a `type: "purchase"` charge with a linked
@@ -1229,6 +1318,7 @@ class SupabaseService {
         "name": p.name,
         "type": "workout",
         "status": p.status,
+        "source": p.source,
         "createdBy": p.coachName,
         "programDays": p.programDays.map(_programDayToJson).toList(),
         "createdAt": p.createdAt,
@@ -1484,6 +1574,8 @@ class SupabaseService {
       beforeAfters: _beforeAftersFromJson(t["before_afters"]),
       availability: _availabilityFromJson(t["availability"]),
       commissionRate: (t["commission_rate"] as num?) ?? 0,
+      disciplines: ((t["disciplines"] as List?) ?? const []).whereType<String>().toList(),
+      sessionTypes: ((t["session_types"] as List?) ?? const []).whereType<String>().toList(),
     );
   }
 
@@ -1491,7 +1583,12 @@ class SupabaseService {
     if (raw is! List) return const [];
     return raw
         .whereType<Map>()
-        .map((e) => TrainerLocation(name: (e["name"] as String?) ?? "", address: e["address"] as String?))
+        .map((e) => TrainerLocation(
+              id: (e["id"] as String?) ?? "",
+              name: (e["name"] as String?) ?? "",
+              address: e["address"] as String?,
+              hint: e["hint"] as String?,
+            ))
         .toList();
   }
 
@@ -1581,9 +1678,29 @@ class SupabaseService {
     // a coach signing in, since this parses every client's record).
     final intakeField = j["intake"];
     final intakeRaw = intakeField is Map ? intakeField.cast<String, dynamic>() : const <String, dynamic>{};
+    final habitSettingsField = j["habitSettings"];
+    final habitSettingsRaw = habitSettingsField is Map ? habitSettingsField.cast<String, dynamic>() : const <String, dynamic>{};
+    final habitLogsRaw = (j["habitLogs"] as List?) ?? const [];
     return ClientRecord(
       id: id,
-      habits: ((j["habits"] as List?) ?? const []).whereType<String>().toList(),
+      habits: ((habitSettingsRaw["enabled"] as List?) ?? const []).whereType<String>().toList(),
+      customHabits: _safeMap(
+        ((habitSettingsRaw["custom"] as List?) ?? const []).whereType<Map>(),
+        (m) => HabitDef(id: m["id"]?.toString() ?? "", label: m["label"] as String? ?? "", emoji: m["emoji"] as String? ?? "⭐"),
+      ),
+      habitLogByDate: Map.fromEntries(
+        habitLogsRaw.whereType<Map>().where((m) => m["date"] != null).map((m) {
+          final checkedField = m["checked"];
+          return MapEntry(
+            m["date"].toString(),
+            HabitLogEntry(
+              checked: checkedField is Map ? checkedField.map((k, v) => MapEntry(k.toString(), v == true)) : const {},
+              energy: (m["energy"] as num?)?.toInt(),
+              motivation: (m["motivation"] as num?)?.toInt(),
+            ),
+          );
+        }),
+      ),
       comms: _safeMap(
         commsRaw.whereType<Map>(),
         (m) => CommMessage(

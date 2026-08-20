@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/habit_utils.dart";
@@ -9,7 +10,12 @@ import "../../../data/providers/client_providers.dart";
 
 /// Mirrors HabitTrackerPage.jsx (client-facing view) — streak/weekly-score
 /// header, a Today/Yesterday toggle, tappable habit rows, and an
-/// energy/motivation daily check-in.
+/// energy/motivation daily check-in. Every toggle/rating change persists to
+/// client_records.data.habitLogs for real (SupabaseService.updateClientHabitLog),
+/// same as the web's `saveHabitLog` → `persist` → `sb.upsertClientRecord`;
+/// a completed habit also fires the same opportunistic merit-badge
+/// eligibility check the web does (awardMeritBadge), silently ignoring
+/// "not eligible yet".
 class HabitTrackerScreen extends ConsumerStatefulWidget {
   const HabitTrackerScreen({super.key});
 
@@ -23,21 +29,25 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
   void _toggle(String habitId) {
     final canEdit = _dateTab == isoToday() || _dateTab == yesterdayIso();
     if (!canEdit) return;
-    ref.read(clientRecordProvider.notifier).update((r) {
-      final log = getHabitLog(r, _dateTab);
-      final nextChecked = {...log.checked, habitId: !(log.checked[habitId] ?? false)};
-      final nextMap = {...r.habitLogByDate, _dateTab: log.copyWith(checked: nextChecked)};
-      return r.copyWith(habitLogByDate: nextMap);
-    });
+    final record = ref.read(clientRecordProvider);
+    final log = getHabitLog(record, _dateTab);
+    final nextChecked = {...log.checked, habitId: !(log.checked[habitId] ?? false)};
+    final nextEntry = log.copyWith(checked: nextChecked);
+    ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(habitLogByDate: {...r.habitLogByDate, _dateTab: nextEntry}));
+
+    final clientId = ref.read(clientInfoProvider).id;
+    SupabaseService.updateClientHabitLog(clientId, _dateTab, nextEntry).catchError((Object _) {});
+    SupabaseService.awardMeritBadge(clientId, "habit").catchError((Object _) => <String, dynamic>{});
   }
 
   void _setRating(String field, int value) {
-    ref.read(clientRecordProvider.notifier).update((r) {
-      final log = getHabitLog(r, _dateTab);
-      final next = field == "energy" ? log.copyWith(energy: value) : log.copyWith(motivation: value);
-      final nextMap = {...r.habitLogByDate, _dateTab: next};
-      return r.copyWith(habitLogByDate: nextMap);
-    });
+    final record = ref.read(clientRecordProvider);
+    final log = getHabitLog(record, _dateTab);
+    final nextEntry = field == "energy" ? log.copyWith(energy: value) : log.copyWith(motivation: value);
+    ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(habitLogByDate: {...r.habitLogByDate, _dateTab: nextEntry}));
+
+    final clientId = ref.read(clientInfoProvider).id;
+    SupabaseService.updateClientHabitLog(clientId, _dateTab, nextEntry).catchError((Object _) {});
   }
 
   @override
@@ -80,11 +90,11 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
         children: [
           Row(
             children: [
-              _StatBox(value: "$streak", label: "Day Streak", color: AppColors.grn),
+              HabitStatBox(value: "$streak", label: "Day Streak", color: AppColors.grn),
               const SizedBox(width: 8),
-              _StatBox(value: "$weekScore%", label: "Weekly Score", color: AppColors.gold),
+              HabitStatBox(value: "$weekScore%", label: "Weekly Score", color: AppColors.gold),
               const SizedBox(width: 8),
-              _StatBox(value: "$doneToday/${habits.length}", label: "Today", color: AppColors.txt),
+              HabitStatBox(value: "$doneToday/${habits.length}", label: "Today", color: AppColors.txt),
             ],
           ),
           const SizedBox(height: 20),
@@ -97,21 +107,13 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
             ),
             child: Row(
               children: [
-                _DateTabButton(
-                  label: "Today",
-                  selected: _dateTab == isoToday(),
-                  onTap: () => setState(() => _dateTab = isoToday()),
-                ),
-                _DateTabButton(
-                  label: "Yesterday",
-                  selected: _dateTab == yesterdayIso(),
-                  onTap: () => setState(() => _dateTab = yesterdayIso()),
-                ),
+                HabitDateTabButton(label: "Today", selected: _dateTab == isoToday(), onTap: () => setState(() => _dateTab = isoToday())),
+                HabitDateTabButton(label: "Yesterday", selected: _dateTab == yesterdayIso(), onTap: () => setState(() => _dateTab = yesterdayIso())),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          SectionLabel("Habits — ${_niceDate(_dateTab)}"),
+          SectionLabel("Habits — ${niceHabitDate(_dateTab)}"),
           ...habits.map((h) {
             final done = log.checked[h.id] == true;
             return InkWell(
@@ -167,118 +169,14 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
                     style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                   ),
                   const SizedBox(height: 12),
-                  _RatingRow(label: "\u{26A1} Energy Level", value: log.energy, onChange: (v) => _setRating("energy", v)),
+                  HabitRatingRow(label: "\u{26A1} Energy Level", value: log.energy, onChange: (v) => _setRating("energy", v)),
                   const SizedBox(height: 14),
-                  _RatingRow(label: "\u{1F525} Motivation Level", value: log.motivation, onChange: (v) => _setRating("motivation", v)),
+                  HabitRatingRow(label: "\u{1F525} Motivation Level", value: log.motivation, onChange: (v) => _setRating("motivation", v)),
                 ],
               ),
             ),
         ],
       ),
-    );
-  }
-}
-
-String _niceDate(String iso) {
-  final d = DateTime.parse(iso);
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return "${weekdays[d.weekday % 7]}, ${months[d.month - 1]} ${d.day}";
-}
-
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.value, required this.label, required this.color});
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          border: Border.all(color: AppColors.line),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: color)),
-            const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 0.5)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DateTabButton extends StatelessWidget {
-  const _DateTabButton({required this.label, required this.selected, required this.onTap});
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: selected ? AppColors.gold : Colors.transparent, borderRadius: BorderRadius.circular(6)),
-          child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppColors.mute)),
-        ),
-      ),
-    );
-  }
-}
-
-class _RatingRow extends StatelessWidget {
-  const _RatingRow({required this.label, required this.value, required this.onChange});
-  final String label;
-  final int? value;
-  final ValueChanged<int> onChange;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Row(
-          children: List.generate(10, (i) {
-            final n = i + 1;
-            final selected = value == n;
-            return Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(right: i < 9 ? 5 : 0),
-                child: InkWell(
-                  onTap: () => onChange(n),
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    height: 34,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.gold.withValues(alpha: 0.2) : AppColors.bg,
-                      border: Border.all(color: selected ? AppColors.gold : AppColors.line),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      "$n",
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.mute),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
-      ],
     );
   }
 }

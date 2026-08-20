@@ -3,10 +3,12 @@ import "availability_block.dart";
 /// A single entry in a trainer's `locations` jsonb list (real schema —
 /// see supabaseData.js `trainerRowToApp`/`trainerFieldsToRow`).
 class TrainerLocation {
-  const TrainerLocation({required this.name, this.address});
+  const TrainerLocation({required this.id, required this.name, this.address, this.hint});
 
+  final String id;
   final String name;
   final String? address;
+  final String? hint;
 }
 
 /// One before/after transformation-photo pair, as stored in the trainer's
@@ -35,6 +37,8 @@ class Trainer {
     this.beforeAfters = const [],
     this.availability = const [],
     this.commissionRate = 0,
+    this.disciplines = const [],
+    this.sessionTypes = const [],
   });
 
   final String id;
@@ -44,6 +48,14 @@ class Trainer {
   final String? email;
   final String? locationName;
   final String? locationAddress;
+
+  /// Real, directly-stored columns — NOT derived from [availability]'s
+  /// blocks (mirrors `trainerDisciplines`/`trainerSessionTypes` in
+  /// schedulingHelpers.js, which read `t.disciplines`/`t.sessionTypes`
+  /// directly). A coach can select a discipline/session type before ever
+  /// adding an availability block for it.
+  final List<String> disciplines;
+  final List<String> sessionTypes;
 
   /// Full `locations` list (the real schema supports more than one; the
   /// app's own edit form only ever writes a single entry, but a coach's

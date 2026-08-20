@@ -40,7 +40,19 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
           // new trainer still only lands in local mock state.
           if (_editing != null) {
             try {
-              await SupabaseService.updateTrainerRow(t.id, name: t.name, email: t.email, phone: t.phone, locationName: t.locationName, locationAddress: t.locationAddress, availability: t.availability);
+              await SupabaseService.updateTrainerRow(
+                t.id,
+                name: t.name,
+                email: t.email,
+                phone: t.phone,
+                photo: t.photo,
+                disciplines: t.disciplines,
+                sessionTypes: t.sessionTypes,
+                locations: t.locations,
+                bio: t.bio ?? "",
+                beforeAfters: t.beforeAfters,
+                availability: t.availability,
+              );
             } catch (e) {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
