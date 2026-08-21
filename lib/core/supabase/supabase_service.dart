@@ -47,7 +47,10 @@ class SupabaseService {
   static SupabaseClient get client => Supabase.instance.client;
 
   static Future<void> initialize() async {
-    await Supabase.initialize(url: SupabaseConfig.url, publishableKey: SupabaseConfig.publishableKey);
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      publishableKey: SupabaseConfig.publishableKey,
+    );
   }
 
   static User? get currentUser => client.auth.currentUser;
@@ -66,7 +69,11 @@ class SupabaseService {
   static Future<Map<String, dynamic>?> getSessionProfile() async {
     final user = currentUser;
     if (user == null) return null;
-    final row = await client.from("profiles").select().eq("id", user.id).maybeSingle();
+    final row = await client
+        .from("profiles")
+        .select()
+        .eq("id", user.id)
+        .maybeSingle();
     return row;
   }
 
@@ -97,7 +104,8 @@ class SupabaseService {
       data: {"requested_role": "client", "name": name, "phone": phone ?? ""},
     );
     final userId = res.user?.id;
-    if (userId == null) throw Exception("Sign-up failed — no account was created.");
+    if (userId == null)
+      throw Exception("Sign-up failed — no account was created.");
     await client.from("clients").insert({
       "profile_id": userId,
       if (city != null) "city": city,
@@ -150,6 +158,8 @@ class SupabaseService {
     List<String>? disciplines,
     String? locationName,
     String? locationAddress,
+    String? bio,
+    List<TrainerBeforeAfter>? beforeAfters,
   }) async {
     final res = await client.auth.signUp(
       email: email,
@@ -157,21 +167,36 @@ class SupabaseService {
       data: {"requested_role": "coach", "name": name, "phone": phone ?? ""},
     );
     final userId = res.user?.id;
-    if (userId == null) throw Exception("Sign-up failed — no account was created.");
+    if (userId == null)
+      throw Exception("Sign-up failed — no account was created.");
     await client.from("trainers").insert({
       "profile_id": userId,
       "reviewed_by_owner": false,
-      if (disciplines != null && disciplines.isNotEmpty) "disciplines": disciplines,
+      if (disciplines != null && disciplines.isNotEmpty)
+        "disciplines": disciplines,
       if (locationName != null || locationAddress != null)
         "locations": [
-          {"id": "loc-main", "name": locationName ?? "", "address": locationAddress ?? ""},
+          {
+            "id": "loc-main",
+            "name": locationName ?? "",
+            "address": locationAddress ?? "",
+          },
         ],
+      if (bio != null && bio.isNotEmpty) "bio": bio,
+      if (beforeAfters != null && beforeAfters.isNotEmpty)
+        "before_afters": beforeAfters.map(_beforeAfterToJson).toList(),
     });
     if (photo != null) {
-      await client.from("profiles").update({"photo_url": photo}).eq("id", userId);
+      await client
+          .from("profiles")
+          .update({"photo_url": photo})
+          .eq("id", userId);
     }
     try {
-      await client.rpc("mark_coach_code_used", params: {"entered_code": approvalCode});
+      await client.rpc(
+        "mark_coach_code_used",
+        params: {"entered_code": approvalCode},
+      );
     } catch (e) {
       // ignore: avoid_print
       print("[SupabaseService] mark_coach_code_used failed: $e");
@@ -189,26 +214,46 @@ class SupabaseService {
   /// client doesn't need the whole-gym roster fetched first just to find
   /// their own row in it.
   static Future<ClientInfo?> loadClientById(String id) async {
-    final profile = await client.from("profiles").select().eq("id", id).maybeSingle();
+    final profile = await client
+        .from("profiles")
+        .select()
+        .eq("id", id)
+        .maybeSingle();
     if (profile == null) return null;
-    final c = await client.from("clients").select().eq("profile_id", id).maybeSingle();
+    final c = await client
+        .from("clients")
+        .select()
+        .eq("profile_id", id)
+        .maybeSingle();
     return _clientInfoFromRow(profile, c ?? const {});
   }
 
   static Future<List<ClientInfo>> loadRoster() async {
-    final profiles = await client.from("profiles").select().eq("role", "client");
+    final profiles = await client
+        .from("profiles")
+        .select()
+        .eq("role", "client");
     if (profiles.isEmpty) return [];
     final ids = profiles.map((p) => p["id"] as String).toList();
-    final clients = await client.from("clients").select().inFilter("profile_id", ids);
+    final clients = await client
+        .from("clients")
+        .select()
+        .inFilter("profile_id", ids);
     final byId = {for (final c in clients) c["profile_id"] as String: c};
-    return _safeMap(profiles, (p) => _clientInfoFromRow(p, byId[p["id"]] ?? const {}));
+    return _safeMap(
+      profiles,
+      (p) => _clientInfoFromRow(p, byId[p["id"]] ?? const {}),
+    );
   }
 
   static Future<List<Trainer>> loadTrainers() async {
     final profiles = await client.from("profiles").select().eq("role", "coach");
     if (profiles.isEmpty) return [];
     final ids = profiles.map((p) => p["id"] as String).toList();
-    final trainers = await client.from("trainers").select().inFilter("profile_id", ids);
+    final trainers = await client
+        .from("trainers")
+        .select()
+        .inFilter("profile_id", ids);
     final byId = {for (final t in trainers) t["profile_id"] as String: t};
     final withRow = profiles.where((p) => byId.containsKey(p["id"]));
     return _safeMap(withRow, (p) => _trainerFromRow(p, byId[p["id"]]!));
@@ -220,7 +265,11 @@ class SupabaseService {
   }
 
   static Future<ClientRecord> loadClientRecord(String id) async {
-    final row = await client.from("client_records").select("data").eq("profile_id", id).maybeSingle();
+    final row = await client
+        .from("client_records")
+        .select("data")
+        .eq("profile_id", id)
+        .maybeSingle();
     final data = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
     return _clientRecordFromJson(id, data);
   }
@@ -230,7 +279,11 @@ class SupabaseService {
   /// blob whose keys are already camelCase, unlike the normalized tables).
   static Future<List<MembershipPlan>> loadMembershipPlans() async {
     final rows = await client.from("membership_plans").select();
-    return _safeMap(rows, (r) => _membershipPlanFromJson((r["data"] as Map).cast<String, dynamic>()));
+    return _safeMap(
+      rows,
+      (r) =>
+          _membershipPlanFromJson((r["data"] as Map).cast<String, dynamic>()),
+    );
   }
 
   /// Roster-wide — RLS (points_ledger_select_self_or_staff) scopes what
@@ -249,13 +302,21 @@ class SupabaseService {
   /// instead of trusting a locally-reconstructed row, since the server
   /// computes the real id/expiry/cap-checked amount (see grant-points'
   /// insert) that a client-guessed value can't replicate.
-  static Future<List<PointsLedgerEntry>> loadPointsLedgerFor(String clientId) async {
-    final rows = await client.from("points_ledger").select().eq("client_id", clientId);
+  static Future<List<PointsLedgerEntry>> loadPointsLedgerFor(
+    String clientId,
+  ) async {
+    final rows = await client
+        .from("points_ledger")
+        .select()
+        .eq("client_id", clientId);
     return _safeMap(rows, _pointsLedgerFromRow);
   }
 
   static Future<List<EarnedBadge>> loadMeritBadgesFor(String clientId) async {
-    final rows = await client.from("merit_badges").select().eq("client_id", clientId);
+    final rows = await client
+        .from("merit_badges")
+        .select()
+        .eq("client_id", clientId);
     return _safeMap(rows, _earnedBadgeFromRow);
   }
 
@@ -268,7 +329,8 @@ class SupabaseService {
     return _safeMap(rows, _blockedTimeFromRow);
   }
 
-  static BlockedTime _blockedTimeFromRow(Map<String, dynamic> row) => BlockedTime(
+  static BlockedTime _blockedTimeFromRow(Map<String, dynamic> row) =>
+      BlockedTime(
         id: row["id"].toString(),
         trainerId: row["trainer_id"] as String,
         date: row["date"] as String,
@@ -285,9 +347,11 @@ class SupabaseService {
   /// truncating here (once, at the boundary) keeps every downstream site
   /// unchanged instead of reformatting at each of the several places these
   /// fields are displayed.
-  static String? _dateOnly(String? iso) => (iso != null && iso.length >= 10) ? iso.substring(0, 10) : iso;
+  static String? _dateOnly(String? iso) =>
+      (iso != null && iso.length >= 10) ? iso.substring(0, 10) : iso;
 
-  static PointsLedgerEntry _pointsLedgerFromRow(Map<String, dynamic> row) => PointsLedgerEntry(
+  static PointsLedgerEntry _pointsLedgerFromRow(Map<String, dynamic> row) =>
+      PointsLedgerEntry(
         id: row["id"].toString(),
         clientId: row["client_id"] as String,
         amount: _asInt(row["amount"]) ?? 0,
@@ -300,7 +364,8 @@ class SupabaseService {
         voidedByLedgerId: row["voided_by_ledger_id"]?.toString(),
       );
 
-  static EarnedBadge _earnedBadgeFromRow(Map<String, dynamic> row) => EarnedBadge(
+  static EarnedBadge _earnedBadgeFromRow(Map<String, dynamic> row) =>
+      EarnedBadge(
         id: row["id"].toString(),
         clientId: row["client_id"] as String,
         badgeKey: row["badge_key"] as String,
@@ -314,31 +379,37 @@ class SupabaseService {
 
   static Future<List<Product>> loadProducts() async {
     final rows = await client.from("products").select();
-    return _safeMap(rows, (r) => _productFromJson((r["data"] as Map).cast<String, dynamic>()));
+    return _safeMap(
+      rows,
+      (r) => _productFromJson((r["data"] as Map).cast<String, dynamic>()),
+    );
   }
 
   static Product _productFromJson(Map<String, dynamic> j) => Product(
-        id: j["id"] as String,
-        name: j["name"] as String? ?? "",
-        priceCents: _asInt(j["priceCents"]) ?? 0,
-        category: j["category"] as String?,
-        archived: j["archived"] as bool? ?? false,
-      );
+    id: j["id"] as String,
+    name: j["name"] as String? ?? "",
+    priceCents: _asInt(j["priceCents"]) ?? 0,
+    category: j["category"] as String?,
+    archived: j["archived"] as bool? ?? false,
+  );
 
   static Future<List<WaiverDoc>> loadWaiverDocs() async {
     final rows = await client.from("waiver_docs").select();
-    return _safeMap(rows, (r) => _waiverDocFromJson((r["data"] as Map).cast<String, dynamic>()));
+    return _safeMap(
+      rows,
+      (r) => _waiverDocFromJson((r["data"] as Map).cast<String, dynamic>()),
+    );
   }
 
   static WaiverDoc _waiverDocFromJson(Map<String, dynamic> j) => WaiverDoc(
-        id: j["id"] as String,
-        title: j["title"] as String? ?? "",
-        body: j["body"] as String? ?? "",
-        scope: j["scope"] as String? ?? "general",
-        planId: j["planId"] as String?,
-        required: j["required"] as bool? ?? true,
-        archived: j["archived"] as bool? ?? false,
-      );
+    id: j["id"] as String,
+    title: j["title"] as String? ?? "",
+    body: j["body"] as String? ?? "",
+    scope: j["scope"] as String? ?? "general",
+    planId: j["planId"] as String?,
+    required: j["required"] as bool? ?? true,
+    archived: j["archived"] as bool? ?? false,
+  );
 
   /// `programs_library` holds both workout and nutrition templates in the
   /// same table, distinguished by `data.type` — this app's nutrition-side
@@ -356,13 +427,16 @@ class SupabaseService {
         out.add(_savedProgramFromJson(data));
       } catch (e) {
         // ignore: avoid_print
-        print("[SupabaseService] skipped malformed programs_library row: $e — $row");
+        print(
+          "[SupabaseService] skipped malformed programs_library row: $e — $row",
+        );
       }
     }
     return out;
   }
 
-  static SavedProgram _savedProgramFromJson(Map<String, dynamic> j) => SavedProgram(
+  static SavedProgram _savedProgramFromJson(Map<String, dynamic> j) =>
+      SavedProgram(
         id: j["id"] as String,
         name: j["name"] as String? ?? "",
         status: j["status"] as String? ?? "active",
@@ -371,7 +445,10 @@ class SupabaseService {
         // naming quirk carried over verbatim from SaveProgramDialog.jsx's
         // own entry shape (confirmed against a real row).
         coachName: j["createdBy"] as String?,
-        programDays: _safeMap(((j["programDays"] as List?) ?? const []).whereType<Map>(), _programDayFromJson),
+        programDays: _safeMap(
+          ((j["programDays"] as List?) ?? const []).whereType<Map>(),
+          _programDayFromJson,
+        ),
         createdAt: j["createdAt"] as String?,
         modifiedAt: j["modifiedAt"] as String?,
         assignedClientId: j["assignedClientId"] as String?,
@@ -379,48 +456,65 @@ class SupabaseService {
       );
 
   static ProgramDay _programDayFromJson(Map<String, dynamic> j) => ProgramDay(
-        id: j["id"] as String,
-        title: j["title"] as String? ?? "",
-        exercises: _safeMap(((j["exercises"] as List?) ?? const []).whereType<Map>(), _exercisePrescriptionFromJson),
-      );
+    id: j["id"] as String,
+    title: j["title"] as String? ?? "",
+    exercises: _safeMap(
+      ((j["exercises"] as List?) ?? const []).whereType<Map>(),
+      _exercisePrescriptionFromJson,
+    ),
+  );
 
-  static ExercisePrescription _exercisePrescriptionFromJson(Map<String, dynamic> j) => ExercisePrescription(
-        id: j["id"] as String,
-        name: j["name"] as String? ?? "",
-        exerciseId: j["exerciseId"] as String?,
-        group: j["group"] as String?,
-        sets: _asInt(j["sets"]) ?? 3,
-        reps: _asInt(j["reps"]) ?? 0,
-        weight: j["weight"]?.toString(),
-        time: j["time"]?.toString(),
-        distance: j["distance"]?.toString(),
-        rest: j["rest"]?.toString(),
-        notes: j["notes"] as String?,
-        laterality: j["laterality"] as String? ?? "bilateral",
-        supersetId: j["supersetId"] as String?,
-        clientNoteText: j["clientFlag"] is Map ? (j["clientFlag"] as Map)["note"] as String? : null,
-        clientNoteAt: j["clientFlag"] is Map ? (j["clientFlag"] as Map)["at"] as String? : null,
-      );
+  static ExercisePrescription _exercisePrescriptionFromJson(
+    Map<String, dynamic> j,
+  ) => ExercisePrescription(
+    id: j["id"] as String,
+    name: j["name"] as String? ?? "",
+    exerciseId: j["exerciseId"] as String?,
+    group: j["group"] as String?,
+    sets: _asInt(j["sets"]) ?? 3,
+    reps: _asInt(j["reps"]) ?? 0,
+    weight: j["weight"]?.toString(),
+    time: j["time"]?.toString(),
+    distance: j["distance"]?.toString(),
+    rest: j["rest"]?.toString(),
+    notes: j["notes"] as String?,
+    laterality: j["laterality"] as String? ?? "bilateral",
+    supersetId: j["supersetId"] as String?,
+    clientNoteText: j["clientFlag"] is Map
+        ? (j["clientFlag"] as Map)["note"] as String?
+        : null,
+    clientNoteAt: j["clientFlag"] is Map
+        ? (j["clientFlag"] as Map)["at"] as String?
+        : null,
+  );
 
   static Future<List<MealDef>> loadCustomMeals() async {
     final rows = await client.from("custom_meals").select();
-    return _safeMap(rows, (r) => _mealDefFromJson((r["data"] as Map).cast<String, dynamic>()));
+    return _safeMap(
+      rows,
+      (r) => _mealDefFromJson((r["data"] as Map).cast<String, dynamic>()),
+    );
   }
 
   static MealDef _mealDefFromJson(Map<String, dynamic> j) => MealDef(
-        id: j["id"] as String,
-        name: j["name"] as String? ?? "",
-        mealType: j["mealType"] as String? ?? "snacks",
-        calories: _asInt(j["calories"]) ?? 0,
-        protein: (j["protein"] as num?)?.toDouble() ?? 0,
-        carbs: (j["carbs"] as num?)?.toDouble() ?? 0,
-        fats: (j["fats"] as num?)?.toDouble() ?? 0,
-        ingredients: _safeMap(((j["ingredients"] as List?) ?? const []).whereType<Map>(), _ingredientFromJson),
-        instructions: j["instructions"] as String?,
-        notes: j["notes"] as String?,
-        dietTags: ((j["dietTags"] as List?) ?? const []).whereType<String>().toList(),
-        isCustom: j["isCustom"] as bool? ?? true,
-      );
+    id: j["id"] as String,
+    name: j["name"] as String? ?? "",
+    mealType: j["mealType"] as String? ?? "snacks",
+    calories: _asInt(j["calories"]) ?? 0,
+    protein: (j["protein"] as num?)?.toDouble() ?? 0,
+    carbs: (j["carbs"] as num?)?.toDouble() ?? 0,
+    fats: (j["fats"] as num?)?.toDouble() ?? 0,
+    ingredients: _safeMap(
+      ((j["ingredients"] as List?) ?? const []).whereType<Map>(),
+      _ingredientFromJson,
+    ),
+    instructions: j["instructions"] as String?,
+    notes: j["notes"] as String?,
+    dietTags: ((j["dietTags"] as List?) ?? const [])
+        .whereType<String>()
+        .toList(),
+    isCustom: j["isCustom"] as bool? ?? true,
+  );
 
   /// Real data's key is `equipmentIds`, not `equipment` (confirmed against a
   /// real row) — this model's field is named for what it holds, not for the
@@ -432,15 +526,21 @@ class SupabaseService {
   /// value would.
   static Future<List<ExerciseDef>> loadExercises() async {
     final rows = await client.from("exercises").select();
-    return _safeMap(rows, (r) => _exerciseDefFromJson((r["data"] as Map).cast<String, dynamic>()));
+    return _safeMap(
+      rows,
+      (r) => _exerciseDefFromJson((r["data"] as Map).cast<String, dynamic>()),
+    );
   }
 
-  static ExerciseDef _exerciseDefFromJson(Map<String, dynamic> j) => ExerciseDef(
+  static ExerciseDef _exerciseDefFromJson(Map<String, dynamic> j) =>
+      ExerciseDef(
         id: j["id"] as String,
         name: j["name"] as String? ?? "",
         movementPattern: j["movementPattern"] as String? ?? "",
         primaryMuscle: j["primaryMuscle"] as String? ?? "",
-        equipment: ((j["equipmentIds"] as List?) ?? const []).whereType<String>().toList(),
+        equipment: ((j["equipmentIds"] as List?) ?? const [])
+            .whereType<String>()
+            .toList(),
         setup: j["setup"] as String?,
         cues: j["cues"] as String?,
         coachNotes: j["coachNotes"] as String?,
@@ -456,20 +556,23 @@ class SupabaseService {
   /// as `null` (`if (challenge.prize != null)` gates the prize card), so an
   /// empty string has to be normalized to null on the way in or a real
   /// challenge with no prize would render a blank prize card.
-  static String? _emptyToNull(dynamic v) => (v is String && v.isNotEmpty) ? v : null;
+  static String? _emptyToNull(dynamic v) =>
+      (v is String && v.isNotEmpty) ? v : null;
 
   static Challenge _challengeFromRow(Map<String, dynamic> row) => Challenge(
-        id: row["id"] as String,
-        name: row["name"] as String? ?? "",
-        template: row["template"] as String? ?? "",
-        metric: row["metric"] as String? ?? "",
-        startDate: row["start_date"] as String? ?? "",
-        endDate: row["end_date"] as String? ?? "",
-        description: _emptyToNull(row["description"]),
-        prize: _emptyToNull(row["prize"]),
-        participantIds: ((row["participants"] as List?) ?? const []).whereType<String>().toList(),
-        winnerClientId: row["winner"] as String?,
-      );
+    id: row["id"] as String,
+    name: row["name"] as String? ?? "",
+    template: row["template"] as String? ?? "",
+    metric: row["metric"] as String? ?? "",
+    startDate: row["start_date"] as String? ?? "",
+    endDate: row["end_date"] as String? ?? "",
+    description: _emptyToNull(row["description"]),
+    prize: _emptyToNull(row["prize"]),
+    participantIds: ((row["participants"] as List?) ?? const [])
+        .whereType<String>()
+        .toList(),
+    winnerClientId: row["winner"] as String?,
+  );
 
   static Future<List<Squad>> loadSquads() async {
     final rows = await client.from("squads").select();
@@ -477,27 +580,44 @@ class SupabaseService {
   }
 
   static Squad _squadFromRow(Map<String, dynamic> row) => Squad(
-        id: row["id"] as String,
-        name: row["name"] as String?,
-        leadId: row["lead_id"] as String,
-        memberIds: ((row["member_ids"] as List?) ?? const []).whereType<String>().toList(),
-        memberMeta: ((row["member_meta"] as Map?) ?? const {}).map(
-          (k, v) => MapEntry(k as String, _squadMemberMetaFromJson((v as Map).cast<String, dynamic>())),
-        ),
-        maxSize: _asInt(row["max_size"]) ?? kDefaultSquadMax,
-        membership: row["membership"] != null ? _squadMembershipFromJson((row["membership"] as Map).cast<String, dynamic>()) : null,
-        pendingInvites: _safeMap(((row["pending_invites"] as List?) ?? const []).whereType<Map>(), _squadInviteFromJson),
-        activity: _safeMap(((row["activity"] as List?) ?? const []).whereType<Map>(), _squadActivityFromJson),
-      );
+    id: row["id"] as String,
+    name: row["name"] as String?,
+    leadId: row["lead_id"] as String,
+    memberIds: ((row["member_ids"] as List?) ?? const [])
+        .whereType<String>()
+        .toList(),
+    memberMeta: ((row["member_meta"] as Map?) ?? const {}).map(
+      (k, v) => MapEntry(
+        k as String,
+        _squadMemberMetaFromJson((v as Map).cast<String, dynamic>()),
+      ),
+    ),
+    maxSize: _asInt(row["max_size"]) ?? kDefaultSquadMax,
+    membership: row["membership"] != null
+        ? _squadMembershipFromJson(
+            (row["membership"] as Map).cast<String, dynamic>(),
+          )
+        : null,
+    pendingInvites: _safeMap(
+      ((row["pending_invites"] as List?) ?? const []).whereType<Map>(),
+      _squadInviteFromJson,
+    ),
+    activity: _safeMap(
+      ((row["activity"] as List?) ?? const []).whereType<Map>(),
+      _squadActivityFromJson,
+    ),
+  );
 
-  static SquadMemberMeta _squadMemberMetaFromJson(Map<String, dynamic> j) => SquadMemberMeta(
+  static SquadMemberMeta _squadMemberMetaFromJson(Map<String, dynamic> j) =>
+      SquadMemberMeta(
         relationship: j["relationship"] as String? ?? "",
         status: j["status"] as String? ?? "active",
         paymentEnabled: j["paymentEnabled"] as bool? ?? false,
         minBalance: (j["minBalance"] as num?) ?? 0,
       );
 
-  static SquadInvite _squadInviteFromJson(Map<String, dynamic> j) => SquadInvite(
+  static SquadInvite _squadInviteFromJson(Map<String, dynamic> j) =>
+      SquadInvite(
         clientId: j["clientId"] as String,
         sentAt: j["sentAt"] as String? ?? "",
         status: j["status"] as String? ?? "pending",
@@ -506,7 +626,8 @@ class SupabaseService {
   /// Real rows nest the human-readable text one level deeper than this
   /// model does — `activity[i].details.description`, not a flat
   /// `activity[i].description` (confirmed against a real row).
-  static SquadActivityEntry _squadActivityFromJson(Map<String, dynamic> j) => SquadActivityEntry(
+  static SquadActivityEntry _squadActivityFromJson(Map<String, dynamic> j) =>
+      SquadActivityEntry(
         id: j["id"] as String,
         type: j["type"] as String? ?? "",
         at: j["at"] as String? ?? "",
@@ -514,7 +635,8 @@ class SupabaseService {
         description: (j["details"] as Map?)?["description"] as String?,
       );
 
-  static SquadMembership _squadMembershipFromJson(Map<String, dynamic> j) => SquadMembership(
+  static SquadMembership _squadMembershipFromJson(Map<String, dynamic> j) =>
+      SquadMembership(
         planName: j["planName"] as String? ?? "",
         kind: j["kind"] as String? ?? "package",
         sessionsRemaining: _asInt(j["sessionsRemaining"]) ?? 0,
@@ -550,21 +672,21 @@ class SupabaseService {
   }
 
   static Charge _chargeFromRow(Map<String, dynamic> row) => Charge(
-        id: row["id"] as String,
-        clientId: row["client_id"] as String,
-        clientName: row["client_name"] as String? ?? "",
-        type: row["type"] as String? ?? "",
-        date: row["date"] as String? ?? "",
-        at: row["at"] as String? ?? "",
-        amount: (row["amount"] as num?)?.toDouble(),
-        category: row["category"] as String?,
-        description: row["description"] as String?,
-        planId: row["plan_id"] as String?,
-        planName: row["plan_name"] as String?,
-        trainerId: row["trainer_id"] as String?,
-        trainerName: row["trainer_name"] as String?,
-        waivedAt: _dateOnly(row["waived_at"] as String?),
-      );
+    id: row["id"] as String,
+    clientId: row["client_id"] as String,
+    clientName: row["client_name"] as String? ?? "",
+    type: row["type"] as String? ?? "",
+    date: row["date"] as String? ?? "",
+    at: row["at"] as String? ?? "",
+    amount: (row["amount"] as num?)?.toDouble(),
+    category: row["category"] as String?,
+    description: row["description"] as String?,
+    planId: row["plan_id"] as String?,
+    planName: row["plan_name"] as String?,
+    trainerId: row["trainer_id"] as String?,
+    trainerName: row["trainer_name"] as String?,
+    waivedAt: _dateOnly(row["waived_at"] as String?),
+  );
 
   /// Real `data` blob nests everything under 5 tabs (`access`, `clients`,
   /// `payments`, `workouts`, `scheduling` — note the coach-related tab is
@@ -578,37 +700,77 @@ class SupabaseService {
   /// null if no row exists yet, in which case the caller keeps the model's
   /// own defaults (same as every other "real, even if absent" domain here).
   static Future<PlatformSettings?> loadPlatformSettings() async {
-    final row = await client.from("platform_settings").select("data").eq("id", "global").maybeSingle();
+    final row = await client
+        .from("platform_settings")
+        .select("data")
+        .eq("id", "global")
+        .maybeSingle();
     if (row == null) return null;
-    return _platformSettingsFromJson((row["data"] as Map).cast<String, dynamic>());
+    return _platformSettingsFromJson(
+      (row["data"] as Map).cast<String, dynamic>(),
+    );
   }
 
   static PlatformSettings _platformSettingsFromJson(Map<String, dynamic> j) {
     final access = ((j["access"] as Map?) ?? const {}).cast<String, dynamic>();
-    final clients = ((j["clients"] as Map?) ?? const {}).cast<String, dynamic>();
-    final payments = ((j["payments"] as Map?) ?? const {}).cast<String, dynamic>();
-    final workouts = ((j["workouts"] as Map?) ?? const {}).cast<String, dynamic>();
-    final scheduling = ((j["scheduling"] as Map?) ?? const {}).cast<String, dynamic>();
+    final clients = ((j["clients"] as Map?) ?? const {})
+        .cast<String, dynamic>();
+    final payments = ((j["payments"] as Map?) ?? const {})
+        .cast<String, dynamic>();
+    final workouts = ((j["workouts"] as Map?) ?? const {})
+        .cast<String, dynamic>();
+    final scheduling = ((j["scheduling"] as Map?) ?? const {})
+        .cast<String, dynamic>();
     const defaults = PlatformSettings();
     return PlatformSettings(
-      lateCancellationHours: _asInt(scheduling["lateCancellationHours"]) ?? defaults.lateCancellationHours,
-      maxBookingHorizonDays: _asInt(scheduling["maxBookingHorizonDays"]) ?? defaults.maxBookingHorizonDays,
-      minBookingLeadHours: _asInt(scheduling["minBookingLeadHours"]) ?? defaults.minBookingLeadHours,
-      semiPrivateCap: _asInt(scheduling["semiPrivateCap"]) ?? defaults.semiPrivateCap,
-      twoFactorRequirement: access["twoFactorRequirement"] as String? ?? defaults.twoFactorRequirement,
-      coachClientScope: access["coachClientScope"] as String? ?? defaults.coachClientScope,
-      coachCanViewRevenue: access["coachCanViewRevenue"] as bool? ?? defaults.coachCanViewRevenue,
-      coachCanSeeOtherSchedules: access["coachCanSeeOtherSchedules"] as bool? ?? defaults.coachCanSeeOtherSchedules,
-      coachCanEditClientWorkouts: access["coachCanEditClientWorkouts"] as bool? ?? defaults.coachCanEditClientWorkouts,
-      messageIdentity: access["messageIdentity"] as String? ?? defaults.messageIdentity,
-      requireWaiverAtSignup: clients["requireWaiverAtSignup"] as bool? ?? defaults.requireWaiverAtSignup,
-      clientsCanMessageAnyCoach: clients["clientsCanMessageAnyCoach"] as bool? ?? defaults.clientsCanMessageAnyCoach,
-      processingFeeEnabled: payments["processingFeeEnabled"] as bool? ?? defaults.processingFeeEnabled,
+      lateCancellationHours:
+          _asInt(scheduling["lateCancellationHours"]) ??
+          defaults.lateCancellationHours,
+      maxBookingHorizonDays:
+          _asInt(scheduling["maxBookingHorizonDays"]) ??
+          defaults.maxBookingHorizonDays,
+      minBookingLeadHours:
+          _asInt(scheduling["minBookingLeadHours"]) ??
+          defaults.minBookingLeadHours,
+      semiPrivateCap:
+          _asInt(scheduling["semiPrivateCap"]) ?? defaults.semiPrivateCap,
+      twoFactorRequirement:
+          access["twoFactorRequirement"] as String? ??
+          defaults.twoFactorRequirement,
+      coachClientScope:
+          access["coachClientScope"] as String? ?? defaults.coachClientScope,
+      coachCanViewRevenue:
+          access["coachCanViewRevenue"] as bool? ??
+          defaults.coachCanViewRevenue,
+      coachCanSeeOtherSchedules:
+          access["coachCanSeeOtherSchedules"] as bool? ??
+          defaults.coachCanSeeOtherSchedules,
+      coachCanEditClientWorkouts:
+          access["coachCanEditClientWorkouts"] as bool? ??
+          defaults.coachCanEditClientWorkouts,
+      messageIdentity:
+          access["messageIdentity"] as String? ?? defaults.messageIdentity,
+      requireWaiverAtSignup:
+          clients["requireWaiverAtSignup"] as bool? ??
+          defaults.requireWaiverAtSignup,
+      clientsCanMessageAnyCoach:
+          clients["clientsCanMessageAnyCoach"] as bool? ??
+          defaults.clientsCanMessageAnyCoach,
+      processingFeeEnabled:
+          payments["processingFeeEnabled"] as bool? ??
+          defaults.processingFeeEnabled,
       feePercent: (payments["feePercent"] as num?) ?? defaults.feePercent,
-      autoCarryOverLastWeight: workouts["autoCarryOverLastWeight"] as bool? ?? defaults.autoCarryOverLastWeight,
-      defaultWeightUnit: workouts["defaultWeightUnit"] as String? ?? defaults.defaultWeightUnit,
-      clientsCanSwapExercises: workouts["clientsCanSwapExercises"] as bool? ?? defaults.clientsCanSwapExercises,
-      businessName: workouts["businessName"] as String? ?? defaults.businessName,
+      autoCarryOverLastWeight:
+          workouts["autoCarryOverLastWeight"] as bool? ??
+          defaults.autoCarryOverLastWeight,
+      defaultWeightUnit:
+          workouts["defaultWeightUnit"] as String? ??
+          defaults.defaultWeightUnit,
+      clientsCanSwapExercises:
+          workouts["clientsCanSwapExercises"] as bool? ??
+          defaults.clientsCanSwapExercises,
+      businessName:
+          workouts["businessName"] as String? ?? defaults.businessName,
     );
   }
 
@@ -618,30 +780,34 @@ class SupabaseService {
   /// `profiles`, city on `clients`) — mirrors updateClientRow's field split
   /// in supabaseData.js, trimmed to the fields the app's Edit Profile screen
   /// actually exposes.
-  static Future<void> updateClientRow(String id,
-      {String? name,
-      String? email,
-      String? phone,
-      String? photo,
-      String? city,
-      String? birthday,
-      String? membershipPlanId,
-      bool? redeemPointsNextRenewal,
-      int? sessionCountOverride,
-      String? sessionCountOverrideMonth,
-      bool clearSessionCountOverride = false}) async {
+  static Future<void> updateClientRow(
+    String id, {
+    String? name,
+    String? email,
+    String? phone,
+    String? photo,
+    String? city,
+    String? birthday,
+    String? membershipPlanId,
+    bool? redeemPointsNextRenewal,
+    int? sessionCountOverride,
+    String? sessionCountOverrideMonth,
+    bool clearSessionCountOverride = false,
+  }) async {
     final profileFields = <String, dynamic>{
       if (name != null) "name": name,
       if (email != null) "email": email,
       if (phone != null) "phone": phone,
       if (photo != null) "photo_url": photo,
     };
-    if (profileFields.isNotEmpty) await client.from("profiles").update(profileFields).eq("id", id);
+    if (profileFields.isNotEmpty)
+      await client.from("profiles").update(profileFields).eq("id", id);
     final clientFields = <String, dynamic>{
       if (city != null) "city": city,
       if (birthday != null) "birthday": birthday,
       if (membershipPlanId != null) "membership_plan_id": membershipPlanId,
-      if (redeemPointsNextRenewal != null) "redeem_points_next_renewal": redeemPointsNextRenewal,
+      if (redeemPointsNextRenewal != null)
+        "redeem_points_next_renewal": redeemPointsNextRenewal,
       if (clearSessionCountOverride)
         "session_count_override": null
       else if (sessionCountOverride != null)
@@ -651,26 +817,36 @@ class SupabaseService {
       else if (sessionCountOverrideMonth != null)
         "session_count_override_month": sessionCountOverrideMonth,
     };
-    if (clientFields.isNotEmpty) await client.from("clients").update(clientFields).eq("profile_id", id);
+    if (clientFields.isNotEmpty)
+      await client.from("clients").update(clientFields).eq("profile_id", id);
   }
 
   /// Owner/coach freezing a client's membership — mirrors freezeMembership
   /// in supabaseData.js. Pauses real Stripe billing (resumes automatically
   /// on `endDate`, server-side, no cron needed) and sets the local
   /// membership_paused* fields the app reads for display/booking access.
-  static Future<void> freezeMembership(String clientId, String startDate, String endDate) =>
-      _invokeFunction("freeze-membership", {"clientId": clientId, "startDate": startDate, "endDate": endDate});
+  static Future<void> freezeMembership(
+    String clientId,
+    String startDate,
+    String endDate,
+  ) => _invokeFunction("freeze-membership", {
+    "clientId": clientId,
+    "startDate": startDate,
+    "endDate": endDate,
+  });
 
   /// Ends a freeze early — mirrors unfreezeMembership in supabaseData.js.
   /// Resumes real Stripe billing immediately rather than waiting for the
   /// originally-scheduled end date.
-  static Future<void> unfreezeMembership(String clientId) => _invokeFunction("unfreeze-membership", {"clientId": clientId});
+  static Future<void> unfreezeMembership(String clientId) =>
+      _invokeFunction("unfreeze-membership", {"clientId": clientId});
 
   /// Mirrors sendPasswordReset in supabaseData.js — Supabase Auth emails a
   /// reset link; there's no in-app "change password" for an existing
   /// account (a brand-new signup sets the initial password directly, see
   /// signUpClient/signUpCoach).
-  static Future<void> sendPasswordReset(String email) => client.auth.resetPasswordForEmail(email);
+  static Future<void> sendPasswordReset(String email) =>
+      client.auth.resetPasswordForEmail(email);
 
   /// A coach editing their own profile. `locations` is a list on the real
   /// schema (see `_locationNameFrom`'s doc comment on `bookings.location`
@@ -697,7 +873,8 @@ class SupabaseService {
       if (phone != null) "phone": phone,
       if (photo != null) "photo_url": photo,
     };
-    if (profileFields.isNotEmpty) await client.from("profiles").update(profileFields).eq("id", id);
+    if (profileFields.isNotEmpty)
+      await client.from("profiles").update(profileFields).eq("id", id);
     final trainerFields = <String, dynamic>{
       if (disciplines != null) "disciplines": disciplines,
       if (sessionTypes != null) "session_types": sessionTypes,
@@ -705,33 +882,42 @@ class SupabaseService {
         "locations": locations.map(_trainerLocationToJson).toList()
       else if (locationName != null || locationAddress != null)
         "locations": [
-          {"id": "loc-main", "name": locationName ?? "", "address": locationAddress ?? ""},
+          {
+            "id": "loc-main",
+            "name": locationName ?? "",
+            "address": locationAddress ?? "",
+          },
         ],
       if (bio != null) "bio": bio,
-      if (beforeAfters != null) "before_afters": beforeAfters.map(_beforeAfterToJson).toList(),
-      if (availability != null) "availability": availability.map(_availabilityToJson).toList(),
+      if (beforeAfters != null)
+        "before_afters": beforeAfters.map(_beforeAfterToJson).toList(),
+      if (availability != null)
+        "availability": availability.map(_availabilityToJson).toList(),
     };
-    if (trainerFields.isNotEmpty) await client.from("trainers").update(trainerFields).eq("profile_id", id);
+    if (trainerFields.isNotEmpty)
+      await client.from("trainers").update(trainerFields).eq("profile_id", id);
   }
 
   static Map<String, dynamic> _trainerLocationToJson(TrainerLocation l) => {
-        "id": l.id,
-        "name": l.name,
-        if (l.address != null) "address": l.address,
-        if (l.hint != null) "hint": l.hint,
-      };
+    "id": l.id,
+    "name": l.name,
+    if (l.address != null) "address": l.address,
+    if (l.hint != null) "hint": l.hint,
+  };
 
   static Map<String, dynamic> _beforeAfterToJson(TrainerBeforeAfter b) => {
-        "id": b.id,
-        if (b.left != null) "left": b.left,
-        if (b.right != null) "right": b.right,
-      };
+    "id": b.id,
+    if (b.left != null) "left": b.left,
+    if (b.right != null) "right": b.right,
+  };
 
   static Map<String, dynamic> _availabilityToJson(AvailabilityBlock b) => {
-        "sessionType": b.sessionType,
-        "discipline": b.discipline,
-        "byDay": b.byDay.map((weekday, slots) => MapEntry(weekday.toString(), slots)),
-      };
+    "sessionType": b.sessionType,
+    "discipline": b.discipline,
+    "byDay": b.byDay.map(
+      (weekday, slots) => MapEntry(weekday.toString(), slots),
+    ),
+  };
 
   /// `client_records.data` is a single JSONB column holding many features'
   /// worth of state (see ClientRecord's own doc comment) — upsert replaces
@@ -739,78 +925,135 @@ class SupabaseService {
   /// merges the patch on top rather than reconstructing it from this app's
   /// (currently partial) ClientRecord model, to avoid silently dropping
   /// fields this app doesn't model yet (program/logs/tourSeen/...).
-  static Future<void> upsertClientRecordPatch(String profileId, Map<String, dynamic> patch) async {
-    final row = await client.from("client_records").select("data").eq("profile_id", profileId).maybeSingle();
+  static Future<void> upsertClientRecordPatch(
+    String profileId,
+    Map<String, dynamic> patch,
+  ) async {
+    final row = await client
+        .from("client_records")
+        .select("data")
+        .eq("profile_id", profileId)
+        .maybeSingle();
     final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
     final next = {...current, ...patch};
-    await client.from("client_records").upsert({"profile_id": profileId, "data": next});
+    await client.from("client_records").upsert({
+      "profile_id": profileId,
+      "data": next,
+    });
   }
 
   /// Mirrors HabitSettingsPanel.jsx's toggle/addCustom/removeCustom — all
   /// three just rewrite the whole `habitSettings` object, so one write
   /// covers every caller.
-  static Future<void> updateClientHabitSettings(String clientId, {required List<String> enabled, required List<HabitDef> custom}) =>
-      upsertClientRecordPatch(clientId, {
-        "habitSettings": {
-          "enabled": enabled,
-          "custom": custom.map((h) => {"id": h.id, "label": h.label, "emoji": h.emoji, "custom": true}).toList(),
-        },
-      });
+  static Future<void> updateClientHabitSettings(
+    String clientId, {
+    required List<String> enabled,
+    required List<HabitDef> custom,
+  }) => upsertClientRecordPatch(clientId, {
+    "habitSettings": {
+      "enabled": enabled,
+      "custom": custom
+          .map(
+            (h) => {
+              "id": h.id,
+              "label": h.label,
+              "emoji": h.emoji,
+              "custom": true,
+            },
+          )
+          .toList(),
+    },
+  });
 
   /// Mirrors habitHelpers.js `saveHabitLog` — `client.habitLogs` is a flat
   /// array keyed by `date`, not a map, so this re-fetches it, replaces
   /// whichever entry (if any) already exists for [date], and writes the
   /// whole array back — same shape as upsertClientRecordPatch but the
   /// array-level merge means it can't just delegate to that helper.
-  static Future<void> updateClientHabitLog(String clientId, String date, HabitLogEntry entry) async {
-    final row = await client.from("client_records").select("data").eq("profile_id", clientId).maybeSingle();
+  static Future<void> updateClientHabitLog(
+    String clientId,
+    String date,
+    HabitLogEntry entry,
+  ) async {
+    final row = await client
+        .from("client_records")
+        .select("data")
+        .eq("profile_id", clientId)
+        .maybeSingle();
     final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
-    final logs = ((current["habitLogs"] as List?) ?? const []).whereType<Map>().where((m) => m["date"]?.toString() != date).toList();
-    logs.add({"date": date, "checked": entry.checked, "energy": entry.energy, "motivation": entry.motivation});
-    await client.from("client_records").upsert({"profile_id": clientId, "data": {...current, "habitLogs": logs}});
+    final logs = ((current["habitLogs"] as List?) ?? const [])
+        .whereType<Map>()
+        .where((m) => m["date"]?.toString() != date)
+        .toList();
+    logs.add({
+      "date": date,
+      "checked": entry.checked,
+      "energy": entry.energy,
+      "motivation": entry.motivation,
+    });
+    await client.from("client_records").upsert({
+      "profile_id": clientId,
+      "data": {...current, "habitLogs": logs},
+    });
   }
 
   static Map<String, dynamic> _commMessageToJson(CommMessage m) => {
-        "id": m.id,
-        "who": m.who,
-        "text": m.text,
-        "at": m.at,
-        "trainerId": m.trainerId,
-        "readByCoach": m.readByCoach,
-      };
+    "id": m.id,
+    "who": m.who,
+    "text": m.text,
+    "at": m.at,
+    "trainerId": m.trainerId,
+    "readByCoach": m.readByCoach,
+  };
 
-  static Future<void> updateClientComms(String profileId, List<CommMessage> comms) =>
-      upsertClientRecordPatch(profileId, {"comms": comms.map(_commMessageToJson).toList()});
+  static Future<void> updateClientComms(
+    String profileId,
+    List<CommMessage> comms,
+  ) => upsertClientRecordPatch(profileId, {
+    "comms": comms.map(_commMessageToJson).toList(),
+  });
 
   static Map<String, dynamic> _trainerNoteToJson(TrainerNote n) => {
-        "id": n.id,
-        "flag": n.flag,
-        "title": n.title,
-        "details": n.details,
-        "coachId": n.coachId,
-        "coachName": n.coachName,
-        "createdAt": n.createdAt,
-        "modifiedAt": n.modifiedAt,
-        "status": n.status,
-        "bodyArea": n.bodyArea,
-        "followUpRequired": n.followUpRequired,
-        "resolveBy": n.resolveBy,
-      };
+    "id": n.id,
+    "flag": n.flag,
+    "title": n.title,
+    "details": n.details,
+    "coachId": n.coachId,
+    "coachName": n.coachName,
+    "createdAt": n.createdAt,
+    "modifiedAt": n.modifiedAt,
+    "status": n.status,
+    "bodyArea": n.bodyArea,
+    "followUpRequired": n.followUpRequired,
+    "resolveBy": n.resolveBy,
+  };
 
-  static Future<void> updateClientTrainerNotes(String profileId, List<TrainerNote> notes) =>
-      upsertClientRecordPatch(profileId, {"trainerNotes": notes.map(_trainerNoteToJson).toList()});
+  static Future<void> updateClientTrainerNotes(
+    String profileId,
+    List<TrainerNote> notes,
+  ) => upsertClientRecordPatch(profileId, {
+    "trainerNotes": notes.map(_trainerNoteToJson).toList(),
+  });
 
   /// Assigning a program to a client (ProgramBuilder.jsx) writes both here
   /// (this client's own copy) and a separate copy into the shared
   /// programs_library — see upsertProgramLibraryEntry.
-  static Future<void> updateClientSavedPrograms(String profileId, List<SavedProgram> programs) =>
-      upsertClientRecordPatch(profileId, {"savedPrograms": programs.map(_savedProgramToJson).toList()});
+  static Future<void> updateClientSavedPrograms(
+    String profileId,
+    List<SavedProgram> programs,
+  ) => upsertClientRecordPatch(profileId, {
+    "savedPrograms": programs.map(_savedProgramToJson).toList(),
+  });
 
   /// The client's live, currently-being-built workout split
   /// (client.programDays) — mirrors ProgramBuilder.jsx's `persist`, called
   /// on every single day/exercise edit, not just an explicit "Save".
-  static Future<void> updateClientProgramDays(String profileId, List<ProgramDay> days) =>
-      upsertClientRecordPatch(profileId, {"programDays": days.map(_programDayToJson).toList()});
+  static Future<void> updateClientProgramDays(
+    String profileId,
+    List<ProgramDay> days,
+  ) => upsertClientRecordPatch(profileId, {
+    "programDays": days.map(_programDayToJson).toList(),
+  });
 
   /// `client_records.data.challengeProgress` — keyed by challenge id, each a
   /// list of manually-logged entries (ClientChallengeDetail.jsx). Not
@@ -818,10 +1061,17 @@ class SupabaseService {
   /// is empty here), but it's a simple, single-shape field — unlike the
   /// program/logs vs savedPrograms/workoutLogs ambiguity that held up Part
   /// 1, there's no competing second system for this one in the JS source.
-  static Future<void> updateClientChallengeProgress(String profileId, Map<String, List<ChallengeProgressEntry>> progress) =>
-      upsertClientRecordPatch(profileId, {
-        "challengeProgress": progress.map((k, v) => MapEntry(k, v.map((e) => {"value": e.value, "loggedAt": e.loggedAt}).toList())),
-      });
+  static Future<void> updateClientChallengeProgress(
+    String profileId,
+    Map<String, List<ChallengeProgressEntry>> progress,
+  ) => upsertClientRecordPatch(profileId, {
+    "challengeProgress": progress.map(
+      (k, v) => MapEntry(
+        k,
+        v.map((e) => {"value": e.value, "loggedAt": e.loggedAt}).toList(),
+      ),
+    ),
+  });
 
   /// `client_records.data.intake` is itself keyed by assessment
   /// ("personalTraining" | "nutritional" | ...) — a plain
@@ -830,10 +1080,19 @@ class SupabaseService {
   /// the current nested map, merges just the one key, and writes the full
   /// blob back (same fetch-then-merge shape as upsertClientRecordPatch
   /// itself, one level deeper).
-  static Future<void> updateClientIntake(String profileId, String assessmentKey, IntakeRecord record) async {
-    final row = await client.from("client_records").select("data").eq("profile_id", profileId).maybeSingle();
+  static Future<void> updateClientIntake(
+    String profileId,
+    String assessmentKey,
+    IntakeRecord record,
+  ) async {
+    final row = await client
+        .from("client_records")
+        .select("data")
+        .eq("profile_id", profileId)
+        .maybeSingle();
     final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
-    final currentIntake = (current["intake"] as Map?)?.cast<String, dynamic>() ?? const {};
+    final currentIntake =
+        (current["intake"] as Map?)?.cast<String, dynamic>() ?? const {};
     final nextIntake = {
       ...currentIntake,
       assessmentKey: {
@@ -843,7 +1102,10 @@ class SupabaseService {
         "by": record.by,
       },
     };
-    await client.from("client_records").upsert({"profile_id": profileId, "data": {...current, "intake": nextIntake}});
+    await client.from("client_records").upsert({
+      "profile_id": profileId,
+      "data": {...current, "intake": nextIntake},
+    });
   }
 
   /// `client_records.data.tourSeen` — one-time "seen" flags for the
@@ -851,93 +1113,127 @@ class SupabaseService {
   /// {dashboard, drawer} same as the web. Fetch-then-merge for the same
   /// reason as updateClientIntake: a plain patch would blank out whichever
   /// of the two flags isn't being set here.
-  static Future<void> updateClientTourSeen(String profileId, {bool? dashboard, bool? drawer}) async {
-    final row = await client.from("client_records").select("data").eq("profile_id", profileId).maybeSingle();
+  static Future<void> updateClientTourSeen(
+    String profileId, {
+    bool? dashboard,
+    bool? drawer,
+  }) async {
+    final row = await client
+        .from("client_records")
+        .select("data")
+        .eq("profile_id", profileId)
+        .maybeSingle();
     final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
-    final currentTourSeen = (current["tourSeen"] as Map?)?.cast<String, dynamic>() ?? const {};
+    final currentTourSeen =
+        (current["tourSeen"] as Map?)?.cast<String, dynamic>() ?? const {};
     final nextTourSeen = {
       ...currentTourSeen,
       if (dashboard != null) "dashboard": dashboard,
       if (drawer != null) "drawer": drawer,
     };
-    await client.from("client_records").upsert({"profile_id": profileId, "data": {...current, "tourSeen": nextTourSeen}});
+    await client.from("client_records").upsert({
+      "profile_id": profileId,
+      "data": {...current, "tourSeen": nextTourSeen},
+    });
   }
 
   static Map<String, dynamic> _macroTargetsToJson(MacroTargets t) => t.asMap();
 
   static Map<String, dynamic> _targetsSplitToJson(DaySplit<MacroTargets> t) => {
-        "training": _macroTargetsToJson(t.training),
-        "rest": _macroTargetsToJson(t.rest),
-      };
+    "training": _macroTargetsToJson(t.training),
+    "rest": _macroTargetsToJson(t.rest),
+  };
 
-  static Map<String, dynamic> _mealBudgetsSplitToJson(DaySplit<Map<String, String>> mb) => {
-        "training": mb.training,
-        "rest": mb.rest,
-      };
+  static Map<String, dynamic> _mealBudgetsSplitToJson(
+    DaySplit<Map<String, String>> mb,
+  ) => {"training": mb.training, "rest": mb.rest};
 
   static Map<String, dynamic> _ingredientToJson(Ingredient i) => i.toJson();
 
   static Map<String, dynamic> _nutritionMealToJson(NutritionMeal m) => {
-        "id": m.id,
-        "name": m.name,
-        if (m.time != null) "time": m.time,
-        "calories": m.calories,
-        "protein": m.protein,
-        "carbs": m.carbs,
-        "fats": m.fats,
-        if (m.notes != null) "notes": m.notes,
-        if (m.instructions != null) "instructions": m.instructions,
-        "isCustom": m.isCustom,
-        "ingredients": m.ingredients.map(_ingredientToJson).toList(),
-        if (m.targetCalories != null) "targetCalories": m.targetCalories,
-        if (m.scale != null) "scale": m.scale,
-        if (m.scaledIngredients != null) "scaledIngredients": m.scaledIngredients!.map(_ingredientToJson).toList(),
-        if (m.scaledMacros != null) "scaledMacros": m.scaledMacros!.toJson(),
-        if (m.overrides.isNotEmpty) "overrides": m.overrides.map((k, v) => MapEntry(k.toString(), v)),
-      };
+    "id": m.id,
+    "name": m.name,
+    if (m.time != null) "time": m.time,
+    "calories": m.calories,
+    "protein": m.protein,
+    "carbs": m.carbs,
+    "fats": m.fats,
+    if (m.notes != null) "notes": m.notes,
+    if (m.instructions != null) "instructions": m.instructions,
+    "isCustom": m.isCustom,
+    "ingredients": m.ingredients.map(_ingredientToJson).toList(),
+    if (m.targetCalories != null) "targetCalories": m.targetCalories,
+    if (m.scale != null) "scale": m.scale,
+    if (m.scaledIngredients != null)
+      "scaledIngredients": m.scaledIngredients!.map(_ingredientToJson).toList(),
+    if (m.scaledMacros != null) "scaledMacros": m.scaledMacros!.toJson(),
+    if (m.overrides.isNotEmpty)
+      "overrides": m.overrides.map((k, v) => MapEntry(k.toString(), v)),
+  };
 
   static Map<String, dynamic> _nutritionPlanToJson(NutritionPlan n) => {
-        "targets": _targetsSplitToJson(DaySplit(training: n.trainingTargets, rest: n.restTargets)),
-        "mealBudgets": _mealBudgetsSplitToJson(n.mealBudgets),
-        "breakfast": n.breakfast.map(_nutritionMealToJson).toList(),
-        "lunch": n.lunch.map(_nutritionMealToJson).toList(),
-        "dinner": n.dinner.map(_nutritionMealToJson).toList(),
-        "snacks": n.snacks.map(_nutritionMealToJson).toList(),
-        "smoothies": n.smoothies.map(_nutritionMealToJson).toList(),
-        if (n.guidelines != null) "guidelines": n.guidelines,
-        if (n.extraGroceryItems != null) "extraGroceryItems": n.extraGroceryItems,
-        "attachments": n.attachments.map((a) => {"id": a.id, "name": a.name, "dataUrl": a.dataUrl, "size": a.size}).toList(),
-      };
+    "targets": _targetsSplitToJson(
+      DaySplit(training: n.trainingTargets, rest: n.restTargets),
+    ),
+    "mealBudgets": _mealBudgetsSplitToJson(n.mealBudgets),
+    "breakfast": n.breakfast.map(_nutritionMealToJson).toList(),
+    "lunch": n.lunch.map(_nutritionMealToJson).toList(),
+    "dinner": n.dinner.map(_nutritionMealToJson).toList(),
+    "snacks": n.snacks.map(_nutritionMealToJson).toList(),
+    "smoothies": n.smoothies.map(_nutritionMealToJson).toList(),
+    if (n.guidelines != null) "guidelines": n.guidelines,
+    if (n.extraGroceryItems != null) "extraGroceryItems": n.extraGroceryItems,
+    "attachments": n.attachments
+        .map(
+          (a) => {
+            "id": a.id,
+            "name": a.name,
+            "dataUrl": a.dataUrl,
+            "size": a.size,
+          },
+        )
+        .toList(),
+  };
 
   /// `client_records.data.nutrition` — the client's single active nutrition
   /// program (targets/meal budgets/suggested meals/guidelines). Whole-object
   /// replace, matching NutritionBuilder.jsx's own `save = (n) => persist({
   /// ...client, nutrition: n })` — there's nothing else nested under this
   /// key to preserve.
-  static Future<void> updateClientNutrition(String profileId, NutritionPlan plan) =>
-      upsertClientRecordPatch(profileId, {"nutrition": _nutritionPlanToJson(plan)});
+  static Future<void> updateClientNutrition(
+    String profileId,
+    NutritionPlan plan,
+  ) => upsertClientRecordPatch(profileId, {
+    "nutrition": _nutritionPlanToJson(plan),
+  });
 
   /// `client_records.data.savedNutritionPrograms` — the AI-draft review
   /// queue plus any coach-saved target sets. Whole-list replace (same
   /// pattern as updateClientSavedPrograms) — callers pass the full list
   /// including untouched entries.
-  static Future<void> updateClientSavedNutritionPrograms(String profileId, List<NutritionProgramEntry> programs) =>
-      upsertClientRecordPatch(profileId, {
-        "savedNutritionPrograms": programs
-            .map((p) => {
-                  "id": p.id,
-                  "name": p.name,
-                  "type": "nutrition",
-                  "status": p.status,
-                  "source": p.source,
-                  "targets": _targetsSplitToJson(DaySplit(training: p.trainingTargets, rest: p.restTargets)),
-                  "mealBudgets": _mealBudgetsSplitToJson(p.mealBudgets),
-                  if (p.guidelines != null) "guidelines": p.guidelines,
-                  if (p.createdAt != null) "createdAt": p.createdAt,
-                  if (p.createdBy != null) "createdBy": p.createdBy,
-                })
-            .toList(),
-      });
+  static Future<void> updateClientSavedNutritionPrograms(
+    String profileId,
+    List<NutritionProgramEntry> programs,
+  ) => upsertClientRecordPatch(profileId, {
+    "savedNutritionPrograms": programs
+        .map(
+          (p) => {
+            "id": p.id,
+            "name": p.name,
+            "type": "nutrition",
+            "status": p.status,
+            "source": p.source,
+            "targets": _targetsSplitToJson(
+              DaySplit(training: p.trainingTargets, rest: p.restTargets),
+            ),
+            "mealBudgets": _mealBudgetsSplitToJson(p.mealBudgets),
+            if (p.guidelines != null) "guidelines": p.guidelines,
+            if (p.createdAt != null) "createdAt": p.createdAt,
+            if (p.createdBy != null) "createdBy": p.createdBy,
+          },
+        )
+        .toList(),
+  });
 
   /// Drafts (or, with forceRegenerate, redrafts) whole-number Training/Rest
   /// Day calorie & macro targets, water, a per-meal calorie budget split,
@@ -948,16 +1244,26 @@ class SupabaseService {
   /// app's own refreshClient — nothing here reflects it locally.
   /// Response is `{ok:true, programId}` or, for an expected non-error
   /// condition, `{ok:false, reason: "nutrition-intake-incomplete"|"program-exists"}`.
-  static Future<Map<String, dynamic>> generateAiNutritionProgram(String clientId, {bool forceRegenerate = false}) =>
-      _invokeFunction("generate-ai-nutrition-program", {"clientId": clientId, "forceRegenerate": forceRegenerate});
+  static Future<Map<String, dynamic>> generateAiNutritionProgram(
+    String clientId, {
+    bool forceRegenerate = false,
+  }) => _invokeFunction("generate-ai-nutrition-program", {
+    "clientId": clientId,
+    "forceRegenerate": forceRegenerate,
+  });
 
   /// Claude — mirrors generateAiWorkoutProgram in supabaseData.js. Writes a
   /// draft straight into client_records.data.savedPrograms server-side
   /// (service-role, `{source:"ai", status:"draft"}`); the caller must
   /// re-fetch (loadClientRecord) to see the result. Response is
   /// `{ok:true, programId}` or `{ok:false, reason: "intakes-incomplete"|"program-exists"}`.
-  static Future<Map<String, dynamic>> generateAiWorkoutProgram(String clientId, {bool forceRegenerate = false}) =>
-      _invokeFunction("generate-ai-workout-program", {"clientId": clientId, "forceRegenerate": forceRegenerate});
+  static Future<Map<String, dynamic>> generateAiWorkoutProgram(
+    String clientId, {
+    bool forceRegenerate = false,
+  }) => _invokeFunction("generate-ai-workout-program", {
+    "clientId": clientId,
+    "forceRegenerate": forceRegenerate,
+  });
 
   /// Inserts and returns the server-assigned row (real id, defaults applied)
   /// — mirrors insertBooking in supabaseData.js. `location` only ever
@@ -982,7 +1288,8 @@ class SupabaseService {
     await client.from("bookings").delete().eq("id", id);
   }
 
-  static WaitlistEntry _waitlistFromRow(Map<String, dynamic> row) => WaitlistEntry(
+  static WaitlistEntry _waitlistFromRow(Map<String, dynamic> row) =>
+      WaitlistEntry(
         id: row["id"] as String,
         clientId: row["client_id"] as String,
         clientName: row["client_name"] as String? ?? "",
@@ -1041,12 +1348,19 @@ class SupabaseService {
       "full_day": bt.allDay,
       "reason": bt.reason,
     };
-    final data = await client.from("blocked_time").insert(row).select().single();
+    final data = await client
+        .from("blocked_time")
+        .insert(row)
+        .select()
+        .single();
     return _blockedTimeFromRow(data);
   }
 
   static Future<void> updateBookingAttendance(String id, String? status) async {
-    await client.from("bookings").update({"attendance_status": status}).eq("id", id);
+    await client
+        .from("bookings")
+        .update({"attendance_status": status})
+        .eq("id", id);
   }
 
   /// There is no insert/update/delete RLS policy on `points_ledger` or
@@ -1058,7 +1372,10 @@ class SupabaseService {
   /// back a raw Response the caller has to parse), so unwrapping the
   /// function's own `{error: "..."}` body is a lot less code than
   /// supabaseData.js's `invokeFunctionOrThrow` needs.
-  static Future<Map<String, dynamic>> _invokeFunction(String name, Map<String, dynamic> body) async {
+  static Future<Map<String, dynamic>> _invokeFunction(
+    String name,
+    Map<String, dynamic> body,
+  ) async {
     try {
       final res = await client.functions.invoke(name, body: body);
       final data = res.data;
@@ -1073,66 +1390,113 @@ class SupabaseService {
   /// Coach/owner discretionary grant — amount must be 1, 3, or 5; reason
   /// required (min 5 chars). Server enforces the 5/month/coach/client cap.
   static Future<void> grantPoints(String clientId, int amount, String reason) =>
-      _invokeFunction("grant-points", {"clientId": clientId, "amount": amount, "reason": reason});
+      _invokeFunction("grant-points", {
+        "clientId": clientId,
+        "amount": amount,
+        "reason": reason,
+      });
 
   /// Voids one specific prior earn/grant row. reason required.
   static Future<void> voidPoints(String ledgerRowId, String reason) =>
-      _invokeFunction("void-points", {"ledgerRowId": ledgerRowId, "reason": reason});
+      _invokeFunction("void-points", {
+        "ledgerRowId": ledgerRowId,
+        "reason": reason,
+      });
 
   /// Owner-only general point removal (FIFO, no specific row targeted).
-  static Future<void> deductPoints(String clientId, int amount, String reason) =>
-      _invokeFunction("deduct-points", {"clientId": clientId, "amount": amount, "reason": reason});
+  static Future<void> deductPoints(
+    String clientId,
+    int amount,
+    String reason,
+  ) => _invokeFunction("deduct-points", {
+    "clientId": clientId,
+    "amount": amount,
+    "reason": reason,
+  });
 
   /// Redeems points against an ALREADY-ACTIVE Stripe subscription — fails
   /// with a clear message for any client without one (package/program
   /// plans, or a membership plan never actually checked out through
   /// real Stripe), which is expected until Part 8 wires real payments.
-  static Future<Map<String, dynamic>> redeemPoints(String clientId) => _invokeFunction("redeem-points", {"clientId": clientId});
+  static Future<Map<String, dynamic>> redeemPoints(String clientId) =>
+      _invokeFunction("redeem-points", {"clientId": clientId});
 
   /// Client-triggered automatic eligibility check — mirrors awardMeritBadge
   /// in supabaseData.js. Safe to call speculatively/repeatedly (idempotent
   /// server-side); returns `{ok:true, badgeKey}` on a genuinely fresh award
   /// or `{ok:true, alreadyEarned:true}`/an error otherwise — callers treat a
   /// thrown error as "not eligible yet", not a failure worth surfacing.
-  static Future<Map<String, dynamic>> awardMeritBadge(String clientId, String badgeKey, {String? sourceRefId}) =>
-      _invokeFunction("award-merit-badge", {"clientId": clientId, "badgeKey": badgeKey, if (sourceRefId != null) "sourceRefId": sourceRefId});
+  static Future<Map<String, dynamic>> awardMeritBadge(
+    String clientId,
+    String badgeKey, {
+    String? sourceRefId,
+  }) => _invokeFunction("award-merit-badge", {
+    "clientId": clientId,
+    "badgeKey": badgeKey,
+    if (sourceRefId != null) "sourceRefId": sourceRefId,
+  });
 
   /// Coach/owner manual award — badgeKey must be one of MERIT_BADGES'
   /// category:"coach" entries (Record Breaker, Gym Citizen).
-  static Future<Map<String, dynamic>> grantMeritBadge(String clientId, String badgeKey, String? note) =>
-      _invokeFunction("grant-merit-badge", {"clientId": clientId, "badgeKey": badgeKey, if (note != null) "note": note});
+  static Future<Map<String, dynamic>> grantMeritBadge(
+    String clientId,
+    String badgeKey,
+    String? note,
+  ) => _invokeFunction("grant-merit-badge", {
+    "clientId": clientId,
+    "badgeKey": badgeKey,
+    if (note != null) "note": note,
+  });
 
   /// Owner-only override — any of the 11 catalog badges, bypassing all
   /// eligibility checks.
-  static Future<Map<String, dynamic>> forceAwardMeritBadge(String clientId, String badgeKey, String? note) =>
-      _invokeFunction("force-award-merit-badge", {"clientId": clientId, "badgeKey": badgeKey, if (note != null) "note": note});
+  static Future<Map<String, dynamic>> forceAwardMeritBadge(
+    String clientId,
+    String badgeKey,
+    String? note,
+  ) => _invokeFunction("force-award-merit-badge", {
+    "clientId": clientId,
+    "badgeKey": badgeKey,
+    if (note != null) "note": note,
+  });
 
   /// Coach/owner-only removal — only ever allowed for a coach-awarded badge;
   /// the server re-verifies this itself. Soft-delete (revoked_at set).
-  static Future<void> revokeMeritBadge(String badgeId) => _invokeFunction("revoke-merit-badge", {"badgeId": badgeId});
+  static Future<void> revokeMeritBadge(String badgeId) =>
+      _invokeFunction("revoke-merit-badge", {"badgeId": badgeId});
 
   /// Opportunistic 6-month expiry sweep for Gym Citizen's 10 sub-badges —
   /// safe to call speculatively on every dashboard/profile/badges-tab load;
   /// a no-op when nothing's actually stale. Returns `{expiredCount}`.
-  static Future<Map<String, dynamic>> checkGymCitizenExpiry(String clientId) => _invokeFunction("check-gym-citizen-expiry", {"clientId": clientId});
+  static Future<Map<String, dynamic>> checkGymCitizenExpiry(String clientId) =>
+      _invokeFunction("check-gym-citizen-expiry", {"clientId": clientId});
 
   /// Owner-only real Stripe refund (test-mode key in this project) — only
   /// valid for a `type: "purchase"` charge with a linked
   /// stripe_payment_intent_id. Inserts a new negative-amount "refund" row
   /// rather than modifying the original charge, so the caller should
   /// re-fetch (loadCharges) rather than mutate the refunded row locally.
-  static Future<Map<String, dynamic>> refundCharge(String chargeId) => _invokeFunction("refund-charge", {"chargeId": chargeId});
+  static Future<Map<String, dynamic>> refundCharge(String chargeId) =>
+      _invokeFunction("refund-charge", {"chargeId": chargeId});
 
   /// Owner-only — only valid for a `type: "early_termination_fee"` charge;
   /// marks the existing row waived in place (unlike refund, no new row).
-  static Future<void> waiveCharge(String chargeId) => _invokeFunction("waive-charge", {"chargeId": chargeId});
+  static Future<void> waiveCharge(String chargeId) =>
+      _invokeFunction("waive-charge", {"chargeId": chargeId});
 
   /// Real email, sent server-side via the send-email Edge Function (SMTP —
   /// see supabase/EMAIL_SETUP.md). Any authenticated caller may invoke this
   /// (Comms.jsx/CoachChat.jsx's "Email"/"Both" channel is available to both
   /// clients and coaches) — there's no role restriction to enforce here.
-  static Future<void> sendEmail({required String to, required String subject, required String text}) =>
-      _invokeFunction("send-email", {"to": to, "subject": subject, "text": text});
+  static Future<void> sendEmail({
+    required String to,
+    required String subject,
+    required String text,
+  }) => _invokeFunction("send-email", {
+    "to": to,
+    "subject": subject,
+    "text": text,
+  });
 
   /// Real Stripe Checkout — mirrors createCheckoutSession in
   /// supabaseData.js, trimmed to card payments only (this app doesn't
@@ -1141,7 +1505,10 @@ class SupabaseService {
   /// client buy a plan"). Returns the Stripe-hosted Checkout URL to send
   /// the browser to — the plan is only ever actually granted later, by
   /// stripe-webhook confirming payment, never here and never client-side.
-  static Future<String> createCheckoutSession({required String planId, String? returnUrl}) async {
+  static Future<String> createCheckoutSession({
+    required String planId,
+    String? returnUrl,
+  }) async {
     final data = await _invokeFunction("create-checkout-session", {
       "planId": planId,
       if (returnUrl != null) "returnUrl": returnUrl,
@@ -1157,8 +1524,9 @@ class SupabaseService {
   /// ({feeCents, renewsAt, noticeDaysRequired}) without actually canceling,
   /// so the UI can show the early-termination fee before the client confirms.
   /// A real (non-preview) call returns {ok:true, feeCents}.
-  static Future<Map<String, dynamic>> cancelMembership({bool preview = false}) =>
-      _invokeFunction("cancel-membership", {"preview": preview});
+  static Future<Map<String, dynamic>> cancelMembership({
+    bool preview = false,
+  }) => _invokeFunction("cancel-membership", {"preview": preview});
 
   /// Client's own upgrade/downgrade of an EXISTING paid subscription —
   /// mirrors changeMembershipPlan in supabaseData.js. timing: "immediate"
@@ -1169,39 +1537,46 @@ class SupabaseService {
   /// `effectiveAt` date). Only valid when the client already has a real
   /// Stripe subscription and the new plan is also a paid subscription —
   /// MembershipHubScreen gates this itself before calling.
-  static Future<Map<String, dynamic>> changeMembershipPlan({required String newPlanId, required String timing}) =>
-      _invokeFunction("change-membership-plan", {"newPlanId": newPlanId, "timing": timing});
+  static Future<Map<String, dynamic>> changeMembershipPlan({
+    required String newPlanId,
+    required String timing,
+  }) => _invokeFunction("change-membership-plan", {
+    "newPlanId": newPlanId,
+    "timing": timing,
+  });
 
-  static Map<String, Map<String, dynamic>> _platformSettingsTabPatch(PlatformSettings s) => {
-        "access": {
-          "messageIdentity": s.messageIdentity,
-          "coachClientScope": s.coachClientScope,
-          "coachCanViewRevenue": s.coachCanViewRevenue,
-          "twoFactorRequirement": s.twoFactorRequirement,
-          "coachCanSeeOtherSchedules": s.coachCanSeeOtherSchedules,
-          "coachCanEditClientWorkouts": s.coachCanEditClientWorkouts,
-        },
-        "clients": {
-          "requireWaiverAtSignup": s.requireWaiverAtSignup,
-          "clientsCanMessageAnyCoach": s.clientsCanMessageAnyCoach,
-        },
-        "payments": {
-          "processingFeeEnabled": s.processingFeeEnabled,
-          "feePercent": s.feePercent,
-        },
-        "workouts": {
-          "businessName": s.businessName,
-          "defaultWeightUnit": s.defaultWeightUnit,
-          "autoCarryOverLastWeight": s.autoCarryOverLastWeight,
-          "clientsCanSwapExercises": s.clientsCanSwapExercises,
-        },
-        "scheduling": {
-          "semiPrivateCap": s.semiPrivateCap,
-          "minBookingLeadHours": s.minBookingLeadHours,
-          "lateCancellationHours": s.lateCancellationHours,
-          "maxBookingHorizonDays": s.maxBookingHorizonDays,
-        },
-      };
+  static Map<String, Map<String, dynamic>> _platformSettingsTabPatch(
+    PlatformSettings s,
+  ) => {
+    "access": {
+      "messageIdentity": s.messageIdentity,
+      "coachClientScope": s.coachClientScope,
+      "coachCanViewRevenue": s.coachCanViewRevenue,
+      "twoFactorRequirement": s.twoFactorRequirement,
+      "coachCanSeeOtherSchedules": s.coachCanSeeOtherSchedules,
+      "coachCanEditClientWorkouts": s.coachCanEditClientWorkouts,
+    },
+    "clients": {
+      "requireWaiverAtSignup": s.requireWaiverAtSignup,
+      "clientsCanMessageAnyCoach": s.clientsCanMessageAnyCoach,
+    },
+    "payments": {
+      "processingFeeEnabled": s.processingFeeEnabled,
+      "feePercent": s.feePercent,
+    },
+    "workouts": {
+      "businessName": s.businessName,
+      "defaultWeightUnit": s.defaultWeightUnit,
+      "autoCarryOverLastWeight": s.autoCarryOverLastWeight,
+      "clientsCanSwapExercises": s.clientsCanSwapExercises,
+    },
+    "scheduling": {
+      "semiPrivateCap": s.semiPrivateCap,
+      "minBookingLeadHours": s.minBookingLeadHours,
+      "lateCancellationHours": s.lateCancellationHours,
+      "maxBookingHorizonDays": s.maxBookingHorizonDays,
+    },
+  };
 
   /// Owner-only. Merges this model's ~17 fields into whatever tab maps
   /// already exist in the real blob (re-fetched fresh, same reasoning as
@@ -1211,13 +1586,22 @@ class SupabaseService {
   /// per leaf that actually changed, matching savePlatformSettings.js's own
   /// diff-and-log behavior (visible only in the web app — no audit-log
   /// screen exists here — but the two apps share one database/history).
-  static Future<void> savePlatformSettings(PlatformSettings prev, PlatformSettings next) async {
-    final row = await client.from("platform_settings").select("data").eq("id", "global").maybeSingle();
-    final current = ((row?["data"] as Map?) ?? const {}).cast<String, dynamic>();
+  static Future<void> savePlatformSettings(
+    PlatformSettings prev,
+    PlatformSettings next,
+  ) async {
+    final row = await client
+        .from("platform_settings")
+        .select("data")
+        .eq("id", "global")
+        .maybeSingle();
+    final current = ((row?["data"] as Map?) ?? const {})
+        .cast<String, dynamic>();
     final nextPatch = _platformSettingsTabPatch(next);
     final merged = {...current};
     for (final tab in nextPatch.keys) {
-      final currentTab = ((current[tab] as Map?) ?? const {}).cast<String, dynamic>();
+      final currentTab = ((current[tab] as Map?) ?? const {})
+          .cast<String, dynamic>();
       merged[tab] = {...currentTab, ...nextPatch[tab]!};
     }
 
@@ -1251,12 +1635,12 @@ class SupabaseService {
   }
 
   static Map<String, dynamic> _productToJson(Product p) => {
-        "id": p.id,
-        "name": p.name,
-        "priceCents": p.priceCents,
-        "category": p.category,
-        "archived": p.archived,
-      };
+    "id": p.id,
+    "name": p.name,
+    "priceCents": p.priceCents,
+    "category": p.category,
+    "archived": p.archived,
+  };
 
   /// Shared by every jsonb-blob table write below (products, waiver_docs,
   /// membership_plans, programs_library, custom_meals, exercises). Real
@@ -1269,122 +1653,144 @@ class SupabaseService {
   /// moment a coach edited any OTHER field through this app. Re-fetches
   /// fresh and merges the modeled patch on top instead, same as
   /// upsertClientRecordPatch/savePlatformSettings.
-  static Future<void> _mergeJsonbUpsert(String table, String id, Map<String, dynamic> patch) async {
-    final row = await client.from(table).select("data").eq("id", id).maybeSingle();
-    final current = ((row?["data"] as Map?) ?? const {}).cast<String, dynamic>();
-    await client.from(table).upsert({"id": id, "data": {...current, ...patch}});
+  static Future<void> _mergeJsonbUpsert(
+    String table,
+    String id,
+    Map<String, dynamic> patch,
+  ) async {
+    final row = await client
+        .from(table)
+        .select("data")
+        .eq("id", id)
+        .maybeSingle();
+    final current = ((row?["data"] as Map?) ?? const {})
+        .cast<String, dynamic>();
+    await client.from(table).upsert({
+      "id": id,
+      "data": {...current, ...patch},
+    });
   }
 
-  static Future<void> upsertProduct(Product p) => _mergeJsonbUpsert("products", p.id, _productToJson(p));
+  static Future<void> upsertProduct(Product p) =>
+      _mergeJsonbUpsert("products", p.id, _productToJson(p));
 
   static Future<void> deleteProduct(String id) async {
     await client.from("products").delete().eq("id", id);
   }
 
   static Map<String, dynamic> _waiverDocToJson(WaiverDoc w) => {
-        "id": w.id,
-        "title": w.title,
-        "body": w.body,
-        "scope": w.scope,
-        "planId": w.planId,
-        "required": w.required,
-        "archived": w.archived,
-      };
+    "id": w.id,
+    "title": w.title,
+    "body": w.body,
+    "scope": w.scope,
+    "planId": w.planId,
+    "required": w.required,
+    "archived": w.archived,
+  };
 
-  static Future<void> upsertWaiverDoc(WaiverDoc w) => _mergeJsonbUpsert("waiver_docs", w.id, _waiverDocToJson(w));
+  static Future<void> upsertWaiverDoc(WaiverDoc w) =>
+      _mergeJsonbUpsert("waiver_docs", w.id, _waiverDocToJson(w));
 
   static Future<void> deleteWaiverDoc(String id) async {
     await client.from("waiver_docs").delete().eq("id", id);
   }
 
   static Map<String, dynamic> _membershipPlanToJson(MembershipPlan p) => {
-        "id": p.id,
-        "name": p.name,
-        "kind": p.kind.name,
-        "maxSessions": p.maxSessions,
-        "termMonths": p.termMonths,
-        "allowedTypes": p.allowedTypes,
-        "priceCents": p.priceCents,
-        "archived": p.archived,
-      };
+    "id": p.id,
+    "name": p.name,
+    "kind": p.kind.name,
+    "maxSessions": p.maxSessions,
+    "termMonths": p.termMonths,
+    "allowedTypes": p.allowedTypes,
+    "priceCents": p.priceCents,
+    "archived": p.archived,
+  };
 
   /// No delete counterpart — the app never hard-deletes a plan, only
   /// archives it (matches ManageMemberships.jsx's own UI, which has no
   /// delete action either).
-  static Future<void> upsertMembershipPlan(MembershipPlan p) => _mergeJsonbUpsert("membership_plans", p.id, _membershipPlanToJson(p));
+  static Future<void> upsertMembershipPlan(MembershipPlan p) =>
+      _mergeJsonbUpsert("membership_plans", p.id, _membershipPlanToJson(p));
 
   static Map<String, dynamic> _savedProgramToJson(SavedProgram p) => {
-        "id": p.id,
-        "name": p.name,
-        "type": "workout",
-        "status": p.status,
-        "source": p.source,
-        "createdBy": p.coachName,
-        "programDays": p.programDays.map(_programDayToJson).toList(),
-        "createdAt": p.createdAt,
-        "modifiedAt": p.modifiedAt,
-        "assignedClientId": p.assignedClientId,
-        "assignedClientName": p.assignedClientName,
-      };
+    "id": p.id,
+    "name": p.name,
+    "type": "workout",
+    "status": p.status,
+    "source": p.source,
+    "createdBy": p.coachName,
+    "programDays": p.programDays.map(_programDayToJson).toList(),
+    "createdAt": p.createdAt,
+    "modifiedAt": p.modifiedAt,
+    "assignedClientId": p.assignedClientId,
+    "assignedClientName": p.assignedClientName,
+  };
 
   static Map<String, dynamic> _programDayToJson(ProgramDay d) => {
-        "id": d.id,
-        "title": d.title,
-        "exercises": d.exercises.map(_exercisePrescriptionToJson).toList(),
-      };
+    "id": d.id,
+    "title": d.title,
+    "exercises": d.exercises.map(_exercisePrescriptionToJson).toList(),
+  };
 
-  static Map<String, dynamic> _exercisePrescriptionToJson(ExercisePrescription e) => {
-        "id": e.id,
-        "name": e.name,
-        "exerciseId": e.exerciseId,
-        "group": e.group,
-        "sets": e.sets,
-        "reps": e.reps,
-        "weight": e.weight,
-        "time": e.time,
-        "distance": e.distance,
-        "rest": e.rest,
-        "notes": e.notes,
-        "laterality": e.laterality,
-        "supersetId": e.supersetId,
-        "clientFlag": e.clientNoteText != null ? {"note": e.clientNoteText, "at": e.clientNoteAt} : null,
-      };
+  static Map<String, dynamic> _exercisePrescriptionToJson(
+    ExercisePrescription e,
+  ) => {
+    "id": e.id,
+    "name": e.name,
+    "exerciseId": e.exerciseId,
+    "group": e.group,
+    "sets": e.sets,
+    "reps": e.reps,
+    "weight": e.weight,
+    "time": e.time,
+    "distance": e.distance,
+    "rest": e.rest,
+    "notes": e.notes,
+    "laterality": e.laterality,
+    "supersetId": e.supersetId,
+    "clientFlag": e.clientNoteText != null
+        ? {"note": e.clientNoteText, "at": e.clientNoteAt}
+        : null,
+  };
 
-  static Future<void> upsertProgramLibraryEntry(SavedProgram p) => _mergeJsonbUpsert("programs_library", p.id, _savedProgramToJson(p));
+  static Future<void> upsertProgramLibraryEntry(SavedProgram p) =>
+      _mergeJsonbUpsert("programs_library", p.id, _savedProgramToJson(p));
 
   static Future<void> deleteProgramLibraryEntry(String id) async {
     await client.from("programs_library").delete().eq("id", id);
   }
 
   static Map<String, dynamic> _mealDefToJson(MealDef m) => {
-        "id": m.id,
-        "name": m.name,
-        "mealType": m.mealType,
-        "calories": m.calories,
-        "protein": m.protein,
-        "carbs": m.carbs,
-        "fats": m.fats,
-        "ingredients": m.ingredients.map(_ingredientToJson).toList(),
-        "instructions": m.instructions,
-        "notes": m.notes,
-        "dietTags": m.dietTags,
-        "isCustom": m.isCustom,
-      };
+    "id": m.id,
+    "name": m.name,
+    "mealType": m.mealType,
+    "calories": m.calories,
+    "protein": m.protein,
+    "carbs": m.carbs,
+    "fats": m.fats,
+    "ingredients": m.ingredients.map(_ingredientToJson).toList(),
+    "instructions": m.instructions,
+    "notes": m.notes,
+    "dietTags": m.dietTags,
+    "isCustom": m.isCustom,
+  };
 
-  static Future<void> insertCustomMeal(MealDef m) => _mergeJsonbUpsert("custom_meals", m.id, _mealDefToJson(m));
+  static Future<void> insertCustomMeal(MealDef m) =>
+      _mergeJsonbUpsert("custom_meals", m.id, _mealDefToJson(m));
 
   static Map<String, dynamic> _exerciseDefToJson(ExerciseDef e) => {
-        "id": e.id,
-        "name": e.name,
-        "movementPattern": e.movementPattern,
-        "primaryMuscle": e.primaryMuscle,
-        "equipmentIds": e.equipment,
-        "setup": e.setup,
-        "cues": e.cues,
-        "coachNotes": e.coachNotes,
-      };
+    "id": e.id,
+    "name": e.name,
+    "movementPattern": e.movementPattern,
+    "primaryMuscle": e.primaryMuscle,
+    "equipmentIds": e.equipment,
+    "setup": e.setup,
+    "cues": e.cues,
+    "coachNotes": e.coachNotes,
+  };
 
-  static Future<void> upsertExercise(ExerciseDef e) => _mergeJsonbUpsert("exercises", e.id, _exerciseDefToJson(e));
+  static Future<void> upsertExercise(ExerciseDef e) =>
+      _mergeJsonbUpsert("exercises", e.id, _exerciseDefToJson(e));
 
   static Future<void> deleteExercise(String id) async {
     await client.from("exercises").delete().eq("id", id);
@@ -1393,7 +1799,10 @@ class SupabaseService {
   /// `winner_mode`/`status`/`created_at` are all left to the table's own
   /// defaults ('auto', 'upcoming', '') — this app's Challenge model never
   /// models or reads any of the three, so there's nothing to send.
-  static Future<void> insertChallenge(Challenge c, {required String createdBy}) async {
+  static Future<void> insertChallenge(
+    Challenge c, {
+    required String createdBy,
+  }) async {
     final row = {
       "id": c.id,
       "template": c.template,
@@ -1412,7 +1821,11 @@ class SupabaseService {
   /// Covers both a client self-joining (appending their own id) and a coach
   /// picking a winner — the only two challenge mutations either role's UI
   /// actually performs.
-  static Future<void> updateChallengeRow(String id, {List<String>? participantIds, String? winnerClientId}) async {
+  static Future<void> updateChallengeRow(
+    String id, {
+    List<String>? participantIds,
+    String? winnerClientId,
+  }) async {
     final row = <String, dynamic>{
       if (participantIds != null) "participants": participantIds,
       if (winnerClientId != null) "winner": winnerClientId,
@@ -1426,25 +1839,25 @@ class SupabaseService {
   }
 
   static Map<String, dynamic> _squadMemberMetaToJson(SquadMemberMeta m) => {
-        "relationship": m.relationship,
-        "status": m.status,
-        "paymentEnabled": m.paymentEnabled,
-        "minBalance": m.minBalance,
-      };
+    "relationship": m.relationship,
+    "status": m.status,
+    "paymentEnabled": m.paymentEnabled,
+    "minBalance": m.minBalance,
+  };
 
   static Map<String, dynamic> _squadInviteToJson(SquadInvite i) => {
-        "clientId": i.clientId,
-        "sentAt": i.sentAt,
-        "status": i.status,
-      };
+    "clientId": i.clientId,
+    "sentAt": i.sentAt,
+    "status": i.status,
+  };
 
   static Map<String, dynamic> _squadActivityToJson(SquadActivityEntry a) => {
-        "id": a.id,
-        "type": a.type,
-        "at": a.at,
-        "actorName": a.actorName,
-        "details": {"description": a.description},
-      };
+    "id": a.id,
+    "type": a.type,
+    "at": a.at,
+    "actorName": a.actorName,
+    "details": {"description": a.description},
+  };
 
   static Future<void> insertSquad(Squad squad) async {
     final row = {
@@ -1452,7 +1865,9 @@ class SupabaseService {
       "name": squad.name,
       "lead_id": squad.leadId,
       "member_ids": squad.memberIds,
-      "member_meta": squad.memberMeta.map((k, v) => MapEntry(k, _squadMemberMetaToJson(v))),
+      "member_meta": squad.memberMeta.map(
+        (k, v) => MapEntry(k, _squadMemberMetaToJson(v)),
+      ),
       "max_size": squad.maxSize,
       "pending_invites": squad.pendingInvites.map(_squadInviteToJson).toList(),
       "activity": squad.activity.map(_squadActivityToJson).toList(),
@@ -1477,10 +1892,15 @@ class SupabaseService {
     final row = <String, dynamic>{
       if (name != null) "name": name,
       if (memberIds != null) "member_ids": memberIds,
-      if (memberMeta != null) "member_meta": memberMeta.map((k, v) => MapEntry(k, _squadMemberMetaToJson(v))),
+      if (memberMeta != null)
+        "member_meta": memberMeta.map(
+          (k, v) => MapEntry(k, _squadMemberMetaToJson(v)),
+        ),
       if (maxSize != null) "max_size": maxSize,
-      if (pendingInvites != null) "pending_invites": pendingInvites.map(_squadInviteToJson).toList(),
-      if (activity != null) "activity": activity.map(_squadActivityToJson).toList(),
+      if (pendingInvites != null)
+        "pending_invites": pendingInvites.map(_squadInviteToJson).toList(),
+      if (activity != null)
+        "activity": activity.map(_squadActivityToJson).toList(),
     };
     if (row.isEmpty) return;
     await client.from("squads").update(row).eq("id", id);
@@ -1497,7 +1917,10 @@ class SupabaseService {
   /// rather than aborting the whole list — the alternative is one bad
   /// row anywhere in ~50+ rows silently blanking the entire app back to
   /// mock data (see loadAndSeedCoreData's own outer catch).
-  static List<T> _safeMap<T>(Iterable<dynamic> rows, T Function(Map<String, dynamic>) mapper) {
+  static List<T> _safeMap<T>(
+    Iterable<dynamic> rows,
+    T Function(Map<String, dynamic>) mapper,
+  ) {
     final out = <T>[];
     for (final row in rows) {
       try {
@@ -1523,7 +1946,10 @@ class SupabaseService {
     return null;
   }
 
-  static ClientInfo _clientInfoFromRow(Map<String, dynamic> profile, Map<String, dynamic> c) {
+  static ClientInfo _clientInfoFromRow(
+    Map<String, dynamic> profile,
+    Map<String, dynamic> c,
+  ) {
     final plansRaw = (c["plans"] as List?) ?? const [];
     return ClientInfo(
       id: profile["id"] as String,
@@ -1554,11 +1980,15 @@ class SupabaseService {
       pendingPlanId: c["pending_plan_id"] as String?,
       pendingPlanEffectiveAt: c["pending_plan_effective_at"] as String?,
       membershipCancelsAt: c["membership_cancels_at"] as String?,
-      redeemPointsNextRenewal: c["redeem_points_next_renewal"] as bool? ?? false,
+      redeemPointsNextRenewal:
+          c["redeem_points_next_renewal"] as bool? ?? false,
     );
   }
 
-  static Trainer _trainerFromRow(Map<String, dynamic> profile, Map<String, dynamic> t) {
+  static Trainer _trainerFromRow(
+    Map<String, dynamic> profile,
+    Map<String, dynamic> t,
+  ) {
     final locations = _trainerLocationsFromJson(t["locations"]);
     final firstLocation = locations.isNotEmpty ? locations.first : null;
     return Trainer(
@@ -1567,15 +1997,21 @@ class SupabaseService {
       photo: profile["photo_url"] as String?,
       phone: profile["phone"] as String?,
       email: profile["email"] as String?,
-      locationName: (firstLocation != null && firstLocation.name.isNotEmpty) ? firstLocation.name : null,
+      locationName: (firstLocation != null && firstLocation.name.isNotEmpty)
+          ? firstLocation.name
+          : null,
       locationAddress: firstLocation?.address,
       locations: locations,
       bio: t["bio"] as String?,
       beforeAfters: _beforeAftersFromJson(t["before_afters"]),
       availability: _availabilityFromJson(t["availability"]),
       commissionRate: (t["commission_rate"] as num?) ?? 0,
-      disciplines: ((t["disciplines"] as List?) ?? const []).whereType<String>().toList(),
-      sessionTypes: ((t["session_types"] as List?) ?? const []).whereType<String>().toList(),
+      disciplines: ((t["disciplines"] as List?) ?? const [])
+          .whereType<String>()
+          .toList(),
+      sessionTypes: ((t["session_types"] as List?) ?? const [])
+          .whereType<String>()
+          .toList(),
     );
   }
 
@@ -1583,12 +2019,14 @@ class SupabaseService {
     if (raw is! List) return const [];
     return raw
         .whereType<Map>()
-        .map((e) => TrainerLocation(
-              id: (e["id"] as String?) ?? "",
-              name: (e["name"] as String?) ?? "",
-              address: e["address"] as String?,
-              hint: e["hint"] as String?,
-            ))
+        .map(
+          (e) => TrainerLocation(
+            id: (e["id"] as String?) ?? "",
+            name: (e["name"] as String?) ?? "",
+            address: e["address"] as String?,
+            hint: e["hint"] as String?,
+          ),
+        )
         .toList();
   }
 
@@ -1596,13 +2034,27 @@ class SupabaseService {
     if (raw is! List) return const [];
     return raw
         .whereType<Map>()
-        .map((e) => TrainerBeforeAfter(id: (e["id"] as String?) ?? "", left: e["left"] as String?, right: e["right"] as String?))
+        .map(
+          (e) => TrainerBeforeAfter(
+            id: (e["id"] as String?) ?? "",
+            left: e["left"] as String?,
+            right: e["right"] as String?,
+          ),
+        )
         .toList();
   }
 
   static List<AvailabilityBlock> _availabilityFromJson(dynamic raw) {
     if (raw is! List) return const [];
-    const dayNameToIndex = {"sun": 0, "mon": 1, "tue": 2, "wed": 3, "thu": 4, "fri": 5, "sat": 6};
+    const dayNameToIndex = {
+      "sun": 0,
+      "mon": 1,
+      "tue": 2,
+      "wed": 3,
+      "thu": 4,
+      "fri": 5,
+      "sat": 6,
+    };
     final out = <AvailabilityBlock>[];
     for (final block in raw) {
       try {
@@ -1610,20 +2062,31 @@ class SupabaseService {
         final byDayRaw = (block["byDay"] as Map?) ?? const {};
         final byDay = <int, List<int>>{};
         byDayRaw.forEach((key, value) {
-          final slots = (value as List?)?.whereType<num>().map((n) => n.toInt()).toList() ?? const <int>[];
+          final slots =
+              (value as List?)
+                  ?.whereType<num>()
+                  .map((n) => n.toInt())
+                  .toList() ??
+              const <int>[];
           if (slots.isEmpty) return;
           final k = key.toString().toLowerCase();
-          final weekday = int.tryParse(k) ?? dayNameToIndex[k.substring(0, k.length < 3 ? k.length : 3)];
+          final weekday =
+              int.tryParse(k) ??
+              dayNameToIndex[k.substring(0, k.length < 3 ? k.length : 3)];
           if (weekday != null) byDay[weekday] = slots;
         });
-        out.add(AvailabilityBlock(
-          sessionType: block["sessionType"] as String? ?? "",
-          discipline: block["discipline"] as String? ?? "",
-          byDay: byDay,
-        ));
+        out.add(
+          AvailabilityBlock(
+            sessionType: block["sessionType"] as String? ?? "",
+            discipline: block["discipline"] as String? ?? "",
+            byDay: byDay,
+          ),
+        );
       } catch (e) {
         // ignore: avoid_print
-        print("[SupabaseService] skipped malformed availability block: $e — $block");
+        print(
+          "[SupabaseService] skipped malformed availability block: $e — $block",
+        );
       }
     }
     return out;
@@ -1677,16 +2140,26 @@ class SupabaseService {
     // that one client instead of crashing the whole roster load (fatal for
     // a coach signing in, since this parses every client's record).
     final intakeField = j["intake"];
-    final intakeRaw = intakeField is Map ? intakeField.cast<String, dynamic>() : const <String, dynamic>{};
+    final intakeRaw = intakeField is Map
+        ? intakeField.cast<String, dynamic>()
+        : const <String, dynamic>{};
     final habitSettingsField = j["habitSettings"];
-    final habitSettingsRaw = habitSettingsField is Map ? habitSettingsField.cast<String, dynamic>() : const <String, dynamic>{};
+    final habitSettingsRaw = habitSettingsField is Map
+        ? habitSettingsField.cast<String, dynamic>()
+        : const <String, dynamic>{};
     final habitLogsRaw = (j["habitLogs"] as List?) ?? const [];
     return ClientRecord(
       id: id,
-      habits: ((habitSettingsRaw["enabled"] as List?) ?? const []).whereType<String>().toList(),
+      habits: ((habitSettingsRaw["enabled"] as List?) ?? const [])
+          .whereType<String>()
+          .toList(),
       customHabits: _safeMap(
         ((habitSettingsRaw["custom"] as List?) ?? const []).whereType<Map>(),
-        (m) => HabitDef(id: m["id"]?.toString() ?? "", label: m["label"] as String? ?? "", emoji: m["emoji"] as String? ?? "⭐"),
+        (m) => HabitDef(
+          id: m["id"]?.toString() ?? "",
+          label: m["label"] as String? ?? "",
+          emoji: m["emoji"] as String? ?? "⭐",
+        ),
       ),
       habitLogByDate: Map.fromEntries(
         habitLogsRaw.whereType<Map>().where((m) => m["date"] != null).map((m) {
@@ -1694,7 +2167,11 @@ class SupabaseService {
           return MapEntry(
             m["date"].toString(),
             HabitLogEntry(
-              checked: checkedField is Map ? checkedField.map((k, v) => MapEntry(k.toString(), v == true)) : const {},
+              checked: checkedField is Map
+                  ? checkedField.map(
+                      (k, v) => MapEntry(k.toString(), v == true),
+                    )
+                  : const {},
               energy: (m["energy"] as num?)?.toInt(),
               motivation: (m["motivation"] as num?)?.toInt(),
             ),
@@ -1719,7 +2196,9 @@ class SupabaseService {
           return MapEntry(
             e.key,
             IntakeRecord(
-              answers: answersField is Map ? answersField.cast<String, dynamic>() : const <String, dynamic>{},
+              answers: answersField is Map
+                  ? answersField.cast<String, dynamic>()
+                  : const <String, dynamic>{},
               completed: m["completed"] as bool? ?? false,
               at: m["at"] as String?,
               by: m["by"] as String?,
@@ -1729,29 +2208,51 @@ class SupabaseService {
       ),
       nutrition: _nutritionPlanFromJson(j["nutrition"]),
       savedNutritionPrograms: _safeMap(
-        ((j["savedNutritionPrograms"] as List?) ?? const []).whereType<Map>().where((m) => m["type"] == "nutrition"),
+        ((j["savedNutritionPrograms"] as List?) ?? const [])
+            .whereType<Map>()
+            .where((m) => m["type"] == "nutrition"),
         (m) => _nutritionProgramEntryFromJson(m.cast<String, dynamic>()),
       ),
-      savedPrograms: _safeMap(((j["savedPrograms"] as List?) ?? const []).whereType<Map>(), (m) => _savedProgramFromJson(m.cast<String, dynamic>())),
-      programDays: _safeMap(((j["programDays"] as List?) ?? const []).whereType<Map>(), (m) => _programDayFromJson(m.cast<String, dynamic>())),
-      tourSeenDashboard: j["tourSeen"] is Map ? (j["tourSeen"] as Map)["dashboard"] as bool? ?? false : false,
-      tourSeenDrawer: j["tourSeen"] is Map ? (j["tourSeen"] as Map)["drawer"] as bool? ?? false : false,
+      savedPrograms: _safeMap(
+        ((j["savedPrograms"] as List?) ?? const []).whereType<Map>(),
+        (m) => _savedProgramFromJson(m.cast<String, dynamic>()),
+      ),
+      programDays: _safeMap(
+        ((j["programDays"] as List?) ?? const []).whereType<Map>(),
+        (m) => _programDayFromJson(m.cast<String, dynamic>()),
+      ),
+      tourSeenDashboard: j["tourSeen"] is Map
+          ? (j["tourSeen"] as Map)["dashboard"] as bool? ?? false
+          : false,
+      tourSeenDrawer: j["tourSeen"] is Map
+          ? (j["tourSeen"] as Map)["drawer"] as bool? ?? false
+          : false,
     );
   }
 
-  static MacroTargets _macroTargetsFromJson(dynamic j) => j is Map ? MacroTargets.fromJson(j.cast<String, dynamic>()) : const MacroTargets();
+  static MacroTargets _macroTargetsFromJson(dynamic j) => j is Map
+      ? MacroTargets.fromJson(j.cast<String, dynamic>())
+      : const MacroTargets();
 
   /// Mirrors nutritionHelpers.js `getNutritionTargets` / NutritionBuilder.jsx
   /// `isSplitMealBudgets`/`dayMealBudgets` — older saved data has no
   /// training/rest split at all (just the flat values directly), treated
   /// as the Training Day entry so nothing already set is lost.
   static DaySplit<MacroTargets> _targetsSplitFromJson(dynamic j) {
-    if (j is! Map) return const DaySplit(training: MacroTargets(), rest: MacroTargets());
+    if (j is! Map)
+      return const DaySplit(training: MacroTargets(), rest: MacroTargets());
     final m = j.cast<String, dynamic>();
     if (m["training"] != null || m["rest"] != null) {
-      return DaySplit(training: _macroTargetsFromJson(m["training"]), rest: _macroTargetsFromJson(m["rest"]));
+      return DaySplit(
+        training: _macroTargetsFromJson(m["training"]),
+        rest: _macroTargetsFromJson(m["rest"]),
+      );
     }
-    if (m.isNotEmpty) return DaySplit(training: _macroTargetsFromJson(m), rest: const MacroTargets());
+    if (m.isNotEmpty)
+      return DaySplit(
+        training: _macroTargetsFromJson(m),
+        rest: const MacroTargets(),
+      );
     return const DaySplit(training: MacroTargets(), rest: MacroTargets());
   }
 
@@ -1760,21 +2261,32 @@ class SupabaseService {
     return j.map((k, v) => MapEntry(k.toString(), v?.toString() ?? ""));
   }
 
-  static const _mealBudgetKeys = {"breakfast", "lunch", "dinner", "snacks", "smoothies"};
+  static const _mealBudgetKeys = {
+    "breakfast",
+    "lunch",
+    "dinner",
+    "snacks",
+    "smoothies",
+  };
 
   static DaySplit<Map<String, String>> _mealBudgetsSplitFromJson(dynamic j) {
     if (j is! Map) return const DaySplit(training: {}, rest: {});
     final m = j.cast<String, dynamic>();
     if (m.containsKey("training") || m.containsKey("rest")) {
-      return DaySplit(training: _mealBudgetMapFromJson(m["training"]), rest: _mealBudgetMapFromJson(m["rest"]));
+      return DaySplit(
+        training: _mealBudgetMapFromJson(m["training"]),
+        rest: _mealBudgetMapFromJson(m["rest"]),
+      );
     }
     // Flat legacy shape: only treat it as meal-budget keys (not some other
     // unrelated map) before assuming it's the Training Day budget.
-    if (m.keys.any(_mealBudgetKeys.contains)) return DaySplit(training: _mealBudgetMapFromJson(m), rest: const {});
+    if (m.keys.any(_mealBudgetKeys.contains))
+      return DaySplit(training: _mealBudgetMapFromJson(m), rest: const {});
     return const DaySplit(training: {}, rest: {});
   }
 
-  static Ingredient _ingredientFromJson(Map j) => Ingredient.fromJson(j.cast<String, dynamic>());
+  static Ingredient _ingredientFromJson(Map j) =>
+      Ingredient.fromJson(j.cast<String, dynamic>());
 
   static NutritionMeal? _nutritionMealFromJson(dynamic j) {
     if (j is! Map) return null;
@@ -1791,19 +2303,30 @@ class SupabaseService {
       notes: m["notes"] as String?,
       instructions: m["instructions"] as String?,
       isCustom: m["isCustom"] as bool? ?? false,
-      ingredients: _safeMap(((m["ingredients"] as List?) ?? const []).whereType<Map>(), _ingredientFromJson),
+      ingredients: _safeMap(
+        ((m["ingredients"] as List?) ?? const []).whereType<Map>(),
+        _ingredientFromJson,
+      ),
       targetCalories: _asInt(m["targetCalories"]),
       scale: (m["scale"] as num?)?.toDouble(),
       scaledIngredients: m["scaledIngredients"] is List
-          ? _safeMap((m["scaledIngredients"] as List).whereType<Map>(), _ingredientFromJson)
+          ? _safeMap(
+              (m["scaledIngredients"] as List).whereType<Map>(),
+              _ingredientFromJson,
+            )
           : null,
       scaledMacros: MacroSnapshot.fromJson(m["scaledMacros"]),
-      overrides: overridesRaw is Map ? overridesRaw.map((k, v) => MapEntry(int.tryParse(k.toString()) ?? 0, v.toString())) : const {},
+      overrides: overridesRaw is Map
+          ? overridesRaw.map(
+              (k, v) => MapEntry(int.tryParse(k.toString()) ?? 0, v.toString()),
+            )
+          : const {},
     );
   }
 
-  static List<NutritionMeal> _nutritionMealListFromJson(dynamic j) =>
-      j is List ? j.map(_nutritionMealFromJson).whereType<NutritionMeal>().toList() : const [];
+  static List<NutritionMeal> _nutritionMealListFromJson(dynamic j) => j is List
+      ? j.map(_nutritionMealFromJson).whereType<NutritionMeal>().toList()
+      : const [];
 
   /// `client.nutrition` — real data is either absent entirely (client.nutrition
   /// == null, no plan assigned) or the shape NutritionBuilder.jsx writes.
@@ -1837,7 +2360,9 @@ class SupabaseService {
   /// One `client.savedNutritionPrograms` entry — see
   /// generate-ai-nutrition-program's `entry` shape (AI-drafted) or
   /// SaveProgramDialog's manual-save shape (coach-authored).
-  static NutritionProgramEntry _nutritionProgramEntryFromJson(Map<String, dynamic> j) {
+  static NutritionProgramEntry _nutritionProgramEntryFromJson(
+    Map<String, dynamic> j,
+  ) {
     final targets = _targetsSplitFromJson(j["targets"]);
     return NutritionProgramEntry(
       id: j["id"]?.toString() ?? "",
@@ -1854,14 +2379,20 @@ class SupabaseService {
   }
 
   static MembershipPlan _membershipPlanFromJson(Map<String, dynamic> j) {
-    const kindByName = {"membership": PlanKind.membership, "package": PlanKind.package, "program": PlanKind.program};
+    const kindByName = {
+      "membership": PlanKind.membership,
+      "package": PlanKind.package,
+      "program": PlanKind.program,
+    };
     return MembershipPlan(
       id: j["id"] as String,
       name: j["name"] as String? ?? "",
       kind: kindByName[j["kind"] as String?] ?? PlanKind.package,
       maxSessions: _asInt(j["maxSessions"]),
       termMonths: _asInt(j["termMonths"]),
-      allowedTypes: ((j["allowedTypes"] as List?) ?? const []).whereType<String>().toList(),
+      allowedTypes: ((j["allowedTypes"] as List?) ?? const [])
+          .whereType<String>()
+          .toList(),
       priceCents: _asInt(j["priceCents"]) ?? 0,
       archived: j["archived"] as bool? ?? false,
       paymentType: j["paymentType"] as String?,

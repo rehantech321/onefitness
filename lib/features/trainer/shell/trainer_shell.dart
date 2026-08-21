@@ -67,149 +67,222 @@ const _titles = {
 /// the owner). Each `trainerMode` destination routes to its own screen.
 /// "selfbook" has no drawer/bottom-nav entry of its own — it's reached only
 /// via the "Book session · Lead by example" strip below, same as the web.
-class TrainerShell extends ConsumerWidget {
+class TrainerShell extends ConsumerStatefulWidget {
   const TrainerShell({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TrainerShell> createState() => _TrainerShellState();
+}
+
+class _TrainerShellState extends ConsumerState<TrainerShell> {
+  // Closes the drawer directly (bypassing Navigator.pop) so it doesn't get
+  // swallowed by the PopScope below, which intercepts pop attempts whenever
+  // canPop is false to run its own back-history logic instead.
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  Widget build(BuildContext context) {
     final mode = ref.watch(trainerModeProvider);
     final trainerAuth = ref.watch(trainerAuthProvider);
     final isOwner = trainerAuth == "owner";
 
     void go(String key) {
       ref.read(trainerModeProvider.notifier).go(key);
-      Navigator.of(context).maybePop();
+      _scaffoldKey.currentState?.closeDrawer();
     }
 
     final bottomItems = [..._bottomItemsBase, if (isOwner) _staffBottomItem];
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      drawer: _TrainerDrawer(mode: mode, isOwner: isOwner, onGo: go),
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Container(
-              decoration: const BoxDecoration(color: AppColors.bg, border: Border(bottom: BorderSide(color: AppColors.line))),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-                child: Row(
-                  children: [
-                    Builder(
-                      builder: (context) => IconButton(
-                        onPressed: () => Scaffold.of(context).openDrawer(),
-                        icon: const Icon(LucideIcons.menu, size: 22, color: AppColors.gold),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+    return PopScope(
+      canPop: mode == "dashboard",
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        ref.read(trainerModeProvider.notifier).goBack();
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: AppColors.bg,
+        drawer: _TrainerDrawer(mode: mode, isOwner: isOwner, onGo: go),
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  color: AppColors.bg,
+                  border: Border(bottom: BorderSide(color: AppColors.line)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 11,
+                  ),
+                  child: Row(
+                    children: [
+                      Builder(
+                        builder: (context) => IconButton(
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                          icon: const Icon(
+                            LucideIcons.menu,
+                            size: 22,
+                            color: AppColors.gold,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      _titles[mode] ?? "",
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 0.3, color: AppColors.txt),
-                    ),
-                  ],
+                      const Spacer(),
+                      Text(
+                        _titles[mode] ?? "",
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                          color: AppColors.txt,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: switch (mode) {
-                "dashboard" => const TrainerHomeScreen(),
-                "clients" => const ClientsScreen(),
-                "chat" => const CoachChatScreen(),
-                "schedule" => const ScheduleScreen(),
-                "waitlist" => const WaitlistScreen(),
-                "exercises" => const ExercisesScreen(),
-                "builderWorkout" => const ProgramBuilderScreen(),
-                "builderNutrition" => const NutritionBuilderScreen(),
-                "staff" => const StaffScreen(),
-                "coaches" => const CoachesOverviewScreen(),
-                "myprofile" => const MyProfileScreen(),
-                "mypay" => const MyPayScreen(),
-                "reports" => const ReportsHubScreen(),
-                "memberships" => const ManageMembershipsScreen(),
-                "products" => const ManageProductsScreen(),
-                "waivers" => const ManageWaiversScreen(),
-                "platformSettings" => const CustomizePlatformScreen(),
-                "challenges" => const CoachChallengesScreen(),
-                "selfbook" => const SelfBookScreen(),
-                _ => PlaceholderScreen(title: _titles[mode] ?? mode),
-              },
-            ),
-          ],
+              Expanded(
+                child: switch (mode) {
+                  "dashboard" => const TrainerHomeScreen(),
+                  "clients" => const ClientsScreen(),
+                  "chat" => const CoachChatScreen(),
+                  "schedule" => const ScheduleScreen(),
+                  "waitlist" => const WaitlistScreen(),
+                  "exercises" => const ExercisesScreen(),
+                  "builderWorkout" => const ProgramBuilderScreen(),
+                  "builderNutrition" => const NutritionBuilderScreen(),
+                  "staff" => const StaffScreen(),
+                  "coaches" => const CoachesOverviewScreen(),
+                  "myprofile" => const MyProfileScreen(),
+                  "mypay" => const MyPayScreen(),
+                  "reports" => const ReportsHubScreen(),
+                  "memberships" => const ManageMembershipsScreen(),
+                  "products" => const ManageProductsScreen(),
+                  "waivers" => const ManageWaiversScreen(),
+                  "platformSettings" => const CustomizePlatformScreen(),
+                  "challenges" => const CoachChallengesScreen(),
+                  "selfbook" => const SelfBookScreen(),
+                  _ => PlaceholderScreen(title: _titles[mode] ?? mode),
+                },
+              ),
+            ],
+          ),
         ),
-      ),
-      bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(color: AppColors.bottomBarBg, border: Border(top: BorderSide(color: AppColors.line))),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // "Book session · Lead by example" — coach (non-owner) + dashboard
-              // only, mirrors the fixed strip App.jsx renders just above its
-              // own bottom toolbar.
-              if (!isOwner && mode == "dashboard")
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-                  child: InkWell(
-                    onTap: () => go("selfbook"),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: AppColors.bottomBarBg,
-                        border: Border.all(color: AppColors.goldDim),
-                        borderRadius: BorderRadius.circular(10),
+        bottomNavigationBar: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: AppColors.bottomBarBg,
+            border: Border(top: BorderSide(color: AppColors.line)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // "Book session · Lead by example" — coach (non-owner) + dashboard
+                // only, mirrors the fixed strip App.jsx renders just above its
+                // own bottom toolbar.
+                if (!isOwner && mode == "dashboard")
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                    child: InkWell(
+                      onTap: () => go("selfbook"),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.bottomBarBg,
+                          border: Border.all(color: AppColors.goldDim),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              LucideIcons.dumbbell,
+                              size: 14,
+                              color: AppColors.gold,
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Book session",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.txt,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1,
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: EdgeInsets.only(top: 3),
+                                    child: Text(
+                                      "Lead by example",
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.mute,
+                                        height: 1,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              LucideIcons.chevronRight,
+                              size: 13,
+                              color: AppColors.mute,
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(LucideIcons.dumbbell, size: 14, color: AppColors.gold),
-                          const SizedBox(width: 10),
-                          const Expanded(
+                    ),
+                  ),
+                SizedBox(
+                  height: 58,
+                  child: Row(
+                    children: bottomItems.map((item) {
+                      final on = mode == item.key;
+                      return Expanded(
+                        child: InkWell(
+                          onTap: () => go(item.key),
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 9, bottom: 11),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text("Book session", style: TextStyle(fontSize: 12, color: AppColors.txt, fontWeight: FontWeight.w700, height: 1)),
-                                Padding(
-                                  padding: EdgeInsets.only(top: 3),
-                                  child: Text("Lead by example", style: TextStyle(fontSize: 10, color: AppColors.mute, height: 1)),
+                                Icon(
+                                  item.icon,
+                                  size: 20,
+                                  color: on ? AppColors.gold : AppColors.mute,
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: on ? AppColors.gold : AppColors.mute,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(LucideIcons.chevronRight, size: 13, color: AppColors.mute),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
-              SizedBox(
-                height: 58,
-                child: Row(
-                  children: bottomItems.map((item) {
-                    final on = mode == item.key;
-                    return Expanded(
-                      child: InkWell(
-                        onTap: () => go(item.key),
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 9, bottom: 11),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(item.icon, size: 20, color: on ? AppColors.gold : AppColors.mute),
-                              const SizedBox(height: 3),
-                              Text(item.label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: on ? AppColors.gold : AppColors.mute)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -226,7 +299,11 @@ class _DrawerEntry {
 }
 
 class _TrainerDrawer extends ConsumerWidget {
-  const _TrainerDrawer({required this.mode, required this.isOwner, required this.onGo});
+  const _TrainerDrawer({
+    required this.mode,
+    required this.isOwner,
+    required this.onGo,
+  });
 
   final String mode;
   final bool isOwner;
@@ -238,8 +315,18 @@ class _TrainerDrawer extends ConsumerWidget {
       _DrawerEntry(LucideIcons.dumbbell, "Dashboard", "dashboard", true),
       _DrawerEntry(LucideIcons.users, "Clients", "clients", true),
       _DrawerEntry(LucideIcons.calendar, "Scheduling", "schedule", true),
-      _DrawerEntry(LucideIcons.clipboardList, "Build Workout Program", "builderWorkout", true),
-      _DrawerEntry(LucideIcons.apple, "Build Nutrition Program", "builderNutrition", true),
+      _DrawerEntry(
+        LucideIcons.clipboardList,
+        "Build Workout Program",
+        "builderWorkout",
+        true,
+      ),
+      _DrawerEntry(
+        LucideIcons.apple,
+        "Build Nutrition Program",
+        "builderNutrition",
+        true,
+      ),
       _DrawerEntry(LucideIcons.dumbbell, "Exercises", "exercises", true),
       _DrawerEntry(LucideIcons.trophy, "Challenges", "challenges", true),
       _DrawerEntry(LucideIcons.fileText, "Assessments", "clients", true),
@@ -249,10 +336,25 @@ class _TrainerDrawer extends ConsumerWidget {
       _DrawerEntry(LucideIcons.clipboardCheck, "My Pay", "mypay", !isOwner),
       _DrawerEntry(LucideIcons.clock, "Waitlist", "waitlist", isOwner),
       _DrawerEntry(LucideIcons.user, "Settings / Staff", "staff", isOwner),
-      _DrawerEntry(LucideIcons.slidersHorizontal, "Customize Platform", "platformSettings", isOwner),
-      _DrawerEntry(LucideIcons.clipboardList, "Memberships", "memberships", isOwner),
+      _DrawerEntry(
+        LucideIcons.slidersHorizontal,
+        "Customize Platform",
+        "platformSettings",
+        isOwner,
+      ),
+      _DrawerEntry(
+        LucideIcons.clipboardList,
+        "Memberships",
+        "memberships",
+        isOwner,
+      ),
       _DrawerEntry(LucideIcons.package, "Products", "products", isOwner),
-      _DrawerEntry(LucideIcons.fileSignature, "Waivers & Contracts", "waivers", isOwner),
+      _DrawerEntry(
+        LucideIcons.fileSignature,
+        "Waivers & Contracts",
+        "waivers",
+        isOwner,
+      ),
       _DrawerEntry(LucideIcons.users, "Coaches", "coaches", isOwner),
     ].where((e) => e.visible).toList();
 
@@ -266,17 +368,35 @@ class _TrainerDrawer extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: DecoratedBox(
-                decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: AppColors.line)),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Row(
                     children: [
-                      const Icon(LucideIcons.dumbbell, size: 18, color: AppColors.gold),
+                      const Icon(
+                        LucideIcons.dumbbell,
+                        size: 18,
+                        color: AppColors.gold,
+                      ),
                       const SizedBox(width: 10),
-                      const Expanded(child: Text("ONE Fitness", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17))),
+                      const Expanded(
+                        child: Text(
+                          "ONE Fitness",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
+                          ),
+                        ),
+                      ),
                       IconButton(
-                        onPressed: () => Navigator.of(context).maybePop(),
-                        icon: const Icon(LucideIcons.x, size: 18, color: AppColors.mute),
+                        onPressed: () => Scaffold.of(context).closeDrawer(),
+                        icon: const Icon(
+                          LucideIcons.x,
+                          size: 18,
+                          color: AppColors.mute,
+                        ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
                       ),
@@ -289,20 +409,38 @@ class _TrainerDrawer extends ConsumerWidget {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: entries
-                    .map((e) => InkWell(
-                          onTap: () => onGo(e.key),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
-                            child: Row(
-                              children: [
-                                Icon(e.icon, size: 17, color: AppColors.gold),
-                                const SizedBox(width: 14),
-                                Expanded(child: Text(e.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.txt))),
-                              ],
+                    .map(
+                      (e) => InkWell(
+                        onTap: () => onGo(e.key),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 15,
+                          ),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: AppColors.line),
                             ),
                           ),
-                        ))
+                          child: Row(
+                            children: [
+                              Icon(e.icon, size: 17, color: AppColors.gold),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Text(
+                                  e.label,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.txt,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),

@@ -3,14 +3,32 @@ import "../../../data/models/booking.dart";
 
 /// Mirrors ClientShell.jsx's local `screen` state — which of the
 /// bottom-nav/drawer destinations is currently showing.
+///
+/// The web app runs in a browser (real back/forward history for free); this
+/// app has no Navigator route per screen (every destination is just this
+/// one string), so hardware back has nothing to pop and would otherwise
+/// exit the app. `_history` tracks the path taken to get here so
+/// [goBack] can unwind it — see ClientShell's PopScope.
 class ClientScreenNotifier extends Notifier<String> {
+  final List<String> _history = [];
+
   @override
   String build() => "dashboard";
 
-  void go(String screen) => state = screen;
+  void go(String screen) {
+    if (screen == state) return;
+    _history.add(state);
+    state = screen;
+  }
+
+  void goBack() {
+    state = _history.isNotEmpty ? _history.removeLast() : "dashboard";
+  }
 }
 
-final clientScreenProvider = NotifierProvider<ClientScreenNotifier, String>(ClientScreenNotifier.new);
+final clientScreenProvider = NotifierProvider<ClientScreenNotifier, String>(
+  ClientScreenNotifier.new,
+);
 
 /// Set right before navigating to the "forms" screen from a dashboard
 /// onboarding-step tap, so IntakeAreaScreen knows which assessment to open
@@ -24,7 +42,10 @@ class PendingIntakeFormKeyNotifier extends Notifier<String?> {
   void set(String? key) => state = key;
 }
 
-final pendingIntakeFormKeyProvider = NotifierProvider<PendingIntakeFormKeyNotifier, String?>(PendingIntakeFormKeyNotifier.new);
+final pendingIntakeFormKeyProvider =
+    NotifierProvider<PendingIntakeFormKeyNotifier, String?>(
+      PendingIntakeFormKeyNotifier.new,
+    );
 
 /// Set right before navigating to the "day" screen from a Workout Calendar
 /// tap on a date that has a dot — DayDetailScreen reads and shows this date.
@@ -35,7 +56,10 @@ class PendingDayDetailDateNotifier extends Notifier<String?> {
   void set(String? date) => state = date;
 }
 
-final pendingDayDetailDateProvider = NotifierProvider<PendingDayDetailDateNotifier, String?>(PendingDayDetailDateNotifier.new);
+final pendingDayDetailDateProvider =
+    NotifierProvider<PendingDayDetailDateNotifier, String?>(
+      PendingDayDetailDateNotifier.new,
+    );
 
 /// Set right before navigating to the "booking" screen from anywhere other
 /// than the plain bottom-bar tab — a calendar tap on an empty future date
@@ -54,4 +78,7 @@ class PendingBookingTargetNotifier extends Notifier<BookingTarget?> {
   void set(BookingTarget? target) => state = target;
 }
 
-final pendingBookingTargetProvider = NotifierProvider<PendingBookingTargetNotifier, BookingTarget?>(PendingBookingTargetNotifier.new);
+final pendingBookingTargetProvider =
+    NotifierProvider<PendingBookingTargetNotifier, BookingTarget?>(
+      PendingBookingTargetNotifier.new,
+    );

@@ -15,8 +15,10 @@ const _largeGroupDisciplines = {"hike", "outdoor-hiit"};
 const _regularSessionTypes = ["semi-private", "one-on-one"];
 const _assessmentSessionTypes = ["assessment-call", "assessment-in-person"];
 
-bool _isRegularDiscipline(String d) => d != "programmer" && !_largeGroupDisciplines.contains(d);
-bool _isAssessmentType(String st) => st == "assessment-call" || st == "assessment-in-person";
+bool _isRegularDiscipline(String d) =>
+    d != "programmer" && !_largeGroupDisciplines.contains(d);
+bool _isAssessmentType(String st) =>
+    st == "assessment-call" || st == "assessment-in-person";
 
 bool _disciplineAllowedForType(String d, String st) {
   if (d == "stretch") return st == "one-on-one";
@@ -25,7 +27,12 @@ bool _disciplineAllowedForType(String d, String st) {
 }
 
 class _BlockEditRequest {
-  const _BlockEditRequest({required this.sessionType, required this.disciplineOptions, this.editIndex, this.isLargeGroup = false});
+  const _BlockEditRequest({
+    required this.sessionType,
+    required this.disciplineOptions,
+    this.editIndex,
+    this.isLargeGroup = false,
+  });
   final String sessionType;
   final List<String> disciplineOptions;
   final int? editIndex; // null = adding a new block
@@ -40,7 +47,14 @@ class _BlockEditRequest {
 /// assessment-call/in-person availability scheduling UI, no 2FA section,
 /// Before & After uses a plain picker (no dedicated crop/rotate step).
 class TrainerEditForm extends StatefulWidget {
-  const TrainerEditForm({super.key, required this.initial, required this.isOwnerEditing, required this.onCancel, required this.onSave, this.onDelete});
+  const TrainerEditForm({
+    super.key,
+    required this.initial,
+    required this.isOwnerEditing,
+    required this.onCancel,
+    required this.onSave,
+    this.onDelete,
+  });
 
   final Trainer? initial;
   final bool isOwnerEditing; // whether commission rate + delete are shown
@@ -57,17 +71,29 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
   late final _email = TextEditingController(text: widget.initial?.email ?? "");
   late final _phone = TextEditingController(text: widget.initial?.phone ?? "");
   late final _bio = TextEditingController(text: widget.initial?.bio ?? "");
-  late final _commission = TextEditingController(text: "${widget.initial?.commissionRate ?? 0}");
+  late final _commission = TextEditingController(
+    text: "${widget.initial?.commissionRate ?? 0}",
+  );
   final _pw = TextEditingController();
   final _pw2 = TextEditingController();
 
   String? _photoDataUrl; // null = keep widget.initial?.photo as-is
   bool _pickingPhoto = false;
-  late final Set<String> _disciplines = {...(widget.initial?.disciplines ?? const [])};
-  late final Set<String> _sessionTypes = {...(widget.initial?.sessionTypes ?? const [])};
-  late List<AvailabilityBlock> _availability = [...(widget.initial?.availability ?? const [])];
-  late List<TrainerLocation> _locations = [...(widget.initial?.locations ?? const [])];
-  late List<TrainerBeforeAfter> _beforeAfters = [...(widget.initial?.beforeAfters ?? const [])];
+  late final Set<String> _disciplines = {
+    ...(widget.initial?.disciplines ?? const []),
+  };
+  late final Set<String> _sessionTypes = {
+    ...(widget.initial?.sessionTypes ?? const []),
+  };
+  late List<AvailabilityBlock> _availability = [
+    ...(widget.initial?.availability ?? const []),
+  ];
+  late List<TrainerLocation> _locations = [
+    ...(widget.initial?.locations ?? const []),
+  ];
+  late List<TrainerBeforeAfter> _beforeAfters = [
+    ...(widget.initial?.beforeAfters ?? const []),
+  ];
 
   _BlockEditRequest? _editingBlock;
   String? _error;
@@ -105,14 +131,18 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
       }
       final hasRegular = _disciplines.any(_isRegularDiscipline);
       final hasProgrammer = _disciplines.contains("programmer");
-      _sessionTypes.removeWhere((st) => _isAssessmentType(st) ? !hasProgrammer : !hasRegular);
+      _sessionTypes.removeWhere(
+        (st) => _isAssessmentType(st) ? !hasProgrammer : !hasRegular,
+      );
       _error = null;
     });
   }
 
   void _toggleSessionType(String st) {
     setState(() {
-      _sessionTypes.contains(st) ? _sessionTypes.remove(st) : _sessionTypes.add(st);
+      _sessionTypes.contains(st)
+          ? _sessionTypes.remove(st)
+          : _sessionTypes.add(st);
       _error = null;
     });
   }
@@ -120,7 +150,9 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
   Future<void> _sendPasswordReset() async {
     final email = _email.text.trim();
     if (email.isEmpty) {
-      setState(() => _error = "An email is required before sending a reset link.");
+      setState(
+        () => _error = "An email is required before sending a reset link.",
+      );
       return;
     }
     setState(() {
@@ -131,7 +163,11 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
       await SupabaseService.sendPasswordReset(email);
       if (mounted) setState(() => _resetSent = true);
     } catch (_) {
-      if (mounted) setState(() => _error = "Couldn't send the reset email — check your connection and try again.");
+      if (mounted)
+        setState(
+          () => _error =
+              "Couldn't send the reset email — check your connection and try again.",
+        );
     } finally {
       if (mounted) setState(() => _resetBusy = false);
     }
@@ -142,33 +178,51 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
     final email = _email.text.trim();
     final phone = _phone.text.trim();
     if (name.isEmpty) return setState(() => _error = "Full name is required.");
-    if (email.isEmpty) return setState(() => _error = "A valid email is required.");
-    if (phone.isEmpty) return setState(() => _error = "Phone number is required.");
-    if (_disciplines.isEmpty) return setState(() => _error = "Choose at least one discipline.");
+    if (email.isEmpty)
+      return setState(() => _error = "A valid email is required.");
+    if (phone.isEmpty)
+      return setState(() => _error = "Phone number is required.");
+    if (_disciplines.isEmpty)
+      return setState(() => _error = "Choose at least one discipline.");
     final hasRegular = _disciplines.any(_isRegularDiscipline);
-    final regularTypesChosen = _sessionTypes.where((st) => !_isAssessmentType(st)).toList();
+    final regularTypesChosen = _sessionTypes
+        .where((st) => !_isAssessmentType(st))
+        .toList();
     if (hasRegular && regularTypesChosen.isEmpty) {
-      return setState(() => _error = "Choose at least one session type (Semi-Private or One-on-One).");
+      return setState(
+        () => _error =
+            "Choose at least one session type (Semi-Private or One-on-One).",
+      );
     }
     if (widget.initial == null) {
-      if (_pw.text.length < 6) return setState(() => _error = "Password must be at least 6 characters.");
-      if (_pw.text != _pw2.text) return setState(() => _error = "Passwords don't match.");
+      if (_pw.text.length < 6)
+        return setState(
+          () => _error = "Password must be at least 6 characters.",
+        );
+      if (_pw.text != _pw2.text)
+        return setState(() => _error = "Passwords don't match.");
     }
     setState(() => _error = null);
-    widget.onSave(Trainer(
-      id: widget.initial?.id ?? "trainer-${DateTime.now().microsecondsSinceEpoch}",
-      name: name,
-      email: email,
-      phone: phone,
-      photo: _photoDataUrl ?? widget.initial?.photo,
-      disciplines: _disciplines.toList(),
-      sessionTypes: _sessionTypes.toList(),
-      locations: _locations,
-      bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
-      beforeAfters: _beforeAfters,
-      availability: _availability,
-      commissionRate: num.tryParse(_commission.text.trim()) ?? (widget.initial?.commissionRate ?? 0),
-    ));
+    widget.onSave(
+      Trainer(
+        id:
+            widget.initial?.id ??
+            "trainer-${DateTime.now().microsecondsSinceEpoch}",
+        name: name,
+        email: email,
+        phone: phone,
+        photo: _photoDataUrl ?? widget.initial?.photo,
+        disciplines: _disciplines.toList(),
+        sessionTypes: _sessionTypes.toList(),
+        locations: _locations,
+        bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
+        beforeAfters: _beforeAfters,
+        availability: _availability,
+        commissionRate:
+            num.tryParse(_commission.text.trim()) ??
+            (widget.initial?.commissionRate ?? 0),
+      ),
+    );
   }
 
   @override
@@ -195,15 +249,22 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
 
     final hasRegularDiscipline = _disciplines.any(_isRegularDiscipline);
     final hasProgrammer = _disciplines.contains("programmer");
-    final largeGroupDisciplines = _disciplines.where(_largeGroupDisciplines.contains).toList();
-    final regularSessionTypesChosen = _sessionTypes.where((st) => !_isAssessmentType(st)).toList();
+    final largeGroupDisciplines = _disciplines
+        .where(_largeGroupDisciplines.contains)
+        .toList();
+    final regularSessionTypesChosen = _sessionTypes
+        .where((st) => !_isAssessmentType(st))
+        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          BackBar(onBack: widget.onCancel, title: widget.initial != null ? "Edit trainer" : "Add trainer"),
+          BackBar(
+            onBack: widget.onCancel,
+            title: widget.initial != null ? "Edit trainer" : "Add trainer",
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -216,39 +277,94 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.line, width: 2),
                     image: _photoDataUrl != null
-                        ? DecorationImage(image: MemoryImage(base64Decode(_photoDataUrl!.substring(_photoDataUrl!.indexOf(",") + 1))), fit: BoxFit.cover)
+                        ? DecorationImage(
+                            image: MemoryImage(
+                              base64Decode(
+                                _photoDataUrl!.substring(
+                                  _photoDataUrl!.indexOf(",") + 1,
+                                ),
+                              ),
+                            ),
+                            fit: BoxFit.cover,
+                          )
                         : null,
                   ),
-                  child: _photoDataUrl == null ? Avatar(src: widget.initial?.photo, name: _name.text, size: 56) : null,
+                  child: _photoDataUrl == null
+                      ? Avatar(
+                          src: widget.initial?.photo,
+                          name: _name.text,
+                          size: 56,
+                        )
+                      : null,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TextButton.icon(
                   onPressed: _pickingPhoto ? null : _pickPhoto,
-                  style: TextButton.styleFrom(foregroundColor: AppColors.gold, alignment: Alignment.centerLeft),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.gold,
+                    alignment: Alignment.centerLeft,
+                  ),
                   icon: const Icon(LucideIcons.image, size: 14),
                   label: Text(
-                    _pickingPhoto ? "Opening…" : ((_photoDataUrl ?? widget.initial?.photo) != null ? "Change photo" : "Add photo"),
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    _pickingPhoto
+                        ? "Opening…"
+                        : ((_photoDataUrl ?? widget.initial?.photo) != null
+                              ? "Change photo"
+                              : "Add photo"),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          FieldLabeled(label: "Full name *", child: AppField(controller: _name, placeholder: "First Last", onChanged: (_) => setState(() => _error = null))),
+          FieldLabeled(
+            label: "Full name *",
+            child: AppField(
+              controller: _name,
+              placeholder: "First Last",
+              onChanged: (_) => setState(() => _error = null),
+            ),
+          ),
           const SizedBox(height: 10),
-          FieldLabeled(label: "Email *", child: AppField(controller: _email, placeholder: "name@email.com", keyboardType: TextInputType.emailAddress, onChanged: (_) => setState(() => _error = null))),
+          FieldLabeled(
+            label: "Email *",
+            child: AppField(
+              controller: _email,
+              placeholder: "name@email.com",
+              keyboardType: TextInputType.emailAddress,
+              onChanged: (_) => setState(() => _error = null),
+            ),
+          ),
           const SizedBox(height: 10),
-          FieldLabeled(label: "Phone *", child: AppField(controller: _phone, keyboardType: TextInputType.phone, onChanged: (_) => setState(() => _error = null))),
+          FieldLabeled(
+            label: "Phone *",
+            child: AppField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+              onChanged: (_) => setState(() => _error = null),
+            ),
+          ),
           const SizedBox(height: 10),
           FieldLabeled(
             label: "Disciplines * (choose one or more)",
             child: Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: kDisciplineLabels.entries.map((e) => _Chip(label: e.value, on: _disciplines.contains(e.key), onTap: () => _toggleDiscipline(e.key))).toList(),
+              children: kDisciplineLabels.entries
+                  .map(
+                    (e) => _Chip(
+                      label: e.value,
+                      on: _disciplines.contains(e.key),
+                      onTap: () => _toggleDiscipline(e.key),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
           if (hasRegularDiscipline) ...[
@@ -258,7 +374,15 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               child: Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: _regularSessionTypes.map((st) => _Chip(label: sessionTypeLabel(st), on: _sessionTypes.contains(st), onTap: () => _toggleSessionType(st))).toList(),
+                children: _regularSessionTypes
+                    .map(
+                      (st) => _Chip(
+                        label: sessionTypeLabel(st),
+                        on: _sessionTypes.contains(st),
+                        onTap: () => _toggleSessionType(st),
+                      ),
+                    )
+                    .toList(),
               ),
             ),
             if (largeGroupDisciplines.isNotEmpty)
@@ -266,7 +390,11 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                 padding: EdgeInsets.only(top: 6),
                 child: Text(
                   "Hike and Outdoor HIIT are large group sessions — their availability is set separately below and does not use Semi-Private or One-on-One.",
-                  style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.mute,
+                    height: 1.4,
+                  ),
                 ),
               ),
           ],
@@ -277,31 +405,67 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               child: Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: _assessmentSessionTypes.map((st) => _Chip(label: sessionTypeLabel(st), on: _sessionTypes.contains(st), onTap: () => _toggleSessionType(st))).toList(),
+                children: _assessmentSessionTypes
+                    .map(
+                      (st) => _Chip(
+                        label: sessionTypeLabel(st),
+                        on: _sessionTypes.contains(st),
+                        onTap: () => _toggleSessionType(st),
+                      ),
+                    )
+                    .toList(),
               ),
             ),
             const Padding(
               padding: EdgeInsets.only(top: 6),
               child: Text(
                 "These are what clients see when booking a programmer. Scheduling assessment availability isn't available from the app yet — contact ONE Fitness to set this up.",
-                style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.mute,
+                  height: 1.4,
+                ),
               ),
             ),
           ],
           if (hasRegularDiscipline) ...[
             const SizedBox(height: 16),
-            const Text("AVAILABILITY SCHEDULE", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+            const Text(
+              "AVAILABILITY SCHEDULE",
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.mute,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
             const SizedBox(height: 8),
             if (regularSessionTypesChosen.isEmpty)
-              const Text("Pick session types and disciplines first, then add availability blocks.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic))
+              const Text(
+                "Pick session types and disciplines first, then add availability blocks.",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.mute,
+                  fontStyle: FontStyle.italic,
+                ),
+              )
             else
               ...regularSessionTypesChosen.map((st) {
-                final disciplineOptions = _disciplines.where((d) => _isRegularDiscipline(d) && _disciplineAllowedForType(d, st)).toList();
+                final disciplineOptions = _disciplines
+                    .where(
+                      (d) =>
+                          _isRegularDiscipline(d) &&
+                          _disciplineAllowedForType(d, st),
+                    )
+                    .toList();
                 if (disciplineOptions.isEmpty) return const SizedBox.shrink();
                 final entries = <MapEntry<int, AvailabilityBlock>>[];
                 for (var i = 0; i < _availability.length; i++) {
                   final b = _availability[i];
-                  if (b.sessionType == st && !_largeGroupDisciplines.contains(b.discipline) && _disciplineAllowedForType(b.discipline, st)) entries.add(MapEntry(i, b));
+                  if (b.sessionType == st &&
+                      !_largeGroupDisciplines.contains(b.discipline) &&
+                      _disciplineAllowedForType(b.discipline, st))
+                    entries.add(MapEntry(i, b));
                 }
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 14),
@@ -311,23 +475,66 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                       if (regularSessionTypesChosen.length > 1)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(children: [
-                            const Icon(LucideIcons.calendar, size: 13, color: AppColors.gold),
-                            const SizedBox(width: 6),
-                            Text("${sessionTypeLabel(st)} schedule", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.gold)),
-                          ]),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                LucideIcons.calendar,
+                                size: 13,
+                                color: AppColors.gold,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                "${sessionTypeLabel(st)} schedule",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.gold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ...entries.map((entry) => _BlockRow(
-                            block: entry.value,
-                            showDisciplineTag: disciplineOptions.length > 1,
-                            onEdit: () => setState(() => _editingBlock = _BlockEditRequest(sessionType: st, disciplineOptions: disciplineOptions, editIndex: entry.key)),
-                            onRemove: () => setState(() => _availability = [..._availability]..removeAt(entry.key)),
-                          )),
+                      ...entries.map(
+                        (entry) => _BlockRow(
+                          block: entry.value,
+                          showDisciplineTag: disciplineOptions.length > 1,
+                          onEdit: () => setState(
+                            () => _editingBlock = _BlockEditRequest(
+                              sessionType: st,
+                              disciplineOptions: disciplineOptions,
+                              editIndex: entry.key,
+                            ),
+                          ),
+                          onRemove: () => setState(
+                            () =>
+                                _availability = [..._availability]
+                                  ..removeAt(entry.key),
+                          ),
+                        ),
+                      ),
                       TextButton.icon(
-                        onPressed: () => setState(() => _editingBlock = _BlockEditRequest(sessionType: st, disciplineOptions: disciplineOptions)),
-                        style: TextButton.styleFrom(foregroundColor: AppColors.gold, side: const BorderSide(color: AppColors.goldDim), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9)),
+                        onPressed: () => setState(
+                          () => _editingBlock = _BlockEditRequest(
+                            sessionType: st,
+                            disciplineOptions: disciplineOptions,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.gold,
+                          side: const BorderSide(color: AppColors.goldDim),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 9,
+                          ),
+                        ),
                         icon: const Icon(LucideIcons.plus, size: 13),
-                        label: Text("Add ${disciplineOptions.length > 1 ? 'discipline/' : ''}days for ${sessionTypeLabel(st)}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                        label: Text(
+                          "Add ${disciplineOptions.length > 1 ? 'discipline/' : ''}days for ${sessionTypeLabel(st)}",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -336,52 +543,116 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                _disciplines.length > 1 ? "Each block covers one discipline's days/times — add one per discipline if they run on different schedules." : "Tap a day, then tap times for that day. Add more days the same way.",
+                _disciplines.length > 1
+                    ? "Each block covers one discipline's days/times — add one per discipline if they run on different schedules."
+                    : "Tap a day, then tap times for that day. Add more days the same way.",
                 style: const TextStyle(fontSize: 11, color: AppColors.mute),
               ),
             ),
           ],
           if (largeGroupDisciplines.isNotEmpty) ...[
             const SizedBox(height: 18),
-            const Text("LARGE GROUP AVAILABILITY", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+            const Text(
+              "LARGE GROUP AVAILABILITY",
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.mute,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.03), border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.03),
+                border: Border.all(color: AppColors.goldDim),
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: const Text(
                 "Hike and Outdoor HIIT are large group sessions — 1 hour, capacity 15, starting on the hour every hour with a 15-minute buffer before and after. Not bookable as Semi-Private or One-on-One.",
-                style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.mute,
+                  height: 1.5,
+                ),
               ),
             ),
             ...largeGroupDisciplines.map((d) {
               final entries = <MapEntry<int, AvailabilityBlock>>[];
               for (var i = 0; i < _availability.length; i++) {
                 final b = _availability[i];
-                if (b.sessionType == "large-group" && b.discipline == d) entries.add(MapEntry(i, b));
+                if (b.sessionType == "large-group" && b.discipline == d)
+                  entries.add(MapEntry(i, b));
               }
               return Padding(
                 padding: const EdgeInsets.only(bottom: 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(children: [
-                      const Icon(LucideIcons.calendar, size: 13, color: AppColors.gold),
-                      const SizedBox(width: 6),
-                      Text("${disciplineLabel(d)} schedule", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.gold)),
-                    ]),
+                    Row(
+                      children: [
+                        const Icon(
+                          LucideIcons.calendar,
+                          size: 13,
+                          color: AppColors.gold,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          "${disciplineLabel(d)} schedule",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.gold,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
-                    ...entries.map((entry) => _BlockRow(
-                          block: entry.value,
-                          showDisciplineTag: false,
-                          onEdit: () => setState(() => _editingBlock = _BlockEditRequest(sessionType: "large-group", disciplineOptions: [d], editIndex: entry.key, isLargeGroup: true)),
-                          onRemove: () => setState(() => _availability = [..._availability]..removeAt(entry.key)),
-                        )),
+                    ...entries.map(
+                      (entry) => _BlockRow(
+                        block: entry.value,
+                        showDisciplineTag: false,
+                        onEdit: () => setState(
+                          () => _editingBlock = _BlockEditRequest(
+                            sessionType: "large-group",
+                            disciplineOptions: [d],
+                            editIndex: entry.key,
+                            isLargeGroup: true,
+                          ),
+                        ),
+                        onRemove: () => setState(
+                          () =>
+                              _availability = [..._availability]
+                                ..removeAt(entry.key),
+                        ),
+                      ),
+                    ),
                     TextButton.icon(
-                      onPressed: () => setState(() => _editingBlock = _BlockEditRequest(sessionType: "large-group", disciplineOptions: [d], isLargeGroup: true)),
-                      style: TextButton.styleFrom(foregroundColor: AppColors.gold, side: const BorderSide(color: AppColors.goldDim), padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9)),
+                      onPressed: () => setState(
+                        () => _editingBlock = _BlockEditRequest(
+                          sessionType: "large-group",
+                          disciplineOptions: [d],
+                          isLargeGroup: true,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.gold,
+                        side: const BorderSide(color: AppColors.goldDim),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 9,
+                        ),
+                      ),
                       icon: const Icon(LucideIcons.plus, size: 13),
-                      label: Text("Add days for ${disciplineLabel(d)}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      label: Text(
+                        "Add days for ${disciplineLabel(d)}",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -389,36 +660,104 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             }),
           ],
           const SizedBox(height: 18),
-          const Text("WHERE YOU TRAIN — PICK A LOCATION OR CREATE YOUR OWN", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
+          const Text(
+            "WHERE YOU TRAIN — PICK A LOCATION OR CREATE YOUR OWN",
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.mute,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
           const SizedBox(height: 8),
-          LocationsEditor(value: _locations, onChange: (v) => setState(() => _locations = v)),
+          LocationsEditor(
+            value: _locations,
+            onChange: (v) => setState(() => _locations = v),
+          ),
           if (widget.isOwnerEditing) ...[
             const SizedBox(height: 14),
-            FieldLabeled(label: "Commission rate (%)", child: AppField(controller: _commission, keyboardType: TextInputType.number)),
-            const Padding(padding: EdgeInsets.only(top: 4), child: Text("Percent of a session's revenue this coach is paid — used in the Reports → Payroll reports.", style: TextStyle(fontSize: 11, color: AppColors.mute))),
+            FieldLabeled(
+              label: "Commission rate (%)",
+              child: AppField(
+                controller: _commission,
+                keyboardType: TextInputType.number,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                "Percent of a session's revenue this coach is paid — used in the Reports → Payroll reports.",
+                style: TextStyle(fontSize: 11, color: AppColors.mute),
+              ),
+            ),
           ],
           const SizedBox(height: 16),
-          const Text("BIO (OPTIONAL, BUT RECOMMENDED)", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
+          const Text(
+            "BIO (OPTIONAL, BUT RECOMMENDED)",
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.mute,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
           const SizedBox(height: 6),
-          AppField(controller: _bio, placeholder: "Tell clients about your background, training style, certifications, and what makes you a great coach…", minLines: 4, maxLines: 8, maxLength: 750, onChanged: (_) => setState(() {})),
+          AppField(
+            controller: _bio,
+            placeholder:
+                "Tell clients about your background, training style, certifications, and what makes you a great coach…",
+            minLines: 4,
+            maxLines: 8,
+            maxLength: 750,
+            onChanged: (_) => setState(() {}),
+          ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("A strong bio helps clients choose you.", style: TextStyle(fontSize: 11, color: AppColors.mute)),
-                Text("${_bio.text.length}/750", style: TextStyle(fontSize: 11, color: _bio.text.length > 700 ? const Color(0xFFD68A4F) : AppColors.mute)),
+                const Text(
+                  "A strong bio helps clients choose you.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
+                ),
+                Text(
+                  "${_bio.text.length}/750",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: _bio.text.length > 700
+                        ? const Color(0xFFD68A4F)
+                        : AppColors.mute,
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          const Text("BEFORE & AFTER (OPTIONAL)", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
+          const Text(
+            "BEFORE & AFTER (OPTIONAL)",
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.mute,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
           const SizedBox(height: 6),
           const Padding(
             padding: EdgeInsets.only(bottom: 10),
-            child: Text("Show client transformations. Add a Before and After photo for each frame. Up to 5 sets.", style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.5)),
+            child: Text(
+              "Show client transformations. Add a Before and After photo for each frame. Up to 6 sets.",
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.mute,
+                height: 1.5,
+              ),
+            ),
           ),
-          BeforeAfterEditor(value: _beforeAfters, onChange: (v) => setState(() => _beforeAfters = v)),
+          BeforeAfterEditor(
+            value: _beforeAfters,
+            onChange: (v) => setState(() => _beforeAfters = v),
+          ),
           const SizedBox(height: 18),
           Container(height: 1, color: AppColors.line),
           const SizedBox(height: 14),
@@ -429,24 +768,43 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             ),
             const SizedBox(height: 8),
             if (_resetSent)
-              const Text("✓ Reset email sent.", style: TextStyle(color: AppColors.gold, fontSize: 13, fontWeight: FontWeight.w600))
+              const Text(
+                "✓ Reset email sent.",
+                style: TextStyle(
+                  color: AppColors.gold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              )
             else
               BtnGhost(
                 onPressed: _resetBusy ? null : _sendPasswordReset,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(LucideIcons.lock, size: 14),
-                  const SizedBox(width: 6),
-                  Text(_resetBusy ? "Sending…" : "Send password reset email"),
-                ]),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(LucideIcons.lock, size: 14),
+                    const SizedBox(width: 6),
+                    Text(_resetBusy ? "Sending…" : "Send password reset email"),
+                  ],
+                ),
               ),
           ] else ...[
-            FieldLabeled(label: "Create password *", child: AppField(controller: _pw, obscureText: true)),
+            FieldLabeled(
+              label: "Create password *",
+              child: AppField(controller: _pw, obscureText: true),
+            ),
             const SizedBox(height: 10),
-            FieldLabeled(label: "Confirm password", child: AppField(controller: _pw2, obscureText: true)),
+            FieldLabeled(
+              label: "Confirm password",
+              child: AppField(controller: _pw2, obscureText: true),
+            ),
           ],
           if (_error != null) ...[
             const SizedBox(height: 10),
-            Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+            Text(
+              _error!,
+              style: const TextStyle(color: AppColors.errorText, fontSize: 12),
+            ),
           ],
           const SizedBox(height: 16),
           Row(
@@ -454,11 +812,16 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               Expanded(
                 child: BtnGold(
                   onPressed: _submit,
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(LucideIcons.check, size: 15),
-                    const SizedBox(width: 6),
-                    Text(widget.initial != null ? "Save changes" : "Add trainer"),
-                  ]),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(LucideIcons.check, size: 15),
+                      const SizedBox(width: 6),
+                      Text(
+                        widget.initial != null ? "Save changes" : "Add trainer",
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -467,7 +830,13 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
           ),
           if (widget.onDelete != null) ...[
             const SizedBox(height: 10),
-            TextButton(onPressed: widget.onDelete, style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)), child: const Text("Remove trainer")),
+            TextButton(
+              onPressed: widget.onDelete,
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFC97F7F),
+              ),
+              child: const Text("Remove trainer"),
+            ),
           ],
         ],
       ),
@@ -493,21 +862,40 @@ class _Chip extends StatelessWidget {
           border: Border.all(color: on ? AppColors.gold : AppColors.line),
           color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: on ? AppColors.gold : AppColors.mute)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: on ? AppColors.gold : AppColors.mute,
+          ),
+        ),
       ),
     );
   }
 }
 
 class _BlockRow extends StatelessWidget {
-  const _BlockRow({required this.block, required this.showDisciplineTag, required this.onEdit, required this.onRemove});
+  const _BlockRow({
+    required this.block,
+    required this.showDisciplineTag,
+    required this.onEdit,
+    required this.onRemove,
+  });
   final AvailabilityBlock block;
   final bool showDisciplineTag;
   final VoidCallback onEdit;
   final VoidCallback onRemove;
 
   static const _weekdayOrder = [1, 2, 3, 4, 5, 6];
-  static const _weekdayShort = {1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat"};
+  static const _weekdayShort = {
+    1: "Mon",
+    2: "Tue",
+    3: "Wed",
+    4: "Thu",
+    5: "Fri",
+    6: "Sat",
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -515,20 +903,38 @@ class _BlockRow extends StatelessWidget {
     for (final d in _weekdayOrder) {
       final slots = [...(block.byDay[d] ?? const <int>[])]..sort();
       if (slots.isEmpty) continue;
-      dayLines.add(Padding(
-        padding: const EdgeInsets.only(top: 2),
-        child: RichText(
-          text: TextSpan(children: [
-            TextSpan(text: "${_weekdayShort[d]} ", style: const TextStyle(fontSize: 11, color: AppColors.txt, fontWeight: FontWeight.w700)),
-            TextSpan(text: slots.map(fmtSlotShort).join(" "), style: const TextStyle(fontSize: 11, color: AppColors.mute)),
-          ]),
+      dayLines.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: "${_weekdayShort[d]} ",
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.txt,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                TextSpan(
+                  text: slots.map(fmtSlotShort).join(" "),
+                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                ),
+              ],
+            ),
+          ),
         ),
-      ));
+      );
     }
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -536,15 +942,50 @@ class _BlockRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (showDisciplineTag) Padding(padding: const EdgeInsets.only(bottom: 4), child: Tag(text: disciplineLabel(block.discipline), gold: true)),
-                if (dayLines.isEmpty) const Text("No times set", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)) else ...dayLines,
+                if (showDisciplineTag)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Tag(
+                      text: disciplineLabel(block.discipline),
+                      gold: true,
+                    ),
+                  ),
+                if (dayLines.isEmpty)
+                  const Text(
+                    "No times set",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.mute,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  )
+                else
+                  ...dayLines,
               ],
             ),
           ),
           Column(
             children: [
-              IconButton(onPressed: onEdit, icon: const Icon(LucideIcons.pencil, size: 14, color: AppColors.mute), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 28, minHeight: 28)),
-              IconButton(onPressed: onRemove, icon: const Icon(LucideIcons.trash2, size: 14, color: Color(0xFF6B3B3B)), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 28, minHeight: 28)),
+              IconButton(
+                onPressed: onEdit,
+                icon: const Icon(
+                  LucideIcons.pencil,
+                  size: 14,
+                  color: AppColors.mute,
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              ),
+              IconButton(
+                onPressed: onRemove,
+                icon: const Icon(
+                  LucideIcons.trash2,
+                  size: 14,
+                  color: Color(0xFF6B3B3B),
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              ),
             ],
           ),
         ],

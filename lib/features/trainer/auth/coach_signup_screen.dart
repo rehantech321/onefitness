@@ -8,13 +8,17 @@ import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/models/trainer.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
 
 /// Real coach self-signup — mirrors TrainerForm.jsx's account-creation
-/// fields (photo, name, email, phone, disciplines, a location, password)
-/// rather than its full ~800-line staff-onboarding scope (per-discipline
-/// session types, weekly availability blocks, bio, before/afters, etc. —
-/// all already editable afterward from My Profile/Staff once signed in).
+/// fields (photo, name, email, phone, disciplines, a location, bio,
+/// before/after portfolio photos, password) rather than its full ~800-line
+/// staff-onboarding scope (per-discipline session types, weekly
+/// availability blocks, etc. — still only editable afterward from My
+/// Profile/Staff once signed in). Bio and before/afters are both visible to
+/// every client immediately via CoachProfileCard (booking flow's "Meet the
+/// Coach" card) as soon as the coach account exists.
 ///
 /// Two steps, same as the web source: an approval-code gate shown first
 /// (`isSelfSignup && !codeOk` in TrainerForm.jsx) — a wrong/expired code
@@ -44,7 +48,9 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
   // pointed at the gym's own location; editable inline, matching
   // updateTrainerRow's "the app only edits a single location" precedent.
   final _locationName = TextEditingController(text: "ONE Fitness");
-  final _locationAddress = TextEditingController(text: "11300 Magnolia Blvd., North Hollywood, CA 91601");
+  final _locationAddress = TextEditingController(
+    text: "11300 Magnolia Blvd., North Hollywood, CA 91601",
+  );
   bool _editingLocation = false;
 
   final Set<String> _disciplines = {};
@@ -52,6 +58,9 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
   bool _pickingPhoto = false;
   String? _error;
   bool _busy = false;
+
+  final _bio = TextEditingController();
+  List<TrainerBeforeAfter> _beforeAfters = [];
 
   bool _codeVerified = false;
   String? _codeError;
@@ -67,6 +76,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
     _code.dispose();
     _locationName.dispose();
     _locationAddress.dispose();
+    _bio.dispose();
     super.dispose();
   }
 
@@ -86,13 +96,17 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
       final expiresAt = approval?["expires_at"] as String?;
       final usedAt = approval?["used_at"] as String?;
       if (realCode == null || code != realCode) {
-        throw Exception("That code is invalid or has expired. Contact ONE Fitness for a current code.");
+        throw Exception(
+          "That code is invalid or has expired. Contact ONE Fitness for a current code.",
+        );
       }
       if (usedAt != null) {
         throw Exception("That approval code has already been used.");
       }
       if (expiresAt != null && isoToday().compareTo(expiresAt) > 0) {
-        throw Exception("That approval code has expired — ask the owner for a new one.");
+        throw Exception(
+          "That approval code has expired — ask the owner for a new one.",
+        );
       }
       if (!mounted) return;
       setState(() {
@@ -124,7 +138,9 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
     final password = _password.text;
     final phone = _phone.text.trim();
     if (name.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty) {
-      setState(() => _error = "Name, email, password, and phone are all required.");
+      setState(
+        () => _error = "Name, email, password, and phone are all required.",
+      );
       return;
     }
     if (password.length < 6) {
@@ -154,12 +170,17 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
         disciplines: _disciplines.toList(),
         locationName: _locationName.text.trim(),
         locationAddress: _locationAddress.text.trim(),
+        bio: _bio.text.trim(),
+        beforeAfters: _beforeAfters,
       );
       await loadAndSeedCoreData(ref);
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst("Exception: ", "").replaceFirst("AuthException: ", "");
+        _error = e
+            .toString()
+            .replaceFirst("Exception: ", "")
+            .replaceFirst("AuthException: ", "");
         _busy = false;
       });
       return;
@@ -170,7 +191,12 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_codeVerified) {
-      return Scaffold(
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) widget.onBack();
+        },
+        child: Scaffold(
         backgroundColor: AppColors.bg,
         body: SafeArea(
           child: SingleChildScrollView(
@@ -179,20 +205,36 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SectionLabel("Coach Approval Code"),
-                const HintBox(text: "Coach profiles require approval. If you've met with ONE Fitness and been approved, enter the code you were given."),
+                const HintBox(
+                  text:
+                      "Coach profiles require approval. If you've met with ONE Fitness and been approved, enter the code you were given.",
+                ),
                 const SizedBox(height: 12),
                 FieldLabeled(
                   label: "Approval code",
-                  child: AppField(controller: _code, placeholder: "000000", onChanged: (_) => setState(() => _codeError = null)),
+                  child: AppField(
+                    controller: _code,
+                    placeholder: "000000",
+                    onChanged: (_) => setState(() => _codeError = null),
+                  ),
                 ),
                 if (_codeError != null) ...[
                   const SizedBox(height: 8),
-                  Text(_codeError!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                  Text(
+                    _codeError!,
+                    style: const TextStyle(
+                      color: AppColors.errorText,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    BtnGhost(onPressed: widget.onBack, child: const Text("Back")),
+                    BtnGhost(
+                      onPressed: widget.onBack,
+                      child: const Text("Back"),
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: BtnGold(
@@ -217,10 +259,16 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
             ),
           ),
         ),
+        ),
       );
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) setState(() => _codeVerified = false);
+      },
+      child: Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -228,7 +276,10 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              BackBar(onBack: () => setState(() => _codeVerified = false), title: "Create coach profile"),
+              BackBar(
+                onBack: () => setState(() => _codeVerified = false),
+                title: "Create coach profile",
+              ),
               const SizedBox(height: 10),
               Center(
                 child: Column(
@@ -242,32 +293,78 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                           shape: BoxShape.circle,
                           border: Border.all(color: AppColors.line, width: 2),
                           image: _photoDataUrl != null
-                              ? DecorationImage(image: MemoryImage(base64Decode(_photoDataUrl!.substring(_photoDataUrl!.indexOf(",") + 1))), fit: BoxFit.cover)
+                              ? DecorationImage(
+                                  image: MemoryImage(
+                                    base64Decode(
+                                      _photoDataUrl!.substring(
+                                        _photoDataUrl!.indexOf(",") + 1,
+                                      ),
+                                    ),
+                                  ),
+                                  fit: BoxFit.cover,
+                                )
                               : null,
                         ),
                         alignment: Alignment.center,
-                        child: _photoDataUrl == null ? const Icon(LucideIcons.user, size: 28, color: AppColors.mute) : null,
+                        child: _photoDataUrl == null
+                            ? const Icon(
+                                LucideIcons.user,
+                                size: 28,
+                                color: AppColors.mute,
+                              )
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 8),
                     TextButton.icon(
                       onPressed: _pickingPhoto ? null : _pickPhoto,
-                      style: TextButton.styleFrom(foregroundColor: AppColors.gold),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.gold,
+                      ),
                       icon: const Icon(LucideIcons.image, size: 14),
-                      label: Text(_pickingPhoto ? "Opening…" : (_photoDataUrl != null ? "Change photo" : "Add photo"), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      label: Text(
+                        _pickingPhoto
+                            ? "Opening…"
+                            : (_photoDataUrl != null
+                                  ? "Change photo"
+                                  : "Add photo"),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 4),
-              FieldLabeled(label: "Full name", child: AppField(controller: _name, placeholder: "First Last", onChanged: (_) => setState(() => _error = null))),
+              FieldLabeled(
+                label: "Full name",
+                child: AppField(
+                  controller: _name,
+                  placeholder: "First Last",
+                  onChanged: (_) => setState(() => _error = null),
+                ),
+              ),
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Email",
-                child: AppField(controller: _email, placeholder: "name@email.com", keyboardType: TextInputType.emailAddress, onChanged: (_) => setState(() => _error = null)),
+                child: AppField(
+                  controller: _email,
+                  placeholder: "name@email.com",
+                  keyboardType: TextInputType.emailAddress,
+                  onChanged: (_) => setState(() => _error = null),
+                ),
               ),
               const SizedBox(height: 10),
-              FieldLabeled(label: "Phone", child: AppField(controller: _phone, keyboardType: TextInputType.phone, onChanged: (_) => setState(() => _error = null))),
+              FieldLabeled(
+                label: "Phone",
+                child: AppField(
+                  controller: _phone,
+                  keyboardType: TextInputType.phone,
+                  onChanged: (_) => setState(() => _error = null),
+                ),
+              ),
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Disciplines (choose one or more)",
@@ -287,35 +384,65 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                       }),
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 9,
+                        ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: on ? AppColors.gold : AppColors.line),
-                          color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                          border: Border.all(
+                            color: on ? AppColors.gold : AppColors.line,
+                          ),
+                          color: on
+                              ? AppColors.gold.withValues(alpha: 0.15)
+                              : AppColors.bg,
                         ),
-                        child: Text(e.value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: on ? AppColors.gold : AppColors.mute)),
+                        child: Text(
+                          e.value,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: on ? AppColors.gold : AppColors.mute,
+                          ),
+                        ),
                       ),
                     );
                   }).toList(),
                 ),
               ),
               const SizedBox(height: 10),
-              const Text("Where you train", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.txt)),
+              const Text(
+                "Where you train",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.txt,
+                ),
+              ),
               const SizedBox(height: 6),
               AppCard(
                 child: _editingLocation
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          FieldLabeled(label: "Location name", child: AppField(controller: _locationName)),
+                          FieldLabeled(
+                            label: "Location name",
+                            child: AppField(controller: _locationName),
+                          ),
                           const SizedBox(height: 8),
-                          FieldLabeled(label: "Address", child: AppField(controller: _locationAddress)),
+                          FieldLabeled(
+                            label: "Address",
+                            child: AppField(controller: _locationAddress),
+                          ),
                           const SizedBox(height: 8),
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: () => setState(() => _editingLocation = false),
-                              style: TextButton.styleFrom(foregroundColor: AppColors.gold),
+                              onPressed: () =>
+                                  setState(() => _editingLocation = false),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.gold,
+                              ),
                               child: const Text("Done"),
                             ),
                           ),
@@ -328,37 +455,137 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(_locationName.text.isEmpty ? "Untitled location" : _locationName.text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                                Text(
+                                  _locationName.text.isEmpty
+                                      ? "Untitled location"
+                                      : _locationName.text,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
                                 if (_locationAddress.text.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 3),
-                                    child: Text(_locationAddress.text, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                                    child: Text(
+                                      _locationAddress.text,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.mute,
+                                      ),
+                                    ),
                                   ),
                               ],
                             ),
                           ),
                           IconButton(
-                            onPressed: () => setState(() => _editingLocation = true),
-                            icon: const Icon(LucideIcons.pencil, size: 16, color: AppColors.mute),
+                            onPressed: () =>
+                                setState(() => _editingLocation = true),
+                            icon: const Icon(
+                              LucideIcons.pencil,
+                              size: 16,
+                              color: AppColors.mute,
+                            ),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
                         ],
                       ),
               ),
+              const SizedBox(height: 16),
+              const Text(
+                "Bio (optional, but recommended)",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.txt,
+                ),
+              ),
+              const SizedBox(height: 6),
+              AppField(
+                controller: _bio,
+                placeholder:
+                    "Tell clients about your background, training style, certifications, and what makes you a great coach…",
+                minLines: 4,
+                maxLines: 8,
+                maxLength: 750,
+                onChanged: (_) => setState(() {}),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "A strong bio helps clients choose you.",
+                      style: TextStyle(fontSize: 11, color: AppColors.mute),
+                    ),
+                    Text(
+                      "${_bio.text.length}/750",
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _bio.text.length > 700
+                            ? const Color(0xFFD68A4F)
+                            : AppColors.mute,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Before & After (optional)",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.txt,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 10),
+                child: Text(
+                  "Show off past client transformations as a portfolio — every client can see these on your coach profile. Add a Before and After photo for each frame. Up to 6 sets.",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.mute,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+              BeforeAfterEditor(
+                value: _beforeAfters,
+                onChange: (v) => setState(() => _beforeAfters = v),
+              ),
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Create password",
-                child: AppField(controller: _password, placeholder: "At least 6 characters", obscureText: true, onChanged: (_) => setState(() => _error = null)),
+                child: AppField(
+                  controller: _password,
+                  placeholder: "At least 6 characters",
+                  obscureText: true,
+                  onChanged: (_) => setState(() => _error = null),
+                ),
               ),
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Confirm password",
-                child: AppField(controller: _password2, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
+                child: AppField(
+                  controller: _password2,
+                  placeholder: "••••••",
+                  obscureText: true,
+                  onChanged: (_) => setState(() => _error = null),
+                ),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 10),
-                Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                Text(
+                  _error!,
+                  style: const TextStyle(
+                    color: AppColors.errorText,
+                    fontSize: 12,
+                  ),
+                ),
               ],
               const SizedBox(height: 16),
               BtnGold(
@@ -377,10 +604,15 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                       ),
               ),
               const SizedBox(height: 10),
-              BtnGhost(onPressed: widget.onBack, full: true, child: const Text("Back to sign in")),
+              BtnGhost(
+                onPressed: widget.onBack,
+                full: true,
+                child: const Text("Back to sign in"),
+              ),
             ],
           ),
         ),
+      ),
       ),
     );
   }

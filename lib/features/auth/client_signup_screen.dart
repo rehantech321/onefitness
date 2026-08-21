@@ -123,7 +123,12 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) widget.onBack();
+      },
+      child: Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -240,6 +245,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
