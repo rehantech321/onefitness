@@ -9,20 +9,27 @@ const _monthNames = [
 ];
 const _dowLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
-/// Mirrors MonthCalendar.jsx — a simple month grid with a session-density
-/// dot row and a small marker for blocked days.
+/// Mirrors MonthCalendar.jsx's month grid, extended with a per-day session
+/// time readout — a coach can see when their day's sessions start without
+/// having to tap in, and tapping still opens (see ScheduleScreen) straight
+/// to that session's detail sheet when the day only has one.
 class MonthCalendar extends StatelessWidget {
   const MonthCalendar({
     super.key,
-    required this.month, // first-of-month DateTime
-    required this.densityByDate,
+    required this.month,
+    required this.slotsByDate,
     required this.blockedDates,
     required this.onSelectDay,
     required this.onChangeMonth,
   });
 
   final DateTime month;
-  final Map<String, int> densityByDate;
+
+  /// Distinct, sorted start-minute slots booked on each date — used purely
+  /// for the compact time readout under the date number. Tap-target
+  /// decisions (open detail directly vs. drill into the day) live in
+  /// ScheduleScreen, which has the real Booking objects.
+  final Map<String, List<int>> slotsByDate;
   final Set<String> blockedDates;
   final ValueChanged<String> onSelectDay;
   final void Function(int direction) onChangeMonth;
@@ -38,9 +45,11 @@ class MonthCalendar extends StatelessWidget {
     }
     for (var d = 1; d <= daysInMonth; d++) {
       final date = isoDate(DateTime(month.year, month.month, d));
-      final density = (densityByDate[date] ?? 0).clamp(0, 4);
+      final slots = slotsByDate[date] ?? const <int>[];
       final blocked = blockedDates.contains(date);
       final isToday = date == today;
+      final shown = slots.take(2).toList();
+      final overflow = slots.length - shown.length;
       cells.add(InkWell(
         onTap: () => onSelectDay(date),
         borderRadius: BorderRadius.circular(9),
@@ -50,21 +59,20 @@ class MonthCalendar extends StatelessWidget {
             border: isToday ? Border.all(color: AppColors.gold) : null,
           ),
           padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Stack(
+            alignment: Alignment.topCenter,
             children: [
-              Text("$d", style: TextStyle(fontSize: 13, fontWeight: isToday ? FontWeight.w800 : FontWeight.w500, color: isToday ? AppColors.gold : AppColors.txt)),
-              const SizedBox(height: 3),
-              SizedBox(
-                height: 6,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ...List.generate(density, (_) => Container(width: 4, height: 4, margin: const EdgeInsets.symmetric(horizontal: 0.5), decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle))),
-                    if (blocked) Container(width: 4, height: 4, margin: const EdgeInsets.symmetric(horizontal: 0.5), decoration: const BoxDecoration(color: AppColors.mute, shape: BoxShape.circle)),
-                  ],
-                ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("$d", style: TextStyle(fontSize: 13, fontWeight: isToday ? FontWeight.w800 : FontWeight.w500, color: isToday ? AppColors.gold : AppColors.txt)),
+                  const SizedBox(height: 2),
+                  for (final s in shown)
+                    Text(fmtSlotShort(s), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.gold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if (overflow > 0) Text("+$overflow", style: const TextStyle(fontSize: 9, color: AppColors.mute)),
+                ],
               ),
+              if (blocked) const Positioned(top: 0, right: 2, child: Icon(LucideIcons.lock, size: 8, color: AppColors.mute)),
             ],
           ),
         ),
@@ -89,6 +97,7 @@ class MonthCalendar extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 4,
           crossAxisSpacing: 4,
+          childAspectRatio: 0.72,
           children: cells,
         ),
       ],
