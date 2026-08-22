@@ -49,6 +49,18 @@ String fmtSlotShort(int minutes) {
   return "$h12$mm$ampm";
 }
 
+/// Compact but unambiguous AM/PM form for tight spaces like a month
+/// calendar cell — e.g. "9AM", "2:30PM". Unlike [fmtSlotShort]'s single
+/// trailing letter, this always spells out AM/PM in full.
+String fmtSlotCompactAmPm(int minutes) {
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  final h12 = h % 12 == 0 ? 12 : h % 12;
+  final mm = m == 0 ? "" : ":${m.toString().padLeft(2, '0')}";
+  final ampm = h < 12 ? "AM" : "PM";
+  return "$h12$mm$ampm";
+}
+
 /// Mirrors lib/format.js `stamp()` — "Jul 27, 3:45 PM", used as the display
 /// timestamp on logged chat messages.
 String stamp([DateTime? at]) {

@@ -109,11 +109,11 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text("${_i + 1} of ${widget.steps.length}", style: const TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700)),
+                        Text("${_i + 1} of ${widget.steps.length}", style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
                         const SizedBox(height: 4),
-                        Text(step.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.txt)),
+                        Text(step.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white, decoration: TextDecoration.none)),
                         const SizedBox(height: 4),
-                        Text(step.desc, style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4)),
+                        Text(step.desc, style: const TextStyle(fontSize: 12, color: Colors.white, height: 1.4, decoration: TextDecoration.none)),
                         const SizedBox(height: 10),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,

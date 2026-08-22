@@ -68,7 +68,7 @@ class MonthCalendar extends StatelessWidget {
                   Text("$d", style: TextStyle(fontSize: 13, fontWeight: isToday ? FontWeight.w800 : FontWeight.w500, color: isToday ? AppColors.gold : AppColors.txt)),
                   const SizedBox(height: 2),
                   for (final s in shown)
-                    Text(fmtSlotShort(s), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.gold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(fmtSlotCompactAmPm(s), style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.gold), maxLines: 1, overflow: TextOverflow.ellipsis),
                   if (overflow > 0) Text("+$overflow", style: const TextStyle(fontSize: 9, color: AppColors.mute)),
                 ],
               ),
