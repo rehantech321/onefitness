@@ -123,12 +123,18 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
             ? 4
             : (remaining / (totalWeeklySlots == 0 ? 1 : totalWeeklySlots)).ceil().clamp(1, 1 << 30);
 
+    final today = isoToday();
+    final now = DateTime.now();
+    final nowMin = now.hour * 60 + now.minute;
     final candidates = <(String, int, int)>[]; // date, weekday, slot
     for (var w = 0; w < weeksCount; w++) {
       for (final bracket in _brackets) {
         for (final wd in bracket.days) {
           final date = occurrenceDate(isoToday(), wd, w);
-          if (date.compareTo(isoToday()) >= 0) candidates.add((date, wd, bracket.time));
+          final dateCmp = date.compareTo(today);
+          // Today's own already-started/passed slots can't be booked —
+          // any other future date has no such restriction.
+          if (dateCmp > 0 || (dateCmp == 0 && bracket.time > nowMin)) candidates.add((date, wd, bracket.time));
         }
       }
     }

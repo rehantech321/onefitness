@@ -577,6 +577,14 @@ class _StepThreeState extends State<_StepThree> {
           bySlot.putIfAbsent(o.slot, () => []).add(_SlotAvailability(trainer: t, open: cap - used, cap: cap, mine: mine));
         }
       }
+      // A session that's already started (or already passed) today can't
+      // be booked — every other date on the calendar is entirely future,
+      // so this only ever trims today's slot list.
+      if (date == isoToday()) {
+        final now = DateTime.now();
+        final nowMin = now.hour * 60 + now.minute;
+        bySlot.removeWhere((slot, _) => slot <= nowMin);
+      }
     }
     final slots = bySlot.keys.toList()..sort();
     final firstHour = slots.where((s) => s % 60 == 0).isEmpty ? null : slots.where((s) => s % 60 == 0).first;
