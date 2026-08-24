@@ -12,6 +12,9 @@ class Booking {
     this.attendanceStatus,
     this.locationName,
     this.isPhysicalAssessment = false,
+    this.overriddenBy,
+    this.overriddenAt,
+    this.overrideReason,
   });
 
   final String id;
@@ -26,6 +29,13 @@ class Booking {
   final String? locationName;
   final bool isPhysicalAssessment;
 
+  /// Set only when an owner pushed a manual booking past a real conflict or
+  /// capacity block (AddManualBookingModal.jsx's override confirmation) —
+  /// `overrideReason` is "conflict" | "capacity".
+  final String? overriddenBy;
+  final String? overriddenAt;
+  final String? overrideReason;
+
   Booking copyWith({String? attendanceStatus}) => Booking(
         id: id,
         clientId: clientId,
@@ -38,5 +48,8 @@ class Booking {
         attendanceStatus: attendanceStatus,
         locationName: locationName,
         isPhysicalAssessment: isPhysicalAssessment,
+        overriddenBy: overriddenBy,
+        overriddenAt: overriddenAt,
+        overrideReason: overrideReason,
       );
 }

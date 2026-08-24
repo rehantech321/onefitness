@@ -11,6 +11,7 @@ import "../../../core/utils/attention_utils.dart";
 import "../../../core/utils/booking_utils.dart" show addDaysIso;
 import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
 
@@ -32,6 +33,7 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
   bool _busy = false;
   bool _justGenerated = false;
   bool _linkCopied = false;
+  String? _openId;
   final _daysValid = TextEditingController(text: "7");
 
   @override
@@ -94,9 +96,36 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
     });
   }
 
+  Future<void> _markReviewed(Trainer t) async {
+    try {
+      await SupabaseService.updateTrainerRow(t.id, reviewedByOwner: true);
+    } catch (_) {
+      return;
+    }
+    ref.read(trainersProvider.notifier).upsert(Trainer(
+          id: t.id,
+          name: t.name,
+          photo: t.photo,
+          phone: t.phone,
+          email: t.email,
+          locationName: t.locationName,
+          locationAddress: t.locationAddress,
+          locations: t.locations,
+          bio: t.bio,
+          beforeAfters: t.beforeAfters,
+          availability: t.availability,
+          commissionRate: t.commissionRate,
+          disciplines: t.disciplines,
+          sessionTypes: t.sessionTypes,
+          reviewedByOwner: true,
+          signupAt: t.signupAt,
+        ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final trainers = ref.watch(trainersProvider);
+    final newCount = trainers.where((t) => !t.reviewedByOwner).length;
     final roster = ref.watch(trainerRosterProvider);
     final records = ref.watch(trainerClientRecordsProvider);
     final bookings = ref.watch(allBookingsProvider);
@@ -199,12 +228,31 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const SectionLabel("All Coaches"),
+          Row(
+            children: [
+              const SectionLabel("All Coaches"),
+              if (newCount > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(color: AppColors.danger.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6), border: Border.all(color: AppColors.danger.withValues(alpha: 0.4))),
+                  child: Text("$newCount new", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.danger)),
+                ),
+              ],
+            ],
+          ),
           const SizedBox(height: 10),
+          if (trainers.isEmpty) const HintBox(text: "No coaches yet."),
           ...trainers.map((t) {
             final myRoster = roster.where((c) => c.primaryTrainerId == t.id).toList();
             final flags = [...computeNeedsAttention(myRoster, records), ...computeUnloggedAttendance(myRoster, bookings)];
+            final isNew = !t.reviewedByOwner;
+            final open = _openId == t.id;
             return AppCard(
+              onTap: () {
+                setState(() => _openId = open ? null : t.id);
+                if (isNew) _markReviewed(t);
+              },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -216,7 +264,19 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(t.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                            Row(
+                              children: [
+                                Flexible(child: Text(t.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), overflow: TextOverflow.ellipsis)),
+                                if (isNew) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                    decoration: BoxDecoration(color: AppColors.danger.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(5), border: Border.all(color: AppColors.danger.withValues(alpha: 0.4))),
+                                    child: const Text("New", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.danger)),
+                                  ),
+                                ],
+                              ],
+                            ),
                             Text("${myRoster.length} client${myRoster.length == 1 ? '' : 's'}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
                           ],
                         ),
@@ -234,9 +294,34 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                             ],
                           ),
                         ),
+                      const SizedBox(width: 6),
+                      AnimatedRotation(
+                        turns: open ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 150),
+                        child: const Icon(LucideIcons.chevronDown, size: 16, color: AppColors.mute),
+                      ),
                     ],
                   ),
-                  if (flags.isNotEmpty) ...[
+                  if (open) ...[
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, color: AppColors.line),
+                    const SizedBox(height: 12),
+                    Text("Email: ${t.email ?? '—'}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                    const SizedBox(height: 4),
+                    Text("Phone: ${t.phone ?? '—'}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                    if (t.signupAt != null) ...[
+                      const SizedBox(height: 4),
+                      Text("Signed up: ${niceDate(t.signupAt!)}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                    ],
+                    if (flags.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      const Text("Needs attention on their roster:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      ...flags.map((f) => Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text("• ${f.label}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                          )),
+                    ],
+                  ] else if (flags.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     ...flags.take(4).map((f) => Padding(
                           padding: const EdgeInsets.only(top: 2),

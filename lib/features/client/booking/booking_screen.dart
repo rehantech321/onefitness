@@ -12,6 +12,8 @@ import "../../../data/models/booking.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
+import "../../../data/providers/trainer_providers.dart";
 import "booking_cancel_screen.dart";
 import "booking_picking_screen.dart";
 import "date_strip.dart";
@@ -88,6 +90,28 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     try {
       await SupabaseService.deleteBooking(b.id);
       ref.read(clientBookingsProvider.notifier).cancelBooking(b.id);
+      // A client cancelling their own booking can only ever be "free" or
+      // "late" — a no-show is by definition something the client never
+      // reported, so self-cancel never produces one (see cancelWindow).
+      final settings = ref.read(platformSettingsProvider);
+      if (cancelWindow(b, lateCancellationHours: settings.lateCancellationHours) != "free") {
+        final info = ref.read(clientInfoProvider);
+        final trainer = ref.read(trainersProvider).where((t) => t.id == b.trainerId);
+        final charge = attendanceChargeFor(
+          b,
+          "late-cancel",
+          clientName: info.name,
+          trainerName: trainer.isNotEmpty ? trainer.first.name : null,
+          lateCancellationFeeCents: settings.lateCancellationFeeCents,
+          noShowFeeCents: settings.noShowFeeCents,
+        );
+        if (charge != null) {
+          SupabaseService.insertCharge(charge).then((saved) => ref.read(chargesProvider.notifier).add(saved)).catchError((Object e) {
+            // ignore: avoid_print
+            print("[cancel charge] failed to save: $e");
+          });
+        }
+      }
       setState(() {
         _busy = false;
         _cancelTarget = null;
@@ -104,7 +128,17 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     final bookings = ref.read(clientBookingsProvider);
     if (_rescheduling == null) {
       final plan = ref.read(membershipPlansProvider.notifier).byId(info.membershipPlanId);
-      final check = canBookOffering(info, sessionType, bookings, _date, slot, plan);
+      final settings = ref.read(platformSettingsProvider);
+      final check = canBookOffering(
+        info,
+        sessionType,
+        bookings,
+        _date,
+        slot,
+        plan,
+        minBookingLeadHours: settings.minBookingLeadHours,
+        maxBookingHorizonDays: settings.maxBookingHorizonDays,
+      );
       if (!check.ok) {
         setState(() => _denied = check);
         return;
@@ -316,6 +350,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               }),
               onChangeDisc: () => setState(() => _chosenDisc = null),
               onSlotTap: _onSlotTap,
+              semiPrivateCap: ref.watch(platformSettingsProvider).semiPrivateCap,
             ),
         ],
       ),
@@ -522,6 +557,7 @@ class _StepThree extends StatefulWidget {
     required this.onChangeType,
     required this.onChangeDisc,
     required this.onSlotTap,
+    required this.semiPrivateCap,
   });
 
   final String date;
@@ -534,6 +570,7 @@ class _StepThree extends StatefulWidget {
   final VoidCallback onChangeType;
   final VoidCallback onChangeDisc;
   final void Function(Trainer, String, String, int, bool, bool) onSlotTap;
+  final int semiPrivateCap;
 
   @override
   State<_StepThree> createState() => _StepThreeState();
@@ -572,7 +609,7 @@ class _StepThreeState extends State<_StepThree> {
         for (final o in trainerOfferings(t, wd)) {
           if (o.sessionType != chosenType || o.discipline != chosenDisc) continue;
           final used = bookedCount(bookings, t.id, date, o.slot);
-          final cap = capFor(o.sessionType);
+          final cap = capFor(o.sessionType, semiPrivateCap: widget.semiPrivateCap);
           final mine = bookings.any((b) => b.clientId == info.id && b.trainerId == t.id && b.date == date && b.slot == o.slot);
           bySlot.putIfAbsent(o.slot, () => []).add(_SlotAvailability(trainer: t, open: cap - used, cap: cap, mine: mine));
         }

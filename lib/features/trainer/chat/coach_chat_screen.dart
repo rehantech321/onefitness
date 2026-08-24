@@ -4,7 +4,6 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
-import "../../../core/utils/platform_settings.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/comm_message.dart";
@@ -173,6 +172,7 @@ class _CoachComposeState extends ConsumerState<_CoachCompose> {
     final trainerAuth = ref.watch(trainerAuthProvider);
     final isOwner = trainerAuth == "owner";
     final records = ref.watch(trainerClientRecordsProvider);
+    final settings = ref.watch(platformSettingsProvider);
     final comms = records[widget.client.id]?.comms ?? const <CommMessage>[];
     final thread = comms.where((m) => isOwner || m.trainerId == null || m.trainerId == trainerAuth).toList();
 
@@ -188,7 +188,7 @@ class _CoachComposeState extends ConsumerState<_CoachCompose> {
       if ((_channel == _Channel.email || _channel == _Channel.both) && widget.client.email != null) {
         SupabaseService.sendEmail(
           to: widget.client.email!,
-          subject: "New message from your coach — $kBusinessName",
+          subject: "New message from your coach — ${settings.businessName}",
           text: text,
         ).catchError((Object e) {
           if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't send the email — the message is still logged below.")));

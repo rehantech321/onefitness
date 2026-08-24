@@ -200,6 +200,21 @@ class ProductsNotifier extends Notifier<List<Product>> {
 
 final productsProvider = NotifierProvider<ProductsNotifier, List<Product>>(ProductsNotifier.new);
 
+/// Shared category catalog (package_categories table) — used by both
+/// Products and membership-package category pickers.
+class PackageCategoriesNotifier extends Notifier<List<String>> {
+  @override
+  List<String> build() => [];
+
+  void setAll(List<String> categories) => state = categories;
+
+  void add(String name) {
+    if (!state.contains(name)) state = [...state, name];
+  }
+}
+
+final packageCategoriesProvider = NotifierProvider<PackageCategoriesNotifier, List<String>>(PackageCategoriesNotifier.new);
+
 /// Waiver/contract documents (ManageWaivers.jsx).
 class WaiversNotifier extends Notifier<List<WaiverDoc>> {
   @override

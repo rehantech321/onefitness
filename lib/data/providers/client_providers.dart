@@ -103,8 +103,6 @@ class MembershipPlansNotifier extends Notifier<List<MembershipPlan>> {
     state = exists ? state.map((x) => x.id == p.id ? p : x).toList() : [...state, p];
   }
 
-  void archive(String id) => state = state.map((p) => p.id == id ? MembershipPlan(id: p.id, name: p.name, kind: p.kind, maxSessions: p.maxSessions, termMonths: p.termMonths, allowedTypes: p.allowedTypes, priceCents: p.priceCents, archived: true) : p).toList();
-
   void remove(String id) => state = state.where((p) => p.id != id).toList();
 
   void setAll(List<MembershipPlan> next) => state = next;

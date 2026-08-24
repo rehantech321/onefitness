@@ -60,7 +60,19 @@ class _BeforeAfterEditorState extends State<BeforeAfterEditor> {
     final key = "$frameId-${left ? 'l' : 'r'}";
     setState(() => _picking.add(key));
     try {
-      final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+      // Bounded size on pick, same reasoning as pickProfilePhotoDataUrl:
+      // an unconstrained phone photo (several MB) base64-encodes into a
+      // multi-MB string per half — with up to 6 frames × 2 halves, an
+      // unbounded pick here could balloon a single profile save well past
+      // what the Supabase REST API accepts in one request, so the save
+      // would silently fail. 1600px/82% quality keeps each half a few
+      // hundred KB while still looking sharp at this editor's display size.
+      final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 82,
+      );
       if (picked != null) {
         final bytes = await picked.readAsBytes();
         final ext = picked.path.toLowerCase().endsWith(".png") ? "png" : "jpeg";

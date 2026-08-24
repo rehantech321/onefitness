@@ -1,16 +1,49 @@
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
+/// One fee profile (card or ACH) — mirrors platformSettings.js's
+/// `cardFee`/`achFee` shape exactly (payments.cardFee / payments.achFee in
+/// the real `platform_settings` row), including `structure` deciding which
+/// of percent/flatCents actually applies (see calculateFeeCents.js).
+class FeeProfile {
+  const FeeProfile({
+    this.enabled = false,
+    this.label = "",
+    this.structure = "percentage_flat", // percentage | flat | percentage_flat
+    this.percent = 0,
+    this.flatCents = 0,
+  });
+
+  final bool enabled;
+  final String label;
+  final String structure;
+  final num percent;
+  final int flatCents;
+}
+
+/// One owner-defined extra client-intake field — mirrors platformSettings.js
+/// `clients.customProfileFields` entries (`{id, label, type}`).
+class CustomProfileField {
+  const CustomProfileField({required this.id, required this.label, this.type = "text"});
+
+  final String id;
+  final String label;
+  final String type; // text | number | date
+}
+
 /// Mirrors data/platformSettings.js's owner-editable settings object.
-/// Trimmed to the fields CustomizePlatform actually exposes a control for;
-/// a handful of read-only client-facing screens still reference the
+/// A handful of read-only client-facing screens still reference the
 /// hardcoded defaults in core/utils/platform_settings.dart rather than this
 /// live provider (documented there) — this is the coach-facing settings UI
 /// itself, which is real and fully interactive.
 class PlatformSettings {
   const PlatformSettings({
     this.lateCancellationHours = 24,
+    this.blockRescheduleInWindow = true,
+    this.lateCancellationFeeCents = 2500,
+    this.noShowFeeCents = 2500,
     this.maxBookingHorizonDays = 30,
     this.minBookingLeadHours = 2,
+    this.bookingCoachScope = "assigned",
     this.semiPrivateCap = 4,
     this.twoFactorRequirement = "off",
     this.coachClientScope = "all",
@@ -18,19 +51,44 @@ class PlatformSettings {
     this.coachCanSeeOtherSchedules = false,
     this.coachCanEditClientWorkouts = true,
     this.messageIdentity = "self",
+    this.requiredProfileFields = const ["phone", "birthday", "city"],
+    this.customProfileFields = const [],
     this.requireWaiverAtSignup = true,
     this.clientsCanMessageAnyCoach = false,
-    this.processingFeeEnabled = false,
-    this.feePercent = 0,
+    this.achOffered = false,
+    this.cardFee = const FeeProfile(label: "Card Processing Fee"),
+    this.achFee = const FeeProfile(label: "Bank Transfer Fee"),
+    this.checkoutDisclosureText = "",
+    this.refundFeeOnRefund = false,
     this.autoCarryOverLastWeight = true,
     this.defaultWeightUnit = "lb",
     this.clientsCanSwapExercises = false,
+    this.businessTimeZone = "America/Los_Angeles",
     this.businessName = "ONE Fitness",
+    this.meritBadgeProgressWeeks = 3,
+    this.meritBadgeHabitPercent = 80,
+    this.meritBadgeHabitWeeks = 3,
   });
 
   final int lateCancellationHours;
+  final bool blockRescheduleInWindow;
+
+  /// Charged (a real charge row) on a late cancellation — self-cancel
+  /// inside the window, or a coach marking a booking "late-cancel" after
+  /// the fact. Gives the session back either way (see
+  /// membership_utils.dart's kGiveBackAttendanceStatuses).
+  final int lateCancellationFeeCents;
+
+  /// Charged when a coach marks a booking "no-show" — unlike a late
+  /// cancellation, a no-show does NOT give the session back (Attendance &
+  /// Cancellation Charging Policy, July 2026: a no-show costs the client
+  /// both the fee and the session itself). Independent from
+  /// [lateCancellationFeeCents] — the two are never assumed equal.
+  final int noShowFeeCents;
+
   final int maxBookingHorizonDays;
   final int minBookingLeadHours;
+  final String bookingCoachScope; // assigned | any
   final int semiPrivateCap;
   final String twoFactorRequirement; // off | staff | everyone
   final String coachClientScope; // own | all
@@ -38,19 +96,32 @@ class PlatformSettings {
   final bool coachCanSeeOtherSchedules;
   final bool coachCanEditClientWorkouts;
   final String messageIdentity; // self | business
+  final List<String> requiredProfileFields; // subset of phone|birthday|city
+  final List<CustomProfileField> customProfileFields;
   final bool requireWaiverAtSignup;
   final bool clientsCanMessageAnyCoach;
-  final bool processingFeeEnabled;
-  final num feePercent;
+  final bool achOffered;
+  final FeeProfile cardFee;
+  final FeeProfile achFee;
+  final String checkoutDisclosureText;
+  final bool refundFeeOnRefund;
   final bool autoCarryOverLastWeight;
   final String defaultWeightUnit; // lb | kg
   final bool clientsCanSwapExercises;
+  final String businessTimeZone;
   final String businessName;
+  final int meritBadgeProgressWeeks;
+  final int meritBadgeHabitPercent;
+  final int meritBadgeHabitWeeks;
 
   PlatformSettings copyWith({
     int? lateCancellationHours,
+    bool? blockRescheduleInWindow,
+    int? lateCancellationFeeCents,
+    int? noShowFeeCents,
     int? maxBookingHorizonDays,
     int? minBookingLeadHours,
+    String? bookingCoachScope,
     int? semiPrivateCap,
     String? twoFactorRequirement,
     String? coachClientScope,
@@ -58,19 +129,32 @@ class PlatformSettings {
     bool? coachCanSeeOtherSchedules,
     bool? coachCanEditClientWorkouts,
     String? messageIdentity,
+    List<String>? requiredProfileFields,
+    List<CustomProfileField>? customProfileFields,
     bool? requireWaiverAtSignup,
     bool? clientsCanMessageAnyCoach,
-    bool? processingFeeEnabled,
-    num? feePercent,
+    bool? achOffered,
+    FeeProfile? cardFee,
+    FeeProfile? achFee,
+    String? checkoutDisclosureText,
+    bool? refundFeeOnRefund,
     bool? autoCarryOverLastWeight,
     String? defaultWeightUnit,
     bool? clientsCanSwapExercises,
+    String? businessTimeZone,
     String? businessName,
+    int? meritBadgeProgressWeeks,
+    int? meritBadgeHabitPercent,
+    int? meritBadgeHabitWeeks,
   }) =>
       PlatformSettings(
         lateCancellationHours: lateCancellationHours ?? this.lateCancellationHours,
+        blockRescheduleInWindow: blockRescheduleInWindow ?? this.blockRescheduleInWindow,
+        lateCancellationFeeCents: lateCancellationFeeCents ?? this.lateCancellationFeeCents,
+        noShowFeeCents: noShowFeeCents ?? this.noShowFeeCents,
         maxBookingHorizonDays: maxBookingHorizonDays ?? this.maxBookingHorizonDays,
         minBookingLeadHours: minBookingLeadHours ?? this.minBookingLeadHours,
+        bookingCoachScope: bookingCoachScope ?? this.bookingCoachScope,
         semiPrivateCap: semiPrivateCap ?? this.semiPrivateCap,
         twoFactorRequirement: twoFactorRequirement ?? this.twoFactorRequirement,
         coachClientScope: coachClientScope ?? this.coachClientScope,
@@ -78,14 +162,23 @@ class PlatformSettings {
         coachCanSeeOtherSchedules: coachCanSeeOtherSchedules ?? this.coachCanSeeOtherSchedules,
         coachCanEditClientWorkouts: coachCanEditClientWorkouts ?? this.coachCanEditClientWorkouts,
         messageIdentity: messageIdentity ?? this.messageIdentity,
+        requiredProfileFields: requiredProfileFields ?? this.requiredProfileFields,
+        customProfileFields: customProfileFields ?? this.customProfileFields,
         requireWaiverAtSignup: requireWaiverAtSignup ?? this.requireWaiverAtSignup,
         clientsCanMessageAnyCoach: clientsCanMessageAnyCoach ?? this.clientsCanMessageAnyCoach,
-        processingFeeEnabled: processingFeeEnabled ?? this.processingFeeEnabled,
-        feePercent: feePercent ?? this.feePercent,
+        achOffered: achOffered ?? this.achOffered,
+        cardFee: cardFee ?? this.cardFee,
+        achFee: achFee ?? this.achFee,
+        checkoutDisclosureText: checkoutDisclosureText ?? this.checkoutDisclosureText,
+        refundFeeOnRefund: refundFeeOnRefund ?? this.refundFeeOnRefund,
         autoCarryOverLastWeight: autoCarryOverLastWeight ?? this.autoCarryOverLastWeight,
         defaultWeightUnit: defaultWeightUnit ?? this.defaultWeightUnit,
         clientsCanSwapExercises: clientsCanSwapExercises ?? this.clientsCanSwapExercises,
+        businessTimeZone: businessTimeZone ?? this.businessTimeZone,
         businessName: businessName ?? this.businessName,
+        meritBadgeProgressWeeks: meritBadgeProgressWeeks ?? this.meritBadgeProgressWeeks,
+        meritBadgeHabitPercent: meritBadgeHabitPercent ?? this.meritBadgeHabitPercent,
+        meritBadgeHabitWeeks: meritBadgeHabitWeeks ?? this.meritBadgeHabitWeeks,
       );
 }
 

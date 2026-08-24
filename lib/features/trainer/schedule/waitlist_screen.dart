@@ -9,6 +9,7 @@ import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/waitlist_entry.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
 /// Mirrors ManageWaitlist.jsx (owner-only) — pending-approval requests from
@@ -34,7 +35,8 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
     });
     try {
       final bookings = ref.read(allBookingsProvider);
-      final stillOpen = bookedCount(bookings, w.trainerId, w.date, w.slot) < capFor(w.sessionType);
+      final semiPrivateCap = ref.read(platformSettingsProvider).semiPrivateCap;
+      final stillOpen = bookedCount(bookings, w.trainerId, w.date, w.slot) < capFor(w.sessionType, semiPrivateCap: semiPrivateCap);
       if (stillOpen) {
         final saved = await SupabaseService.insertBooking(Booking(
           id: "",

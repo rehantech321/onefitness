@@ -122,6 +122,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final List<Charge> charges;
   final List<WaitlistEntry> waitlist;
   final PlatformSettings? platformSettings;
+  final List<String> packageCategories;
   try {
     // Firing all 16 requests before awaiting any of them (rather than one
     // `await` per line) starts them concurrently — each async call runs up
@@ -147,6 +148,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     final chargesF = SupabaseService.loadCharges();
     final waitlistF = SupabaseService.loadWaitlist();
     final platformSettingsF = SupabaseService.loadPlatformSettings();
+    final packageCategoriesF = SupabaseService.loadPackageCategories();
 
     roster = await rosterF;
     trainers = await trainersF;
@@ -165,6 +167,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     charges = await chargesF;
     waitlist = await waitlistF;
     platformSettings = await platformSettingsF;
+    packageCategories = await packageCategoriesF;
   } catch (e, st) {
     // Anonymous caller blocked outright by RLS on one of these tables (vs.
     // just getting zero rows back), or the network's unavailable — leave
@@ -199,6 +202,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   ref.read(squadsProvider.notifier).setAll(squads);
   ref.read(chargesProvider.notifier).setAll(charges);
   ref.read(waitlistProvider.notifier).setAll(waitlist);
+  ref.read(packageCategoriesProvider.notifier).setAll(packageCategories);
   // `platformSettings` is declared-then-assigned-in-a-try-block above, not
   // initialized at declaration — Dart doesn't carry a null-promotion for
   // that shape into a closure literal, so `(_) => platformSettings` below

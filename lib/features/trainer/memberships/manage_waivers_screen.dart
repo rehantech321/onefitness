@@ -11,7 +11,9 @@ import "../../../data/providers/trainer_providers.dart";
 /// Mirrors ManageWaivers.jsx — waiver/contract documents, either a general
 /// signup waiver or a plan-specific contract. The source's "rich text"
 /// editor is really just a textarea with Markdown-style insert buttons, so
-/// that's what this ports.
+/// that's what this ports. A document someone has already signed can be
+/// archived but never deleted (matches web's `docSignedCount` guard) —
+/// their signed copy stays valid.
 class ManageWaiversScreen extends ConsumerStatefulWidget {
   const ManageWaiversScreen({super.key});
 
@@ -23,14 +25,70 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
   WaiverDoc? _editing;
   bool _creating = false;
 
+  int _signedCount(String docId) {
+    final roster = ref.watch(trainerRosterProvider);
+    final records = ref.watch(trainerClientRecordsProvider);
+    return roster.where((c) => (records[c.id]?.signatures ?? const []).any((s) => s.docId == docId)).length;
+  }
+
+  Future<void> _removeOrArchive(WaiverDoc w) async {
+    final signed = _signedCount(w.id);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text('${signed > 0 ? "Archive" : "Delete"} "${w.title}"?'),
+        content: Text(signed > 0
+            ? "$signed client(s) have already signed this. Archiving stops it from being required going forward; their signed copy stays exactly as it was."
+            : "No one has signed this yet, so it can be permanently removed."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text("Yes, ${signed > 0 ? "archive" : "delete"} it")),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      if (signed > 0) {
+        final archived = WaiverDoc(id: w.id, title: w.title, body: w.body, scope: w.scope, planId: w.planId, required: w.required, archived: true);
+        await SupabaseService.upsertWaiverDoc(archived);
+        ref.read(waiversProvider.notifier).upsert(archived);
+      } else {
+        await SupabaseService.deleteWaiverDoc(w.id);
+        ref.read(waiversProvider.notifier).remove(w.id);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Couldn't ${signed > 0 ? "archive" : "delete"} — check your connection and try again.")));
+      }
+      return;
+    }
+    if (mounted) setState(() => _editing = null);
+  }
+
+  Future<void> _restore(WaiverDoc w) async {
+    final restored = WaiverDoc(id: w.id, title: w.title, body: w.body, scope: w.scope, planId: w.planId, required: w.required, archived: false);
+    try {
+      await SupabaseService.upsertWaiverDoc(restored);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't restore — check your connection and try again.")));
+      }
+      return;
+    }
+    ref.read(waiversProvider.notifier).upsert(restored);
+    if (mounted) setState(() => _editing = null);
+  }
+
   @override
   Widget build(BuildContext context) {
     final waivers = ref.watch(waiversProvider);
     final plans = ref.watch(membershipPlansProvider);
 
     if (_editing != null || _creating) {
+      final editingDoc = _editing;
       return _WaiverEditForm(
-        initial: _editing,
+        initial: editingDoc,
         planNames: {for (final p in plans) p.id: p.name},
         onCancel: () => setState(() {
           _editing = null;
@@ -51,21 +109,8 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
             _creating = false;
           });
         },
-        onDelete: _editing == null
-            ? null
-            : () async {
-                final id = _editing!.id;
-                try {
-                  await SupabaseService.deleteWaiverDoc(id);
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't delete — check your connection and try again.")));
-                  }
-                  return;
-                }
-                ref.read(waiversProvider.notifier).remove(id);
-                setState(() => _editing = null);
-              },
+        onDelete: editingDoc == null ? null : () => _removeOrArchive(editingDoc),
+        onRestore: editingDoc == null || !editingDoc.archived ? null : () => _restore(editingDoc),
       );
     }
 
@@ -85,26 +130,45 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
               ),
             ],
           ),
-          ...waivers.map((w) => Opacity(
-                opacity: w.archived ? 0.55 : 1,
-                child: AppCard(
-                  onTap: () => setState(() => _editing = w),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(w.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                            Text("${w.scope == 'plan' ? 'Plan contract' : 'General waiver'}${w.required ? ' · Required' : ''}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
-                          ],
-                        ),
+          const HintBox(text: "Documents someone has already signed can be archived but never deleted — their signed copy stays valid."),
+          ...waivers.map((w) {
+            final signed = _signedCount(w.id);
+            return Opacity(
+              opacity: w.archived ? 0.55 : 1,
+              child: AppCard(
+                onTap: () => setState(() => _editing = w),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(child: Text(w.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), overflow: TextOverflow.ellipsis)),
+                              if (w.archived) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(5)),
+                                  child: const Text("Archived", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.mute)),
+                                ),
+                              ],
+                            ],
+                          ),
+                          Text(
+                            "${w.scope == 'plan' ? 'Plan contract' : 'General waiver'}${w.required ? ' · Required' : ''} · $signed signed",
+                            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                          ),
+                        ],
                       ),
-                      const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
-                    ],
-                  ),
+                    ),
+                    const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                  ],
                 ),
-              )),
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -112,12 +176,13 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
 }
 
 class _WaiverEditForm extends StatefulWidget {
-  const _WaiverEditForm({required this.initial, required this.planNames, required this.onCancel, required this.onSave, required this.onDelete});
+  const _WaiverEditForm({required this.initial, required this.planNames, required this.onCancel, required this.onSave, required this.onDelete, required this.onRestore});
   final WaiverDoc? initial;
   final Map<String, String> planNames;
   final VoidCallback onCancel;
   final ValueChanged<WaiverDoc> onSave;
   final VoidCallback? onDelete;
+  final VoidCallback? onRestore;
 
   @override
   State<_WaiverEditForm> createState() => _WaiverEditFormState();
@@ -158,7 +223,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
         children: [
           BackBar(onBack: widget.onCancel, title: widget.initial != null ? "Edit Document" : "New Document"),
           const SizedBox(height: 12),
-          FieldLabeled(label: "Title", child: AppField(controller: _title)),
+          FieldLabeled(label: "Title", child: AppField(controller: _title, onChanged: (_) => setState(() {}))),
           const SizedBox(height: 10),
           const Text("SCOPE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 6),
@@ -186,6 +251,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
           TextField(
             controller: _body,
             maxLines: 8,
+            onChanged: (_) => setState(() {}),
             style: const TextStyle(color: AppColors.txt, fontSize: 13),
             decoration: InputDecoration(
               hintText: "Document text…",
@@ -222,6 +288,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
                             scope: _scope,
                             planId: _scope == "plan" ? _planId : null,
                             required: _required,
+                            archived: widget.initial?.archived ?? false,
                           )),
                   child: const Text("Save"),
                 ),
@@ -230,9 +297,12 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
               BtnGhost(onPressed: widget.onCancel, child: const Text("Cancel")),
             ],
           ),
-          if (widget.onDelete != null) ...[
+          if (widget.onRestore != null) ...[
             const SizedBox(height: 10),
-            TextButton(onPressed: widget.onDelete, style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)), child: const Text("Delete document")),
+            BtnGhost(onPressed: widget.onRestore, full: true, child: const Text("Restore document")),
+          ] else if (widget.onDelete != null) ...[
+            const SizedBox(height: 10),
+            TextButton(onPressed: widget.onDelete, style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)), child: const Text("Delete or archive document")),
           ],
         ],
       ),

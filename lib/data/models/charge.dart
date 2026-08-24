@@ -5,7 +5,7 @@ class Charge {
     required this.id,
     required this.clientId,
     required this.clientName,
-    required this.type, // "purchase" | "manual" | "early_termination_fee"
+    required this.type, // "purchase" | "manual" | "early_termination_fee" | "late" | "noshow" — constrained by the real charges_type_check DB constraint
     required this.date, // ISO yyyy-MM-dd
     this.at = "", // stamp() human-readable string, e.g. "Aug 17, 6:00 AM"
     this.amount,

@@ -15,6 +15,7 @@ import "../../../data/models/membership_plan.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/models/waitlist_entry.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
 const _kWeekdayOptions = [(1, "Mon"), (2, "Tue"), (3, "Wed"), (4, "Thu"), (5, "Fri"), (6, "Sat")]; // Sunday closed, same as everywhere else
@@ -114,6 +115,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
   }
 
   void _computeOccurrences({required ClientInfo info, required MembershipPlan plan, required List<Booking> bookings}) {
+    final settings = ref.read(platformSettingsProvider);
     final remaining = (effectiveMaxSessions(info, plan) - sessionsUsedThisPeriod(info, plan, bookings)).clamp(0, 1 << 30);
     final noBudgetCap = isAssessmentType(_sessionType!);
     final totalWeeklySlots = _brackets.fold<int>(0, (sum, b) => sum + b.days.length);
@@ -154,7 +156,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
         final offers = trainerOfferings(t, weekday).any((o) => o.sessionType == _sessionType && o.discipline == _discipline && o.slot == slot);
         if (!offers) continue;
         anyOffered = true;
-        if (bookedCount(provisional, t.id, date, slot) < capFor(_sessionType!)) {
+        if (bookedCount(provisional, t.id, date, slot) < capFor(_sessionType!, semiPrivateCap: settings.semiPrivateCap)) {
           match = t;
           break;
         }
@@ -168,7 +170,16 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
       }
 
       final budgetLeft = noBudgetCap ? true : (remaining - usedBudget) > 0;
-      final check = canBookOffering(info, _sessionType!, provisional, date, slot, plan);
+      final check = canBookOffering(
+        info,
+        _sessionType!,
+        provisional,
+        date,
+        slot,
+        plan,
+        minBookingLeadHours: settings.minBookingLeadHours,
+        maxBookingHorizonDays: settings.maxBookingHorizonDays,
+      );
       if (check.ok && budgetLeft) {
         provisional.add(Booking(id: "", clientId: info.id, trainerId: match.id, date: date, slot: slot, sessionType: _sessionType!, discipline: _discipline!));
         if (!noBudgetCap) usedBudget++;

@@ -67,6 +67,25 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
     super.dispose();
   }
 
+  /// Mirrors OverridePrompt.jsx — an owner pushing a manual booking past a
+  /// real conflict/capacity block sees exactly what's being overridden
+  /// before it's stamped `overriddenBy`/`overriddenAt`/`overrideReason`.
+  Future<bool> _confirmOverride(String title, String message) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Override")),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final firstDate = DateTime(now.year, now.month, now.day);
@@ -187,14 +206,27 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
                     }
                     final effectiveDiscipline = isAssessment ? "programmer" : _discipline;
                     final conflict = findTrainerConflict(bookings, trainerId, dateIso, slot, _sessionType, effectiveDiscipline);
-                    if (conflict != null && !isOwner) {
-                      setState(() => _error = "This coach already has a different session at that time — contact the owner to override.");
-                      return;
+                    String? overrideReason;
+                    if (conflict != null) {
+                      if (!isOwner) {
+                        setState(() => _error = "This coach already has a different session at that time — contact the owner to override.");
+                        return;
+                      }
+                      final otherMatches = roster.where((c) => c.id == conflict.clientId);
+                      final otherName = otherMatches.isEmpty ? "another client" : otherMatches.first.name;
+                      final ok = await _confirmOverride("Scheduling conflict", "This coach is already booked with $otherName at this time. Double-book anyway?");
+                      if (!mounted || !ok) return;
+                      overrideReason = "conflict";
                     }
                     final cap = capacityInfo(bookings, trainerId, dateIso, slot, _sessionType);
-                    if (cap.atCap && conflict == null && !isOwner) {
-                      setState(() => _error = "That session is already at capacity (${cap.cap}) — contact the owner to override.");
-                      return;
+                    if (cap.atCap && conflict == null) {
+                      if (!isOwner) {
+                        setState(() => _error = "That session is already at capacity (${cap.cap}) — contact the owner to override.");
+                        return;
+                      }
+                      final ok = await _confirmOverride("Session at capacity", "This session is at capacity (${cap.count}/${cap.cap}). Add ${_client!.name} anyway?");
+                      if (!mounted || !ok) return;
+                      overrideReason = "capacity";
                     }
                     setState(() {
                       _saving = true;
@@ -210,6 +242,9 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
                             sessionType: _sessionType,
                             discipline: effectiveDiscipline,
                             isPhysicalAssessment: isAssessment,
+                            overriddenBy: overrideReason != null ? "owner" : null,
+                            overriddenAt: overrideReason != null ? DateTime.now().toUtc().toIso8601String() : null,
+                            overrideReason: overrideReason,
                           ));
                       ref.read(allBookingsProvider.notifier).addBooking(saved);
                       if (context.mounted) Navigator.of(context).pop();

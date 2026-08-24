@@ -34,12 +34,10 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
           _editing = null;
           _creating = false;
         }),
-        onSave: (t) async {
-          // Creating a brand-new trainer needs a real Supabase Auth account
-          // (sign-up), not just a row write — out of scope for now, so a
-          // new trainer still only lands in local mock state.
-          if (_editing != null) {
-            try {
+        onSave: (t, password) async {
+          String realId = t.id;
+          try {
+            if (_editing != null) {
               await SupabaseService.updateTrainerRow(
                 t.id,
                 name: t.name,
@@ -52,15 +50,47 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                 bio: t.bio ?? "",
                 beforeAfters: t.beforeAfters,
                 availability: t.availability,
+                commissionRate: t.commissionRate,
               );
-            } catch (e) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
-              }
-              return;
+            } else {
+              // Brand-new trainer — real Supabase Auth account, created on
+              // the owner's behalf without disturbing the owner's own
+              // session (see signUpCoachOnBehalf's own doc comment).
+              realId = await SupabaseService.signUpCoachOnBehalf(
+                email: t.email ?? "",
+                password: password ?? "",
+                name: t.name,
+                phone: t.phone,
+                photo: t.photo,
+                disciplines: t.disciplines,
+                sessionTypes: t.sessionTypes,
+                locations: t.locations,
+                bio: t.bio,
+                beforeAfters: t.beforeAfters,
+                availability: t.availability,
+                commissionRate: t.commissionRate,
+              );
             }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_editing != null ? "Couldn't save — check your connection and try again." : "Couldn't create that trainer — ${e.toString().replaceFirst('Exception: ', '').replaceFirst('AuthException: ', '')}")));
+            }
+            return;
           }
-          ref.read(trainersProvider.notifier).upsert(t);
+          ref.read(trainersProvider.notifier).upsert(realId == t.id ? t : Trainer(
+                id: realId,
+                name: t.name,
+                email: t.email,
+                phone: t.phone,
+                photo: t.photo,
+                disciplines: t.disciplines,
+                sessionTypes: t.sessionTypes,
+                locations: t.locations,
+                bio: t.bio,
+                beforeAfters: t.beforeAfters,
+                availability: t.availability,
+                commissionRate: t.commissionRate,
+              ));
           setState(() {
             _editing = null;
             _creating = false;
@@ -68,8 +98,17 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
         },
         onDelete: _editing == null
             ? null
-            : () {
-                ref.read(trainersProvider.notifier).remove(_editing!.id);
+            : () async {
+                final id = _editing!.id;
+                try {
+                  await SupabaseService.deleteTrainerRow(id);
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't remove that trainer — check your connection and try again.")));
+                  }
+                  return;
+                }
+                ref.read(trainersProvider.notifier).remove(id);
                 setState(() => _editing = null);
               },
       );

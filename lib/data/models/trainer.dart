@@ -39,6 +39,8 @@ class Trainer {
     this.commissionRate = 0,
     this.disciplines = const [],
     this.sessionTypes = const [],
+    this.reviewedByOwner = true,
+    this.signupAt,
   });
 
   final String id;
@@ -69,4 +71,14 @@ class Trainer {
   /// Percent (e.g. 20 = 20%) of session revenue paid to this coach — feeds
   /// Reports → Payroll/Commissions and the coach's own My Pay screen.
   final num commissionRate;
+
+  /// False only for a coach who self-signed-up with an approval code and
+  /// hasn't yet been opened by the owner on Coaches Overview (mirrors
+  /// CoachesOverview.jsx's "New" badge / `reviewedByOwner === false`).
+  /// Owner-added coaches (Staff → +Trainer) start `true` — no review needed.
+  final bool reviewedByOwner;
+
+  /// ISO date the coach self-signed-up, if they did (null for owner-added
+  /// coaches) — shown in the expanded Coaches Overview card.
+  final String? signupAt;
 }

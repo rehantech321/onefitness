@@ -9,6 +9,8 @@ import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
+import "../../../data/providers/trainer_providers.dart";
 import "booking_cancel_screen.dart";
 
 /// Mirrors DayDetail.jsx — what a tapped Workout Calendar date "is": either
@@ -50,6 +52,28 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
     try {
       await SupabaseService.deleteBooking(b.id);
       ref.read(clientBookingsProvider.notifier).cancelBooking(b.id);
+      // A client cancelling their own booking can only ever be "free" or
+      // "late" — a no-show is by definition something the client never
+      // reported, so self-cancel never produces one (see cancelWindow).
+      final settings = ref.read(platformSettingsProvider);
+      if (cancelWindow(b, lateCancellationHours: settings.lateCancellationHours) != "free") {
+        final info = ref.read(clientInfoProvider);
+        final trainer = ref.read(trainersProvider).where((t) => t.id == b.trainerId);
+        final charge = attendanceChargeFor(
+          b,
+          "late-cancel",
+          clientName: info.name,
+          trainerName: trainer.isNotEmpty ? trainer.first.name : null,
+          lateCancellationFeeCents: settings.lateCancellationFeeCents,
+          noShowFeeCents: settings.noShowFeeCents,
+        );
+        if (charge != null) {
+          SupabaseService.insertCharge(charge).then((saved) => ref.read(chargesProvider.notifier).add(saved)).catchError((Object e) {
+            // ignore: avoid_print
+            print("[cancel charge] failed to save: $e");
+          });
+        }
+      }
       widget.onBack();
     } catch (e) {
       if (!mounted) return;
@@ -63,6 +87,12 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final trainers = ref.watch(trainersProvider);
+    final settings = ref.watch(platformSettingsProvider);
+    bool canRescheduleNow(Booking b) => canReschedule(
+          b,
+          blockRescheduleInWindow: settings.blockRescheduleInWindow,
+          lateCancellationHours: settings.lateCancellationHours,
+        );
 
     if (_cancelTarget != null) {
       return Column(
@@ -219,7 +249,7 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                         padding: const EdgeInsets.only(top: 14),
                         child: Row(
                           children: [
-                            if (canReschedule(b))
+                            if (canRescheduleNow(b))
                               Expanded(
                                 child: OutlinedButton(
                                   onPressed: () => widget.onReschedule(b),
@@ -232,7 +262,7 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                                   child: const Text("Reschedule", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                                 ),
                               ),
-                            if (canReschedule(b)) const SizedBox(width: 8),
+                            if (canRescheduleNow(b)) const SizedBox(width: 8),
                             Expanded(
                               child: OutlinedButton(
                                 onPressed: () => setState(() => _cancelTarget = b),

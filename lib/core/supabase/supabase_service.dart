@@ -1,4 +1,7 @@
+import "dart:convert";
+import "package:http/http.dart" as http;
 import "package:supabase_flutter/supabase_flutter.dart";
+import "../utils/date_utils.dart";
 import "../../data/models/availability_block.dart";
 import "../../data/models/blocked_time.dart";
 import "../../data/models/booking.dart";
@@ -21,6 +24,7 @@ import "../../data/models/points_ledger_entry.dart";
 import "../../data/models/product.dart";
 import "../../data/models/program_day.dart";
 import "../../data/models/saved_program.dart";
+import "../../data/models/signature.dart";
 import "../../data/models/squad.dart";
 import "../../data/models/trainer.dart";
 import "../../data/models/trainer_note.dart";
@@ -172,6 +176,7 @@ class SupabaseService {
     await client.from("trainers").insert({
       "profile_id": userId,
       "reviewed_by_owner": false,
+      "signup_at": isoToday(),
       if (disciplines != null && disciplines.isNotEmpty)
         "disciplines": disciplines,
       if (locationName != null || locationAddress != null)
@@ -200,6 +205,93 @@ class SupabaseService {
     } catch (e) {
       // ignore: avoid_print
       print("[SupabaseService] mark_coach_code_used failed: $e");
+    }
+    return userId;
+  }
+
+  /// Owner-only — mirrors signUpCoach's `onBehalf: true` path in
+  /// supabaseData.js: an owner adding a coach directly (not the coach
+  /// self-signing-up with an approval code). Auth needs a real
+  /// `auth.signUp` call to create the account, but running that on the
+  /// owner's own signed-in client would replace the owner's session with
+  /// the brand-new coach's session. Mirrors the web's fix exactly — a
+  /// second, throwaway `SupabaseClient` with no persistent storage and no
+  /// auto-refresh does the signUp in complete isolation, then gets
+  /// disposed; every other write below runs on the real (owner's) `client`.
+  static Future<String> signUpCoachOnBehalf({
+    required String email,
+    required String password,
+    required String name,
+    String? phone,
+    String? photo,
+    List<String>? disciplines,
+    List<String>? sessionTypes,
+    List<TrainerLocation>? locations,
+    String? bio,
+    List<TrainerBeforeAfter>? beforeAfters,
+    List<AvailabilityBlock>? availability,
+    num? commissionRate,
+  }) async {
+    // A raw REST call, not `client.auth.signUp` (even on a second
+    // `SupabaseClient` instance) — the Dart SDK's `AuthClientOptions` has
+    // no `persistSession` equivalent to the JS SDK's, and a first attempt
+    // at the "second client" approach was confirmed live to still replace
+    // the owner's own session (signed the owner straight out). A plain
+    // HTTP POST to the auth endpoint is what `.auth.signUp()` does under
+    // the hood anyway, but touches no GoTrueClient/session state at all —
+    // the only way to guarantee the owner's real session is untouched.
+    final signUpRes = await http.post(
+      Uri.parse("${SupabaseConfig.url}/auth/v1/signup"),
+      headers: {
+        "apikey": SupabaseConfig.publishableKey,
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "email": email,
+        "password": password,
+        "data": {
+          "requested_role": "coach",
+          "name": name,
+          "phone": phone ?? "",
+        },
+      }),
+    );
+    final signUpBody =
+        jsonDecode(signUpRes.body) as Map<String, dynamic>? ?? {};
+    if (signUpRes.statusCode >= 400) {
+      throw Exception(
+        (signUpBody["msg"] as String?) ??
+            (signUpBody["error_description"] as String?) ??
+            (signUpBody["message"] as String?) ??
+            "Sign-up failed (${signUpRes.statusCode}).",
+      );
+    }
+    final userId =
+        (signUpBody["user"] as Map<String, dynamic>?)?["id"] as String? ??
+        signUpBody["id"] as String?;
+    if (userId == null)
+      throw Exception("Sign-up failed — no account was created.");
+    await client.from("trainers").insert({
+      "profile_id": userId,
+      "reviewed_by_owner": true, // owner-added coaches skip approval review
+      if (disciplines != null && disciplines.isNotEmpty)
+        "disciplines": disciplines,
+      if (sessionTypes != null && sessionTypes.isNotEmpty)
+        "session_types": sessionTypes,
+      if (locations != null && locations.isNotEmpty)
+        "locations": locations.map(_trainerLocationToJson).toList(),
+      if (bio != null && bio.isNotEmpty) "bio": bio,
+      if (beforeAfters != null && beforeAfters.isNotEmpty)
+        "before_afters": beforeAfters.map(_beforeAfterToJson).toList(),
+      if (availability != null && availability.isNotEmpty)
+        "availability": availability.map(_availabilityToJson).toList(),
+      if (commissionRate != null) "commission_rate": commissionRate,
+    });
+    if (photo != null) {
+      await client
+          .from("profiles")
+          .update({"photo_url": photo})
+          .eq("id", userId);
     }
     return userId;
   }
@@ -695,8 +787,10 @@ class SupabaseService {
   /// PlatformSettings model doesn't track at all (customProfileFields,
   /// requiredProfileFields, feeLabel, businessTimeZone, bookingCoachScope,
   /// applyToAch/Debit/Credit, feeFlatCents, feeStructure, showFeeLineItem,
-  /// refundFeeOnRefund, checkoutDisclosureText, blockRescheduleInWindow,
-  /// lateCancellationFeeCents — all confirmed against a real row). Returns
+  /// refundFeeOnRefund, checkoutDisclosureText — all confirmed against a
+  /// real row; blockRescheduleInWindow/lateCancellationFeeCents ARE now
+  /// tracked, read-only until Customize Platform grows a control for them).
+  /// Returns
   /// null if no row exists yet, in which case the caller keeps the model's
   /// own defaults (same as every other "real, even if absent" domain here).
   static Future<PlatformSettings?> loadPlatformSettings() async {
@@ -726,12 +820,23 @@ class SupabaseService {
       lateCancellationHours:
           _asInt(scheduling["lateCancellationHours"]) ??
           defaults.lateCancellationHours,
+      blockRescheduleInWindow:
+          scheduling["blockRescheduleInWindow"] as bool? ??
+          defaults.blockRescheduleInWindow,
+      lateCancellationFeeCents:
+          _asInt(scheduling["lateCancellationFeeCents"]) ??
+          defaults.lateCancellationFeeCents,
+      noShowFeeCents:
+          _asInt(scheduling["noShowFeeCents"]) ?? defaults.noShowFeeCents,
       maxBookingHorizonDays:
           _asInt(scheduling["maxBookingHorizonDays"]) ??
           defaults.maxBookingHorizonDays,
       minBookingLeadHours:
           _asInt(scheduling["minBookingLeadHours"]) ??
           defaults.minBookingLeadHours,
+      bookingCoachScope:
+          scheduling["bookingCoachScope"] as String? ??
+          defaults.bookingCoachScope,
       semiPrivateCap:
           _asInt(scheduling["semiPrivateCap"]) ?? defaults.semiPrivateCap,
       twoFactorRequirement:
@@ -750,16 +855,29 @@ class SupabaseService {
           defaults.coachCanEditClientWorkouts,
       messageIdentity:
           access["messageIdentity"] as String? ?? defaults.messageIdentity,
+      requiredProfileFields:
+          ((clients["requiredProfileFields"] as List?)
+                  ?.whereType<String>()
+                  .toList()) ??
+          defaults.requiredProfileFields,
+      customProfileFields: _customProfileFieldsFromJson(
+        clients["customProfileFields"],
+      ),
       requireWaiverAtSignup:
           clients["requireWaiverAtSignup"] as bool? ??
           defaults.requireWaiverAtSignup,
       clientsCanMessageAnyCoach:
           clients["clientsCanMessageAnyCoach"] as bool? ??
           defaults.clientsCanMessageAnyCoach,
-      processingFeeEnabled:
-          payments["processingFeeEnabled"] as bool? ??
-          defaults.processingFeeEnabled,
-      feePercent: (payments["feePercent"] as num?) ?? defaults.feePercent,
+      achOffered: payments["achOffered"] as bool? ?? defaults.achOffered,
+      cardFee: _feeProfileFromJson(payments["cardFee"], defaults.cardFee),
+      achFee: _feeProfileFromJson(payments["achFee"], defaults.achFee),
+      checkoutDisclosureText:
+          payments["checkoutDisclosureText"] as String? ??
+          defaults.checkoutDisclosureText,
+      refundFeeOnRefund:
+          payments["refundFeeOnRefund"] as bool? ??
+          defaults.refundFeeOnRefund,
       autoCarryOverLastWeight:
           workouts["autoCarryOverLastWeight"] as bool? ??
           defaults.autoCarryOverLastWeight,
@@ -769,10 +887,62 @@ class SupabaseService {
       clientsCanSwapExercises:
           workouts["clientsCanSwapExercises"] as bool? ??
           defaults.clientsCanSwapExercises,
+      businessTimeZone:
+          workouts["businessTimeZone"] as String? ??
+          defaults.businessTimeZone,
       businessName:
           workouts["businessName"] as String? ?? defaults.businessName,
+      meritBadgeProgressWeeks:
+          _asInt(workouts["meritBadgeProgressWeeks"]) ??
+          defaults.meritBadgeProgressWeeks,
+      meritBadgeHabitPercent:
+          _asInt(workouts["meritBadgeHabitPercent"]) ??
+          defaults.meritBadgeHabitPercent,
+      meritBadgeHabitWeeks:
+          _asInt(workouts["meritBadgeHabitWeeks"]) ??
+          defaults.meritBadgeHabitWeeks,
     );
   }
+
+  static FeeProfile _feeProfileFromJson(dynamic raw, FeeProfile fallback) {
+    if (raw is! Map) return fallback;
+    final j = raw.cast<String, dynamic>();
+    return FeeProfile(
+      enabled: j["enabled"] as bool? ?? fallback.enabled,
+      label: j["label"] as String? ?? fallback.label,
+      structure: j["structure"] as String? ?? fallback.structure,
+      percent: (j["percent"] as num?) ?? fallback.percent,
+      flatCents: _asInt(j["flatCents"]) ?? fallback.flatCents,
+    );
+  }
+
+  static Map<String, dynamic> _feeProfileToJson(FeeProfile f) => {
+    "enabled": f.enabled,
+    "label": f.label,
+    "structure": f.structure,
+    "percent": f.percent,
+    "flatCents": f.flatCents,
+  };
+
+  static List<CustomProfileField> _customProfileFieldsFromJson(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map(
+          (e) => CustomProfileField(
+            id: (e["id"] as String?) ?? "",
+            label: (e["label"] as String?) ?? "",
+            type: (e["type"] as String?) ?? "text",
+          ),
+        )
+        .toList();
+  }
+
+  static List<Map<String, dynamic>> _customProfileFieldsToJson(
+    List<CustomProfileField> fields,
+  ) => fields
+      .map((f) => {"id": f.id, "label": f.label, "type": f.type})
+      .toList();
 
   // ── Write ─────────────────────────────────────────────────────────
 
@@ -866,6 +1036,8 @@ class SupabaseService {
     String? bio,
     List<TrainerBeforeAfter>? beforeAfters,
     List<AvailabilityBlock>? availability,
+    num? commissionRate,
+    bool? reviewedByOwner,
   }) async {
     final profileFields = <String, dynamic>{
       if (name != null) "name": name,
@@ -893,10 +1065,25 @@ class SupabaseService {
         "before_afters": beforeAfters.map(_beforeAfterToJson).toList(),
       if (availability != null)
         "availability": availability.map(_availabilityToJson).toList(),
+      if (commissionRate != null) "commission_rate": commissionRate,
+      if (reviewedByOwner != null) "reviewed_by_owner": reviewedByOwner,
     };
     if (trainerFields.isNotEmpty)
       await client.from("trainers").update(trainerFields).eq("profile_id", id);
   }
+
+  /// Owner-only — mirrors `deleteTrainerRow` in supabaseData.js. Only
+  /// removes the `trainers` row (coach-specific fields); the `profiles`
+  /// row and the underlying Auth account are left alone, same as web.
+  static Future<void> deleteTrainerRow(String id) =>
+      client.from("trainers").delete().eq("profile_id", id);
+
+  /// Owner-only — mirrors `deleteClientRow` in supabaseData.js. Only
+  /// removes the `clients` row; `profiles`/Auth account untouched, same as
+  /// web (a client whose row was deleted gets caught by
+  /// getSessionProfile's "stale session" handling on next load).
+  static Future<void> deleteClientRow(String id) =>
+      client.from("clients").delete().eq("profile_id", id);
 
   static Map<String, dynamic> _trainerLocationToJson(TrainerLocation l) => {
     "id": l.id,
@@ -1279,6 +1466,9 @@ class SupabaseService {
       "discipline": b.discipline,
       "location": b.locationName != null ? {"name": b.locationName} : null,
       "is_physical_assessment": b.isPhysicalAssessment,
+      "overridden_by": b.overriddenBy,
+      "overridden_at": b.overriddenAt,
+      "override_reason": b.overrideReason,
     };
     final data = await client.from("bookings").insert(row).select().single();
     return _bookingFromRow(data);
@@ -1557,24 +1747,37 @@ class SupabaseService {
       "coachCanEditClientWorkouts": s.coachCanEditClientWorkouts,
     },
     "clients": {
+      "requiredProfileFields": s.requiredProfileFields,
+      "customProfileFields": _customProfileFieldsToJson(s.customProfileFields),
       "requireWaiverAtSignup": s.requireWaiverAtSignup,
       "clientsCanMessageAnyCoach": s.clientsCanMessageAnyCoach,
     },
     "payments": {
-      "processingFeeEnabled": s.processingFeeEnabled,
-      "feePercent": s.feePercent,
+      "achOffered": s.achOffered,
+      "cardFee": _feeProfileToJson(s.cardFee),
+      "achFee": _feeProfileToJson(s.achFee),
+      "checkoutDisclosureText": s.checkoutDisclosureText,
+      "refundFeeOnRefund": s.refundFeeOnRefund,
     },
     "workouts": {
       "businessName": s.businessName,
+      "businessTimeZone": s.businessTimeZone,
       "defaultWeightUnit": s.defaultWeightUnit,
       "autoCarryOverLastWeight": s.autoCarryOverLastWeight,
       "clientsCanSwapExercises": s.clientsCanSwapExercises,
+      "meritBadgeProgressWeeks": s.meritBadgeProgressWeeks,
+      "meritBadgeHabitPercent": s.meritBadgeHabitPercent,
+      "meritBadgeHabitWeeks": s.meritBadgeHabitWeeks,
     },
     "scheduling": {
       "semiPrivateCap": s.semiPrivateCap,
       "minBookingLeadHours": s.minBookingLeadHours,
       "lateCancellationHours": s.lateCancellationHours,
+      "lateCancellationFeeCents": s.lateCancellationFeeCents,
+      "noShowFeeCents": s.noShowFeeCents,
+      "blockRescheduleInWindow": s.blockRescheduleInWindow,
       "maxBookingHorizonDays": s.maxBookingHorizonDays,
+      "bookingCoachScope": s.bookingCoachScope,
     },
   };
 
@@ -1678,6 +1881,25 @@ class SupabaseService {
     await client.from("products").delete().eq("id", id);
   }
 
+  /// Shared category catalog — mirrors `loadPackageCategories`/
+  /// `insertPackageCategory` in supabaseData.js. Used by both Products and
+  /// membership-package category pickers, so a category typed in one place
+  /// shows up in the other.
+  static Future<List<String>> loadPackageCategories() async {
+    final rows = await client.from("package_categories").select("name").order("created_at");
+    return rows.map((r) => r["name"] as String).toList();
+  }
+
+  /// Add-only — a duplicate name is a no-op (unique constraint), matching
+  /// the web's own "23505 = unique_violation, ignore" handling.
+  static Future<void> insertPackageCategory(String name) async {
+    try {
+      await client.from("package_categories").insert({"name": name});
+    } on PostgrestException catch (e) {
+      if (e.code != "23505") rethrow;
+    }
+  }
+
   static Map<String, dynamic> _waiverDocToJson(WaiverDoc w) => {
     "id": w.id,
     "title": w.title,
@@ -1704,13 +1926,29 @@ class SupabaseService {
     "allowedTypes": p.allowedTypes,
     "priceCents": p.priceCents,
     "archived": p.archived,
+    "feeItemProductId": p.feeItemProductId,
+    "category": p.category,
+    "allowGuests": p.allowGuests,
+    "guestFeeCents": p.guestFeeCents,
+    "rollover": {"enabled": p.rolloverEnabled, "maxVisits": p.rolloverMaxVisits},
+    "cancellationNoticeDays": p.cancellationNoticeDays,
+    "earlyTerminationFeeCents": p.earlyTerminationFeeCents,
+    "serviceBalanceEnabled": p.serviceBalanceEnabled,
+    "sharing": {"enabled": p.sharingEnabled, "maxAccounts": p.sharingMaxAccounts},
+    "public": p.public,
+    "limitOnePerAccount": p.limitOnePerAccount,
+    "expiration": {"enabled": p.expirationEnabled, "days": p.expirationDays},
   };
 
-  /// No delete counterpart — the app never hard-deletes a plan, only
-  /// archives it (matches ManageMemberships.jsx's own UI, which has no
-  /// delete action either).
   static Future<void> upsertMembershipPlan(MembershipPlan p) =>
       _mergeJsonbUpsert("membership_plans", p.id, _membershipPlanToJson(p));
+
+  /// Owner-only — a plan with zero active members can be permanently
+  /// removed (ManageMemberships.jsx's `removeOrArchive`); one with members
+  /// gets archived instead (`upsertMembershipPlan` with `archived: true`).
+  static Future<void> deleteMembershipPlan(String id) async {
+    await client.from("membership_plans").delete().eq("id", id);
+  }
 
   static Map<String, dynamic> _savedProgramToJson(SavedProgram p) => {
     "id": p.id,
@@ -2012,6 +2250,8 @@ class SupabaseService {
       sessionTypes: ((t["session_types"] as List?) ?? const [])
           .whereType<String>()
           .toList(),
+      reviewedByOwner: (t["reviewed_by_owner"] as bool?) ?? true,
+      signupAt: t["signup_at"] as String?,
     );
   }
 
@@ -2104,6 +2344,9 @@ class SupabaseService {
       attendanceStatus: row["attendance_status"] as String?,
       locationName: _locationNameFrom(row["location"]),
       isPhysicalAssessment: row["is_physical_assessment"] as bool? ?? false,
+      overriddenBy: row["overridden_by"] as String?,
+      overriddenAt: row["overridden_at"] as String?,
+      overrideReason: row["override_reason"] as String?,
     );
   }
 
@@ -2128,10 +2371,10 @@ class SupabaseService {
     // singular client.program only for pre-migration records — that legacy
     // shape isn't modeled here since nothing in this app still writes it)
     // and SaveProgramDialog.jsx's client.savedPrograms entry shape.
-    // workoutLogs/photos/measurements/signatures/challengeProgress/
-    // trainerNotes/sessionFeedback/habitLogByDate/etc. are NOT parsed here
-    // yet — still open gaps beyond this pass's scope, tracked for a future
-    // audit of this parser.
+    // workoutLogs/photos/measurements/challengeProgress/trainerNotes/
+    // sessionFeedback/habitLogByDate/etc. are NOT parsed here yet — still
+    // open gaps beyond this pass's scope, tracked for a future audit of
+    // this parser.
     final commsRaw = (j["comms"] as List?) ?? const [];
     // Real roster data is messier than any one test account suggests — some
     // client_records rows carry `intake` as an empty array (a stale/older
@@ -2227,6 +2470,16 @@ class SupabaseService {
       tourSeenDrawer: j["tourSeen"] is Map
           ? (j["tourSeen"] as Map)["drawer"] as bool? ?? false
           : false,
+      signatures: _safeMap(
+        ((j["signatures"] as List?) ?? const []).whereType<Map>(),
+        (m) => SignedDocument(
+          id: m["id"]?.toString() ?? "",
+          docId: m["docId"] as String?,
+          title: m["title"] as String? ?? "",
+          signedAt: m["signedAt"] as String? ?? "",
+          summary: m["summary"] as String?,
+        ),
+      ),
     );
   }
 
@@ -2396,6 +2649,21 @@ class SupabaseService {
       priceCents: _asInt(j["priceCents"]) ?? 0,
       archived: j["archived"] as bool? ?? false,
       paymentType: j["paymentType"] as String?,
+      feeItemProductId: j["feeItemProductId"] as String?,
+      category: j["category"] as String?,
+      allowGuests: j["allowGuests"] as bool? ?? false,
+      guestFeeCents: _asInt(j["guestFeeCents"]) ?? 0,
+      rolloverEnabled: (j["rollover"] as Map?)?["enabled"] as bool? ?? false,
+      rolloverMaxVisits: _asInt((j["rollover"] as Map?)?["maxVisits"]) ?? 0,
+      cancellationNoticeDays: _asInt(j["cancellationNoticeDays"]) ?? 0,
+      earlyTerminationFeeCents: _asInt(j["earlyTerminationFeeCents"]) ?? 0,
+      serviceBalanceEnabled: j["serviceBalanceEnabled"] as bool? ?? false,
+      sharingEnabled: (j["sharing"] as Map?)?["enabled"] as bool? ?? false,
+      sharingMaxAccounts: _asInt((j["sharing"] as Map?)?["maxAccounts"]) ?? 1,
+      public: j["public"] as bool? ?? true,
+      limitOnePerAccount: j["limitOnePerAccount"] as bool? ?? false,
+      expirationEnabled: (j["expiration"] as Map?)?["enabled"] as bool? ?? false,
+      expirationDays: _asInt((j["expiration"] as Map?)?["days"]),
     );
   }
 }

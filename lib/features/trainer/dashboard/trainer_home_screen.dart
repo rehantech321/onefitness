@@ -4,6 +4,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/attendee_utils.dart";
 import "../../../core/utils/attention_utils.dart";
+import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/client_status_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
@@ -12,6 +13,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../../client/booking/date_strip.dart";
 import "../shell/trainer_shell_state.dart";
@@ -41,6 +43,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
     final bookings = ref.watch(allBookingsProvider);
     final clientRecords = ref.watch(trainerClientRecordsProvider);
     final todayCharges = ref.watch(chargesProvider).where((c) => c.date == isoToday()).toList();
+    final settings = ref.watch(platformSettingsProvider);
 
     final me = trainers.where((t) => t.id == trainerAuth);
     final myName = isOwner ? "Owner" : (me.isNotEmpty ? me.first.name : "Coach");
@@ -310,6 +313,29 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                       SupabaseService.updateBookingAttendance(b.id, next).catchError((Object _) {
                                         ref.read(allBookingsProvider.notifier).updateAttendance(b.id, prev);
                                       });
+                                      // Late Cancel / No-Show carry an owner-set fee, fired
+                                      // once on the transition into that status — not on
+                                      // every toggle, and not on transitions between two
+                                      // non-feeable statuses (Attendance & Cancellation
+                                      // Charging Policy, July 2026).
+                                      if (next != null && next != prev) {
+                                        final charge = attendanceChargeFor(
+                                          b,
+                                          next,
+                                          clientName: attendee.name,
+                                          trainerName: t.isNotEmpty ? t.first.name : null,
+                                          lateCancellationFeeCents: settings.lateCancellationFeeCents,
+                                          noShowFeeCents: settings.noShowFeeCents,
+                                        );
+                                        if (charge != null) {
+                                          SupabaseService.insertCharge(charge).then(
+                                            (saved) => ref.read(chargesProvider.notifier).add(saved),
+                                          ).catchError((Object e) {
+                                            // ignore: avoid_print
+                                            print("[attendance charge] failed to save: $e");
+                                          });
+                                        }
+                                      }
                                     },
                                     borderRadius: BorderRadius.circular(7),
                                     child: Container(

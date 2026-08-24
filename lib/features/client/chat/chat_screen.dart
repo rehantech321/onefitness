@@ -4,14 +4,12 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
-import "../../../core/utils/platform_settings.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/comm_message.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
-
-const _business = Trainer(id: "business", name: kBusinessName);
+import "../../../data/providers/platform_settings_provider.dart";
 
 enum _Channel { email, inapp, both }
 
@@ -36,19 +34,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.dispose();
   }
 
-  List<Trainer> _candidateCoaches(ClientInfo info, List<Trainer> trainers) {
+  List<Trainer> _candidateCoaches(ClientInfo info, List<Trainer> trainers, PlatformSettings settings) {
     // "Allow clients to message any coach" off (the default) scopes the
     // picker to coaches the client actually has a relationship with.
-    final scoped = kClientsCanMessageAnyCoach
+    final scoped = settings.clientsCanMessageAnyCoach
         ? trainers
         : trainers.where((t) => t.id == info.primaryTrainerId).toList();
     final real = scoped.isNotEmpty ? scoped : trainers;
-    return [...real, _business];
+    return [...real, Trainer(id: "business", name: settings.businessName)];
   }
 
-  String _senderLabel(String? trainerId, List<Trainer> trainers) {
-    if (trainerId == null || trainerId == "owner") return kBusinessName;
-    if (kMessageIdentity == "business") return kBusinessName;
+  String _senderLabel(String? trainerId, List<Trainer> trainers, PlatformSettings settings) {
+    if (trainerId == null || trainerId == "owner") return settings.businessName;
+    if (settings.messageIdentity == "business") return settings.businessName;
     final match = trainers.where((t) => t.id == trainerId);
     return match.isNotEmpty ? match.first.name : "your coach";
   }
@@ -58,7 +56,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final info = ref.watch(clientInfoProvider);
     final client = ref.watch(clientRecordProvider);
     final trainers = ref.watch(trainersProvider);
-    final candidates = _candidateCoaches(info, trainers);
+    final settings = ref.watch(platformSettingsProvider);
+    final candidates = _candidateCoaches(info, trainers, settings);
 
     _selectedCoachId ??= candidates.first.id;
     final selectedCoach = candidates.firstWhere(
@@ -94,7 +93,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if ((_channel == _Channel.email || _channel == _Channel.both) && selectedCoach.email != null) {
         SupabaseService.sendEmail(
           to: selectedCoach.email!,
-          subject: "New message from ${info.name} — $kBusinessName",
+          subject: "New message from ${info.name} — ${settings.businessName}",
           text: text,
         ).catchError((Object e) {
           if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't send the email — the message is still logged below.")));
@@ -177,7 +176,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    kBusinessName,
+                    settings.businessName,
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
@@ -291,7 +290,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          c.who == "trainer" ? _senderLabel(c.trainerId, trainers).toUpperCase() : "YOU",
+                          c.who == "trainer" ? _senderLabel(c.trainerId, trainers, settings).toUpperCase() : "YOU",
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,

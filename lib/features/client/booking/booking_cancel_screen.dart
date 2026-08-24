@@ -1,15 +1,16 @@
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
-import "../../../core/utils/platform_settings.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/trainer.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 
 /// Mirrors BookSession.jsx's cancelConfirm screen.
-class BookingCancelScreen extends StatelessWidget {
+class BookingCancelScreen extends ConsumerWidget {
   const BookingCancelScreen({
     super.key,
     required this.booking,
@@ -24,10 +25,11 @@ class BookingCancelScreen extends StatelessWidget {
   final VoidCallback onConfirmCancel;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final matches = trainers.where((t) => t.id == booking.trainerId);
     final trainer = matches.isNotEmpty ? matches.first : null;
-    final w = cancelWindow(booking);
+    final settings = ref.watch(platformSettingsProvider);
+    final w = cancelWindow(booking, lateCancellationHours: settings.lateCancellationHours);
     final charged = w != "free";
 
     return SingleChildScrollView(
@@ -65,8 +67,8 @@ class BookingCancelScreen extends StatelessWidget {
                   ),
                 Text(
                   charged
-                      ? "This is within $kLateCancellationHours hours of your session — a late cancellation. You'll be charged ${lateCancellationFeeLabel()}."
-                      : "You're outside the $kLateCancellationHours-hour window — no charge.",
+                      ? "This is within ${settings.lateCancellationHours} hours of your session — a late cancellation. You'll be charged ${lateCancellationFeeLabel(feeCents: settings.lateCancellationFeeCents)}."
+                      : "You're outside the ${settings.lateCancellationHours}-hour window — no charge.",
                   style: const TextStyle(fontSize: 13, color: AppColors.txt, height: 1.5),
                 ),
               ],

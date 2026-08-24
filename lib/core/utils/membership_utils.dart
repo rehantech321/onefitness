@@ -9,8 +9,11 @@ import "date_utils.dart";
 /// Mirrors constants/domain.js `GIVE_BACK_ATTENDANCE_STATUSES` — these
 /// attendance outcomes hand the session back, so they don't count against
 /// the plan. Everything else — including a plain upcoming/not-yet-attended
-/// booking — does count, same as the real app.
-const kGiveBackAttendanceStatuses = {"early-cancel", "late-cancel", "no-show"};
+/// booking, and a no-show — does count, same as the real app. A no-show
+/// deliberately costs the client both the fee AND the session itself
+/// (Attendance & Cancellation Charging Policy, July 2026) — only a
+/// cancellation, early or late, gives the session back.
+const kGiveBackAttendanceStatuses = {"early-cancel", "late-cancel"};
 
 /// Takes the client's full booking list (not pre-filtered to checked-in —
 /// an upcoming booking counts against the plan the moment it's made, only

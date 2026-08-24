@@ -1,4 +1,5 @@
 import "../../data/models/booking.dart";
+import "../../data/models/charge.dart";
 import "../../data/models/client_info.dart";
 import "../../data/models/client_record.dart";
 import "../../data/models/membership_plan.dart";
@@ -10,6 +11,13 @@ import "platform_settings.dart";
 /// Booking/scheduling helpers ported from
 /// src/features/bookings/schedulingHelpers.js and src/lib/helpers.js —
 /// trimmed to what the client-facing booking flow needs.
+///
+/// These are plain functions (no Riverpod access), so every owner-editable
+/// policy they need is an optional parameter defaulting to the matching
+/// `core/utils/platform_settings.dart` const — that const is only ever the
+/// *fallback* shape now, not the source of truth. Every real UI call site
+/// must pass the live value read from `platformSettingsProvider` instead of
+/// relying on the default.
 
 const kSessionLen = 60; // minutes
 
@@ -37,11 +45,14 @@ List<Offering> trainerOfferings(Trainer t, int weekday) {
   return out;
 }
 
-/// Mirrors schedulingHelpers.js `capFor`.
-int capFor(String sessionType) {
+/// Mirrors schedulingHelpers.js `capFor`. [semiPrivateCap] defaults to the
+/// hardcoded fallback but should be passed the live
+/// `platformSettingsProvider` value from any real UI call site — see this
+/// file's own header comment on why the const isn't the source of truth.
+int capFor(String sessionType, {int semiPrivateCap = kSemiPrivateCap}) {
   if (sessionType == "one-on-one" || sessionType == "assessment-call" || sessionType == "assessment-in-person") return 1;
   if (sessionType == "large-group") return 15;
-  return kSemiPrivateCap;
+  return semiPrivateCap;
 }
 
 /// Mirrors schedulingHelpers.js `bookedCount`.
@@ -60,24 +71,26 @@ Booking? findTrainerConflict(List<Booking> bookings, String trainerId, String da
 }
 
 /// Mirrors lib/helpers.js `cancelWindow`.
-String cancelWindow(Booking b) {
+String cancelWindow(Booking b, {int lateCancellationHours = kLateCancellationHours}) {
   final start = DateTime.parse(b.date).add(Duration(minutes: b.slot));
   final hoursUntil = start.difference(DateTime.now()).inMinutes / 60.0;
-  return hoursUntil >= kLateCancellationHours ? "free" : "late";
+  return hoursUntil >= lateCancellationHours ? "free" : "late";
 }
 
 /// Mirrors lib/helpers.js `canReschedule`.
-bool canReschedule(Booking b) => !kBlockRescheduleInWindow || cancelWindow(b) == "free";
+bool canReschedule(Booking b, {bool blockRescheduleInWindow = kBlockRescheduleInWindow, int lateCancellationHours = kLateCancellationHours}) =>
+    !blockRescheduleInWindow || cancelWindow(b, lateCancellationHours: lateCancellationHours) == "free";
 
 enum CalendarDayStatus { done, missed, upcoming }
 
 /// Mirrors schedulingHelpers.js `calendarDayStatus` — single source of truth
 /// for what a client's calendar day "is". Both the Workout Calendar's dot
 /// color and tapping a date key off this, so the two can never disagree. A
-/// booking marked no-show/early-cancel/late-cancel is treated exactly like
-/// an empty day — no dot — since nothing meaningful actually happened; only
-/// a checked-in booking, an unmarked booking, or a logged workout produces
-/// a status.
+/// booking marked early-cancel/late-cancel is treated exactly like an empty
+/// day — no dot — since the session was given back and nothing meaningful
+/// actually happened. A no-show, by contrast, correctly shows as "missed"
+/// (it does NOT give the session back — see kGiveBackAttendanceStatuses),
+/// same as an unmarked past booking would.
 CalendarDayStatus? calendarDayStatus(ClientRecord client, ClientInfo info, List<Booking> bookings, String date) {
   final dayBookings = bookings.where((b) => b.clientId == info.id && b.date == date);
   final logged = client.loggedOn(date);
@@ -88,7 +101,57 @@ CalendarDayStatus? calendarDayStatus(ClientRecord client, ClientInfo info, List<
   return date.compareTo(isoToday()) >= 0 ? CalendarDayStatus.upcoming : CalendarDayStatus.missed;
 }
 
-String lateCancellationFeeLabel() => "\$${(kLateCancellationFeeCents / 100).toStringAsFixed(2)}";
+String lateCancellationFeeLabel({int feeCents = kLateCancellationFeeCents}) => "\$${(feeCents / 100).toStringAsFixed(2)}";
+
+/// Mirrors the Attendance & Cancellation Charging Policy (July 2026):
+/// Late Cancel and No-Show both carry an owner-set fee — but only a
+/// no-show also keeps the session (see kGiveBackAttendanceStatuses).
+/// Checked In and Early Cancel never charge, so this returns null for
+/// anything other than the two feeable statuses. [lateCancellationFeeCents]
+/// / [noShowFeeCents] must be the live `platformSettingsProvider` values,
+/// not the hardcoded fallback — same reasoning as every other optional
+/// param in this file (see header comment).
+Charge? attendanceChargeFor(
+  Booking b,
+  String status, {
+  required String clientName,
+  String? trainerName,
+  int lateCancellationFeeCents = kLateCancellationFeeCents,
+  int noShowFeeCents = kNoShowFeeCents,
+}) {
+  final int cents;
+  final String description;
+  final String chargeType;
+  if (status == "late-cancel") {
+    cents = lateCancellationFeeCents;
+    description = "Late Cancellation Fee";
+    // Not "late-cancel" — the real `charges.type` column has a CHECK
+    // constraint allowing only a fixed set of values ("late", "noshow",
+    // "manual", "purchase", ...), matching web's own recordChargeIfNeeded
+    // (BookSession.jsx), which already writes `type: "late"` for exactly
+    // this case.
+    chargeType = "late";
+  } else if (status == "no-show") {
+    cents = noShowFeeCents;
+    description = "No-Show Fee";
+    chargeType = "noshow";
+  } else {
+    return null;
+  }
+  return Charge(
+    id: "",
+    clientId: b.clientId,
+    clientName: clientName,
+    type: chargeType,
+    date: isoToday(),
+    at: stamp(),
+    category: "fee",
+    description: description,
+    amount: cents / 100,
+    trainerId: b.trainerId,
+    trainerName: trainerName,
+  );
+}
 
 class BookingCheck {
   const BookingCheck({required this.ok, this.reason, this.msg, this.noMembership = false});
@@ -109,15 +172,17 @@ BookingCheck canBookOffering(
   List<Booking> bookings,
   String date,
   int slot,
-  MembershipPlan? plan,
-) {
+  MembershipPlan? plan, {
+  int minBookingLeadHours = kMinBookingLeadHours,
+  int maxBookingHorizonDays = kMaxBookingHorizonDays,
+}) {
   final target = DateTime.parse(date).add(Duration(minutes: slot));
   final hoursAway = target.difference(DateTime.now()).inMinutes / 60.0;
-  if (hoursAway < kMinBookingLeadHours) {
-    return BookingCheck(ok: false, reason: "lead-time", msg: "Sessions must be booked at least $kMinBookingLeadHours hours in advance.");
+  if (hoursAway < minBookingLeadHours) {
+    return BookingCheck(ok: false, reason: "lead-time", msg: "Sessions must be booked at least $minBookingLeadHours hours in advance.");
   }
-  if (hoursAway > kMaxBookingHorizonDays * 24) {
-    return BookingCheck(ok: false, reason: "horizon", msg: "You can only book up to $kMaxBookingHorizonDays days in advance.");
+  if (hoursAway > maxBookingHorizonDays * 24) {
+    return BookingCheck(ok: false, reason: "horizon", msg: "You can only book up to $maxBookingHorizonDays days in advance.");
   }
 
   final conflict = bookings.any((b) => b.clientId == info.id && b.date == date && b.slot == slot);

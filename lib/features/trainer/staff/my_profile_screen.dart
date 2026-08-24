@@ -4,6 +4,7 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "../shell/trainer_shell_state.dart";
 import "trainer_edit_form.dart";
 
 /// A coach editing their own profile (App.jsx trainerMode "myprofile") —
@@ -21,8 +22,8 @@ class MyProfileScreen extends ConsumerWidget {
     return TrainerEditForm(
       initial: matches.first,
       isOwnerEditing: false,
-      onCancel: () {},
-      onSave: (t) async {
+      onCancel: () => ref.read(trainerModeProvider.notifier).goBack(),
+      onSave: (t, password) async {
         try {
           await SupabaseService.updateTrainerRow(
             t.id,
@@ -44,6 +45,10 @@ class MyProfileScreen extends ConsumerWidget {
           return;
         }
         ref.read(trainersProvider.notifier).upsert(t);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✓ Profile saved")));
+        }
+        ref.read(trainerModeProvider.notifier).goBack();
       },
     );
   }

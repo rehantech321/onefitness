@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "package:shared_preferences/shared_preferences.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/report_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -9,6 +10,7 @@ import "date_range_filter.dart";
 import "financial_reports.dart";
 import "payroll_reports.dart";
 import "profitability_report.dart";
+import "rewards_report.dart";
 
 class _ReportDef {
   const _ReportDef(this.key, this.title, this.description, this.icon, this.defaultPreset, this.builder);
@@ -44,11 +46,25 @@ final _catalog = [
   _Category("Profitability", [
     _ReportDef("profitability", "Revenue vs. Payroll", "Net profit and margin", LucideIcons.scale, "month", (r) => RevenueVsPayrollReport(range: r)),
   ]),
+  _Category("Rewards", [
+    _ReportDef("rewards", "Rewards & Points", "Issued, redeemed, expired, and coach grants", LucideIcons.gift, "month", (r) => RewardsPointsReport(range: r)),
+  ]),
 ];
 
+const _favoritesPrefKey = "onefit:report-favorites";
+
 /// Mirrors ReportsHub.jsx (owner-only) — a catalog of reports grouped by
-/// category, each opening full-screen with a shared date-range filter. No
-/// favorites/search/CSV export in this trimmed build.
+/// category, each opening full-screen with a shared date-range filter.
+/// Search + favorites are ported (favorites persist per-device via
+/// SharedPreferences, same "local, not synced across devices" behavior as
+/// web's `window.storage`). CSV export is deliberately not ported: web's
+/// version is a single shared `<table>` component every report renders
+/// through; this port never had that — each report screen already renders
+/// its own mobile-card layout independently — so "CSV export, added once"
+/// would mean either a ground-up table-widget rewrite across 5 screens, or
+/// bolting a differently-shaped exporter onto each one individually. Given
+/// this is a coach/owner phone app (reports are for reading in-app, not
+/// piping to a spreadsheet on a phone), that cost isn't worth it here.
 class ReportsHubScreen extends StatefulWidget {
   const ReportsHubScreen({super.key});
 
@@ -59,6 +75,29 @@ class ReportsHubScreen extends StatefulWidget {
 class _ReportsHubScreenState extends State<ReportsHubScreen> {
   _ReportDef? _open;
   ReportRange? _range;
+  String _query = "";
+  Set<String> _favorites = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getStringList(_favoritesPrefKey);
+    if (mounted && saved != null) setState(() => _favorites = saved.toSet());
+  }
+
+  Future<void> _toggleFavorite(String key) async {
+    setState(() {
+      _favorites = {..._favorites};
+      _favorites.contains(key) ? _favorites.remove(key) : _favorites.add(key);
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_favoritesPrefKey, _favorites.toList());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,36 +120,70 @@ class _ReportsHubScreenState extends State<ReportsHubScreen> {
       );
     }
 
+    final q = _query.trim().toLowerCase();
+    final filteredCatalog = q.isEmpty
+        ? _catalog
+        : _catalog.map((cat) => _Category(cat.title, cat.reports.where((r) => r.title.toLowerCase().contains(q)).toList())).where((cat) => cat.reports.isNotEmpty).toList();
+    final favReports = [for (final cat in filteredCatalog) ...cat.reports.where((r) => _favorites.contains(r.key))];
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final cat in _catalog) ...[
-            SectionLabel(cat.title),
-            ...cat.reports.map((r) => AppCard(
-                  onTap: () => setState(() {
-                    _open = r;
-                    _range = null;
-                  }),
-                  child: Row(
-                    children: [
-                      Icon(r.icon, size: 18, color: AppColors.gold),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(r.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                            Text(r.description, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
-                          ],
-                        ),
-                      ),
-                      const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
-                    ],
-                  ),
-                )),
+          AppField(
+            placeholder: "Search reports…",
+            onChanged: (v) => setState(() => _query = v),
+          ),
+          const SizedBox(height: 14),
+          if (favReports.isNotEmpty) ...[
+            const SectionLabel("Favorites"),
+            ...favReports.map((r) => _ReportCard(report: r, isFavorite: true, onToggleFavorite: () => _toggleFavorite(r.key), onOpen: () => setState(() { _open = r; _range = null; }))),
+            const SizedBox(height: 14),
           ],
+          for (final cat in filteredCatalog) ...[
+            SectionLabel(cat.title),
+            ...cat.reports.map((r) => _ReportCard(report: r, isFavorite: _favorites.contains(r.key), onToggleFavorite: () => _toggleFavorite(r.key), onOpen: () => setState(() { _open = r; _range = null; }))),
+          ],
+          if (filteredCatalog.isEmpty) const HintBox(text: "No reports match your search."),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReportCard extends StatelessWidget {
+  const _ReportCard({required this.report, required this.isFavorite, required this.onToggleFavorite, required this.onOpen});
+  final _ReportDef report;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onOpen,
+      child: Row(
+        children: [
+          Icon(report.icon, size: 18, color: AppColors.gold),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(report.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                Text(report.description, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+              ],
+            ),
+          ),
+          InkWell(
+            onTap: onToggleFavorite,
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(LucideIcons.star, size: 17, color: isFavorite ? AppColors.gold : AppColors.mute),
+            ),
+          ),
         ],
       ),
     );

@@ -6,13 +6,16 @@ import "../../data/models/trainer.dart";
 /// lookups, all pure local-array logic (no backend calls in the source
 /// either — this is safe to port faithfully).
 
-/// Mirrors `capFor` — default per-session-type capacity.
-int capFor(String sessionType) {
+/// Mirrors `capFor` — default per-session-type capacity. [semiPrivateCap]
+/// should be passed the live `platformSettingsProvider` value from any real
+/// UI call site — the default here is only the fallback shape (see
+/// core/utils/platform_settings.dart).
+int capFor(String sessionType, {int semiPrivateCap = 4}) {
   switch (sessionType) {
     case "one-on-one":
       return 1;
     case "semi-private":
-      return 4;
+      return semiPrivateCap;
     case "large-group":
       return 15;
     default:
@@ -31,9 +34,9 @@ class CapacityInfo {
   bool get atCap => count >= cap;
 }
 
-CapacityInfo capacityInfo(List<Booking> bookings, String trainerId, String date, int slot, String sessionType) {
+CapacityInfo capacityInfo(List<Booking> bookings, String trainerId, String date, int slot, String sessionType, {int semiPrivateCap = 4}) {
   final group = sessionGroup(bookings, trainerId, date, slot).where((b) => b.status != "cancelled").toList();
-  return CapacityInfo(count: group.length, cap: capFor(sessionType));
+  return CapacityInfo(count: group.length, cap: capFor(sessionType, semiPrivateCap: semiPrivateCap));
 }
 
 /// Mirrors `findTrainerConflict` — a trainer can only run one session (one

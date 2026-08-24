@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../challenges/coach_challenges_screen.dart";
 import "../chat/coach_chat_screen.dart";
@@ -311,6 +312,7 @@ class _TrainerDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final newCoachCount = ref.watch(trainersProvider).where((t) => !t.reviewedByOwner).length;
     final entries = [
       _DrawerEntry(LucideIcons.dumbbell, "Dashboard", "dashboard", true),
       _DrawerEntry(LucideIcons.users, "Clients", "clients", true),
@@ -355,7 +357,7 @@ class _TrainerDrawer extends ConsumerWidget {
         "waivers",
         isOwner,
       ),
-      _DrawerEntry(LucideIcons.users, "Coaches", "coaches", isOwner),
+      _DrawerEntry(LucideIcons.users, newCoachCount > 0 ? "Coaches ($newCoachCount new)" : "Coaches", "coaches", isOwner),
     ].where((e) => e.visible).toList();
 
     return Drawer(

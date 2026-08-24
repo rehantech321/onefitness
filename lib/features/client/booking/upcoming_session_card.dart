@@ -1,18 +1,19 @@
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
-import "../../../core/utils/platform_settings.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/trainer.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 
 /// Mirrors UpcomingSessionCard.jsx — a compact expandable tile in the
 /// upcoming-sessions grid with Reschedule/Cancel actions. Text scaling is
 /// clamped so a device's larger-text accessibility setting can't blow up
 /// this deliberately dense card (buttons would otherwise wrap to 2 lines
 /// and overflow into the sibling widget below it).
-class UpcomingSessionCard extends StatefulWidget {
+class UpcomingSessionCard extends ConsumerStatefulWidget {
   const UpcomingSessionCard({
     super.key,
     required this.booking,
@@ -27,10 +28,10 @@ class UpcomingSessionCard extends StatefulWidget {
   final ValueChanged<Booking> onCancel;
 
   @override
-  State<UpcomingSessionCard> createState() => _UpcomingSessionCardState();
+  ConsumerState<UpcomingSessionCard> createState() => _UpcomingSessionCardState();
 }
 
-class _UpcomingSessionCardState extends State<UpcomingSessionCard> {
+class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
   bool _expanded = false;
 
   @override
@@ -38,9 +39,10 @@ class _UpcomingSessionCardState extends State<UpcomingSessionCard> {
     final b = widget.booking;
     final trainerMatches = widget.trainers.where((t) => t.id == b.trainerId);
     final trainer = trainerMatches.isNotEmpty ? trainerMatches.first : null;
-    final w = cancelWindow(b);
+    final settings = ref.watch(platformSettingsProvider);
+    final w = cancelWindow(b, lateCancellationHours: settings.lateCancellationHours);
     final charged = w != "free";
-    final reschedulable = canReschedule(b);
+    final reschedulable = canReschedule(b, blockRescheduleInWindow: settings.blockRescheduleInWindow, lateCancellationHours: settings.lateCancellationHours);
     final d = DateTime.parse(b.date);
     final shortDate = "${_weekdayAbbr(d.weekday)} ${d.day}";
 
@@ -103,7 +105,7 @@ class _UpcomingSessionCardState extends State<UpcomingSessionCard> {
                                 Padding(
                                   padding: const EdgeInsets.only(top: 5),
                                   child: Text(
-                                    "Within $kLateCancellationHours hrs — late window.${!reschedulable ? " Rescheduling is blocked this close to your session." : ""}",
+                                    "Within ${settings.lateCancellationHours} hrs — late window.${!reschedulable ? " Rescheduling is blocked this close to your session." : ""}",
                                     style: const TextStyle(fontSize: 10, color: AppColors.mute, height: 1.35),
                                   ),
                                 ),

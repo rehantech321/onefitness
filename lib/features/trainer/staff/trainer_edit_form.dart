@@ -59,7 +59,10 @@ class TrainerEditForm extends StatefulWidget {
   final Trainer? initial;
   final bool isOwnerEditing; // whether commission rate + delete are shown
   final VoidCallback onCancel;
-  final ValueChanged<Trainer> onSave;
+
+  /// [password] is only ever non-null on the create-new-trainer path
+  /// (`initial == null`) — editing an existing trainer never passes one.
+  final void Function(Trainer trainer, String? password) onSave;
   final VoidCallback? onDelete;
 
   @override
@@ -222,6 +225,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             num.tryParse(_commission.text.trim()) ??
             (widget.initial?.commissionRate ?? 0),
       ),
+      widget.initial == null ? _pw.text : null,
     );
   }
 

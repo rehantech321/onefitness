@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/client_status_utils.dart";
 import "../../../core/utils/flag_utils.dart";
@@ -73,7 +74,16 @@ class _RosterBarState extends ConsumerState<RosterBar> {
         ),
       );
       if (confirmed == true) {
-        ref.read(trainerRosterProvider.notifier).remove(activeId!);
+        final id = activeId!;
+        try {
+          await SupabaseService.deleteClientRow(id);
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't remove that client — check your connection and try again.")));
+          }
+          return;
+        }
+        ref.read(trainerRosterProvider.notifier).remove(id);
         ref.read(selectedClientIdProvider.notifier).select(null);
       }
     }
