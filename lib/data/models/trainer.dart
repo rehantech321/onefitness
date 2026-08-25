@@ -21,6 +21,21 @@ class TrainerBeforeAfter {
   final String? right;
 }
 
+/// A block of time this coach won't be working — a single day
+/// (startDate == endDate) or a range, with an optional note. Stored on the
+/// trainer's `unavailability` jsonb column. Doesn't affect existing
+/// bookings inside the window (Coach Availability Tab spec, deliberate
+/// scope boundary) — only blocks NEW ones from being made, see
+/// booking_utils.dart's `fallsInUnavailability`.
+class TrainerUnavailability {
+  const TrainerUnavailability({required this.id, required this.startDate, required this.endDate, this.note});
+
+  final String id;
+  final String startDate; // ISO yyyy-MM-dd
+  final String endDate; // ISO yyyy-MM-dd — same as startDate for a single day
+  final String? note;
+}
+
 /// Mirrors a trainer/coach record (App.jsx `trainers`) — trimmed to the
 /// fields the client-facing Chat and Booking screens need.
 class Trainer {
@@ -45,6 +60,7 @@ class Trainer {
     this.payoutRateCents = 0,
     this.referralCommissionPercent = 0,
     this.coachCode,
+    this.unavailability = const [],
   });
 
   final String id;
@@ -71,6 +87,12 @@ class Trainer {
   final String? bio;
   final List<TrainerBeforeAfter> beforeAfters;
   final List<AvailabilityBlock> availability;
+
+  /// Time off — see [TrainerUnavailability]. Distinct from [availability]'s
+  /// weekly recurring blocks: this is calendar-date-specific, blocks new
+  /// bookings only (never touches existing ones), and is checked separately
+  /// at slot-generation time (booking_utils.dart's fallsInUnavailability).
+  final List<TrainerUnavailability> unavailability;
 
   /// Percent (e.g. 20 = 20%) of session revenue paid to this coach — legacy
   /// field, no longer read by payroll math (see [payoutMode]/

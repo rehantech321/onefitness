@@ -102,7 +102,11 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
   late List<TrainerBeforeAfter> _beforeAfters = [
     ...(widget.initial?.beforeAfters ?? const []),
   ];
+  late List<TrainerUnavailability> _unavailability = [
+    ...(widget.initial?.unavailability ?? const []),
+  ];
 
+  String _tab = "profile"; // "profile" | "availability"
   _BlockEditRequest? _editingBlock;
   String? _error;
   bool _resetBusy = false;
@@ -239,6 +243,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
         coachCode: widget.initial != null
             ? widget.initial!.coachCode
             : (_coachCode.text.trim().isEmpty ? null : _coachCode.text.trim()),
+        unavailability: _unavailability,
       ),
       widget.initial == null ? _pw.text : null,
     );
@@ -285,6 +290,15 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             title: widget.initial != null ? "Edit trainer" : "Add trainer",
           ),
           const SizedBox(height: 10),
+          Row(
+            children: [
+              _TabChip(label: "Profile", selected: _tab == "profile", onTap: () => setState(() => _tab = "profile")),
+              const SizedBox(width: 8),
+              _TabChip(label: "Availability", selected: _tab == "availability", onTap: () => setState(() => _tab = "availability")),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (_tab == "profile") ...[
           Row(
             children: [
               GestureDetector(
@@ -447,6 +461,8 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               ),
             ),
           ],
+          ], // end profile tab (identity/offering fields)
+          if (_tab == "availability") ...[
           if (hasRegularDiscipline) ...[
             const SizedBox(height: 16),
             const Text(
@@ -679,6 +695,13 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             }),
           ],
           const SizedBox(height: 18),
+          _UnavailabilitySection(
+            entries: _unavailability,
+            onChange: (v) => setState(() => _unavailability = v),
+          ),
+          ], // end availability tab
+          if (_tab == "profile") ...[
+          const SizedBox(height: 18),
           const Text(
             "WHERE YOU TRAIN — PICK A LOCATION OR CREATE YOUR OWN",
             style: TextStyle(
@@ -873,6 +896,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               child: AppField(controller: _pw2, obscureText: true),
             ),
           ],
+          ], // end profile tab (location/coach-code/payout/bio/before-after/password)
           if (_error != null) ...[
             const SizedBox(height: 10),
             Text(
@@ -914,6 +938,234 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _TabChip extends StatelessWidget {
+  const _TabChip({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+        ),
+        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.mute)),
+      ),
+    );
+  }
+}
+
+/// Add/list/delete time-off entries — mirrors the Coach Availability Tab
+/// spec's Unavailability feature. Purely local state (like the availability
+/// blocks above it); committed together with everything else when the form's
+/// main Save button is tapped, not saved independently.
+class _UnavailabilitySection extends StatefulWidget {
+  const _UnavailabilitySection({required this.entries, required this.onChange});
+  final List<TrainerUnavailability> entries;
+  final ValueChanged<List<TrainerUnavailability>> onChange;
+
+  @override
+  State<_UnavailabilitySection> createState() => _UnavailabilitySectionState();
+}
+
+class _UnavailabilitySectionState extends State<_UnavailabilitySection> {
+  bool _adding = false;
+  String? _start;
+  String? _end;
+  final _note = TextEditingController();
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate({required bool isStart}) async {
+    final now = DateTime.now();
+    final initial = DateTime.tryParse((isStart ? _start : _end) ?? "") ?? now;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked == null) return;
+    final iso = "${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+    setState(() {
+      if (isStart) {
+        _start = iso;
+        // A single-day entry is the common case — keep end in sync with
+        // start until the coach deliberately picks a later end date.
+        if (_end == null || _end!.compareTo(iso) < 0) _end = iso;
+      } else {
+        _end = iso;
+      }
+    });
+  }
+
+  void _add() {
+    if (_start == null) return;
+    final entry = TrainerUnavailability(
+      id: "unavail-${DateTime.now().microsecondsSinceEpoch}",
+      startDate: _start!,
+      endDate: _end ?? _start!,
+      note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+    );
+    widget.onChange([...widget.entries, entry]);
+    setState(() {
+      _adding = false;
+      _start = null;
+      _end = null;
+      _note.clear();
+    });
+  }
+
+  void _remove(String id) => widget.onChange(widget.entries.where((e) => e.id != id).toList());
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = [...widget.entries]..sort((a, b) => a.startDate.compareTo(b.startDate));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "UNAVAILABILITY",
+          style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          "Block off time you won't be working — clients won't be able to book you during these dates. Sessions already booked in this window aren't affected; reschedule or cancel those yourself if needed.",
+          style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+        ),
+        const SizedBox(height: 10),
+        if (sorted.isEmpty && !_adding)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text("No time off scheduled.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
+          ),
+        ...sorted.map((e) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(11),
+              decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(10)),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          e.startDate == e.endDate ? niceDate(e.startDate) : "${niceDate(e.startDate)} – ${niceDate(e.endDate)}",
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        if (e.note != null && e.note!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(e.note!, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => _remove(e.id),
+                    icon: const Icon(LucideIcons.trash2, size: 14, color: Color(0xFF6B3B3B)),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  ),
+                ],
+              ),
+            )),
+        if (_adding) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(10)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: FieldLabeled(
+                        label: "Start date",
+                        child: InkWell(
+                          onTap: () => _pickDate(isStart: true),
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: AppColors.card,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                            ),
+                            child: Text(_start ?? "Select date", style: TextStyle(fontSize: 13, color: _start == null ? AppColors.mute : AppColors.txt)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FieldLabeled(
+                        label: "End date",
+                        child: InkWell(
+                          onTap: _start == null ? null : () => _pickDate(isStart: false),
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: AppColors.card,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                            ),
+                            child: Text(_end ?? _start ?? "Same as start", style: TextStyle(fontSize: 13, color: (_end ?? _start) == null ? AppColors.mute : AppColors.txt)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                FieldLabeled(label: "Note (optional)", child: AppField(controller: _note, placeholder: "e.g. Vacation, Sick")),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    BtnGold(onPressed: _start == null ? null : _add, child: const Text("Add")),
+                    const SizedBox(width: 8),
+                    BtnGhost(
+                      onPressed: () => setState(() {
+                        _adding = false;
+                        _start = null;
+                        _end = null;
+                        _note.clear();
+                      }),
+                      child: const Text("Cancel"),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ] else
+          TextButton.icon(
+            onPressed: () => setState(() => _adding = true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.gold,
+              side: const BorderSide(color: AppColors.goldDim),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            ),
+            icon: const Icon(LucideIcons.plus, size: 13),
+            label: const Text("Add Unavailability", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          ),
+      ],
     );
   }
 }

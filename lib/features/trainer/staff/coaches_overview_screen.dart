@@ -119,6 +119,11 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
           sessionTypes: t.sessionTypes,
           reviewedByOwner: true,
           signupAt: t.signupAt,
+          payoutMode: t.payoutMode,
+          payoutRateCents: t.payoutRateCents,
+          referralCommissionPercent: t.referralCommissionPercent,
+          coachCode: t.coachCode,
+          unavailability: t.unavailability,
         ));
   }
 

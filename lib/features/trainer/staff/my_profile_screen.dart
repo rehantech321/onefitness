@@ -37,6 +37,7 @@ class MyProfileScreen extends ConsumerWidget {
             bio: t.bio ?? "",
             beforeAfters: t.beforeAfters,
             availability: t.availability,
+            unavailability: t.unavailability,
           );
         } catch (e) {
           if (context.mounted) {

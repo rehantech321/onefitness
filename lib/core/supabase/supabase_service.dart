@@ -270,6 +270,7 @@ class SupabaseService {
     String? payoutMode,
     int? payoutRateCents,
     num? referralCommissionPercent,
+    List<TrainerUnavailability>? unavailability,
   }) async {
     // A raw REST call, not `client.auth.signUp` (even on a second
     // `SupabaseClient` instance) — the Dart SDK's `AuthClientOptions` has
@@ -331,6 +332,8 @@ class SupabaseService {
         if (payoutRateCents != null) "payout_rate_cents": payoutRateCents,
         if (referralCommissionPercent != null)
           "referral_commission_percent": referralCommissionPercent,
+        if (unavailability != null && unavailability.isNotEmpty)
+          "unavailability": unavailability.map(_unavailabilityToJson).toList(),
       });
     } on PostgrestException catch (e) {
       if (e.code == "23505")
@@ -1088,6 +1091,7 @@ class SupabaseService {
     String? payoutMode,
     int? payoutRateCents,
     num? referralCommissionPercent,
+    List<TrainerUnavailability>? unavailability,
   }) async {
     final profileFields = <String, dynamic>{
       if (name != null) "name": name,
@@ -1121,6 +1125,8 @@ class SupabaseService {
       if (payoutRateCents != null) "payout_rate_cents": payoutRateCents,
       if (referralCommissionPercent != null)
         "referral_commission_percent": referralCommissionPercent,
+      if (unavailability != null)
+        "unavailability": unavailability.map(_unavailabilityToJson).toList(),
     };
     if (trainerFields.isNotEmpty)
       await client.from("trainers").update(trainerFields).eq("profile_id", id);
@@ -1150,6 +1156,13 @@ class SupabaseService {
     "id": b.id,
     if (b.left != null) "left": b.left,
     if (b.right != null) "right": b.right,
+  };
+
+  static Map<String, dynamic> _unavailabilityToJson(TrainerUnavailability u) => {
+    "id": u.id,
+    "startDate": u.startDate,
+    "endDate": u.endDate,
+    if (u.note != null) "note": u.note,
   };
 
   static Map<String, dynamic> _availabilityToJson(AvailabilityBlock b) => {
@@ -2311,6 +2324,7 @@ class SupabaseService {
       payoutRateCents: _asInt(t["payout_rate_cents"]) ?? 0,
       referralCommissionPercent: (t["referral_commission_percent"] as num?) ?? 0,
       coachCode: t["coach_code"] as String?,
+      unavailability: _unavailabilityFromJson(t["unavailability"]),
     );
   }
 
@@ -2338,6 +2352,21 @@ class SupabaseService {
             id: (e["id"] as String?) ?? "",
             left: e["left"] as String?,
             right: e["right"] as String?,
+          ),
+        )
+        .toList();
+  }
+
+  static List<TrainerUnavailability> _unavailabilityFromJson(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map(
+          (e) => TrainerUnavailability(
+            id: (e["id"] as String?) ?? "",
+            startDate: (e["startDate"] as String?) ?? "",
+            endDate: (e["endDate"] as String?) ?? (e["startDate"] as String?) ?? "",
+            note: e["note"] as String?,
           ),
         )
         .toList();

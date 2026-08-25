@@ -152,10 +152,16 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
 
       Trainer? match;
       var anyOffered = false;
+      var anyAvailableToday = false;
       for (final t in _eligibleTrainers) {
         final offers = trainerOfferings(t, weekday).any((o) => o.sessionType == _sessionType && o.discipline == _discipline && o.slot == slot);
         if (!offers) continue;
         anyOffered = true;
+        // Offers this slot in general, but marked themselves unavailable on
+        // this specific calendar date (Coach Availability Tab spec) — same
+        // treatment as being fully booked, just a more precise reason.
+        if (fallsInUnavailability(t, date)) continue;
+        anyAvailableToday = true;
         if (bookedCount(provisional, t.id, date, slot) < capFor(_sessionType!, semiPrivateCap: settings.semiPrivateCap)) {
           match = t;
           break;
@@ -165,6 +171,9 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
       if (match == null) {
         if (!anyOffered) {
           return _Occurrence(date: date, weekday: weekday, slot: slot, status: "skipped", reason: "No coach offers this at that time");
+        }
+        if (!anyAvailableToday) {
+          return _Occurrence(date: date, weekday: weekday, slot: slot, status: "skipped", reason: "Coach unavailable");
         }
         return _Occurrence(date: date, weekday: weekday, slot: slot, status: "full");
       }

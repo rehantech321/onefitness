@@ -45,6 +45,15 @@ List<Offering> trainerOfferings(Trainer t, int weekday) {
   return out;
 }
 
+/// Coach Availability Tab spec's Unavailability check — true when [date]
+/// (ISO yyyy-MM-dd) falls inside any of this trainer's marked time-off
+/// windows (inclusive both ends). Callers should treat a `true` result
+/// exactly like a fully-booked day — no slots offered, not an error — and
+/// check this BEFORE calling [trainerOfferings] for that date, since
+/// `trainerOfferings` only knows the weekday, not the actual calendar date.
+bool fallsInUnavailability(Trainer t, String date) =>
+    t.unavailability.any((u) => date.compareTo(u.startDate) >= 0 && date.compareTo(u.endDate) <= 0);
+
 /// Mirrors schedulingHelpers.js `capFor`. [semiPrivateCap] defaults to the
 /// hardcoded fallback but should be passed the live
 /// `platformSettingsProvider` value from any real UI call site — see this

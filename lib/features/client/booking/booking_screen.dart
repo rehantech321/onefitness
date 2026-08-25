@@ -606,6 +606,7 @@ class _StepThreeState extends State<_StepThree> {
     final bySlot = <int, List<_SlotAvailability>>{};
     if (!sunday) {
       for (final t in trainers) {
+        if (fallsInUnavailability(t, date)) continue;
         for (final o in trainerOfferings(t, wd)) {
           if (o.sessionType != chosenType || o.discipline != chosenDisc) continue;
           final used = bookedCount(bookings, t.id, date, o.slot);
