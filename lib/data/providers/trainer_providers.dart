@@ -8,6 +8,8 @@ import "../models/booking.dart";
 import "../models/charge.dart";
 import "../models/client_info.dart";
 import "../models/client_record.dart";
+import "../models/coach_merit_badge.dart";
+import "../models/coach_pr_event.dart";
 import "../models/exercise_def.dart";
 import "../models/meal_def.dart";
 import "../models/nutrition_library_entry.dart";
@@ -142,6 +144,31 @@ class ChargesNotifier extends Notifier<List<Charge>> {
 }
 
 final chargesProvider = NotifierProvider<ChargesNotifier, List<Charge>>(ChargesNotifier.new);
+
+/// Coach Merit Badge System — every coach's earned badges, gym-wide (like
+/// [chargesProvider], not scoped to "my own" — the owner needs to see
+/// every coach's history, and Coach of the Month needs to compare across
+/// all of them).
+class CoachMeritBadgesNotifier extends Notifier<List<CoachMeritBadge>> {
+  @override
+  List<CoachMeritBadge> build() => [];
+
+  void add(CoachMeritBadge b) => state = [...state, b];
+  void setAll(List<CoachMeritBadge> next) => state = next;
+}
+
+final coachMeritBadgesProvider = NotifierProvider<CoachMeritBadgesNotifier, List<CoachMeritBadge>>(CoachMeritBadgesNotifier.new);
+
+/// Every coach-verified PR event, gym-wide — see coach_pr_event.dart.
+class CoachPrEventsNotifier extends Notifier<List<CoachPrEvent>> {
+  @override
+  List<CoachPrEvent> build() => [];
+
+  void add(CoachPrEvent e) => state = [...state, e];
+  void setAll(List<CoachPrEvent> next) => state = next;
+}
+
+final coachPrEventsProvider = NotifierProvider<CoachPrEventsNotifier, List<CoachPrEvent>>(CoachPrEventsNotifier.new);
 
 /// The built-in meal database (src/data/mealDatabase.js), read-only.
 final mealCatalogProvider = Provider<List<MealDef>>((ref) => kMealCatalog);

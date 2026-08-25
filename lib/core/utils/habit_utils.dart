@@ -42,11 +42,18 @@ int habitStreak(ClientRecord record) {
 
 /// Mirrors habitHelpers.js `weeklyConsistencyScore` — average of the last 7
 /// days' completion percentage, 0 if no habits are configured.
-int weeklyConsistencyScore(ClientRecord record) {
+int weeklyConsistencyScore(ClientRecord record) => weeklyScoreForWindow(record, isoToday());
+
+/// Arbitrary-end-date sibling of [weeklyConsistencyScore] (mirrors the
+/// server's `weeklyScoreForWindow` in award-merit-badge/index.ts) — the
+/// 7-day window ending on [endDate] instead of always today, so a finalized
+/// past month's weekly windows can be scored too (Coach Merit Badge
+/// System's Habit Coach badge).
+int weeklyScoreForWindow(ClientRecord record, String endDate) {
   final habits = getClientHabits(record);
   if (habits.isEmpty) return 0;
   var total = 0;
-  var d = DateTime.parse(isoToday());
+  final d = DateTime.parse(endDate);
   for (var i = 0; i < 7; i++) {
     final date = isoDate(d.subtract(Duration(days: i)));
     final log = getHabitLog(record, date);

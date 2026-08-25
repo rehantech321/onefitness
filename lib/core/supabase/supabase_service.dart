@@ -1,6 +1,7 @@
 import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:supabase_flutter/supabase_flutter.dart";
+import "../utils/coach_merit_badge_utils.dart";
 import "../utils/date_utils.dart";
 import "../../data/models/availability_block.dart";
 import "../../data/models/blocked_time.dart";
@@ -10,6 +11,8 @@ import "../../data/models/charge.dart";
 import "../../data/models/client_info.dart";
 import "../../data/models/client_plan.dart";
 import "../../data/models/client_record.dart";
+import "../../data/models/coach_merit_badge.dart";
+import "../../data/models/coach_pr_event.dart";
 import "../../data/models/comm_message.dart";
 import "../../data/models/earned_badge.dart";
 import "../../data/models/exercise_def.dart";
@@ -23,6 +26,7 @@ import "../../data/models/nutrition_plan.dart";
 import "../../data/models/points_ledger_entry.dart";
 import "../../data/models/product.dart";
 import "../../data/models/program_day.dart";
+import "../../data/models/report_range.dart";
 import "../../data/models/saved_program.dart";
 import "../../data/models/signature.dart";
 import "../../data/models/squad.dart";
@@ -522,6 +526,152 @@ class SupabaseService {
         revokedByUserId: row["revoked_by_user_id"] as String?,
       );
 
+  // ── Coach Merit Badge System ────────────────────────────────────────
+  // Separate from the client-facing merit_badges table above — coach
+  // badges re-earn every month and keep full history (merit_badges' "one
+  // active row per client+badge_key" constraint doesn't fit that shape).
+
+  static Future<List<CoachMeritBadge>> loadCoachMeritBadges() async {
+    final rows = await client.from("coach_merit_badges").select();
+    return _safeMap(rows, _coachMeritBadgeFromRow);
+  }
+
+  static CoachMeritBadge _coachMeritBadgeFromRow(Map<String, dynamic> row) =>
+      CoachMeritBadge(
+        id: row["id"].toString(),
+        trainerId: row["trainer_id"] as String,
+        badgeKey: row["badge_key"] as String,
+        periodMonth: row["period_month"] as String,
+        earnedAt: row["earned_at"] as String,
+        rewardCents: _asInt(row["reward_cents"]) ?? 0,
+        payoutStatus: row["payout_status"] as String? ?? "pending",
+        note: row["note"] as String?,
+      );
+
+  /// Owner-triggered — no cron, matches this app's opportunistic-
+  /// reconciliation doctrine (see award-merit-badge's own doc comment).
+  /// `23505` on the (trainer_id, badge_key, period_month) unique
+  /// constraint means that badge is already finalized for this coach this
+  /// month — treated as a no-op, safe to call repeatedly/concurrently.
+  static Future<CoachMeritBadge?> insertCoachMeritBadge({
+    required String trainerId,
+    required String badgeKey,
+    required String periodMonth,
+    required int rewardCents,
+  }) async {
+    try {
+      final row = await client
+          .from("coach_merit_badges")
+          .insert({
+            "trainer_id": trainerId,
+            "badge_key": badgeKey,
+            "period_month": periodMonth,
+            "reward_cents": rewardCents,
+          })
+          .select()
+          .single();
+      return _coachMeritBadgeFromRow(row);
+    } on PostgrestException catch (e) {
+      if (e.code == "23505") return null;
+      rethrow;
+    }
+  }
+
+  static Future<List<CoachPrEvent>> loadCoachPrEvents() async {
+    final rows = await client.from("coach_pr_events").select();
+    return _safeMap(rows, _coachPrEventFromRow);
+  }
+
+  static CoachPrEvent _coachPrEventFromRow(Map<String, dynamic> row) =>
+      CoachPrEvent(
+        id: row["id"].toString(),
+        clientId: row["client_id"] as String,
+        trainerId: row["trainer_id"] as String,
+        exerciseName: row["exercise_name"] as String,
+        earnedAt: row["earned_at"] as String,
+        note: row["note"] as String?,
+      );
+
+  static Future<CoachPrEvent> insertCoachPrEvent({
+    required String clientId,
+    required String trainerId,
+    required String exerciseName,
+    String? note,
+  }) async {
+    final row = await client
+        .from("coach_pr_events")
+        .insert({
+          "client_id": clientId,
+          "trainer_id": trainerId,
+          "exercise_name": exerciseName,
+          if (note != null && note.isNotEmpty) "note": note,
+        })
+        .select()
+        .single();
+    return _coachPrEventFromRow(row);
+  }
+
+  /// Owner-triggered — no cron (opportunistic reconciliation, same as
+  /// [checkGymCitizenExpiry] and every other month/expiry sweep in this
+  /// app). Computes every coach's 6 monthly badges plus Coach of the Month
+  /// via coach_merit_badge_utils.dart's pure functions against
+  /// already-loaded gym-wide state, then persists every qualifying badge.
+  /// Each badge insert is independently idempotent (23505 = already
+  /// finalized this coach/badge/month, safely skipped) — safe to call
+  /// repeatedly or from a concurrent owner session, and safe to call again
+  /// for an already-finalized month (a no-op).
+  static Future<void> finalizeCoachBadgesForMonth({
+    required String periodMonth, // "YYYY-MM"
+    required ReportRange monthRange,
+    required List<Trainer> coaches,
+    required List<ClientInfo> roster,
+    required Map<String, ClientRecord> clientRecords,
+    required List<Booking> bookings,
+    required List<CoachPrEvent> prEvents,
+    required List<Challenge> challenges,
+    required List<CoachMeritBadge> existingCoachBadges,
+    required int habitPercent,
+    required int habitConsecutiveWeeks,
+    required Map<String, int> rewardCentsByBadgeKey,
+    int semiPrivateCap = 4,
+  }) async {
+    final priorWinCounts = <String, int>{};
+    for (final b in existingCoachBadges) {
+      if (b.badgeKey == "coach_of_month") priorWinCounts[b.trainerId] = (priorWinCounts[b.trainerId] ?? 0) + 1;
+    }
+
+    final composites = <CoachCompositeScore>[];
+    for (final coach in coaches) {
+      final badges = computeAllCoachBadges(
+        coach: coach,
+        roster: roster,
+        clientRecords: clientRecords,
+        bookings: bookings,
+        prEvents: prEvents,
+        challenges: challenges,
+        range: monthRange,
+        habitPercent: habitPercent,
+        habitConsecutiveWeeks: habitConsecutiveWeeks,
+        semiPrivateCap: semiPrivateCap,
+      );
+      composites.add(coachCompositeScore(coach, roster, bookings, badges, monthRange));
+      for (final b in badges) {
+        if (!b.qualifies) continue;
+        await insertCoachMeritBadge(trainerId: coach.id, badgeKey: b.badgeKey, periodMonth: periodMonth, rewardCents: rewardCentsByBadgeKey[b.badgeKey] ?? 0);
+      }
+    }
+
+    final winner = pickCoachOfTheMonth(composites, priorWinCounts: priorWinCounts);
+    if (winner != null) {
+      await insertCoachMeritBadge(
+        trainerId: winner.trainer.id,
+        badgeKey: "coach_of_month",
+        periodMonth: periodMonth,
+        rewardCents: rewardCentsByBadgeKey["coach_of_month"] ?? 0,
+      );
+    }
+  }
+
   static Future<List<Product>> loadProducts() async {
     final rows = await client.from("products").select();
     return _safeMap(
@@ -951,6 +1101,26 @@ class SupabaseService {
       meritBadgeHabitWeeks:
           _asInt(workouts["meritBadgeHabitWeeks"]) ??
           defaults.meritBadgeHabitWeeks,
+      badgeFullHouseCents:
+          _asInt(workouts["badgeFullHouseCents"]) ??
+          defaults.badgeFullHouseCents,
+      badgePrFactoryCents:
+          _asInt(workouts["badgePrFactoryCents"]) ??
+          defaults.badgePrFactoryCents,
+      badgeCheckInCents:
+          _asInt(workouts["badgeCheckInCents"]) ?? defaults.badgeCheckInCents,
+      badgeComebackCents:
+          _asInt(workouts["badgeComebackCents"]) ??
+          defaults.badgeComebackCents,
+      badgeHabitCoachCents:
+          _asInt(workouts["badgeHabitCoachCents"]) ??
+          defaults.badgeHabitCoachCents,
+      badgeChallengeCoachCents:
+          _asInt(workouts["badgeChallengeCoachCents"]) ??
+          defaults.badgeChallengeCoachCents,
+      badgeCoachOfMonthCents:
+          _asInt(workouts["badgeCoachOfMonthCents"]) ??
+          defaults.badgeCoachOfMonthCents,
     );
   }
 
@@ -1834,6 +2004,13 @@ class SupabaseService {
       "meritBadgeProgressWeeks": s.meritBadgeProgressWeeks,
       "meritBadgeHabitPercent": s.meritBadgeHabitPercent,
       "meritBadgeHabitWeeks": s.meritBadgeHabitWeeks,
+      "badgeFullHouseCents": s.badgeFullHouseCents,
+      "badgePrFactoryCents": s.badgePrFactoryCents,
+      "badgeCheckInCents": s.badgeCheckInCents,
+      "badgeComebackCents": s.badgeComebackCents,
+      "badgeHabitCoachCents": s.badgeHabitCoachCents,
+      "badgeChallengeCoachCents": s.badgeChallengeCoachCents,
+      "badgeCoachOfMonthCents": s.badgeCoachOfMonthCents,
     },
     "scheduling": {
       "semiPrivateCap": s.semiPrivateCap,

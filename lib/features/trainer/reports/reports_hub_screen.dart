@@ -41,7 +41,8 @@ final _catalog = [
   _Category("Trainer & Payroll", [
     _ReportDef("hours", "Staff Hours", "Estimated hours per coach", LucideIcons.clock, "month", (r) => StaffHoursReport(range: r)),
     _ReportDef("commissions", "Service Commissions", "Commission earned per coach", LucideIcons.badgePercent, "month", (r) => ServiceCommissionsReport(range: r)),
-    _ReportDef("payroll", "Payroll Summary", "Pay owed per coach", LucideIcons.wallet, "month", (r) => PayrollSummaryReport(range: r)),
+    _ReportDef("payroll", "Payroll Summary", "Pay owed per coach", LucideIcons.wallet, "month", (r) => CoachMeritBadgeAutoFinalize(child: PayrollSummaryReport(range: r))),
+    _ReportDef("meritBadges", "Coach Merit Badges", "Monthly coaching-performance badge payouts", LucideIcons.award, "month", (r) => CoachMeritBadgeAutoFinalize(child: MeritBadgeEarningsReport(range: r))),
   ]),
   _Category("Profitability", [
     _ReportDef("profitability", "Revenue vs. Payroll", "Net profit and margin", LucideIcons.scale, "month", (r) => RevenueVsPayrollReport(range: r)),

@@ -67,6 +67,13 @@ class PlatformSettings {
     this.meritBadgeProgressWeeks = 3,
     this.meritBadgeHabitPercent = 80,
     this.meritBadgeHabitWeeks = 3,
+    this.badgeFullHouseCents = 2500,
+    this.badgePrFactoryCents = 2500,
+    this.badgeCheckInCents = 2500,
+    this.badgeComebackCents = 3500,
+    this.badgeHabitCoachCents = 2500,
+    this.badgeChallengeCoachCents = 2500,
+    this.badgeCoachOfMonthCents = 5000,
   });
 
   final int lateCancellationHours;
@@ -112,6 +119,19 @@ class PlatformSettings {
   final int meritBadgeHabitPercent;
   final int meritBadgeHabitWeeks;
 
+  /// Coach Merit Badge System — dollar rewards, owner-editable. Changing
+  /// one only ever affects FUTURE badge earnings; each earned badge
+  /// snapshots its own reward_cents at the moment it's awarded (see
+  /// coach_merit_badge_utils.dart / SupabaseService.finalizeCoachBadgesForMonth),
+  /// so past payouts never retroactively change.
+  final int badgeFullHouseCents;
+  final int badgePrFactoryCents;
+  final int badgeCheckInCents;
+  final int badgeComebackCents;
+  final int badgeHabitCoachCents;
+  final int badgeChallengeCoachCents;
+  final int badgeCoachOfMonthCents;
+
   PlatformSettings copyWith({
     int? lateCancellationHours,
     bool? blockRescheduleInWindow,
@@ -143,6 +163,13 @@ class PlatformSettings {
     int? meritBadgeProgressWeeks,
     int? meritBadgeHabitPercent,
     int? meritBadgeHabitWeeks,
+    int? badgeFullHouseCents,
+    int? badgePrFactoryCents,
+    int? badgeCheckInCents,
+    int? badgeComebackCents,
+    int? badgeHabitCoachCents,
+    int? badgeChallengeCoachCents,
+    int? badgeCoachOfMonthCents,
   }) =>
       PlatformSettings(
         lateCancellationHours: lateCancellationHours ?? this.lateCancellationHours,
@@ -175,6 +202,13 @@ class PlatformSettings {
         meritBadgeProgressWeeks: meritBadgeProgressWeeks ?? this.meritBadgeProgressWeeks,
         meritBadgeHabitPercent: meritBadgeHabitPercent ?? this.meritBadgeHabitPercent,
         meritBadgeHabitWeeks: meritBadgeHabitWeeks ?? this.meritBadgeHabitWeeks,
+        badgeFullHouseCents: badgeFullHouseCents ?? this.badgeFullHouseCents,
+        badgePrFactoryCents: badgePrFactoryCents ?? this.badgePrFactoryCents,
+        badgeCheckInCents: badgeCheckInCents ?? this.badgeCheckInCents,
+        badgeComebackCents: badgeComebackCents ?? this.badgeComebackCents,
+        badgeHabitCoachCents: badgeHabitCoachCents ?? this.badgeHabitCoachCents,
+        badgeChallengeCoachCents: badgeChallengeCoachCents ?? this.badgeChallengeCoachCents,
+        badgeCoachOfMonthCents: badgeCoachOfMonthCents ?? this.badgeCoachOfMonthCents,
       );
 }
 

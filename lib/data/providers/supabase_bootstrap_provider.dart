@@ -7,6 +7,8 @@ import "../models/challenge.dart";
 import "../models/charge.dart";
 import "../models/client_info.dart";
 import "../models/client_record.dart";
+import "../models/coach_merit_badge.dart";
+import "../models/coach_pr_event.dart";
 import "../models/earned_badge.dart";
 import "../models/exercise_def.dart";
 import "../models/meal_def.dart";
@@ -123,6 +125,8 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final List<WaitlistEntry> waitlist;
   final PlatformSettings? platformSettings;
   final List<String> packageCategories;
+  final List<CoachMeritBadge> coachMeritBadges;
+  final List<CoachPrEvent> coachPrEvents;
   try {
     // Firing all 16 requests before awaiting any of them (rather than one
     // `await` per line) starts them concurrently — each async call runs up
@@ -149,6 +153,8 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     final waitlistF = SupabaseService.loadWaitlist();
     final platformSettingsF = SupabaseService.loadPlatformSettings();
     final packageCategoriesF = SupabaseService.loadPackageCategories();
+    final coachMeritBadgesF = SupabaseService.loadCoachMeritBadges();
+    final coachPrEventsF = SupabaseService.loadCoachPrEvents();
 
     roster = await rosterF;
     trainers = await trainersF;
@@ -168,6 +174,8 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     waitlist = await waitlistF;
     platformSettings = await platformSettingsF;
     packageCategories = await packageCategoriesF;
+    coachMeritBadges = await coachMeritBadgesF;
+    coachPrEvents = await coachPrEventsF;
   } catch (e, st) {
     // Anonymous caller blocked outright by RLS on one of these tables (vs.
     // just getting zero rows back), or the network's unavailable — leave
@@ -203,6 +211,8 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   ref.read(chargesProvider.notifier).setAll(charges);
   ref.read(waitlistProvider.notifier).setAll(waitlist);
   ref.read(packageCategoriesProvider.notifier).setAll(packageCategories);
+  ref.read(coachMeritBadgesProvider.notifier).setAll(coachMeritBadges);
+  ref.read(coachPrEventsProvider.notifier).setAll(coachPrEvents);
   // `platformSettings` is declared-then-assigned-in-a-try-block above, not
   // initialized at declaration — Dart doesn't carry a null-promotion for
   // that shape into a closure literal, so `(_) => platformSettings` below

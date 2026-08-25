@@ -78,6 +78,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
     final isOwner = trainerAuth == "owner";
     final trainers = ref.watch(trainersProvider);
     final staffNames = {for (final t in trainers) t.id: t.name};
+    final record = ref.watch(trainerClientRecordsProvider)[widget.clientId];
 
     final all = ref.watch(earnedBadgesProvider);
     final myBadges = all.where((b) => b.clientId == widget.clientId).toList();
@@ -114,9 +115,26 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
       final confirmed = await _confirm(context, 'Award "${badge.name}" to ${info.name}?');
       if (!confirmed || !context.mounted) return;
       final note = await _promptText(context, "Optional note (or leave blank):");
+      final cleanNote = note?.trim().isEmpty == true ? null : note?.trim();
       try {
-        await SupabaseService.grantMeritBadge(widget.clientId, badge.key, note?.trim().isEmpty == true ? null : note?.trim());
+        await SupabaseService.grantMeritBadge(widget.clientId, badge.key, cleanNote);
         await refreshBadgesAndPoints();
+        // Coach Merit Badge System's PR Factory counts every verified PR a
+        // coach logs, even repeat PRs for a client who already has an
+        // active record_breaker badge — so this log always happens here,
+        // independent of whether the grant above was itself a no-op.
+        if (badge.key == "record_breaker" && context.mounted) {
+          final trainerId = trainerAuth != "owner" ? trainerAuth : info.primaryTrainerId;
+          if (trainerId != null) {
+            final exerciseNames = record?.programDays.expand((d) => d.exercises.map((e) => e.name)).toSet().toList() ?? <String>[];
+            final exercise = await _promptExercise(context, exerciseNames);
+            if (exercise != null && exercise.isNotEmpty) {
+              await SupabaseService.insertCoachPrEvent(clientId: widget.clientId, trainerId: trainerId, exerciseName: exercise, note: cleanNote);
+              final freshPrEvents = await SupabaseService.loadCoachPrEvents();
+              ref.read(coachPrEventsProvider.notifier).setAll(freshPrEvents);
+            }
+          }
+        }
       } catch (e) {
         showFailure(e);
       }
@@ -397,6 +415,49 @@ Future<String?> _promptText(BuildContext context, String label) {
         TextButton(onPressed: () => Navigator.of(ctx).pop(""), child: const Text("Skip")),
         TextButton(onPressed: () => Navigator.of(ctx).pop(controller.text), child: const Text("OK")),
       ],
+    ),
+  );
+}
+
+/// PR Factory badge's "Log PR" step — which exercise the record was set
+/// on, offered as a picker from the client's current program plus a
+/// free-text fallback (their PR might be on something not in their split).
+/// Returns null (Skip) if the coach doesn't want to log a PR event at all.
+Future<String?> _promptExercise(BuildContext context, List<String> suggestions) {
+  final controller = TextEditingController();
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setDialogState) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text("Which exercise?", style: TextStyle(fontSize: 14)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (suggestions.isNotEmpty) ...[
+              DropdownButtonFormField<String>(
+                initialValue: null,
+                isExpanded: true,
+                dropdownColor: AppColors.card,
+                style: const TextStyle(fontSize: 13, color: AppColors.txt),
+                decoration: const InputDecoration(isDense: true),
+                hint: const Text("Pick from this client's program…", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                items: suggestions.map((n) => DropdownMenuItem(value: n, child: Text(n, style: const TextStyle(fontSize: 13)))).toList(),
+                onChanged: (v) => setDialogState(() => controller.text = v ?? ""),
+              ),
+              const SizedBox(height: 8),
+              const Text("or type one:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+              const SizedBox(height: 4),
+            ],
+            AppField(controller: controller),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text("Skip")),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(controller.text.trim()), child: const Text("Log PR")),
+        ],
+      ),
     ),
   );
 }
