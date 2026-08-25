@@ -35,6 +35,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
   final _phone = TextEditingController();
   final _city = TextEditingController();
   final _birthday = TextEditingController();
+  final _coachCode = TextEditingController();
   String? _photoDataUrl;
   String? _error;
   bool _busy = false;
@@ -49,6 +50,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
     _phone.dispose();
     _city.dispose();
     _birthday.dispose();
+    _coachCode.dispose();
     super.dispose();
   }
 
@@ -104,6 +106,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
         phone: phone,
         city: city,
         birthday: _birthday.text.trim().isEmpty ? null : _birthday.text.trim(),
+        coachCode: _coachCode.text.trim().isEmpty ? null : _coachCode.text.trim(),
       );
       if (_photoDataUrl != null) {
         await SupabaseService.updateClientRow(userId, photo: _photoDataUrl);
@@ -219,6 +222,15 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                     ),
                   ),
                 ),
+              ),
+              const SizedBox(height: 10),
+              FieldLabeled(
+                label: "Coach Code (optional)",
+                child: AppField(controller: _coachCode, placeholder: "e.g. JESS10", onChanged: (_) => setState(() => _error = null)),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text("If a coach gave you a code, enter it here to link your account to them.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 10),

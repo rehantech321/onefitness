@@ -59,6 +59,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
   String? _error;
   bool _busy = false;
 
+  final _coachCode = TextEditingController();
   final _bio = TextEditingController();
   List<TrainerBeforeAfter> _beforeAfters = [];
 
@@ -76,6 +77,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
     _code.dispose();
     _locationName.dispose();
     _locationAddress.dispose();
+    _coachCode.dispose();
     _bio.dispose();
     super.dispose();
   }
@@ -172,6 +174,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
         locationAddress: _locationAddress.text.trim(),
         bio: _bio.text.trim(),
         beforeAfters: _beforeAfters,
+        coachCode: _coachCode.text.trim().isEmpty ? null : _coachCode.text.trim(),
       );
       await loadAndSeedCoreData(ref);
     } catch (e) {
@@ -491,6 +494,24 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                           ),
                         ],
                       ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Coach Code",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.txt,
+                ),
+              ),
+              const SizedBox(height: 6),
+              AppField(controller: _coachCode, placeholder: "e.g. JESS10"),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  "A unique code you give clients at signup to link their account to you — set once here, can't be changed later.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                ),
               ),
               const SizedBox(height: 16),
               const Text(

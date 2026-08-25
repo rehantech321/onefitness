@@ -322,9 +322,48 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               ),
             ],
           ),
+          const SizedBox(height: 18),
+          Container(height: 1, color: AppColors.line),
+          const SizedBox(height: 14),
+          Center(
+            child: TextButton(
+              onPressed: () => _deleteClient(info),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [Icon(LucideIcons.trash2, size: 14), SizedBox(width: 6), Text("Delete client")],
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _deleteClient(ClientInfo info) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text("Delete client?"),
+        content: Text("Delete ${info.name}? This permanently removes their profile, programs, logs, and history. This can't be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Delete")),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await SupabaseService.deleteClientRow(info.id);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't delete that client — check your connection and try again.")));
+      }
+      return;
+    }
+    ref.read(trainerRosterProvider.notifier).remove(info.id);
+    ref.read(selectedClientIdProvider.notifier).select(null);
   }
 
   String _membershipLabel(MembershipPlan plan) {

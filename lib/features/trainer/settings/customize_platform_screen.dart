@@ -160,7 +160,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                   _ToggleRow(label: "Coaches can view revenue", value: s.coachCanViewRevenue, onChange: (v) => _set((d) => d.copyWith(coachCanViewRevenue: v))),
                   _ToggleRow(label: "Coaches can see other schedules", value: s.coachCanSeeOtherSchedules, onChange: (v) => _set((d) => d.copyWith(coachCanSeeOtherSchedules: v))),
                   _ChoiceRow(label: "Coaches reply in messages as", value: s.messageIdentity, options: const [("self", "Themselves"), ("business", "ONE Fitness")], onChange: (v) => _set((d) => d.copyWith(messageIdentity: v))),
-                  _ToggleRow(label: "Coaches can edit client workouts", value: s.coachCanEditClientWorkouts, onChange: (v) => _set((d) => d.copyWith(coachCanEditClientWorkouts: v))),
+                  const HintBox(text: "Building, approving, and assigning workout/nutrition programs is always owner-only — there's no coach-access toggle for it."),
                 ],
                 if (_tab == "clients") ...[
                   _MultiChoiceRow(label: "Required profile fields", value: s.requiredProfileFields, options: _requiredFieldOptions, onChange: (v) => _set((d) => d.copyWith(requiredProfileFields: v))),

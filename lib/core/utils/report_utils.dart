@@ -44,12 +44,34 @@ double estimateSessionRevenue(MembershipPlan? plan) {
 }
 
 class TrainerRangeStats {
-  const TrainerRangeStats({required this.trainer, required this.sessionCount, required this.revenue});
+  const TrainerRangeStats({required this.trainer, required this.sessionCount, required this.revenue, required this.uniqueClientCount});
   final Trainer trainer;
   final int sessionCount;
   final double revenue;
+
+  /// Distinct clients this trainer had a session with in range — the unit
+  /// the "per client" payout mode pays on (once per client, not once per
+  /// session).
+  final int uniqueClientCount;
+
   double get hours => (sessionCount * 60 / 60 * 10).round() / 10;
-  double get commission => revenue * trainer.commissionRate / 100;
+
+  /// Session pay under the trainer's chosen $ payout mode — replaces the
+  /// old `revenue * commissionRate / 100` formula (Attendance & Cancellation
+  /// Charging Policy's sibling change: coach payroll moved from % to $).
+  /// Does NOT include referral commission — see [referralCommissionInRange].
+  double get commission {
+    final rate = trainer.payoutRateCents / 100;
+    switch (trainer.payoutMode) {
+      case "perHour":
+        return hours * rate;
+      case "perClient":
+        return uniqueClientCount * rate;
+      case "perSession":
+      default:
+        return sessionCount * rate;
+    }
+  }
 }
 
 /// Mirrors `perTrainerInRange` — per-trainer session counts + estimated
@@ -69,9 +91,17 @@ List<TrainerRangeStats> perTrainerInRange(List<Trainer> trainers, List<Booking> 
       final plan = client.isNotEmpty ? planById(client.first.membershipPlanId) : null;
       revenue += estimateSessionRevenue(plan);
     }
-    return TrainerRangeStats(trainer: t, sessionCount: sessions.length, revenue: revenue);
+    final uniqueClientCount = sessions.map((b) => b.clientId).toSet().length;
+    return TrainerRangeStats(trainer: t, sessionCount: sessions.length, revenue: revenue, uniqueClientCount: uniqueClientCount);
   }).toList();
 }
+
+/// Sums this trainer's "referral_commission" charges (Coach Code surcharge,
+/// credited by stripe-webhook on a referred client's purchase) in range —
+/// a second, separate income stream from [TrainerRangeStats.commission].
+double referralCommissionInRange(List<Charge> charges, String trainerId, ReportRange range) => charges
+    .where((c) => c.trainerId == trainerId && c.category == "referral_commission" && c.amount != null && range.includes(c.date))
+    .fold(0.0, (sum, c) => sum + c.amount!);
 
 /// Mirrors `revenueCharges` — charges with a real dollar amount (excludes
 /// give-back/no-op entries), filtered to range.

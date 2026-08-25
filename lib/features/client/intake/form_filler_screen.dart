@@ -7,6 +7,7 @@ import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_record.dart";
 import "../../../data/models/intake_schema.dart";
+import "../../../data/providers/trainer_providers.dart";
 
 /// Mirrors FormFiller.jsx — a generic schema-driven questionnaire renderer:
 /// text/textarea/single/multi/scale question types, with `showIf`
@@ -84,15 +85,19 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
       await SupabaseService.updateClientIntake(widget.profileId, widget.assessmentKey, record);
       widget.onSaved(record);
       // Nutrition Intake completing kicks off an AI-drafted calorie/macro
-      // target set (training vs. rest day) — fire-and-forget exactly like
+      // target set (training vs. rest day) — fire-and-forget, mirroring
       // IntakeArea.jsx's own trigger; a coach reviews and applies it later
       // from NutritionBuilder, it's never visible to the client directly.
-      // Fires whether the client or a coach completed it (JS's own trigger
-      // has no `who` check either). Only checks for a prior AI draft (not
-      // any nutrition program at all — most real clients already have a
-      // coach-built plan on file, and that shouldn't block their first AI
-      // target draft from ever generating).
-      if (widget.assessmentKey == "nutritional" && !widget.client.savedNutritionPrograms.any((p) => p.source == "ai")) {
+      // Fires for a client completing their own intake (self-service, not
+      // "a coach generating a program") — but NOT for a coach filling this
+      // out on a client's behalf unless that coach is the owner, since
+      // generating a program is now a hard owner-only capability. Only
+      // checks for a prior AI draft (not any nutrition program at all —
+      // most real clients already have a coach-built plan on file, and
+      // that shouldn't block their first AI target draft from generating).
+      final isOwner = ref.read(trainerAuthProvider) == "owner";
+      final allowedToGenerate = widget.who == "client" || isOwner;
+      if (widget.assessmentKey == "nutritional" && allowedToGenerate && !widget.client.savedNutritionPrograms.any((p) => p.source == "ai")) {
         SupabaseService.generateAiNutritionProgram(widget.profileId).catchError((_) => <String, dynamic>{});
       }
       widget.onBack();

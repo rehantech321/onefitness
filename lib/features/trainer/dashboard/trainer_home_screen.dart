@@ -54,6 +54,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
     final needsAttention = [
       ...computeNeedsAttention(myRoster, clientRecords),
       ...computeUnloggedAttendance(myRoster, bookings),
+      ...computeCoachCodeAlerts(myRoster),
     ];
     final grouped = <String, List<AttentionItem>>{};
     for (final n in needsAttention) {
@@ -147,6 +148,10 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                 _calendarOpen = true;
                               });
                             } else {
+                              if (n.key == "coach-code-used") {
+                                ref.read(trainerRosterProvider.notifier).update(c.id, (info) => info.copyWith(coachCodeAlertSeen: true));
+                                SupabaseService.markCoachCodeAlertSeen(c.id).catchError((Object _) {});
+                              }
                               openClient(c.id);
                             }
                           },

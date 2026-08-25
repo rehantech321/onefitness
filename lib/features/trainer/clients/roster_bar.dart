@@ -1,7 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
-import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/client_status_utils.dart";
 import "../../../core/utils/flag_utils.dart";
@@ -9,8 +8,9 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
-/// Mirrors RosterBar.jsx, trimmed to what's built so far: search, the
-/// horizontal client-card scroller, and owner-only remove. Adding a client
+/// Mirrors RosterBar.jsx, trimmed to what's built so far: search and the
+/// horizontal client-card scroller. Deleting a client lives at the bottom
+/// of their Profile tab (profile_tab.dart), not here. Adding a client
 /// needs the full IntakeForm (not built yet), so "+ Client" is a placeholder.
 class RosterBar extends ConsumerStatefulWidget {
   const RosterBar({super.key});
@@ -56,37 +56,6 @@ class _RosterBarState extends ConsumerState<RosterBar> {
 
     void showComingSoon(String what) =>
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$what coming in a later pass.")));
-
-    Future<void> removeActive() async {
-      final c = roster.where((x) => x.id == activeId);
-      if (c.isEmpty) return;
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.card,
-          title: const Text("Remove client?"),
-          content: Text(
-              "Remove ${c.first.name}? This permanently deletes their profile, programs, logs, and history. This can't be undone."),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Cancel")),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Remove")),
-          ],
-        ),
-      );
-      if (confirmed == true) {
-        final id = activeId!;
-        try {
-          await SupabaseService.deleteClientRow(id);
-        } catch (e) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't remove that client — check your connection and try again.")));
-          }
-          return;
-        }
-        ref.read(trainerRosterProvider.notifier).remove(id);
-        ref.read(selectedClientIdProvider.notifier).select(null);
-      }
-    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -206,21 +175,6 @@ class _RosterBarState extends ConsumerState<RosterBar> {
               child: Text(
                 "No clients yet — tap + Client to add your first one.",
                 style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic),
-              ),
-            ),
-          if (isOwner && activeId != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: InkWell(
-                onTap: removeActive,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.trash2, size: 11, color: Color(0xFF6B3B3B)),
-                    SizedBox(width: 4),
-                    Text("Remove client (owner only)", style: TextStyle(fontSize: 11, color: Color(0xFF6B3B3B))),
-                  ],
-                ),
               ),
             ),
         ],

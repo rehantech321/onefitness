@@ -101,6 +101,7 @@ class SupabaseService {
     String? phone,
     String? city,
     String? birthday,
+    String? coachCode,
   }) async {
     final res = await client.auth.signUp(
       email: email,
@@ -110,10 +111,28 @@ class SupabaseService {
     final userId = res.user?.id;
     if (userId == null)
       throw Exception("Sign-up failed — no account was created.");
+    // A referring coach — best-effort, case-insensitive lookup against
+    // `trainers.coach_code`. A typo or unknown code just means no referral
+    // link; it never blocks account creation.
+    String? referringTrainerId;
+    final trimmedCode = coachCode?.trim() ?? "";
+    if (trimmedCode.isNotEmpty) {
+      final match = await client
+          .from("trainers")
+          .select("profile_id")
+          .ilike("coach_code", trimmedCode)
+          .maybeSingle();
+      referringTrainerId = match?["profile_id"] as String?;
+    }
     await client.from("clients").insert({
       "profile_id": userId,
       if (city != null) "city": city,
       if (birthday != null) "birthday": birthday,
+      // A referred client becomes that coach's client — this is what
+      // makes the coach's roster-scoped Needs Attention alert (and their
+      // Clients tab) actually show this signup.
+      if (referringTrainerId != null) "referred_by_trainer_id": referringTrainerId,
+      if (referringTrainerId != null) "primary_trainer_id": referringTrainerId,
     });
     await client.from("client_records").insert({
       "profile_id": userId,
@@ -121,6 +140,14 @@ class SupabaseService {
     });
     return userId;
   }
+
+  /// Clears the referring coach's one-time "Coach Code" Needs Attention
+  /// alert for this client — called when the coach opens the client's
+  /// profile from that alert.
+  static Future<void> markCoachCodeAlertSeen(String clientId) => client
+      .from("clients")
+      .update({"coach_code_alert_seen": true})
+      .eq("profile_id", clientId);
 
   /// { code, expiresAt, generatedAt, usedAt } or null — the current staff
   /// approval code a prospective coach needs to self-signup.
@@ -164,6 +191,7 @@ class SupabaseService {
     String? locationAddress,
     String? bio,
     List<TrainerBeforeAfter>? beforeAfters,
+    String? coachCode,
   }) async {
     final res = await client.auth.signUp(
       email: email,
@@ -173,24 +201,31 @@ class SupabaseService {
     final userId = res.user?.id;
     if (userId == null)
       throw Exception("Sign-up failed — no account was created.");
-    await client.from("trainers").insert({
-      "profile_id": userId,
-      "reviewed_by_owner": false,
-      "signup_at": isoToday(),
-      if (disciplines != null && disciplines.isNotEmpty)
-        "disciplines": disciplines,
-      if (locationName != null || locationAddress != null)
-        "locations": [
-          {
-            "id": "loc-main",
-            "name": locationName ?? "",
-            "address": locationAddress ?? "",
-          },
-        ],
-      if (bio != null && bio.isNotEmpty) "bio": bio,
-      if (beforeAfters != null && beforeAfters.isNotEmpty)
-        "before_afters": beforeAfters.map(_beforeAfterToJson).toList(),
-    });
+    try {
+      await client.from("trainers").insert({
+        "profile_id": userId,
+        "reviewed_by_owner": false,
+        "signup_at": isoToday(),
+        if (disciplines != null && disciplines.isNotEmpty)
+          "disciplines": disciplines,
+        if (locationName != null || locationAddress != null)
+          "locations": [
+            {
+              "id": "loc-main",
+              "name": locationName ?? "",
+              "address": locationAddress ?? "",
+            },
+          ],
+        if (bio != null && bio.isNotEmpty) "bio": bio,
+        if (beforeAfters != null && beforeAfters.isNotEmpty)
+          "before_afters": beforeAfters.map(_beforeAfterToJson).toList(),
+        if (coachCode != null && coachCode.isNotEmpty) "coach_code": coachCode,
+      });
+    } on PostgrestException catch (e) {
+      if (e.code == "23505")
+        throw Exception("That coach code is already taken — pick a different one.");
+      rethrow;
+    }
     if (photo != null) {
       await client
           .from("profiles")
@@ -231,6 +266,10 @@ class SupabaseService {
     List<TrainerBeforeAfter>? beforeAfters,
     List<AvailabilityBlock>? availability,
     num? commissionRate,
+    String? coachCode,
+    String? payoutMode,
+    int? payoutRateCents,
+    num? referralCommissionPercent,
   }) async {
     // A raw REST call, not `client.auth.signUp` (even on a second
     // `SupabaseClient` instance) — the Dart SDK's `AuthClientOptions` has
@@ -271,22 +310,33 @@ class SupabaseService {
         signUpBody["id"] as String?;
     if (userId == null)
       throw Exception("Sign-up failed — no account was created.");
-    await client.from("trainers").insert({
-      "profile_id": userId,
-      "reviewed_by_owner": true, // owner-added coaches skip approval review
-      if (disciplines != null && disciplines.isNotEmpty)
-        "disciplines": disciplines,
-      if (sessionTypes != null && sessionTypes.isNotEmpty)
-        "session_types": sessionTypes,
-      if (locations != null && locations.isNotEmpty)
-        "locations": locations.map(_trainerLocationToJson).toList(),
-      if (bio != null && bio.isNotEmpty) "bio": bio,
-      if (beforeAfters != null && beforeAfters.isNotEmpty)
-        "before_afters": beforeAfters.map(_beforeAfterToJson).toList(),
-      if (availability != null && availability.isNotEmpty)
-        "availability": availability.map(_availabilityToJson).toList(),
-      if (commissionRate != null) "commission_rate": commissionRate,
-    });
+    try {
+      await client.from("trainers").insert({
+        "profile_id": userId,
+        "reviewed_by_owner": true, // owner-added coaches skip approval review
+        if (disciplines != null && disciplines.isNotEmpty)
+          "disciplines": disciplines,
+        if (sessionTypes != null && sessionTypes.isNotEmpty)
+          "session_types": sessionTypes,
+        if (locations != null && locations.isNotEmpty)
+          "locations": locations.map(_trainerLocationToJson).toList(),
+        if (bio != null && bio.isNotEmpty) "bio": bio,
+        if (beforeAfters != null && beforeAfters.isNotEmpty)
+          "before_afters": beforeAfters.map(_beforeAfterToJson).toList(),
+        if (availability != null && availability.isNotEmpty)
+          "availability": availability.map(_availabilityToJson).toList(),
+        if (commissionRate != null) "commission_rate": commissionRate,
+        if (coachCode != null && coachCode.isNotEmpty) "coach_code": coachCode,
+        if (payoutMode != null) "payout_mode": payoutMode,
+        if (payoutRateCents != null) "payout_rate_cents": payoutRateCents,
+        if (referralCommissionPercent != null)
+          "referral_commission_percent": referralCommissionPercent,
+      });
+    } on PostgrestException catch (e) {
+      if (e.code == "23505")
+        throw Exception("That coach code is already taken — pick a different one.");
+      rethrow;
+    }
     if (photo != null) {
       await client
           .from("profiles")
@@ -850,9 +900,6 @@ class SupabaseService {
       coachCanSeeOtherSchedules:
           access["coachCanSeeOtherSchedules"] as bool? ??
           defaults.coachCanSeeOtherSchedules,
-      coachCanEditClientWorkouts:
-          access["coachCanEditClientWorkouts"] as bool? ??
-          defaults.coachCanEditClientWorkouts,
       messageIdentity:
           access["messageIdentity"] as String? ?? defaults.messageIdentity,
       requiredProfileFields:
@@ -1038,6 +1085,9 @@ class SupabaseService {
     List<AvailabilityBlock>? availability,
     num? commissionRate,
     bool? reviewedByOwner,
+    String? payoutMode,
+    int? payoutRateCents,
+    num? referralCommissionPercent,
   }) async {
     final profileFields = <String, dynamic>{
       if (name != null) "name": name,
@@ -1067,6 +1117,10 @@ class SupabaseService {
         "availability": availability.map(_availabilityToJson).toList(),
       if (commissionRate != null) "commission_rate": commissionRate,
       if (reviewedByOwner != null) "reviewed_by_owner": reviewedByOwner,
+      if (payoutMode != null) "payout_mode": payoutMode,
+      if (payoutRateCents != null) "payout_rate_cents": payoutRateCents,
+      if (referralCommissionPercent != null)
+        "referral_commission_percent": referralCommissionPercent,
     };
     if (trainerFields.isNotEmpty)
       await client.from("trainers").update(trainerFields).eq("profile_id", id);
@@ -1744,7 +1798,6 @@ class SupabaseService {
       "coachCanViewRevenue": s.coachCanViewRevenue,
       "twoFactorRequirement": s.twoFactorRequirement,
       "coachCanSeeOtherSchedules": s.coachCanSeeOtherSchedules,
-      "coachCanEditClientWorkouts": s.coachCanEditClientWorkouts,
     },
     "clients": {
       "requiredProfileFields": s.requiredProfileFields,
@@ -2220,6 +2273,8 @@ class SupabaseService {
       membershipCancelsAt: c["membership_cancels_at"] as String?,
       redeemPointsNextRenewal:
           c["redeem_points_next_renewal"] as bool? ?? false,
+      referredByTrainerId: c["referred_by_trainer_id"] as String?,
+      coachCodeAlertSeen: c["coach_code_alert_seen"] as bool? ?? false,
     );
   }
 
@@ -2252,6 +2307,10 @@ class SupabaseService {
           .toList(),
       reviewedByOwner: (t["reviewed_by_owner"] as bool?) ?? true,
       signupAt: t["signup_at"] as String?,
+      payoutMode: t["payout_mode"] as String? ?? "perSession",
+      payoutRateCents: _asInt(t["payout_rate_cents"]) ?? 0,
+      referralCommissionPercent: (t["referral_commission_percent"] as num?) ?? 0,
+      coachCode: t["coach_code"] as String?,
     );
   }
 

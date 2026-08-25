@@ -51,6 +51,9 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                 beforeAfters: t.beforeAfters,
                 availability: t.availability,
                 commissionRate: t.commissionRate,
+                payoutMode: t.payoutMode,
+                payoutRateCents: t.payoutRateCents,
+                referralCommissionPercent: t.referralCommissionPercent,
               );
             } else {
               // Brand-new trainer — real Supabase Auth account, created on
@@ -69,6 +72,10 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                 beforeAfters: t.beforeAfters,
                 availability: t.availability,
                 commissionRate: t.commissionRate,
+                coachCode: t.coachCode,
+                payoutMode: t.payoutMode,
+                payoutRateCents: t.payoutRateCents,
+                referralCommissionPercent: t.referralCommissionPercent,
               );
             }
           } catch (e) {
@@ -90,6 +97,10 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                 beforeAfters: t.beforeAfters,
                 availability: t.availability,
                 commissionRate: t.commissionRate,
+                coachCode: t.coachCode,
+                payoutMode: t.payoutMode,
+                payoutRateCents: t.payoutRateCents,
+                referralCommissionPercent: t.referralCommissionPercent,
               ));
           setState(() {
             _editing = null;
@@ -152,7 +163,8 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                   if (t.email != null) _IconLine(icon: LucideIcons.mail, text: t.email!),
                   if (t.phone != null) _IconLine(icon: LucideIcons.phone, text: t.phone!),
                   if (t.locationName != null) _IconLine(icon: LucideIcons.mapPin, text: t.locationName!),
-                  _IconLine(icon: LucideIcons.percent, text: "${t.commissionRate}% commission"),
+                  _IconLine(icon: LucideIcons.dollarSign, text: _payoutSummary(t)),
+                  if (t.coachCode != null && t.coachCode!.isNotEmpty) _IconLine(icon: LucideIcons.badgePercent, text: "Coach Code: ${t.coachCode}"),
                 ],
               ),
             );
@@ -161,6 +173,16 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
       ),
     );
   }
+}
+
+String _payoutSummary(Trainer t) {
+  final rate = "\$${(t.payoutRateCents / 100).toStringAsFixed(2)}";
+  final unit = switch (t.payoutMode) {
+    "perClient" => "client",
+    "perHour" => "hour",
+    _ => "session",
+  };
+  return "$rate/$unit";
 }
 
 class _IconLine extends StatelessWidget {

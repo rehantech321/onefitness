@@ -9,6 +9,12 @@ import "../../../data/providers/trainer_providers.dart";
 import "../reports/date_range_filter.dart";
 import "../reports/payroll_reports.dart";
 
+String _payoutModeLabel(String mode) => switch (mode) {
+      "perClient" => "per client",
+      "perHour" => "per hour",
+      _ => "per session",
+    };
+
 /// Mirrors MyPay.jsx — a coach's own read-only pay screen, scoped to their
 /// commission rate and their own sessions in the selected range.
 class MyPayScreen extends ConsumerStatefulWidget {
@@ -37,7 +43,11 @@ class _MyPayScreenState extends ConsumerState<MyPayScreen> {
           const SectionLabel("My Pay"),
           AppCard(
             borderColor: AppColors.goldDim,
-            child: Text("Your commission rate is ${me.commissionRate}% of session revenue for the selected range.", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+            child: Text(
+              "You're paid ${_payoutModeLabel(me.payoutMode)} at \$${(me.payoutRateCents / 100).toStringAsFixed(2)}"
+              "${me.referralCommissionPercent > 0 ? ', plus ${me.referralCommissionPercent}% on purchases by clients who used your Coach Code' : ''}.",
+              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+            ),
           ),
           DateRangeFilter(range: _range, onChange: (r) => setState(() => _range = r)),
           const SizedBox(height: 12),

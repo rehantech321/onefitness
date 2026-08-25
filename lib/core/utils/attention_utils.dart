@@ -40,3 +40,13 @@ List<AttentionItem> computeUnloggedAttendance(List<ClientInfo> myRoster, List<Bo
       .map((b) => AttentionItem(clientId: b.clientId, key: "no-attendance", label: "No attendance logged", bookingId: b.id, date: b.date, slot: b.slot))
       .toList();
 }
+
+/// One-time alert for a coach: a client just signed up using their Coach
+/// Code. Fires once per referred client — clears (SupabaseService.
+/// markCoachCodeAlertSeen) the first time the coach opens that client's
+/// profile from this row (mirrors Coaches Overview's `reviewedByOwner`
+/// pattern — see coaches_overview_screen.dart).
+List<AttentionItem> computeCoachCodeAlerts(List<ClientInfo> myRoster) => myRoster
+    .where((c) => c.referredByTrainerId != null && !c.coachCodeAlertSeen)
+    .map((c) => AttentionItem(clientId: c.id, key: "coach-code-used", label: "Coach Code"))
+    .toList();

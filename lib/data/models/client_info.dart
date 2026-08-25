@@ -26,6 +26,8 @@ class ClientInfo {
     this.membershipCancelsAt,
     this.redeemPointsNextRenewal = false,
     this.isStaff = false,
+    this.referredByTrainerId,
+    this.coachCodeAlertSeen = false,
   });
 
   final String id;
@@ -85,6 +87,18 @@ class ClientInfo {
   /// on the web.
   final bool isStaff;
 
+  /// Set once at signup if the client entered a valid Coach Code — the
+  /// referring coach's id. Also sets [primaryTrainerId] to the same coach
+  /// at signup time (see SupabaseService.signUpClient), so this is mostly
+  /// redundant with it going forward, but kept separate since a client's
+  /// primary trainer can change later while the original referral shouldn't.
+  final String? referredByTrainerId;
+
+  /// Whether the referring coach has already seen the one-time "Coach Code"
+  /// Needs Attention alert for this client — flips true (and the item
+  /// disappears from their dashboard) once they open this client's profile.
+  final bool coachCodeAlertSeen;
+
   ClientInfo copyWith({
     String? name,
     String? email,
@@ -111,6 +125,7 @@ class ClientInfo {
     String? membershipCancelsAt,
     bool clearMembershipCancelsAt = false,
     bool? redeemPointsNextRenewal,
+    bool? coachCodeAlertSeen,
   }) =>
       ClientInfo(
         id: id,
@@ -135,5 +150,7 @@ class ClientInfo {
         membershipCancelsAt: clearMembershipCancelsAt ? null : (membershipCancelsAt ?? this.membershipCancelsAt),
         redeemPointsNextRenewal: redeemPointsNextRenewal ?? this.redeemPointsNextRenewal,
         isStaff: isStaff,
+        referredByTrainerId: referredByTrainerId,
+        coachCodeAlertSeen: coachCodeAlertSeen ?? this.coachCodeAlertSeen,
       );
 }

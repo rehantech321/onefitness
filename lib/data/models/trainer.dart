@@ -41,6 +41,10 @@ class Trainer {
     this.sessionTypes = const [],
     this.reviewedByOwner = true,
     this.signupAt,
+    this.payoutMode = "perSession",
+    this.payoutRateCents = 0,
+    this.referralCommissionPercent = 0,
+    this.coachCode,
   });
 
   final String id;
@@ -68,8 +72,10 @@ class Trainer {
   final List<TrainerBeforeAfter> beforeAfters;
   final List<AvailabilityBlock> availability;
 
-  /// Percent (e.g. 20 = 20%) of session revenue paid to this coach — feeds
-  /// Reports → Payroll/Commissions and the coach's own My Pay screen.
+  /// Percent (e.g. 20 = 20%) of session revenue paid to this coach — legacy
+  /// field, no longer read by payroll math (see [payoutMode]/
+  /// [payoutRateCents]). Left in the model/DB rather than removed since
+  /// dropping a column is destructive and this app never reads it anymore.
   final num commissionRate;
 
   /// False only for a coach who self-signed-up with an approval code and
@@ -81,4 +87,24 @@ class Trainer {
   /// ISO date the coach self-signed-up, if they did (null for owner-added
   /// coaches) — shown in the expanded Coaches Overview card.
   final String? signupAt;
+
+  /// "perClient" | "perHour" | "perSession" — owner picks exactly one mode
+  /// per coach; [payoutRateCents] is that mode's $ rate (cents). Replaces
+  /// [commissionRate] as the real payroll source of truth — see
+  /// report_utils.dart's TrainerRangeStats.
+  final String payoutMode;
+  final int payoutRateCents;
+
+  /// Percent of every membership/package purchase made by a client this
+  /// coach referred (via [coachCode]) — charged to the client as a
+  /// surcharge on top of the listed price, credited to this coach as a
+  /// `charges` row (category "referral_commission"). Independent of
+  /// [payoutMode]/[payoutRateCents] — a second, separate income stream.
+  final num referralCommissionPercent;
+
+  /// Unique, set once at signup (self-signup or owner-added), never
+  /// editable afterward — a client entering this at their own signup links
+  /// to this coach (see clients.referred_by_trainer_id) and becomes their
+  /// primary client. Null for a coach created before this feature shipped.
+  final String? coachCode;
 }

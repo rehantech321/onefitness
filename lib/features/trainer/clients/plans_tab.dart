@@ -7,7 +7,6 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_record.dart";
 import "../../../data/models/nutrition_plan.dart";
 import "../../../data/models/saved_program.dart";
-import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../programs/nutrition_builder_screen.dart";
 import "../programs/program_builder_screen.dart";
@@ -16,9 +15,9 @@ import "../schedule/client_search_picker.dart";
 /// Mirrors PlansArea.jsx — 3 sub-tabs: Training (ProgramBuilder, shown
 /// inline — no separate "build" gate), Nutrition (NutritionBuilder),
 /// Programs (this client's AI drafts + saved programs + the shared
-/// template library — see ProgramsPanel.jsx). Gated entirely behind
-/// "Coaches can edit client workouts" (Settings → Customize Platform →
-/// Coaches) for a non-owner coach — the owner can always edit.
+/// template library — see ProgramsPanel.jsx). Owner-only, no exceptions —
+/// generating, approving, or assigning a workout/nutrition program is a
+/// hard owner-exclusive capability, same as Reports/Memberships/Waivers.
 class PlansTab extends ConsumerStatefulWidget {
   const PlansTab({super.key, required this.clientId});
 
@@ -38,13 +37,11 @@ class _PlansTabState extends ConsumerState<PlansTab> {
     if (record == null) return const SizedBox.shrink();
 
     final isOwner = ref.watch(trainerAuthProvider) == "owner";
-    final canEdit = isOwner || ref.watch(platformSettingsProvider).coachCanEditClientWorkouts;
-    if (!canEdit) {
+    if (!isOwner) {
       return const Padding(
         padding: EdgeInsets.all(18),
         child: HintBox(
-          text: "Workout and nutrition program editing is turned off for coaches right now — the owner can turn it "
-              "back on in Settings → Customize Platform, or edit this client's programs from the owner account.",
+          text: "Only the owner can build, approve, or assign workout and nutrition programs.",
         ),
       );
     }

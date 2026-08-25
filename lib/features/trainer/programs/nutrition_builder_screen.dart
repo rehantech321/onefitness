@@ -318,6 +318,9 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(trainerAuthProvider) != "owner") {
+      return const Padding(padding: EdgeInsets.all(18), child: HintBox(text: "Only the owner can build, approve, or assign nutrition programs."));
+    }
     final clientId = widget.clientId;
     final record = clientId != null ? ref.watch(trainerClientRecordsProvider)[clientId] : null;
     final nutritionIntakeComplete = record?.intake["nutritional"]?.completed ?? false;

@@ -74,8 +74,13 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
   late final _email = TextEditingController(text: widget.initial?.email ?? "");
   late final _phone = TextEditingController(text: widget.initial?.phone ?? "");
   late final _bio = TextEditingController(text: widget.initial?.bio ?? "");
-  late final _commission = TextEditingController(
-    text: "${widget.initial?.commissionRate ?? 0}",
+  late final _coachCode = TextEditingController(text: widget.initial?.coachCode ?? "");
+  late String _payoutMode = widget.initial?.payoutMode ?? "perSession";
+  late final _payoutRate = TextEditingController(
+    text: (((widget.initial?.payoutRateCents ?? 0)) / 100).toStringAsFixed(2),
+  );
+  late final _referralPercent = TextEditingController(
+    text: "${widget.initial?.referralCommissionPercent ?? 0}",
   );
   final _pw = TextEditingController();
   final _pw2 = TextEditingController();
@@ -109,7 +114,9 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
     _email.dispose();
     _phone.dispose();
     _bio.dispose();
-    _commission.dispose();
+    _coachCode.dispose();
+    _payoutRate.dispose();
+    _referralPercent.dispose();
     _pw.dispose();
     _pw2.dispose();
     super.dispose();
@@ -221,9 +228,17 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
         bio: _bio.text.trim().isEmpty ? null : _bio.text.trim(),
         beforeAfters: _beforeAfters,
         availability: _availability,
-        commissionRate:
-            num.tryParse(_commission.text.trim()) ??
-            (widget.initial?.commissionRate ?? 0),
+        commissionRate: widget.initial?.commissionRate ?? 0,
+        payoutMode: _payoutMode,
+        payoutRateCents: ((double.tryParse(_payoutRate.text.trim()) ?? 0) * 100).round(),
+        referralCommissionPercent:
+            num.tryParse(_referralPercent.text.trim()) ??
+            (widget.initial?.referralCommissionPercent ?? 0),
+        // Locked after creation — never taken from the (disabled-when-
+        // editing) text field once a trainer already exists.
+        coachCode: widget.initial != null
+            ? widget.initial!.coachCode
+            : (_coachCode.text.trim().isEmpty ? null : _coachCode.text.trim()),
       ),
       widget.initial == null ? _pw.text : null,
     );
@@ -678,19 +693,74 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             value: _locations,
             onChange: (v) => setState(() => _locations = v),
           ),
+          const SizedBox(height: 14),
+          FieldLabeled(
+            label: "Coach Code",
+            child: widget.initial != null
+                ? AppCard(
+                    child: Text(
+                      widget.initial!.coachCode?.isNotEmpty == true ? widget.initial!.coachCode! : "Not set",
+                      style: const TextStyle(fontSize: 14, color: AppColors.mute),
+                    ),
+                  )
+                : AppField(controller: _coachCode, placeholder: "e.g. JESS10"),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              widget.initial != null
+                  ? "Set once at signup and can't be changed."
+                  : "A unique code this coach gives clients at signup to link referrals to them.",
+              style: const TextStyle(fontSize: 11, color: AppColors.mute),
+            ),
+          ),
           if (widget.isOwnerEditing) ...[
             const SizedBox(height: 14),
+            const Text(
+              "PAY PER SESSION WORKED",
+              style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              children: const [
+                ("perClient", "Per client"),
+                ("perHour", "Per hour"),
+                ("perSession", "Per session"),
+              ].map((opt) {
+                final selected = _payoutMode == opt.$1;
+                return InkWell(
+                  onTap: () => setState(() => _payoutMode = opt.$1),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+                      color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                    ),
+                    child: Text(opt.$2, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.txt)),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 10),
             FieldLabeled(
-              label: "Commission rate (%)",
-              child: AppField(
-                controller: _commission,
-                keyboardType: TextInputType.number,
-              ),
+              label: switch (_payoutMode) {
+                "perClient" => "Rate per client (\$)",
+                "perHour" => "Rate per hour (\$)",
+                _ => "Base rate per session (\$)",
+              },
+              child: AppField(controller: _payoutRate, keyboardType: TextInputType.number),
+            ),
+            const SizedBox(height: 10),
+            FieldLabeled(
+              label: "Referral commission (%)",
+              child: AppField(controller: _referralPercent, keyboardType: TextInputType.number),
             ),
             const Padding(
               padding: EdgeInsets.only(top: 4),
               child: Text(
-                "Percent of a session's revenue this coach is paid — used in the Reports → Payroll reports.",
+                "Percent of every membership/package purchase by a client this coach referred (via their Coach Code) — charged to the client as a surcharge and paid to this coach.",
                 style: TextStyle(fontSize: 11, color: AppColors.mute),
               ),
             ),

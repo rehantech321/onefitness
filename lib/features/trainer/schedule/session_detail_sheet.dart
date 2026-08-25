@@ -3,13 +3,16 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/scheduling_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "../dashboard/trainer_home_screen.dart" show kAttendanceOptions;
 import "client_search_picker.dart";
 
 /// Mirrors SessionDetail.jsx — the roster of every client in one
@@ -58,6 +61,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
     final allBookings = ref.watch(allBookingsProvider);
     final roster = ref.watch(trainerRosterProvider);
     final trainers = ref.watch(trainersProvider);
+    final settings = ref.watch(platformSettingsProvider);
     final active = sessionGroup(allBookings, widget.trainerId, widget.date, widget.slot);
     if (active.isEmpty) return const SizedBox.shrink();
     final first = active.first;
@@ -115,38 +119,88 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
             final matches = roster.where((c) => c.id == b.clientId);
             final client = matches.isNotEmpty ? matches.first : null;
             return AppCard(
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Avatar(name: client?.name ?? "Removed", size: 34),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: InkWell(
-                      onTap: client != null
-                          ? () {
-                              Navigator.of(context).pop();
-                              widget.onOpenClient(client.id);
-                            }
-                          : null,
-                      child: Text(client?.name ?? "Removed client", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    ),
+                  Row(
+                    children: [
+                      Avatar(name: client?.name ?? "Removed", size: 34),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: InkWell(
+                          onTap: client != null
+                              ? () {
+                                  Navigator.of(context).pop();
+                                  widget.onOpenClient(client.id);
+                                }
+                              : null,
+                          child: Text(client?.name ?? "Removed client", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        ),
+                      ),
+                      if (!isPast)
+                        IconButton(
+                          onPressed: _busy
+                              ? null
+                              : () async {
+                                  setState(() => _busy = true);
+                                  try {
+                                    await SupabaseService.deleteBooking(b.id);
+                                    ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
+                                  } catch (e) {
+                                    _showError();
+                                  } finally {
+                                    if (mounted) setState(() => _busy = false);
+                                  }
+                                },
+                          icon: const Icon(LucideIcons.userMinus, size: 15, color: Color(0xFF6B3B3B)),
+                        ),
+                    ],
                   ),
-                  if (!isPast)
-                    IconButton(
-                      onPressed: _busy
-                          ? null
-                          : () async {
-                              setState(() => _busy = true);
-                              try {
-                                await SupabaseService.deleteBooking(b.id);
-                                ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
-                              } catch (e) {
-                                _showError();
-                              } finally {
-                                if (mounted) setState(() => _busy = false);
+                  if (client != null) ...[
+                    const SizedBox(height: 9),
+                    if (b.attendanceStatus != null)
+                      _MarkedAttendanceTag(status: b.attendanceStatus!)
+                    else
+                      Wrap(
+                        spacing: 5,
+                        runSpacing: 5,
+                        children: kAttendanceOptions.map((opt) {
+                          return InkWell(
+                            onTap: () {
+                              ref.read(allBookingsProvider.notifier).updateAttendance(b.id, opt.key);
+                              SupabaseService.updateBookingAttendance(b.id, opt.key).catchError((Object _) {
+                                ref.read(allBookingsProvider.notifier).updateAttendance(b.id, null);
+                              });
+                              final charge = attendanceChargeFor(
+                                b,
+                                opt.key,
+                                clientName: client.name,
+                                trainerName: trainerName,
+                                lateCancellationFeeCents: settings.lateCancellationFeeCents,
+                                noShowFeeCents: settings.noShowFeeCents,
+                              );
+                              if (charge != null) {
+                                SupabaseService.insertCharge(charge).then(
+                                  (saved) => ref.read(chargesProvider.notifier).add(saved),
+                                ).catchError((Object e) {
+                                  // ignore: avoid_print
+                                  print("[attendance charge] failed to save: $e");
+                                });
                               }
                             },
-                      icon: const Icon(LucideIcons.userMinus, size: 15, color: Color(0xFF6B3B3B)),
-                    ),
+                            borderRadius: BorderRadius.circular(7),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: AppColors.line),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              child: Text(opt.label, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.mute)),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                  ],
                 ],
               ),
             );
@@ -177,6 +231,24 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Shown in place of the attendance-option buttons once a client's booking
+/// already has a status — mirrors the user's explicit ask: "If the client
+/// is already marked then no options will appear."
+class _MarkedAttendanceTag extends StatelessWidget {
+  const _MarkedAttendanceTag({required this.status});
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final opt = kAttendanceOptions.firstWhere((o) => o.key == status, orElse: () => kAttendanceOptions.first);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(border: Border.all(color: opt.color), borderRadius: BorderRadius.circular(6)),
+      child: Text(opt.label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: opt.color)),
     );
   }
 }

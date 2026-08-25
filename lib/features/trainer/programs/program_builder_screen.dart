@@ -144,6 +144,9 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (ref.watch(trainerAuthProvider) != "owner") {
+      return const Padding(padding: EdgeInsets.all(18), child: HintBox(text: "Only the owner can build, approve, or assign workout programs."));
+    }
     if (_activeDay == null) {
       return Stack(
         children: [

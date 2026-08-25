@@ -122,6 +122,31 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
         ));
   }
 
+  Future<void> _deleteCoach(Trainer t) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text("Remove coach?"),
+        content: Text("Remove ${t.name}? Their clients keep their history; this only removes their coach profile and login access. This can't be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Remove")),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await SupabaseService.deleteTrainerRow(t.id);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't remove that coach — check your connection and try again.")));
+      }
+      return;
+    }
+    ref.read(trainersProvider.notifier).remove(t.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final trainers = ref.watch(trainersProvider);
@@ -321,6 +346,17 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                             child: Text("• ${f.label}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
                           )),
                     ],
+                    const SizedBox(height: 12),
+                    Center(
+                      child: TextButton(
+                        onPressed: () => _deleteCoach(t),
+                        style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [Icon(LucideIcons.trash2, size: 13), SizedBox(width: 6), Text("Remove coach", style: TextStyle(fontSize: 12))],
+                        ),
+                      ),
+                    ),
                   ] else if (flags.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     ...flags.take(4).map((f) => Padding(
