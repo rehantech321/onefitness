@@ -11,6 +11,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/models/trainer.dart";
+import "../../../data/models/waitlist_entry.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
@@ -54,6 +55,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   bool _showAllUpcoming = false;
   bool _busy = false;
   String? _bookingError;
+  final Set<String> _waitlistBusyKeys = {};
+
+  String _waitlistKey(String trainerId, String date, int slot) => "$trainerId|$date|$slot";
 
   @override
   void initState() {
@@ -148,6 +152,73 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       _picking = PendingPick(trainer: t, sessionType: sessionType, discipline: discipline, slot: slot);
       _bookingError = null;
     });
+  }
+
+  /// Mirrors App.jsx's `joinWaitlist` — a full slot bypasses the normal
+  /// session-cap check (that's the point), but still needs a real
+  /// membership to be eligible at all, same as BookSession.jsx's own
+  /// `check.noMembership` gate.
+  Future<void> _joinWaitlist(Trainer t, String sessionType, String discipline, int slot) async {
+    final key = _waitlistKey(t.id, _date, slot);
+    if (_waitlistBusyKeys.contains(key)) return;
+    final info = ref.read(clientInfoProvider);
+    final bookings = ref.read(clientBookingsProvider);
+    final plan = ref.read(membershipPlansProvider.notifier).byId(info.membershipPlanId);
+    final settings = ref.read(platformSettingsProvider);
+    final check = canBookOffering(
+      info,
+      sessionType,
+      bookings,
+      _date,
+      slot,
+      plan,
+      minBookingLeadHours: settings.minBookingLeadHours,
+      maxBookingHorizonDays: settings.maxBookingHorizonDays,
+    );
+    if (check.noMembership) {
+      setState(() => _denied = check);
+      return;
+    }
+    final waitlist = ref.read(waitlistProvider);
+    final already = waitlist.any((w) => w.clientId == info.id && w.trainerId == t.id && w.date == _date && w.slot == slot && w.status == "waiting");
+    if (already) return;
+    final position = waitlist.where((w) => w.trainerId == t.id && w.date == _date && w.slot == slot && w.status == "waiting").length + 1;
+    setState(() => _waitlistBusyKeys.add(key));
+    try {
+      final saved = await SupabaseService.insertWaitlistEntry(WaitlistEntry(
+        id: "",
+        clientId: info.id,
+        clientName: info.name,
+        trainerId: t.id,
+        trainerName: t.name,
+        date: _date,
+        slot: slot,
+        sessionType: sessionType,
+        discipline: discipline,
+        status: "waiting",
+        position: position,
+        addedAt: stamp(),
+      ));
+      ref.read(waitlistProvider.notifier).add(saved);
+    } catch (e) {
+      _showError("Couldn't join the waitlist — check your connection and try again.");
+    } finally {
+      if (mounted) setState(() => _waitlistBusyKeys.remove(key));
+    }
+  }
+
+  Future<void> _leaveWaitlist(WaitlistEntry w) async {
+    final key = _waitlistKey(w.trainerId, w.date, w.slot);
+    if (_waitlistBusyKeys.contains(key)) return;
+    setState(() => _waitlistBusyKeys.add(key));
+    try {
+      await SupabaseService.deleteWaitlistEntry(w.id);
+      ref.read(waitlistProvider.notifier).remove(w.id);
+    } catch (e) {
+      _showError("Couldn't leave the waitlist — check your connection and try again.");
+    } finally {
+      if (mounted) setState(() => _waitlistBusyKeys.remove(key));
+    }
   }
 
   Future<void> _confirmBooking() async {
@@ -342,7 +413,13 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               chosenDisc: _chosenDisc!,
               info: info,
               trainers: trainers,
-              bookings: bookings,
+              // Gym-wide, not clientBookingsProvider's self-scoped `bookings`
+              // above — capacity/fullness has to account for every client's
+              // bookings on this trainer/date/slot, not just the signed-in
+              // client's own (which would make a slot never show full unless
+              // they themselves already occupy it).
+              bookings: ref.watch(allBookingsProvider),
+              waitlist: ref.watch(waitlistProvider),
               onDateChange: (d) => setState(() => _date = d),
               onChangeType: () => setState(() {
                 _chosenType = null;
@@ -350,6 +427,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               }),
               onChangeDisc: () => setState(() => _chosenDisc = null),
               onSlotTap: _onSlotTap,
+              onJoinWaitlist: _joinWaitlist,
+              onLeaveWaitlist: _leaveWaitlist,
+              waitlistBusyKeys: _waitlistBusyKeys,
               semiPrivateCap: ref.watch(platformSettingsProvider).semiPrivateCap,
             ),
         ],
@@ -553,10 +633,14 @@ class _StepThree extends StatefulWidget {
     required this.info,
     required this.trainers,
     required this.bookings,
+    required this.waitlist,
     required this.onDateChange,
     required this.onChangeType,
     required this.onChangeDisc,
     required this.onSlotTap,
+    required this.onJoinWaitlist,
+    required this.onLeaveWaitlist,
+    required this.waitlistBusyKeys,
     required this.semiPrivateCap,
   });
 
@@ -565,11 +649,20 @@ class _StepThree extends StatefulWidget {
   final String chosenDisc;
   final dynamic info;
   final List<Trainer> trainers;
+
+  /// Gym-wide (every client's bookings), not just the signed-in client's —
+  /// capacity/fullness must account for everyone occupying this trainer/
+  /// date/slot. The "mine" flag below still filters back down to `info.id`
+  /// per booking, so a single shared list serves both purposes correctly.
   final List<Booking> bookings;
+  final List<WaitlistEntry> waitlist;
   final ValueChanged<String> onDateChange;
   final VoidCallback onChangeType;
   final VoidCallback onChangeDisc;
   final void Function(Trainer, String, String, int, bool, bool) onSlotTap;
+  final void Function(Trainer, String, String, int) onJoinWaitlist;
+  final void Function(WaitlistEntry) onLeaveWaitlist;
+  final Set<String> waitlistBusyKeys;
   final int semiPrivateCap;
 
   @override
@@ -596,6 +689,7 @@ class _StepThreeState extends State<_StepThree> {
     final info = widget.info;
     final trainers = widget.trainers;
     final bookings = widget.bookings;
+    final waitlist = widget.waitlist;
     final onDateChange = widget.onDateChange;
     final onChangeType = widget.onChangeType;
     final onChangeDisc = widget.onChangeDisc;
@@ -625,8 +719,6 @@ class _StepThreeState extends State<_StepThree> {
       }
     }
     final slots = bySlot.keys.toList()..sort();
-    final firstHour = slots.where((s) => s % 60 == 0).isEmpty ? null : slots.where((s) => s % 60 == 0).first;
-    final firstHalf = slots.where((s) => s % 60 == 30).isEmpty ? null : slots.where((s) => s % 60 == 30).first;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -650,18 +742,28 @@ class _StepThreeState extends State<_StepThree> {
         ),
         const SizedBox(height: 4),
         DateStrip(date: date, onSelect: onDateChange, disablePast: true),
-        if (firstHour != null || firstHalf != null)
+        if (slots.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 10, bottom: 4),
             child: Row(
               children: [
-                const Text("Jump to:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
-                const SizedBox(width: 8),
-                if (firstHour != null) ...[
-                  _JumpToChip(label: "Hour", onTap: () => _jumpTo(firstHour)),
-                  const SizedBox(width: 8),
-                ],
-                if (firstHalf != null) _JumpToChip(label: "Half Hour", onTap: () => _jumpTo(firstHalf)),
+                const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: Text("Jump to:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (final slot in slots) ...[
+                          _JumpToChip(label: fmtSlotCompactAmPm(slot), onTap: () => _jumpTo(slot)),
+                          const SizedBox(width: 8),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -684,77 +786,134 @@ class _StepThreeState extends State<_StepThree> {
                   const SizedBox(height: 8),
                   ...avail.map((a) {
                     final isFull = a.open <= 0 && !a.mine;
+                    final onWaitlistMatches = waitlist.where(
+                      (w) => w.clientId == info.id && w.trainerId == a.trainer.id && w.date == date && w.slot == slot && w.status == "waiting",
+                    );
+                    final onWaitlist = onWaitlistMatches.isEmpty ? null : onWaitlistMatches.first;
+                    final waitlistBusy = widget.waitlistBusyKeys.contains("${a.trainer.id}|$date|$slot");
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: InkWell(
-                        onTap: () => onSlotTap(a.trainer, chosenType, chosenDisc, slot, a.mine, isFull),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Opacity(
-                          opacity: isFull ? 0.65 : 1,
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: a.mine ? AppColors.gold.withValues(alpha: 0.1) : AppColors.card,
-                              border: Border.all(color: a.mine ? AppColors.gold : (a.open > 0 ? AppColors.line : const Color(0xFF222222))),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              children: [
-                                Avatar(src: a.trainer.photo, name: a.trainer.name, size: 38, active: a.mine),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(a.trainer.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                                      Text(
-                                        "${disciplineLabel(chosenDisc)} · ${sessionTypeLabel(chosenType)}",
-                                        style: const TextStyle(fontSize: 12, color: AppColors.mute),
-                                      ),
-                                      if (a.trainer.locationName != null)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 3),
-                                          child: Row(
-                                            children: [
-                                              const Icon(LucideIcons.mapPin, size: 11, color: AppColors.goldDim),
-                                              const SizedBox(width: 3),
-                                              Text(a.trainer.locationName!, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
-                                            ],
-                                          ),
-                                        ),
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 5),
-                                        child: GestureDetector(
-                                          onTap: () => CoachProfileCard.show(context, a.trainer),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: const [
-                                              Text("Meet the Coach", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gold)),
-                                              SizedBox(width: 3),
-                                              Icon(LucideIcons.chevronRight, size: 11, color: AppColors.gold),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                      child: Column(
+                        children: [
+                          InkWell(
+                            onTap: (a.mine || isFull) ? null : () => onSlotTap(a.trainer, chosenType, chosenDisc, slot, a.mine, isFull),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Opacity(
+                              opacity: isFull && onWaitlist == null ? 0.65 : 1,
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: a.mine
+                                      ? AppColors.gold.withValues(alpha: 0.1)
+                                      : onWaitlist != null
+                                          ? const Color(0xFFD68A4F).withValues(alpha: 0.06)
+                                          : AppColors.card,
+                                  border: Border.all(
+                                    color: a.mine
+                                        ? AppColors.gold
+                                        : onWaitlist != null
+                                            ? const Color(0xFFD68A4F).withValues(alpha: 0.35)
+                                            : (a.open > 0 ? AppColors.line : const Color(0xFF222222)),
                                   ),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                if (a.mine)
-                                  const Text("Booked ✓", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700))
-                                else if (a.open > 0)
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text("${a.open}", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.gold)),
-                                      Text("of ${a.cap} open", style: const TextStyle(fontSize: 10, color: AppColors.mute)),
-                                    ],
-                                  )
-                                else
-                                  const Text("Full", style: TextStyle(fontSize: 12, color: Color(0xFF8A5A5A), fontWeight: FontWeight.w600)),
-                              ],
+                                child: Row(
+                                  children: [
+                                    Avatar(src: a.trainer.photo, name: a.trainer.name, size: 38, active: a.mine),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(a.trainer.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                                          Text(
+                                            "${disciplineLabel(chosenDisc)} · ${sessionTypeLabel(chosenType)}",
+                                            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                                          ),
+                                          if (a.trainer.locationName != null)
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 3),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(LucideIcons.mapPin, size: 11, color: AppColors.goldDim),
+                                                  const SizedBox(width: 3),
+                                                  Text(a.trainer.locationName!, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                                                ],
+                                              ),
+                                            ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 5),
+                                            child: GestureDetector(
+                                              onTap: () => CoachProfileCard.show(context, a.trainer),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: const [
+                                                  Text("Meet the Coach", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gold)),
+                                                  SizedBox(width: 3),
+                                                  Icon(LucideIcons.chevronRight, size: 11, color: AppColors.gold),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (a.mine)
+                                      const Text("Booked ✓", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700))
+                                    else if (a.open > 0)
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text("${a.open}", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.gold)),
+                                          Text("of ${a.cap} open", style: const TextStyle(fontSize: 10, color: AppColors.mute)),
+                                        ],
+                                      )
+                                    else if (onWaitlist != null)
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          const Text("Waitlist", style: TextStyle(fontSize: 11, color: Color(0xFFD68A4F), fontWeight: FontWeight.w700)),
+                                          Text("#${onWaitlist.position ?? '—'}", style: const TextStyle(fontSize: 10, color: AppColors.mute)),
+                                        ],
+                                      )
+                                    else
+                                      const Text("Full", style: TextStyle(fontSize: 12, color: Color(0xFF8A5A5A), fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          if (isFull && !a.mine)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: onWaitlist != null
+                                    ? OutlinedButton(
+                                        onPressed: waitlistBusy ? null : () => widget.onLeaveWaitlist(onWaitlist),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: const Color(0xFFC97F7F),
+                                          side: const BorderSide(color: Color(0xFF6B3B3B)),
+                                          padding: const EdgeInsets.symmetric(vertical: 7),
+                                        ),
+                                        child: Text(
+                                          "Leave waitlist (position #${onWaitlist.position ?? '—'})",
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                        ),
+                                      )
+                                    : OutlinedButton(
+                                        onPressed: waitlistBusy ? null : () => widget.onJoinWaitlist(a.trainer, chosenType, chosenDisc, slot),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: const Color(0xFFD68A4F),
+                                          side: const BorderSide(color: Color(0xFFD68A4F)),
+                                          backgroundColor: const Color(0xFFD68A4F).withValues(alpha: 0.1),
+                                          padding: const EdgeInsets.symmetric(vertical: 7),
+                                        ),
+                                        child: const Text("+ Join waitlist", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                                      ),
+                              ),
+                            ),
+                        ],
                       ),
                     );
                   }),
