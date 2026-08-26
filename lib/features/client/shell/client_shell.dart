@@ -1,6 +1,8 @@
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
@@ -92,12 +94,64 @@ class ClientShell extends ConsumerStatefulWidget {
   ConsumerState<ClientShell> createState() => _ClientShellState();
 }
 
+// Bottom-tab-bar destinations — back/swipe from any of these jumps
+// straight to Dashboard instead of walking tab-visit history.
+const _tabRootKeys = {"dashboard", "plans", "booking", "chat"};
+
 class _ClientShellState extends ConsumerState<ClientShell> {
   OverlayEntry? _dashboardTourEntry;
   // Closes the drawer directly (bypassing Navigator.pop) so it doesn't get
   // swallowed by the PopScope below, which intercepts pop attempts whenever
   // canPop is false to run its own back-history logic instead.
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  Offset? _dragStart;
+
+  // The single source of truth for "what does back mean right now" — used
+  // by the top-bar back button, the swipe gesture, and system back/OS
+  // edge-swipe alike, so all three always agree. Order matters: an open
+  // drawer wins, then any open local sub-view (a form, a detail drilled
+  // into — see local_back_stack.dart), then — only once neither applies
+  // — the shell's own screen history.
+  void _handleBack() {
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      _scaffoldKey.currentState!.closeDrawer();
+      return;
+    }
+    final local = ref.read(localBackStackProvider.notifier).top;
+    if (local != null) {
+      local();
+      return;
+    }
+    final screen = ref.read(clientScreenProvider);
+    if (screen == "dashboard") return;
+    if (_tabRootKeys.contains(screen)) {
+      ref.read(clientScreenProvider.notifier).go("dashboard");
+    } else {
+      ref.read(clientScreenProvider.notifier).goBack();
+    }
+  }
+
+  void _onPointerDown(PointerDownEvent e) {
+    if (e.buttons == kPrimaryButton || e.kind != PointerDeviceKind.mouse) {
+      _dragStart = e.position;
+    }
+  }
+
+  void _onPointerUp(PointerUpEvent e) {
+    final start = _dragStart;
+    _dragStart = null;
+    if (start == null) return;
+    final delta = e.position - start;
+    // Ignore drags starting inside the Drawer's own left-edge-swipe-to-
+    // open hitbox (Scaffold's default drawerEdgeDragWidth) so the two
+    // gestures never fight over the same swipe; require a deliberate,
+    // mostly-horizontal, rightward motion.
+    if (start.dx > 24 &&
+        delta.dx > 80 &&
+        delta.dx.abs() > delta.dy.abs() * 1.5) {
+      _handleBack();
+    }
+  }
 
   /// Mirrors ClientShell.jsx's `screen === "dashboard" && !drawer &&
   /// !client.tourSeen?.dashboard` — a plain declarative render tied to
@@ -198,169 +252,195 @@ class _ClientShellState extends ConsumerState<ClientShell> {
       canPop: screen == "dashboard",
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        ref.read(clientScreenProvider.notifier).goBack();
+        _handleBack();
       },
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: AppColors.bg,
         drawer: _ClientDrawer(info: info, screen: screen, onGo: go),
-        body: Stack(
-          children: [
-            SafeArea(
-              bottom: false,
-              child: Column(
-                children: [
-                  // Top bar
-                  Container(
-                    decoration: const BoxDecoration(
-                      color: AppColors.bg,
-                      border: Border(bottom: BorderSide(color: AppColors.line)),
+        body: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: _onPointerDown,
+          onPointerUp: _onPointerUp,
+          child: Stack(
+            children: [
+              SafeArea(
+                bottom: false,
+                child: Column(
+                  children: [
+                    // Top bar
+                    Container(
+                      decoration: const BoxDecoration(
+                        color: AppColors.bg,
+                        border: Border(
+                          bottom: BorderSide(color: AppColors.line),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        child: Row(
+                          children: [
+                            Builder(
+                              key: kDashboardTourKeys["dash-hamburger"],
+                              builder: (context) => IconButton(
+                                onPressed: () =>
+                                    Scaffold.of(context).openDrawer(),
+                                icon: const Icon(
+                                  LucideIcons.menu,
+                                  size: 22,
+                                  color: AppColors.txt,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ),
+                            if (screen != "dashboard") ...[
+                              const SizedBox(width: 6),
+                              IconButton(
+                                onPressed: _handleBack,
+                                icon: const Icon(
+                                  LucideIcons.chevronLeft,
+                                  size: 22,
+                                  color: AppColors.txt,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                            ],
+                            Expanded(
+                              child: Text(
+                                _titles[screen] ?? "",
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                            Avatar(
+                              src: info.photo,
+                              name: info.name,
+                              size: 30,
+                              active: true,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      child: Row(
-                        children: [
-                          Builder(
-                            key: kDashboardTourKeys["dash-hamburger"],
-                            builder: (context) => IconButton(
-                              onPressed: () =>
-                                  Scaffold.of(context).openDrawer(),
-                              icon: const Icon(
-                                LucideIcons.menu,
-                                size: 22,
-                                color: AppColors.txt,
+                    // Content
+                    Expanded(
+                      child: switch (screen) {
+                        "dashboard" => ClientDashboardScreen(
+                          client: client,
+                          info: info,
+                          plan: plan,
+                          bookings: bookings,
+                          onGoBooking: goBooking,
+                          onLogWorkout: () => go("plans"),
+                          onPickDate: pickCalendarDate,
+                          onGoHabits: () => go("habits"),
+                          earnedBadges: earnedBadges,
+                          onGoBadges: () => go("badges"),
+                          onGoToForm: (formKey) {
+                            ref
+                                .read(pendingIntakeFormKeyProvider.notifier)
+                                .set(formKey);
+                            go("forms");
+                          },
+                        ),
+                        "chat" => const ChatScreen(),
+                        "plans" => const PlansScreen(),
+                        "booking" => BookingScreen(
+                          onGoMemberships: () => go("memberships"),
+                          initialDate: ref
+                              .watch(pendingBookingTargetProvider)
+                              ?.initialDate,
+                          initialReschedule: ref
+                              .watch(pendingBookingTargetProvider)
+                              ?.reschedule,
+                        ),
+                        "day" => DayDetailScreen(
+                          date:
+                              ref.watch(pendingDayDetailDateProvider) ??
+                              isoToday(),
+                          onBack: () => go("dashboard"),
+                          onReschedule: startReschedule,
+                          onGoPlans: () => go("plans"),
+                        ),
+                        "advancedBooking" => AdvancedBookingScreen(
+                          onDone: () => go("booking"),
+                        ),
+                        "nutrition" => const NutritionTab(),
+                        "habits" => const HabitTrackerScreen(),
+                        "history" => const HistoryScreen(),
+                        "signatures" => const SignaturesScreen(),
+                        "memberships" => const MembershipHubScreen(),
+                        "challenges" => const ChallengesScreen(),
+                        "rewards" => RewardsScreen(
+                          clientId: info.id,
+                          onOpenBadges: () => go("badges"),
+                        ),
+                        "badges" => BadgeGalleryScreen(clientId: info.id),
+                        "settings" => const ProfileSettingsScreen(),
+                        "squad" => const SquadDashboardScreen(),
+                        "forms" => IntakeAreaScreen(
+                          profileId: info.id,
+                          client: client,
+                          who: "client",
+                          onSaved: (key, record) => ref
+                              .read(clientRecordProvider.notifier)
+                              .update(
+                                (r) => r.copyWith(
+                                  intake: {...r.intake, key: record},
+                                ),
                               ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              _titles[screen] ?? "",
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ),
-                          Avatar(
-                            src: info.photo,
-                            name: info.name,
-                            size: 30,
-                            active: true,
-                          ),
-                        ],
-                      ),
+                        ),
+                        "progress" ||
+                        "photos" ||
+                        "measurements" => const LogProgressScreen(),
+                        _ => PlaceholderScreen(
+                          title: _titles[screen] ?? screen,
+                        ),
+                      },
                     ),
-                  ),
-                  // Content
-                  Expanded(
-                    child: switch (screen) {
-                      "dashboard" => ClientDashboardScreen(
-                        client: client,
-                        info: info,
-                        plan: plan,
-                        bookings: bookings,
-                        onGoBooking: goBooking,
-                        onLogWorkout: () => go("plans"),
-                        onPickDate: pickCalendarDate,
-                        onGoHabits: () => go("habits"),
-                        earnedBadges: earnedBadges,
-                        onGoBadges: () => go("badges"),
-                        onGoToForm: (formKey) {
-                          ref
-                              .read(pendingIntakeFormKeyProvider.notifier)
-                              .set(formKey);
-                          go("forms");
-                        },
-                      ),
-                      "chat" => const ChatScreen(),
-                      "plans" => const PlansScreen(),
-                      "booking" => BookingScreen(
-                        onGoMemberships: () => go("memberships"),
-                        initialDate: ref
-                            .watch(pendingBookingTargetProvider)
-                            ?.initialDate,
-                        initialReschedule: ref
-                            .watch(pendingBookingTargetProvider)
-                            ?.reschedule,
-                      ),
-                      "day" => DayDetailScreen(
-                        date:
-                            ref.watch(pendingDayDetailDateProvider) ??
-                            isoToday(),
-                        onBack: () => go("dashboard"),
-                        onReschedule: startReschedule,
-                        onGoPlans: () => go("plans"),
-                      ),
-                      "advancedBooking" => AdvancedBookingScreen(
-                        onDone: () => go("booking"),
-                      ),
-                      "nutrition" => const NutritionTab(),
-                      "habits" => const HabitTrackerScreen(),
-                      "history" => const HistoryScreen(),
-                      "signatures" => const SignaturesScreen(),
-                      "memberships" => const MembershipHubScreen(),
-                      "challenges" => const ChallengesScreen(),
-                      "rewards" => RewardsScreen(
-                        clientId: info.id,
-                        onOpenBadges: () => go("badges"),
-                      ),
-                      "badges" => BadgeGalleryScreen(clientId: info.id),
-                      "settings" => const ProfileSettingsScreen(),
-                      "squad" => const SquadDashboardScreen(),
-                      "forms" => IntakeAreaScreen(
-                        profileId: info.id,
-                        client: client,
-                        who: "client",
-                        onSaved: (key, record) => ref
-                            .read(clientRecordProvider.notifier)
-                            .update(
-                              (r) => r.copyWith(
-                                intake: {...r.intake, key: record},
-                              ),
-                            ),
-                      ),
-                      "progress" ||
-                      "photos" ||
-                      "measurements" => const LogProgressScreen(),
-                      _ => PlaceholderScreen(title: _titles[screen] ?? screen),
-                    },
-                  ),
-                ],
-              ),
-            ),
-            // Advanced Booking — pinned above the bottom bar, Booking tab only.
-            // Scaffold already sizes `body` to exclude bottomNavigationBar, so
-            // bottom: 8 here lands just above it, no extra offset needed.
-            if (screen == "booking")
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 8,
-                child: BtnGold(
-                  full: true,
-                  onPressed: () {
-                    ref.read(pendingBookingTargetProvider.notifier).set(null);
-                    go("advancedBooking");
-                  },
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(LucideIcons.calendar, size: 15, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text("Advanced Booking"),
-                    ],
-                  ),
+                  ],
                 ),
               ),
-          ],
+              // Advanced Booking — pinned above the bottom bar, Booking tab only.
+              // Scaffold already sizes `body` to exclude bottomNavigationBar, so
+              // bottom: 8 here lands just above it, no extra offset needed.
+              if (screen == "booking")
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 8,
+                  child: BtnGold(
+                    full: true,
+                    onPressed: () {
+                      ref.read(pendingBookingTargetProvider.notifier).set(null);
+                      go("advancedBooking");
+                    },
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          LucideIcons.calendar,
+                          size: 15,
+                          color: Colors.white,
+                        ),
+                        SizedBox(width: 8),
+                        Text("Advanced Booking"),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
         bottomNavigationBar: DecoratedBox(
           decoration: const BoxDecoration(

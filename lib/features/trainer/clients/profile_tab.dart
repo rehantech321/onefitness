@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/client_status_utils.dart";
@@ -25,7 +26,11 @@ import "../../../data/providers/trainer_providers.dart";
 /// (available to any coach, not just the owner), and Add Charge — persists
 /// to the real backend the same as the web.
 class ProfileTab extends ConsumerStatefulWidget {
-  const ProfileTab({super.key, required this.clientId, required this.onGoToIntake});
+  const ProfileTab({
+    super.key,
+    required this.clientId,
+    required this.onGoToIntake,
+  });
 
   final String clientId;
   final VoidCallback onGoToIntake;
@@ -60,47 +65,81 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     final info = matches.first;
     final records = ref.watch(trainerClientRecordsProvider);
     final record = records[widget.clientId];
-    final status = record != null ? computeClientStatus(record) : ClientStatus.newClient;
+    final status = record != null
+        ? computeClientStatus(record)
+        : ClientStatus.newClient;
     final meta = kStatusMeta[status]!;
-    final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
-    final bookings = ref.watch(allBookingsProvider).where((b) => b.clientId == widget.clientId).toList();
+    final plan = ref
+        .watch(membershipPlansProvider.notifier)
+        .byId(info.membershipPlanId);
+    final bookings = ref
+        .watch(allBookingsProvider)
+        .where((b) => b.clientId == widget.clientId)
+        .toList();
     final notes = record != null ? getClientProgramNotes(record) : const [];
     final earnedBadges = ref.watch(earnedBadgesProvider);
-    final hasActiveBadges = earnedBadges.any((b) => b.clientId == widget.clientId && b.isActive);
+    final hasActiveBadges = earnedBadges.any(
+      (b) => b.clientId == widget.clientId && b.isActive,
+    );
 
-    void update(ClientInfoUpdater updater) => ref.read(trainerRosterProvider.notifier).update(widget.clientId, updater);
+    void update(ClientInfoUpdater updater) => ref
+        .read(trainerRosterProvider.notifier)
+        .update(widget.clientId, updater);
 
     if (_editing) {
-      return _EditSection(
-        info: info,
-        onCancel: () => setState(() => _editing = false),
-        onSave: (name, email, phone, city) async {
-          await SupabaseService.updateClientRow(info.id, name: name, email: email, phone: phone, city: city);
-          update((c) => c.copyWith(name: name, email: email, phone: phone, city: city));
-          if (mounted) setState(() => _editing = false);
-        },
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _editing = false),
+        child: _EditSection(
+          info: info,
+          onCancel: () => setState(() => _editing = false),
+          onSave: (name, email, phone, city) async {
+            await SupabaseService.updateClientRow(
+              info.id,
+              name: name,
+              email: email,
+              phone: phone,
+              city: city,
+            );
+            update(
+              (c) => c.copyWith(
+                name: name,
+                email: email,
+                phone: phone,
+                city: city,
+              ),
+            );
+            if (mounted) setState(() => _editing = false);
+          },
+        ),
       );
     }
 
     if (_charging) {
-      return _AddChargeForm(
-        info: info,
-        onCancel: () => setState(() => _charging = false),
-        onSubmit: (category, description, amount) async {
-          final saved = await SupabaseService.insertCharge(Charge(
-            id: "",
-            clientId: info.id,
-            clientName: info.name,
-            type: "manual",
-            date: isoToday(),
-            at: stamp(),
-            category: category,
-            description: description,
-            amount: amount,
-          ));
-          ref.read(chargesProvider.notifier).add(saved);
-          if (mounted) setState(() => _charging = false);
-        },
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _charging = false),
+        child: _AddChargeForm(
+          info: info,
+          onCancel: () => setState(() => _charging = false),
+          onSubmit: (category, description, amount) async {
+            final saved = await SupabaseService.insertCharge(
+              Charge(
+                id: "",
+                clientId: info.id,
+                clientName: info.name,
+                type: "manual",
+                date: isoToday(),
+                at: stamp(),
+                category: category,
+                description: description,
+                amount: amount,
+              ),
+            );
+            ref.read(chargesProvider.notifier).add(saved);
+            if (mounted) setState(() => _charging = false);
+          },
+        ),
       );
     }
 
@@ -116,8 +155,17 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(info.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 19)),
-                  const Text("ONE Fitness client", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                  Text(
+                    info.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 19,
+                    ),
+                  ),
+                  const Text(
+                    "ONE Fitness client",
+                    style: TextStyle(fontSize: 12, color: AppColors.mute),
+                  ),
                 ],
               ),
             ],
@@ -125,9 +173,24 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           const SizedBox(height: 18),
           const SectionLabel("Active Merit Badges"),
           hasActiveBadges
-              ? Padding(padding: const EdgeInsets.only(bottom: 14), child: MeritBadgeRow(clientId: widget.clientId, earnedBadges: earnedBadges))
-              : const Padding(padding: EdgeInsets.only(bottom: 14), child: Text("No Merit Badges earned yet.", style: TextStyle(fontSize: 12, color: AppColors.mute))),
-          _IntakeStatusSummary(intake: record?.intake ?? const {}, onTap: widget.onGoToIntake),
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: MeritBadgeRow(
+                    clientId: widget.clientId,
+                    earnedBadges: earnedBadges,
+                  ),
+                )
+              : const Padding(
+                  padding: EdgeInsets.only(bottom: 14),
+                  child: Text(
+                    "No Merit Badges earned yet.",
+                    style: TextStyle(fontSize: 12, color: AppColors.mute),
+                  ),
+                ),
+          _IntakeStatusSummary(
+            intake: record?.intake ?? const {},
+            onTap: widget.onGoToIntake,
+          ),
           if (record != null) FlagAlert(flag: getHighestFlag(record, info)),
           if (notes.isNotEmpty)
             Container(
@@ -145,7 +208,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   Expanded(
                     child: Text(
                       "Client left ${notes.length == 1 ? 'a note' : '${notes.length} notes'} on their workout program — review before session",
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFE05555)),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFE05555),
+                      ),
                     ),
                   ),
                 ],
@@ -159,9 +226,28 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("PROGRESS STATUS", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
-                    Text(meta.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                    Text(meta.desc, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                    const Text(
+                      "PROGRESS STATUS",
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.mute,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    Text(
+                      meta.label,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      meta.desc,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.mute,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -173,20 +259,43 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               children: [
                 Row(
                   children: [
-                    const Icon(LucideIcons.creditCard, size: 17, color: AppColors.gold),
+                    const Icon(
+                      LucideIcons.creditCard,
+                      size: 17,
+                      color: AppColors.gold,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("MEMBERSHIP", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
-                          Text(plan != null ? _membershipLabel(plan) : "No membership selected", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          const Text(
+                            "MEMBERSHIP",
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.mute,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          Text(
+                            plan != null
+                                ? _membershipLabel(plan)
+                                : "No membership selected",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           if (info.membershipPaused)
                             Padding(
                               padding: const EdgeInsets.only(top: 3),
                               child: Text(
                                 "Frozen ${info.membershipPausedAt ?? ''}${info.membershipFreezeEndsAt != null ? ' – ${info.membershipFreezeEndsAt}' : ''}",
-                                style: const TextStyle(fontSize: 11, color: Color(0xFFD68A4F), fontWeight: FontWeight.w700),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFFD68A4F),
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                         ],
@@ -199,44 +308,83 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   if (_freezeErr != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(_freezeErr!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12)),
+                      child: Text(
+                        _freezeErr!,
+                        style: const TextStyle(
+                          color: Color(0xFFC97F7F),
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                   if (info.membershipPaused)
                     BtnGold(
                       full: true,
-                      onPressed: _freezeBusy ? null : () => _unfreeze(info, update),
+                      onPressed: _freezeBusy
+                          ? null
+                          : () => _unfreeze(info, update),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: [const Icon(LucideIcons.refreshCw, size: 14), const SizedBox(width: 6), Text(_freezeBusy ? "Working…" : "Unfreeze now")],
+                        children: [
+                          const Icon(LucideIcons.refreshCw, size: 14),
+                          const SizedBox(width: 6),
+                          Text(_freezeBusy ? "Working…" : "Unfreeze now"),
+                        ],
                       ),
                     )
                   else if (_freezing)
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        border: Border.all(color: AppColors.line),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             "Both dates are required — this shifts ${info.name}'s billing date too, so they don't lose any paid-for time.",
-                            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.mute,
+                            ),
                           ),
                           const SizedBox(height: 10),
                           Row(
                             children: [
-                              Expanded(child: FieldLabeled(label: "Start (YYYY-MM-DD)", child: AppField(controller: _freezeStart))),
+                              Expanded(
+                                child: FieldLabeled(
+                                  label: "Start (YYYY-MM-DD)",
+                                  child: AppField(controller: _freezeStart),
+                                ),
+                              ),
                               const SizedBox(width: 8),
-                              Expanded(child: FieldLabeled(label: "End (YYYY-MM-DD)", child: AppField(controller: _freezeEnd))),
+                              Expanded(
+                                child: FieldLabeled(
+                                  label: "End (YYYY-MM-DD)",
+                                  child: AppField(controller: _freezeEnd),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 10),
                           Row(
                             children: [
                               BtnGold(
-                                onPressed: _freezeBusy ? null : () => _confirmFreeze(info, update),
+                                onPressed: _freezeBusy
+                                    ? null
+                                    : () => _confirmFreeze(info, update),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
-                                  children: [const Icon(LucideIcons.snowflake, size: 14), const SizedBox(width: 6), Text(_freezeBusy ? "Freezing…" : "Confirm freeze")],
+                                  children: [
+                                    const Icon(LucideIcons.snowflake, size: 14),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      _freezeBusy
+                                          ? "Freezing…"
+                                          : "Confirm freeze",
+                                    ),
+                                  ],
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -258,7 +406,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       onPressed: () => setState(() => _freezing = true),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: [Icon(LucideIcons.snowflake, size: 14), SizedBox(width: 6), Text("Freeze membership")],
+                        children: [
+                          Icon(LucideIcons.snowflake, size: 14),
+                          SizedBox(width: 6),
+                          Text("Freeze membership"),
+                        ],
                       ),
                     ),
                 ],
@@ -267,7 +419,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     padding: const EdgeInsets.only(top: 14),
                     child: Container(
                       padding: const EdgeInsets.only(top: 12),
-                      decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+                      decoration: const BoxDecoration(
+                        border: Border(top: BorderSide(color: AppColors.line)),
+                      ),
                       child: _SessionOverrideRow(
                         info: info,
                         plan: plan,
@@ -279,9 +433,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                             sessionCountOverrideMonth: month,
                             clearSessionCountOverride: clear,
                           );
-                          update((c) => clear
-                              ? c.copyWith(clearSessionCountOverride: true)
-                              : c.copyWith(sessionCountOverride: total, sessionCountOverrideMonth: month));
+                          update(
+                            (c) => clear
+                                ? c.copyWith(clearSessionCountOverride: true)
+                                : c.copyWith(
+                                    sessionCountOverride: total,
+                                    sessionCountOverrideMonth: month,
+                                  ),
+                          );
                         },
                       ),
                     ),
@@ -290,14 +449,28 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               ],
             ),
           ),
-          _ContactRow(icon: LucideIcons.mail, label: "Email", value: info.email),
+          _ContactRow(
+            icon: LucideIcons.mail,
+            label: "Email",
+            value: info.email,
+          ),
           _ContactRow(
             icon: LucideIcons.cake,
             label: "Birthday",
-            value: info.birthday != null ? "${_niceDate(info.birthday!)} (age ${_ageFrom(info.birthday!)})" : null,
+            value: info.birthday != null
+                ? "${_niceDate(info.birthday!)} (age ${_ageFrom(info.birthday!)})"
+                : null,
           ),
-          _ContactRow(icon: LucideIcons.phone, label: "Phone", value: info.phone),
-          _ContactRow(icon: LucideIcons.mapPin, label: "City", value: info.city),
+          _ContactRow(
+            icon: LucideIcons.phone,
+            label: "Phone",
+            value: info.phone,
+          ),
+          _ContactRow(
+            icon: LucideIcons.mapPin,
+            label: "City",
+            value: info.city,
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -306,7 +479,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   onPressed: () => setState(() => _editing = true),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [Icon(LucideIcons.edit3, size: 14), SizedBox(width: 6), Text("Edit profile")],
+                    children: [
+                      Icon(LucideIcons.edit3, size: 14),
+                      SizedBox(width: 6),
+                      Text("Edit profile"),
+                    ],
                   ),
                 ),
               ),
@@ -316,7 +493,11 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   onPressed: () => setState(() => _charging = true),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [Icon(LucideIcons.creditCard, size: 14), SizedBox(width: 6), Text("Add charge")],
+                    children: [
+                      Icon(LucideIcons.creditCard, size: 14),
+                      SizedBox(width: 6),
+                      Text("Add charge"),
+                    ],
                   ),
                 ),
               ),
@@ -328,10 +509,16 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           Center(
             child: TextButton(
               onPressed: () => _deleteClient(info),
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFC97F7F),
+              ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
-                children: [Icon(LucideIcons.trash2, size: 14), SizedBox(width: 6), Text("Delete client")],
+                children: [
+                  Icon(LucideIcons.trash2, size: 14),
+                  SizedBox(width: 6),
+                  Text("Delete client"),
+                ],
               ),
             ),
           ),
@@ -346,10 +533,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         title: const Text("Delete client?"),
-        content: Text("Delete ${info.name}? This permanently removes their profile, programs, logs, and history. This can't be undone."),
+        content: Text(
+          "Delete ${info.name}? This permanently removes their profile, programs, logs, and history. This can't be undone.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Delete")),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text("Delete"),
+          ),
         ],
       ),
     );
@@ -358,7 +553,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
       await SupabaseService.deleteClientRow(info.id);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't delete that client — check your connection and try again.")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Couldn't delete that client — check your connection and try again.",
+            ),
+          ),
+        );
       }
       return;
     }
@@ -373,22 +574,37 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     return "${plan.name} — $price$suffix";
   }
 
-  Future<void> _unfreeze(ClientInfo info, void Function(ClientInfoUpdater) update) async {
+  Future<void> _unfreeze(
+    ClientInfo info,
+    void Function(ClientInfoUpdater) update,
+  ) async {
     setState(() {
       _freezeBusy = true;
       _freezeErr = null;
     });
     try {
       await SupabaseService.unfreezeMembership(info.id);
-      update((c) => c.copyWith(membershipPaused: false, clearMembershipPausedAt: true, clearMembershipFreezeEndsAt: true));
+      update(
+        (c) => c.copyWith(
+          membershipPaused: false,
+          clearMembershipPausedAt: true,
+          clearMembershipFreezeEndsAt: true,
+        ),
+      );
     } catch (e) {
-      if (mounted) setState(() => _freezeErr = e.toString().replaceFirst("Exception: ", ""));
+      if (mounted)
+        setState(
+          () => _freezeErr = e.toString().replaceFirst("Exception: ", ""),
+        );
     } finally {
       if (mounted) setState(() => _freezeBusy = false);
     }
   }
 
-  Future<void> _confirmFreeze(ClientInfo info, void Function(ClientInfoUpdater) update) async {
+  Future<void> _confirmFreeze(
+    ClientInfo info,
+    void Function(ClientInfoUpdater) update,
+  ) async {
     if (_freezeEnd.text.trim().isEmpty) {
       setState(() => _freezeErr = "An end date is required.");
       return;
@@ -397,14 +613,25 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
       _freezeBusy = true;
       _freezeErr = null;
     });
-    final start = _freezeStart.text.trim().isEmpty ? isoToday() : _freezeStart.text.trim();
+    final start = _freezeStart.text.trim().isEmpty
+        ? isoToday()
+        : _freezeStart.text.trim();
     final end = _freezeEnd.text.trim();
     try {
       await SupabaseService.freezeMembership(info.id, start, end);
-      update((c) => c.copyWith(membershipPaused: true, membershipPausedAt: start, membershipFreezeEndsAt: end));
+      update(
+        (c) => c.copyWith(
+          membershipPaused: true,
+          membershipPausedAt: start,
+          membershipFreezeEndsAt: end,
+        ),
+      );
       if (mounted) setState(() => _freezing = false);
     } catch (e) {
-      if (mounted) setState(() => _freezeErr = e.toString().replaceFirst("Exception: ", ""));
+      if (mounted)
+        setState(
+          () => _freezeErr = e.toString().replaceFirst("Exception: ", ""),
+        );
     } finally {
       if (mounted) setState(() => _freezeBusy = false);
     }
@@ -444,34 +671,67 @@ class _IntakeStatusSummary extends StatelessWidget {
               onTap: onTap,
               borderRadius: BorderRadius.circular(10),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: done ? AppColors.gold.withValues(alpha: 0.06) : AppColors.card,
-                  border: Border.all(color: done ? AppColors.goldDim : AppColors.line),
+                  color: done
+                      ? AppColors.gold.withValues(alpha: 0.06)
+                      : AppColors.card,
+                  border: Border.all(
+                    color: done ? AppColors.goldDim : AppColors.line,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   children: [
                     done
-                        ? const Icon(LucideIcons.check, size: 16, color: AppColors.gold)
-                        : Container(width: 7, height: 7, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE05555))),
+                        ? const Icon(
+                            LucideIcons.check,
+                            size: 16,
+                            color: AppColors.gold,
+                          )
+                        : Container(
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFFE05555),
+                            ),
+                          ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                           Padding(
                             padding: const EdgeInsets.only(top: 1),
                             child: Text(
-                              done ? "Completed by ${rec?.by ?? "Client"}${rec?.at != null ? " · ${rec!.at}" : ""}" : "Not completed yet",
-                              style: TextStyle(fontSize: 11, color: done ? AppColors.gold : AppColors.mute),
+                              done
+                                  ? "Completed by ${rec?.by ?? "Client"}${rec?.at != null ? " · ${rec!.at}" : ""}"
+                                  : "Not completed yet",
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: done ? AppColors.gold : AppColors.mute,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                    const Icon(
+                      LucideIcons.chevronRight,
+                      size: 15,
+                      color: AppColors.mute,
+                    ),
                   ],
                 ),
               ),
@@ -484,7 +744,11 @@ class _IntakeStatusSummary extends StatelessWidget {
 }
 
 class _ContactRow extends StatelessWidget {
-  const _ContactRow({required this.icon, required this.label, required this.value});
+  const _ContactRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
   final IconData icon;
   final String label;
   final String? value;
@@ -499,8 +763,21 @@ class _ContactRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label.toUpperCase(), style: const TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
-              Text(value ?? "—", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              Text(
+                label.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: AppColors.mute,
+                  letterSpacing: 1,
+                ),
+              ),
+              Text(
+                value ?? "—",
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ],
@@ -517,7 +794,12 @@ class _ContactRow extends StatelessWidget {
 /// month (sessionCountOverrideMonth) so it's a one-off top-up for this
 /// period only; a package's override has no month and stays permanent.
 class _SessionOverrideRow extends StatefulWidget {
-  const _SessionOverrideRow({required this.info, required this.plan, required this.bookings, required this.onSave});
+  const _SessionOverrideRow({
+    required this.info,
+    required this.plan,
+    required this.bookings,
+    required this.onSave,
+  });
   final ClientInfo info;
   final MembershipPlan plan;
   final List<Booking> bookings;
@@ -533,15 +815,23 @@ class _SessionOverrideRowState extends State<_SessionOverrideRow> {
   late final TextEditingController _draft;
   bool _busy = false;
 
-  int get _used => sessionsUsedThisPeriod(widget.info, widget.plan, widget.bookings);
-  int get _defaultRemaining => ((widget.plan.maxSessions ?? 0) - _used).clamp(0, 1 << 30);
-  int? get _currentRemaining =>
-      widget.info.sessionCountOverride != null ? (effectiveMaxSessions(widget.info, widget.plan) - _used).clamp(0, 1 << 30) : null;
+  int get _used =>
+      sessionsUsedThisPeriod(widget.info, widget.plan, widget.bookings);
+  int get _defaultRemaining =>
+      ((widget.plan.maxSessions ?? 0) - _used).clamp(0, 1 << 30);
+  int? get _currentRemaining => widget.info.sessionCountOverride != null
+      ? (effectiveMaxSessions(widget.info, widget.plan) - _used).clamp(
+          0,
+          1 << 30,
+        )
+      : null;
 
   @override
   void initState() {
     super.initState();
-    _draft = TextEditingController(text: _currentRemaining != null ? "$_currentRemaining" : "");
+    _draft = TextEditingController(
+      text: _currentRemaining != null ? "$_currentRemaining" : "",
+    );
   }
 
   @override
@@ -558,7 +848,9 @@ class _SessionOverrideRowState extends State<_SessionOverrideRow> {
         await widget.onSave(null, null, true);
       } else {
         final desiredRemaining = int.tryParse(trimmed)?.clamp(0, 1 << 30) ?? 0;
-        final month = widget.plan.kind == PlanKind.membership ? isoToday().substring(0, 7) : null;
+        final month = widget.plan.kind == PlanKind.membership
+            ? isoToday().substring(0, 7)
+            : null;
         await widget.onSave(_used + desiredRemaining, month, false);
       }
     } finally {
@@ -572,16 +864,30 @@ class _SessionOverrideRowState extends State<_SessionOverrideRow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("REMAINING SESSIONS", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+        const Text(
+          "REMAINING SESSIONS",
+          style: TextStyle(
+            fontSize: 10,
+            color: AppColors.mute,
+            letterSpacing: 1,
+          ),
+        ),
         const SizedBox(height: 6),
         Row(
           children: [
             SizedBox(
               width: 90,
-              child: AppField(controller: _draft, placeholder: "$_defaultRemaining", keyboardType: TextInputType.number),
+              child: AppField(
+                controller: _draft,
+                placeholder: "$_defaultRemaining",
+                keyboardType: TextInputType.number,
+              ),
             ),
             const SizedBox(width: 8),
-            BtnGhost(onPressed: _busy ? null : _save, child: Text(_busy ? "Saving…" : "Save")),
+            BtnGhost(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? "Saving…" : "Save"),
+            ),
           ],
         ),
         Padding(
@@ -590,7 +896,9 @@ class _SessionOverrideRowState extends State<_SessionOverrideRow> {
             (currentRemaining != null
                     ? "Currently set to $currentRemaining remaining — the plan default right now would be $_defaultRemaining."
                     : "Using the plan's default of $_defaultRemaining remaining. Leave blank to clear an override.") +
-                (widget.plan.kind == PlanKind.membership ? " This only applies to the current month — it reverts to the plan default next month." : ""),
+                (widget.plan.kind == PlanKind.membership
+                    ? " This only applies to the current month — it reverts to the plan default next month."
+                    : ""),
             style: const TextStyle(fontSize: 11, color: AppColors.mute),
           ),
         ),
@@ -614,10 +922,19 @@ const _kChargeCategories = [
 /// client (e.g. a no-show fee, merchandise sale) for the owner/coach to
 /// collect; purely a ledger entry, no real Stripe payment is taken here.
 class _AddChargeForm extends StatefulWidget {
-  const _AddChargeForm({required this.info, required this.onCancel, required this.onSubmit});
+  const _AddChargeForm({
+    required this.info,
+    required this.onCancel,
+    required this.onSubmit,
+  });
   final ClientInfo info;
   final VoidCallback onCancel;
-  final Future<void> Function(String category, String description, double amount) onSubmit;
+  final Future<void> Function(
+    String category,
+    String description,
+    double amount,
+  )
+  onSubmit;
 
   @override
   State<_AddChargeForm> createState() => _AddChargeFormState();
@@ -654,7 +971,8 @@ class _AddChargeFormState extends State<_AddChargeForm> {
     try {
       await widget.onSubmit(_category, _description.text.trim(), amount);
     } catch (e) {
-      if (mounted) setState(() => _err = e.toString().replaceFirst("Exception: ", ""));
+      if (mounted)
+        setState(() => _err = e.toString().replaceFirst("Exception: ", ""));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -671,7 +989,14 @@ class _AddChargeFormState extends State<_AddChargeForm> {
           const SizedBox(height: 10),
           SectionLabel("Add Charge — ${widget.info.name}"),
           const SizedBox(height: 14),
-          const Text("CATEGORY", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          const Text(
+            "CATEGORY",
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.mute,
+              letterSpacing: 1,
+            ),
+          ),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
@@ -683,25 +1008,55 @@ class _AddChargeFormState extends State<_AddChargeForm> {
                 onTap: () => setState(() => _category = key),
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: selected ? AppColors.gold : AppColors.line),
-                    color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+                    border: Border.all(
+                      color: selected ? AppColors.gold : AppColors.line,
+                    ),
+                    color: selected
+                        ? AppColors.gold.withValues(alpha: 0.15)
+                        : AppColors.card,
                   ),
-                  child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? AppColors.gold : AppColors.mute)),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: selected ? AppColors.gold : AppColors.mute,
+                    ),
+                  ),
                 ),
               );
             }).toList(),
           ),
           const SizedBox(height: 14),
-          FieldLabeled(label: "Description *", child: AppField(controller: _description, placeholder: "e.g. Monthly membership, No-show fee…")),
+          FieldLabeled(
+            label: "Description *",
+            child: AppField(
+              controller: _description,
+              placeholder: "e.g. Monthly membership, No-show fee…",
+            ),
+          ),
           const SizedBox(height: 10),
-          FieldLabeled(label: "Amount (\$) *", child: AppField(controller: _amount, placeholder: "0.00", keyboardType: TextInputType.number)),
+          FieldLabeled(
+            label: "Amount (\$) *",
+            child: AppField(
+              controller: _amount,
+              placeholder: "0.00",
+              keyboardType: TextInputType.number,
+            ),
+          ),
           if (_err != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(_err!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12)),
+              child: Text(
+                _err!,
+                style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12),
+              ),
             ),
           const SizedBox(height: 16),
           BtnGold(
@@ -709,7 +1064,11 @@ class _AddChargeFormState extends State<_AddChargeForm> {
             onPressed: _busy ? null : _submit,
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: [const Icon(LucideIcons.creditCard, size: 14), const SizedBox(width: 6), Text(_busy ? "Adding…" : "Add charge")],
+              children: [
+                const Icon(LucideIcons.creditCard, size: 14),
+                const SizedBox(width: 6),
+                Text(_busy ? "Adding…" : "Add charge"),
+              ],
             ),
           ),
         ],
@@ -721,7 +1080,20 @@ class _AddChargeFormState extends State<_AddChargeForm> {
 /// Mirrors lib/format.js `niceDate`.
 String _niceDate(String iso) {
   final d = DateTime.parse(iso);
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
   const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   return "${weekdays[d.weekday % 7]}, ${months[d.month - 1]} ${d.day}";
 }
@@ -736,10 +1108,20 @@ int _ageFrom(String iso) {
 }
 
 class _EditSection extends StatefulWidget {
-  const _EditSection({required this.info, required this.onCancel, required this.onSave});
+  const _EditSection({
+    required this.info,
+    required this.onCancel,
+    required this.onSave,
+  });
   final ClientInfo info;
   final VoidCallback onCancel;
-  final Future<void> Function(String name, String email, String phone, String city) onSave;
+  final Future<void> Function(
+    String name,
+    String email,
+    String phone,
+    String city,
+  )
+  onSave;
 
   @override
   State<_EditSection> createState() => _EditSectionState();
@@ -768,9 +1150,15 @@ class _EditSectionState extends State<_EditSection> {
       _err = null;
     });
     try {
-      await widget.onSave(_name.text.trim(), _email.text.trim(), _phone.text.trim(), _city.text.trim());
+      await widget.onSave(
+        _name.text.trim(),
+        _email.text.trim(),
+        _phone.text.trim(),
+        _city.text.trim(),
+      );
     } catch (e) {
-      if (mounted) setState(() => _err = e.toString().replaceFirst("Exception: ", ""));
+      if (mounted)
+        setState(() => _err = e.toString().replaceFirst("Exception: ", ""));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -786,17 +1174,38 @@ class _EditSectionState extends State<_EditSection> {
           BackBar(onBack: widget.onCancel, title: "Profile"),
           const SizedBox(height: 10),
           const SectionLabel("Edit Profile"),
-          FieldLabeled(label: "Name", child: AppField(controller: _name)),
+          FieldLabeled(
+            label: "Name",
+            child: AppField(controller: _name),
+          ),
           const SizedBox(height: 10),
-          FieldLabeled(label: "Email", child: AppField(controller: _email, keyboardType: TextInputType.emailAddress)),
+          FieldLabeled(
+            label: "Email",
+            child: AppField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+            ),
+          ),
           const SizedBox(height: 10),
-          FieldLabeled(label: "Phone", child: AppField(controller: _phone, keyboardType: TextInputType.phone)),
+          FieldLabeled(
+            label: "Phone",
+            child: AppField(
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+            ),
+          ),
           const SizedBox(height: 10),
-          FieldLabeled(label: "City", child: AppField(controller: _city)),
+          FieldLabeled(
+            label: "City",
+            child: AppField(controller: _city),
+          ),
           if (_err != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Text(_err!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12)),
+              child: Text(
+                _err!,
+                style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12),
+              ),
             ),
           const SizedBox(height: 18),
           Row(

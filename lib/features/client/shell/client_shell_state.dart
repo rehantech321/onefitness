@@ -17,6 +17,15 @@ class ClientScreenNotifier extends Notifier<String> {
 
   void go(String screen) {
     if (screen == state) return;
+    // Dashboard is the universal root — landing there always clears
+    // history rather than pushing, so nothing stale (an old tab visit, a
+    // half-finished drill-down) can resurface on a later back, and a
+    // second back on Dashboard correctly exits instead of "un-clearing".
+    if (screen == "dashboard") {
+      state = "dashboard";
+      _history.clear();
+      return;
+    }
     _history.add(state);
     state = screen;
   }

@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/challenge_utils.dart";
@@ -29,13 +30,27 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
     if (_viewId != null) {
       final matches = challenges.where((c) => c.id == _viewId);
       if (matches.isNotEmpty) {
-        return ChallengeDetailScreen(challenge: matches.first, onBack: () => setState(() => _viewId = null));
+        return LocalBackScope(
+          isOpen: true,
+          onBack: () => setState(() => _viewId = null),
+          child: ChallengeDetailScreen(
+            challenge: matches.first,
+            onBack: () => setState(() => _viewId = null),
+          ),
+        );
       }
     }
 
     final now = isoToday();
-    final joined = challenges.where((c) => isClientRegistered(c, info.id)).toList();
-    final available = challenges.where((c) => !isClientRegistered(c, info.id) && c.endDate.compareTo(now) >= 0).toList();
+    final joined = challenges
+        .where((c) => isClientRegistered(c, info.id))
+        .toList();
+    final available = challenges
+        .where(
+          (c) =>
+              !isClientRegistered(c, info.id) && c.endDate.compareTo(now) >= 0,
+        )
+        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
@@ -46,36 +61,73 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
           if (joined.isNotEmpty) ...[
             const Padding(
               padding: EdgeInsets.only(bottom: 8),
-              child: Text("YOU'RE IN", style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 1)),
+              child: Text(
+                "YOU'RE IN",
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.gold,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
             ),
-            ...joined.map((c) => _ChallengeCard(challenge: c, showJoin: false, onTap: () => setState(() => _viewId = c.id), onJoin: null)),
+            ...joined.map(
+              (c) => _ChallengeCard(
+                challenge: c,
+                showJoin: false,
+                onTap: () => setState(() => _viewId = c.id),
+                onJoin: null,
+              ),
+            ),
             const SizedBox(height: 12),
           ],
           if (available.isNotEmpty) ...[
             const Padding(
               padding: EdgeInsets.only(bottom: 8),
-              child: Text("AVAILABLE TO JOIN", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1)),
+              child: Text(
+                "AVAILABLE TO JOIN",
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.mute,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
             ),
-            ...available.map((c) => _ChallengeCard(
-                  challenge: c,
-                  showJoin: true,
-                  onTap: () => setState(() => _viewId = c.id),
-                  onJoin: () async {
-                    final nextParticipants = [...c.participantIds, info.id];
-                    try {
-                      await SupabaseService.updateChallengeRow(c.id, participantIds: nextParticipants);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't join — check your connection and try again.")));
-                      }
-                      return;
+            ...available.map(
+              (c) => _ChallengeCard(
+                challenge: c,
+                showJoin: true,
+                onTap: () => setState(() => _viewId = c.id),
+                onJoin: () async {
+                  final nextParticipants = [...c.participantIds, info.id];
+                  try {
+                    await SupabaseService.updateChallengeRow(
+                      c.id,
+                      participantIds: nextParticipants,
+                    );
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "Couldn't join — check your connection and try again.",
+                          ),
+                        ),
+                      );
                     }
-                    ref.read(challengesProvider.notifier).join(c.id, info.id);
-                    setState(() => _viewId = c.id);
-                  },
-                )),
+                    return;
+                  }
+                  ref.read(challengesProvider.notifier).join(c.id, info.id);
+                  setState(() => _viewId = c.id);
+                },
+              ),
+            ),
           ],
-          if (challenges.isEmpty) const HintBox(text: "No challenges running right now. Check back soon!"),
+          if (challenges.isEmpty)
+            const HintBox(
+              text: "No challenges running right now. Check back soon!",
+            ),
           if (challenges.isNotEmpty && joined.isEmpty && available.isEmpty)
             const HintBox(text: "No challenges available to join right now."),
         ],
@@ -85,7 +137,12 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
 }
 
 class _ChallengeCard extends StatelessWidget {
-  const _ChallengeCard({required this.challenge, required this.showJoin, required this.onTap, required this.onJoin});
+  const _ChallengeCard({
+    required this.challenge,
+    required this.showJoin,
+    required this.onTap,
+    required this.onJoin,
+  });
   final Challenge challenge;
   final bool showJoin;
   final VoidCallback onTap;
@@ -95,9 +152,16 @@ class _ChallengeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tpl = templateMeta(challenge.template);
     final now = isoToday();
-    final daysLeft = DateTime.parse(challenge.endDate).difference(DateTime.parse(now)).inDays + 1;
+    final daysLeft =
+        DateTime.parse(
+          challenge.endDate,
+        ).difference(DateTime.parse(now)).inDays +
+        1;
     final regOpen = registrationOpensDate(challenge);
-    final canJoin = showJoin && now.compareTo(regOpen) >= 0 && now.compareTo(challenge.startDate) <= 0;
+    final canJoin =
+        showJoin &&
+        now.compareTo(regOpen) >= 0 &&
+        now.compareTo(challenge.startDate) <= 0;
 
     return AppCard(
       onTap: onTap,
@@ -113,20 +177,41 @@ class _ChallengeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(challenge.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    Text(
+                      challenge.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         "${tpl.label} · ${challenge.participantIds.length} registered",
-                        style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.mute,
+                        ),
                       ),
                     ),
                     if (daysLeft > 0)
-                      Text("$daysLeft day${daysLeft != 1 ? 's' : ''} left", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                      Text(
+                        "$daysLeft day${daysLeft != 1 ? 's' : ''} left",
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.mute,
+                        ),
+                      ),
                     if (challenge.prize != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 3),
-                        child: Text("\u{1F381} Prize: ${challenge.prize}", style: const TextStyle(fontSize: 11, color: AppColors.gold)),
+                        child: Text(
+                          "\u{1F381} Prize: ${challenge.prize}",
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.gold,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -136,7 +221,10 @@ class _ChallengeCard extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.mute,
                   side: const BorderSide(color: AppColors.line),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                 ),
                 child: const Text("View", style: TextStyle(fontSize: 12)),
               ),
@@ -155,7 +243,10 @@ class _ChallengeCard extends StatelessWidget {
                     side: const BorderSide(color: AppColors.goldDim),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
-                  child: const Text("Join Challenge", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  child: const Text(
+                    "Join Challenge",
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
                 ),
               ),
             ),

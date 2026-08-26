@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/challenge_utils.dart";
@@ -17,7 +18,8 @@ class CoachChallengesScreen extends ConsumerStatefulWidget {
   const CoachChallengesScreen({super.key});
 
   @override
-  ConsumerState<CoachChallengesScreen> createState() => _CoachChallengesScreenState();
+  ConsumerState<CoachChallengesScreen> createState() =>
+      _CoachChallengesScreenState();
 }
 
 class _CoachChallengesScreenState extends ConsumerState<CoachChallengesScreen> {
@@ -30,48 +32,73 @@ class _CoachChallengesScreenState extends ConsumerState<CoachChallengesScreen> {
     final trainerAuth = ref.watch(trainerAuthProvider);
 
     if (_creating) {
-      return _CreateChallengeForm(
-        onCancel: () => setState(() => _creating = false),
-        onSave: (c) async {
-          try {
-            await SupabaseService.insertChallenge(c, createdBy: trainerAuth ?? "");
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't create — check your connection and try again.")));
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _creating = false),
+        child: _CreateChallengeForm(
+          onCancel: () => setState(() => _creating = false),
+          onSave: (c) async {
+            try {
+              await SupabaseService.insertChallenge(
+                c,
+                createdBy: trainerAuth ?? "",
+              );
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      "Couldn't create — check your connection and try again.",
+                    ),
+                  ),
+                );
+              }
+              return;
             }
-            return;
-          }
-          ref.read(challengesProvider.notifier).add(c);
-          setState(() => _creating = false);
-        },
+            ref.read(challengesProvider.notifier).add(c);
+            setState(() => _creating = false);
+          },
+        ),
       );
     }
 
     if (_viewId != null) {
       final matches = challenges.where((c) => c.id == _viewId);
       if (matches.isNotEmpty) {
-        return _CoachChallengeDetail(
-          challenge: matches.first,
+        return LocalBackScope(
+          isOpen: true,
           onBack: () => setState(() => _viewId = null),
-          onDelete: () async {
-            final id = _viewId!;
-            try {
-              await SupabaseService.deleteChallenge(id);
-            } catch (e) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't delete — check your connection and try again.")));
+          child: _CoachChallengeDetail(
+            challenge: matches.first,
+            onBack: () => setState(() => _viewId = null),
+            onDelete: () async {
+              final id = _viewId!;
+              try {
+                await SupabaseService.deleteChallenge(id);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        "Couldn't delete — check your connection and try again.",
+                      ),
+                    ),
+                  );
+                }
+                return;
               }
-              return;
-            }
-            ref.read(challengesProvider.notifier).remove(id);
-            setState(() => _viewId = null);
-          },
+              ref.read(challengesProvider.notifier).remove(id);
+              setState(() => _viewId = null);
+            },
+          ),
         );
       }
     }
 
     final now = isoToday();
-    final active = challenges.where((c) => c.endDate.compareTo(now) >= 0).toList();
+    final active = challenges
+        .where((c) => c.endDate.compareTo(now) >= 0)
+        .toList();
     final past = challenges.where((c) => c.endDate.compareTo(now) < 0).toList();
 
     return SingleChildScrollView(
@@ -85,18 +112,49 @@ class _CoachChallengesScreenState extends ConsumerState<CoachChallengesScreen> {
               const SectionLabel("Challenges"),
               TextButton.icon(
                 onPressed: () => setState(() => _creating = true),
-                icon: const Icon(LucideIcons.plus, size: 14, color: AppColors.gold),
-                label: const Text("Create", style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w700, fontSize: 12)),
+                icon: const Icon(
+                  LucideIcons.plus,
+                  size: 14,
+                  color: AppColors.gold,
+                ),
+                label: const Text(
+                  "Create",
+                  style: TextStyle(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
               ),
             ],
           ),
-          if (active.isEmpty && past.isEmpty) const HintBox(text: "No challenges yet — tap Create to launch one."),
-          ...active.map((c) => _ChallengeRow(challenge: c, onTap: () => setState(() => _viewId = c.id))),
+          if (active.isEmpty && past.isEmpty)
+            const HintBox(
+              text: "No challenges yet — tap Create to launch one.",
+            ),
+          ...active.map(
+            (c) => _ChallengeRow(
+              challenge: c,
+              onTap: () => setState(() => _viewId = c.id),
+            ),
+          ),
           if (past.isNotEmpty) ...[
             const SizedBox(height: 8),
-            const Text("PAST", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            const Text(
+              "PAST",
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.mute,
+                letterSpacing: 1,
+              ),
+            ),
             const SizedBox(height: 6),
-            ...past.map((c) => _ChallengeRow(challenge: c, onTap: () => setState(() => _viewId = c.id))),
+            ...past.map(
+              (c) => _ChallengeRow(
+                challenge: c,
+                onTap: () => setState(() => _viewId = c.id),
+              ),
+            ),
           ],
         ],
       ),
@@ -122,8 +180,17 @@ class _ChallengeRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(challenge.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                Text("${challenge.startDate} → ${challenge.endDate} · ${challenge.participantIds.length} registered", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                Text(
+                  challenge.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  "${challenge.startDate} → ${challenge.endDate} · ${challenge.participantIds.length} registered",
+                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                ),
               ],
             ),
           ),
@@ -135,7 +202,11 @@ class _ChallengeRow extends StatelessWidget {
 }
 
 class _CoachChallengeDetail extends ConsumerWidget {
-  const _CoachChallengeDetail({required this.challenge, required this.onBack, required this.onDelete});
+  const _CoachChallengeDetail({
+    required this.challenge,
+    required this.onBack,
+    required this.onDelete,
+  });
   final Challenge challenge;
   final VoidCallback onBack;
   final VoidCallback onDelete;
@@ -150,7 +221,11 @@ class _CoachChallengeDetail extends ConsumerWidget {
     final leaderboard = [
       for (final id in challenge.participantIds)
         if (roster.where((c) => c.id == id).isNotEmpty)
-          LeaderboardEntry(clientId: id, name: roster.firstWhere((c) => c.id == id).name, score: calcChallengeScore(id, challenge, records[id], bookings)),
+          LeaderboardEntry(
+            clientId: id,
+            name: roster.firstWhere((c) => c.id == id).name,
+            score: calcChallengeScore(id, challenge, records[id], bookings),
+          ),
       ...challenge.otherLeaderboard,
     ]..sort((a, b) => b.score.compareTo(a.score));
 
@@ -169,30 +244,83 @@ class _CoachChallengeDetail extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(challenge.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-                    Text("${tpl.label} · ${challenge.startDate} → ${challenge.endDate}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                    Text(
+                      challenge.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    ),
+                    Text(
+                      "${tpl.label} · ${challenge.startDate} → ${challenge.endDate}",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.mute,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          if (challenge.description != null) AppCard(child: Text(challenge.description!, style: const TextStyle(fontSize: 13, color: AppColors.txt, height: 1.5))),
+          if (challenge.description != null)
+            AppCard(
+              child: Text(
+                challenge.description!,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.txt,
+                  height: 1.5,
+                ),
+              ),
+            ),
           SectionLabel("Leaderboard (${leaderboard.length})"),
           if (leaderboard.isEmpty)
             const HintBox(text: "No one has registered yet.")
           else
-            ...leaderboard.asMap().entries.map((e) => AppCard(
-                  child: Row(
-                    children: [
-                      SizedBox(width: 32, child: Text("#${e.key + 1}", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: e.key < 3 ? AppColors.gold : AppColors.mute))),
-                      Expanded(child: Text(e.value.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
-                      Text(e.value.score % 1 == 0 ? e.value.score.toInt().toString() : "${e.value.score}", style: const TextStyle(fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                )),
+            ...leaderboard.asMap().entries.map(
+              (e) => AppCard(
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 32,
+                      child: Text(
+                        "#${e.key + 1}",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: e.key < 3 ? AppColors.gold : AppColors.mute,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        e.value.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      e.value.score % 1 == 0
+                          ? e.value.score.toInt().toString()
+                          : "${e.value.score}",
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           const SizedBox(height: 12),
-          TextButton(onPressed: onDelete, style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)), child: const Text("Delete challenge")),
+          TextButton(
+            onPressed: onDelete,
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFC97F7F),
+            ),
+            child: const Text("Delete challenge"),
+          ),
         ],
       ),
     );
@@ -237,9 +365,19 @@ class _CreateChallengeFormState extends State<_CreateChallengeForm> {
         children: [
           BackBar(onBack: widget.onCancel, title: "Create Challenge"),
           const SizedBox(height: 12),
-          FieldLabeled(label: "Name", child: AppField(controller: _name)),
+          FieldLabeled(
+            label: "Name",
+            child: AppField(controller: _name),
+          ),
           const SizedBox(height: 10),
-          const Text("TEMPLATE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          const Text(
+            "TEMPLATE",
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.mute,
+              letterSpacing: 1,
+            ),
+          ),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
@@ -251,42 +389,86 @@ class _CreateChallengeFormState extends State<_CreateChallengeForm> {
                   _metric.text = e.key == "attendance" ? "sessions" : "lbs";
                 }),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card, border: Border.all(color: selected ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(8)),
-                  child: Text("${e.value.emoji} ${e.value.label}", style: TextStyle(fontSize: 12, color: selected ? AppColors.gold : AppColors.txt)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.gold.withValues(alpha: 0.15)
+                        : AppColors.card,
+                    border: Border.all(
+                      color: selected ? AppColors.gold : AppColors.line,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "${e.value.emoji} ${e.value.label}",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: selected ? AppColors.gold : AppColors.txt,
+                    ),
+                  ),
                 ),
               );
             }).toList(),
           ),
           const SizedBox(height: 10),
-          FieldLabeled(label: "Metric label", child: AppField(controller: _metric)),
+          FieldLabeled(
+            label: "Metric label",
+            child: AppField(controller: _metric),
+          ),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: FieldLabeled(label: "Start (YYYY-MM-DD)", child: AppField(controller: _start))),
+              Expanded(
+                child: FieldLabeled(
+                  label: "Start (YYYY-MM-DD)",
+                  child: AppField(controller: _start),
+                ),
+              ),
               const SizedBox(width: 8),
-              Expanded(child: FieldLabeled(label: "End (YYYY-MM-DD)", child: AppField(controller: _end))),
+              Expanded(
+                child: FieldLabeled(
+                  label: "End (YYYY-MM-DD)",
+                  child: AppField(controller: _end),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
-          FieldLabeled(label: "Description (optional)", child: AppField(controller: _description)),
+          FieldLabeled(
+            label: "Description (optional)",
+            child: AppField(controller: _description),
+          ),
           const SizedBox(height: 10),
-          FieldLabeled(label: "Prize (optional)", child: AppField(controller: _prize)),
+          FieldLabeled(
+            label: "Prize (optional)",
+            child: AppField(controller: _prize),
+          ),
           const SizedBox(height: 16),
           BtnGold(
             full: true,
             onPressed: _name.text.trim().isEmpty || _end.text.trim().isEmpty
                 ? null
-                : () => widget.onSave(Challenge(
+                : () => widget.onSave(
+                    Challenge(
                       id: "challenge-${DateTime.now().microsecondsSinceEpoch}",
                       name: _name.text.trim(),
                       template: _template,
-                      metric: _metric.text.trim().isEmpty ? "score" : _metric.text.trim(),
+                      metric: _metric.text.trim().isEmpty
+                          ? "score"
+                          : _metric.text.trim(),
                       startDate: _start.text.trim(),
                       endDate: _end.text.trim(),
-                      description: _description.text.trim().isEmpty ? null : _description.text.trim(),
-                      prize: _prize.text.trim().isEmpty ? null : _prize.text.trim(),
-                    )),
+                      description: _description.text.trim().isEmpty
+                          ? null
+                          : _description.text.trim(),
+                      prize: _prize.text.trim().isEmpty
+                          ? null
+                          : _prize.text.trim(),
+                    ),
+                  ),
             child: const Text("Create challenge"),
           ),
         ],

@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
@@ -18,7 +19,8 @@ class ManageWaiversScreen extends ConsumerStatefulWidget {
   const ManageWaiversScreen({super.key});
 
   @override
-  ConsumerState<ManageWaiversScreen> createState() => _ManageWaiversScreenState();
+  ConsumerState<ManageWaiversScreen> createState() =>
+      _ManageWaiversScreenState();
 }
 
 class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
@@ -28,7 +30,13 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
   int _signedCount(String docId) {
     final roster = ref.watch(trainerRosterProvider);
     final records = ref.watch(trainerClientRecordsProvider);
-    return roster.where((c) => (records[c.id]?.signatures ?? const []).any((s) => s.docId == docId)).length;
+    return roster
+        .where(
+          (c) => (records[c.id]?.signatures ?? const []).any(
+            (s) => s.docId == docId,
+          ),
+        )
+        .length;
   }
 
   Future<void> _removeOrArchive(WaiverDoc w) async {
@@ -38,19 +46,35 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         title: Text('${signed > 0 ? "Archive" : "Delete"} "${w.title}"?'),
-        content: Text(signed > 0
-            ? "$signed client(s) have already signed this. Archiving stops it from being required going forward; their signed copy stays exactly as it was."
-            : "No one has signed this yet, so it can be permanently removed."),
+        content: Text(
+          signed > 0
+              ? "$signed client(s) have already signed this. Archiving stops it from being required going forward; their signed copy stays exactly as it was."
+              : "No one has signed this yet, so it can be permanently removed.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text("Yes, ${signed > 0 ? "archive" : "delete"} it")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text("Yes, ${signed > 0 ? "archive" : "delete"} it"),
+          ),
         ],
       ),
     );
     if (confirmed != true || !mounted) return;
     try {
       if (signed > 0) {
-        final archived = WaiverDoc(id: w.id, title: w.title, body: w.body, scope: w.scope, planId: w.planId, required: w.required, archived: true);
+        final archived = WaiverDoc(
+          id: w.id,
+          title: w.title,
+          body: w.body,
+          scope: w.scope,
+          planId: w.planId,
+          required: w.required,
+          archived: true,
+        );
         await SupabaseService.upsertWaiverDoc(archived);
         ref.read(waiversProvider.notifier).upsert(archived);
       } else {
@@ -59,7 +83,13 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Couldn't ${signed > 0 ? "archive" : "delete"} — check your connection and try again.")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Couldn't ${signed > 0 ? "archive" : "delete"} — check your connection and try again.",
+            ),
+          ),
+        );
       }
       return;
     }
@@ -67,12 +97,26 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
   }
 
   Future<void> _restore(WaiverDoc w) async {
-    final restored = WaiverDoc(id: w.id, title: w.title, body: w.body, scope: w.scope, planId: w.planId, required: w.required, archived: false);
+    final restored = WaiverDoc(
+      id: w.id,
+      title: w.title,
+      body: w.body,
+      scope: w.scope,
+      planId: w.planId,
+      required: w.required,
+      archived: false,
+    );
     try {
       await SupabaseService.upsertWaiverDoc(restored);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't restore — check your connection and try again.")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Couldn't restore — check your connection and try again.",
+            ),
+          ),
+        );
       }
       return;
     }
@@ -87,30 +131,47 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
 
     if (_editing != null || _creating) {
       final editingDoc = _editing;
-      return _WaiverEditForm(
-        initial: editingDoc,
-        planNames: {for (final p in plans) p.id: p.name},
-        onCancel: () => setState(() {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() {
           _editing = null;
           _creating = false;
         }),
-        onSave: (w) async {
-          try {
-            await SupabaseService.upsertWaiverDoc(w);
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't save — check your connection and try again.")));
-            }
-            return;
-          }
-          ref.read(waiversProvider.notifier).upsert(w);
-          setState(() {
+        child: _WaiverEditForm(
+          initial: editingDoc,
+          planNames: {for (final p in plans) p.id: p.name},
+          onCancel: () => setState(() {
             _editing = null;
             _creating = false;
-          });
-        },
-        onDelete: editingDoc == null ? null : () => _removeOrArchive(editingDoc),
-        onRestore: editingDoc == null || !editingDoc.archived ? null : () => _restore(editingDoc),
+          }),
+          onSave: (w) async {
+            try {
+              await SupabaseService.upsertWaiverDoc(w);
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      "Couldn't save — check your connection and try again.",
+                    ),
+                  ),
+                );
+              }
+              return;
+            }
+            ref.read(waiversProvider.notifier).upsert(w);
+            setState(() {
+              _editing = null;
+              _creating = false;
+            });
+          },
+          onDelete: editingDoc == null
+              ? null
+              : () => _removeOrArchive(editingDoc),
+          onRestore: editingDoc == null || !editingDoc.archived
+              ? null
+              : () => _restore(editingDoc),
+        ),
       );
     }
 
@@ -125,12 +186,26 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
               SectionLabel("Waivers & Contracts (${waivers.length})"),
               TextButton.icon(
                 onPressed: () => setState(() => _creating = true),
-                icon: const Icon(LucideIcons.plus, size: 14, color: AppColors.gold),
-                label: const Text("Document", style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w700, fontSize: 12)),
+                icon: const Icon(
+                  LucideIcons.plus,
+                  size: 14,
+                  color: AppColors.gold,
+                ),
+                label: const Text(
+                  "Document",
+                  style: TextStyle(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
               ),
             ],
           ),
-          const HintBox(text: "Documents someone has already signed can be archived but never deleted — their signed copy stays valid."),
+          const HintBox(
+            text:
+                "Documents someone has already signed can be archived but never deleted — their signed copy stays valid.",
+          ),
           ...waivers.map((w) {
             final signed = _signedCount(w.id);
             return Opacity(
@@ -145,25 +220,54 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
                         children: [
                           Row(
                             children: [
-                              Flexible(child: Text(w.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), overflow: TextOverflow.ellipsis)),
+                              Flexible(
+                                child: Text(
+                                  w.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               if (w.archived) ...[
                                 const SizedBox(width: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: AppColors.line, borderRadius: BorderRadius.circular(5)),
-                                  child: const Text("Archived", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.mute)),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.line,
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: const Text(
+                                    "Archived",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.mute,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ],
                           ),
                           Text(
                             "${w.scope == 'plan' ? 'Plan contract' : 'General waiver'}${w.required ? ' · Required' : ''} · $signed signed",
-                            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.mute,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                    const Icon(
+                      LucideIcons.chevronRight,
+                      size: 15,
+                      color: AppColors.mute,
+                    ),
                   ],
                 ),
               ),
@@ -176,7 +280,14 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
 }
 
 class _WaiverEditForm extends StatefulWidget {
-  const _WaiverEditForm({required this.initial, required this.planNames, required this.onCancel, required this.onSave, required this.onDelete, required this.onRestore});
+  const _WaiverEditForm({
+    required this.initial,
+    required this.planNames,
+    required this.onCancel,
+    required this.onSave,
+    required this.onDelete,
+    required this.onRestore,
+  });
   final WaiverDoc? initial;
   final Map<String, String> planNames;
   final VoidCallback onCancel;
@@ -207,11 +318,19 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
     final text = _body.text;
     if (!sel.isValid || sel.isCollapsed) {
       final insert = "$marker$marker";
-      _body.text = text.replaceRange(sel.start < 0 ? text.length : sel.start, sel.start < 0 ? text.length : sel.start, insert);
+      _body.text = text.replaceRange(
+        sel.start < 0 ? text.length : sel.start,
+        sel.start < 0 ? text.length : sel.start,
+        insert,
+      );
       return;
     }
     final selected = text.substring(sel.start, sel.end);
-    _body.text = text.replaceRange(sel.start, sel.end, "$marker$selected$marker");
+    _body.text = text.replaceRange(
+      sel.start,
+      sel.end,
+      "$marker$selected$marker",
+    );
   }
 
   @override
@@ -221,31 +340,95 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          BackBar(onBack: widget.onCancel, title: widget.initial != null ? "Edit Document" : "New Document"),
+          BackBar(
+            onBack: widget.onCancel,
+            title: widget.initial != null ? "Edit Document" : "New Document",
+          ),
           const SizedBox(height: 12),
-          FieldLabeled(label: "Title", child: AppField(controller: _title, onChanged: (_) => setState(() {}))),
+          FieldLabeled(
+            label: "Title",
+            child: AppField(
+              controller: _title,
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
           const SizedBox(height: 10),
-          const Text("SCOPE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          const Text(
+            "SCOPE",
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.mute,
+              letterSpacing: 1,
+            ),
+          ),
           const SizedBox(height: 6),
-          Wrap(spacing: 6, children: [
-            _ScopeChip(label: "General (signup)", selected: _scope == "general", onTap: () => setState(() => _scope = "general")),
-            _ScopeChip(label: "Plan contract", selected: _scope == "plan", onTap: () => setState(() => _scope = "plan")),
-          ]),
+          Wrap(
+            spacing: 6,
+            children: [
+              _ScopeChip(
+                label: "General (signup)",
+                selected: _scope == "general",
+                onTap: () => setState(() => _scope = "general"),
+              ),
+              _ScopeChip(
+                label: "Plan contract",
+                selected: _scope == "plan",
+                onTap: () => setState(() => _scope = "plan"),
+              ),
+            ],
+          ),
           if (_scope == "plan") ...[
             const SizedBox(height: 10),
-            const Text("PLAN", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            const Text(
+              "PLAN",
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.mute,
+                letterSpacing: 1,
+              ),
+            ),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
-              children: widget.planNames.entries.map((e) => _ScopeChip(label: e.value, selected: _planId == e.key, onTap: () => setState(() => _planId = e.key))).toList(),
+              children: widget.planNames.entries
+                  .map(
+                    (e) => _ScopeChip(
+                      label: e.value,
+                      selected: _planId == e.key,
+                      onTap: () => setState(() => _planId = e.key),
+                    ),
+                  )
+                  .toList(),
             ),
           ],
           const SizedBox(height: 10),
           Row(
             children: [
-              IconButton(onPressed: () => setState(() => _wrap("**")), icon: const Icon(LucideIcons.bold, size: 16, color: AppColors.mute)),
-              IconButton(onPressed: () => setState(() => _wrap("*")), icon: const Icon(LucideIcons.italic, size: 16, color: AppColors.mute)),
-              IconButton(onPressed: () => setState(() => _body.text = "${_body.text}\n- "), icon: const Icon(LucideIcons.list, size: 16, color: AppColors.mute)),
+              IconButton(
+                onPressed: () => setState(() => _wrap("**")),
+                icon: const Icon(
+                  LucideIcons.bold,
+                  size: 16,
+                  color: AppColors.mute,
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() => _wrap("*")),
+                icon: const Icon(
+                  LucideIcons.italic,
+                  size: 16,
+                  color: AppColors.mute,
+                ),
+              ),
+              IconButton(
+                onPressed: () =>
+                    setState(() => _body.text = "${_body.text}\n- "),
+                icon: const Icon(
+                  LucideIcons.list,
+                  size: 16,
+                  color: AppColors.mute,
+                ),
+              ),
             ],
           ),
           TextField(
@@ -258,9 +441,18 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
               hintStyle: const TextStyle(color: AppColors.mute),
               filled: true,
               fillColor: AppColors.card,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.gold)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.gold),
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -268,7 +460,11 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
             onTap: () => setState(() => _required = !_required),
             child: Row(
               children: [
-                Icon(_required ? LucideIcons.checkSquare : LucideIcons.square, size: 18, color: _required ? AppColors.gold : AppColors.mute),
+                Icon(
+                  _required ? LucideIcons.checkSquare : LucideIcons.square,
+                  size: 18,
+                  color: _required ? AppColors.gold : AppColors.mute,
+                ),
                 const SizedBox(width: 8),
                 const Text("Required", style: TextStyle(fontSize: 13)),
               ],
@@ -279,17 +475,22 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
             children: [
               Expanded(
                 child: BtnGold(
-                  onPressed: _title.text.trim().isEmpty || _body.text.trim().isEmpty
+                  onPressed:
+                      _title.text.trim().isEmpty || _body.text.trim().isEmpty
                       ? null
-                      : () => widget.onSave(WaiverDoc(
-                            id: widget.initial?.id ?? "waiver-${DateTime.now().microsecondsSinceEpoch}",
+                      : () => widget.onSave(
+                          WaiverDoc(
+                            id:
+                                widget.initial?.id ??
+                                "waiver-${DateTime.now().microsecondsSinceEpoch}",
                             title: _title.text.trim(),
                             body: _body.text,
                             scope: _scope,
                             planId: _scope == "plan" ? _planId : null,
                             required: _required,
                             archived: widget.initial?.archived ?? false,
-                          )),
+                          ),
+                        ),
                   child: const Text("Save"),
                 ),
               ),
@@ -299,10 +500,20 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
           ),
           if (widget.onRestore != null) ...[
             const SizedBox(height: 10),
-            BtnGhost(onPressed: widget.onRestore, full: true, child: const Text("Restore document")),
+            BtnGhost(
+              onPressed: widget.onRestore,
+              full: true,
+              child: const Text("Restore document"),
+            ),
           ] else if (widget.onDelete != null) ...[
             const SizedBox(height: 10),
-            TextButton(onPressed: widget.onDelete, style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)), child: const Text("Delete or archive document")),
+            TextButton(
+              onPressed: widget.onDelete,
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFC97F7F),
+              ),
+              child: const Text("Delete or archive document"),
+            ),
           ],
         ],
       ),
@@ -311,7 +522,11 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
 }
 
 class _ScopeChip extends StatelessWidget {
-  const _ScopeChip({required this.label, required this.selected, required this.onTap});
+  const _ScopeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -322,8 +537,20 @@ class _ScopeChip extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card, border: Border.all(color: selected ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(8)),
-        child: Text(label, style: TextStyle(fontSize: 12, color: selected ? AppColors.gold : AppColors.txt)),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.gold.withValues(alpha: 0.15)
+              : AppColors.card,
+          border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: selected ? AppColors.gold : AppColors.txt,
+          ),
+        ),
       ),
     );
   }

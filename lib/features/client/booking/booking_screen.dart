@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
@@ -274,33 +275,48 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     final trainers = ref.watch(trainersProvider);
 
     if (_cancelTarget != null) {
-      return BookingCancelScreen(
-        booking: _cancelTarget!,
-        trainers: trainers,
+      return LocalBackScope(
+        isOpen: true,
         onBack: () => setState(() => _cancelTarget = null),
-        onConfirmCancel: _confirmCancel,
+        child: BookingCancelScreen(
+          booking: _cancelTarget!,
+          trainers: trainers,
+          onBack: () => setState(() => _cancelTarget = null),
+          onConfirmCancel: _confirmCancel,
+        ),
       );
     }
 
     if (_denied != null) {
-      return BookingDeniedScreen(
-        check: _denied,
+      return LocalBackScope(
+        isOpen: true,
         onBack: () => setState(() => _denied = null),
-        onGoMemberships: widget.onGoMemberships,
+        child: BookingDeniedScreen(
+          check: _denied,
+          onBack: () => setState(() => _denied = null),
+          onGoMemberships: widget.onGoMemberships,
+        ),
       );
     }
 
     if (_picking != null) {
-      return BookingPickingScreen(
-        pick: _picking!,
-        date: _date,
+      return LocalBackScope(
+        isOpen: true,
         onBack: () => setState(() {
           _picking = null;
           _bookingError = null;
         }),
-        onConfirm: _confirmBooking,
-        busy: _busy,
-        error: _bookingError,
+        child: BookingPickingScreen(
+          pick: _picking!,
+          date: _date,
+          onBack: () => setState(() {
+            _picking = null;
+            _bookingError = null;
+          }),
+          onConfirm: _confirmBooking,
+          busy: _busy,
+          error: _bookingError,
+        ),
       );
     }
 

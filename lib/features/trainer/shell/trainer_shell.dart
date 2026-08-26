@@ -1,6 +1,8 @@
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/client_providers.dart";
@@ -75,11 +77,63 @@ class TrainerShell extends ConsumerStatefulWidget {
   ConsumerState<TrainerShell> createState() => _TrainerShellState();
 }
 
+// Bottom-tab-bar destinations — back/swipe from any of these jumps
+// straight to Dashboard instead of walking tab-visit history.
+const _tabRootKeys = {"dashboard", "clients", "chat", "schedule", "staff"};
+
 class _TrainerShellState extends ConsumerState<TrainerShell> {
   // Closes the drawer directly (bypassing Navigator.pop) so it doesn't get
   // swallowed by the PopScope below, which intercepts pop attempts whenever
   // canPop is false to run its own back-history logic instead.
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  Offset? _dragStart;
+
+  // The single source of truth for "what does back mean right now" —
+  // used by the top-bar back button, the swipe gesture, and system back/
+  // OS edge-swipe alike, so all three always agree. Order matters: an
+  // open drawer wins, then any open local sub-view (a form, a detail
+  // drilled into — see local_back_stack.dart), then — only once neither
+  // applies — the shell's own mode history.
+  void _handleBack() {
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      _scaffoldKey.currentState!.closeDrawer();
+      return;
+    }
+    final local = ref.read(localBackStackProvider.notifier).top;
+    if (local != null) {
+      local();
+      return;
+    }
+    final mode = ref.read(trainerModeProvider);
+    if (mode == "dashboard") return;
+    if (_tabRootKeys.contains(mode)) {
+      ref.read(trainerModeProvider.notifier).go("dashboard");
+    } else {
+      ref.read(trainerModeProvider.notifier).goBack();
+    }
+  }
+
+  void _onPointerDown(PointerDownEvent e) {
+    if (e.buttons == kPrimaryButton || e.kind != PointerDeviceKind.mouse) {
+      _dragStart = e.position;
+    }
+  }
+
+  void _onPointerUp(PointerUpEvent e) {
+    final start = _dragStart;
+    _dragStart = null;
+    if (start == null) return;
+    final delta = e.position - start;
+    // Ignore drags starting inside the Drawer's own left-edge-swipe-to-
+    // open hitbox (Scaffold's default drawerEdgeDragWidth) so the two
+    // gestures never fight over the same swipe; require a deliberate,
+    // mostly-horizontal, rightward motion.
+    if (start.dx > 24 &&
+        delta.dx > 80 &&
+        delta.dx.abs() > delta.dy.abs() * 1.5) {
+      _handleBack();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,79 +152,97 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
       canPop: mode == "dashboard",
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        ref.read(trainerModeProvider.notifier).goBack();
+        _handleBack();
       },
       child: Scaffold(
         key: _scaffoldKey,
         backgroundColor: AppColors.bg,
         drawer: _TrainerDrawer(mode: mode, isOwner: isOwner, onGo: go),
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  color: AppColors.bg,
-                  border: Border(bottom: BorderSide(color: AppColors.line)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 11,
+        body: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: _onPointerDown,
+          onPointerUp: _onPointerUp,
+          child: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    color: AppColors.bg,
+                    border: Border(bottom: BorderSide(color: AppColors.line)),
                   ),
-                  child: Row(
-                    children: [
-                      Builder(
-                        builder: (context) => IconButton(
-                          onPressed: () => Scaffold.of(context).openDrawer(),
-                          icon: const Icon(
-                            LucideIcons.menu,
-                            size: 22,
-                            color: AppColors.gold,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 11,
+                    ),
+                    child: Row(
+                      children: [
+                        Builder(
+                          builder: (context) => IconButton(
+                            onPressed: () => Scaffold.of(context).openDrawer(),
+                            icon: const Icon(
+                              LucideIcons.menu,
+                              size: 22,
+                              color: AppColors.gold,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
                           ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
                         ),
-                      ),
-                      const Spacer(),
-                      Text(
-                        _titles[mode] ?? "",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
-                          color: AppColors.txt,
+                        if (mode != "dashboard") ...[
+                          const SizedBox(width: 6),
+                          IconButton(
+                            onPressed: _handleBack,
+                            icon: const Icon(
+                              LucideIcons.chevronLeft,
+                              size: 22,
+                              color: AppColors.gold,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                        const Spacer(),
+                        Text(
+                          _titles[mode] ?? "",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                            color: AppColors.txt,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: switch (mode) {
-                  "dashboard" => const TrainerHomeScreen(),
-                  "clients" => const ClientsScreen(),
-                  "chat" => const CoachChatScreen(),
-                  "schedule" => const ScheduleScreen(),
-                  "waitlist" => const WaitlistScreen(),
-                  "exercises" => const ExercisesScreen(),
-                  "builderWorkout" => const ProgramBuilderScreen(),
-                  "builderNutrition" => const NutritionBuilderScreen(),
-                  "staff" => const StaffScreen(),
-                  "coaches" => const CoachesOverviewScreen(),
-                  "myprofile" => const MyProfileScreen(),
-                  "mypay" => const MyPayScreen(),
-                  "reports" => const ReportsHubScreen(),
-                  "memberships" => const ManageMembershipsScreen(),
-                  "products" => const ManageProductsScreen(),
-                  "waivers" => const ManageWaiversScreen(),
-                  "platformSettings" => const CustomizePlatformScreen(),
-                  "challenges" => const CoachChallengesScreen(),
-                  "selfbook" => const SelfBookScreen(),
-                  _ => PlaceholderScreen(title: _titles[mode] ?? mode),
-                },
-              ),
-            ],
+                Expanded(
+                  child: switch (mode) {
+                    "dashboard" => const TrainerHomeScreen(),
+                    "clients" => const ClientsScreen(),
+                    "chat" => const CoachChatScreen(),
+                    "schedule" => const ScheduleScreen(),
+                    "waitlist" => const WaitlistScreen(),
+                    "exercises" => const ExercisesScreen(),
+                    "builderWorkout" => const ProgramBuilderScreen(),
+                    "builderNutrition" => const NutritionBuilderScreen(),
+                    "staff" => const StaffScreen(),
+                    "coaches" => const CoachesOverviewScreen(),
+                    "myprofile" => const MyProfileScreen(),
+                    "mypay" => const MyPayScreen(),
+                    "reports" => const ReportsHubScreen(),
+                    "memberships" => const ManageMembershipsScreen(),
+                    "products" => const ManageProductsScreen(),
+                    "waivers" => const ManageWaiversScreen(),
+                    "platformSettings" => const CustomizePlatformScreen(),
+                    "challenges" => const CoachChallengesScreen(),
+                    "selfbook" => const SelfBookScreen(),
+                    _ => PlaceholderScreen(title: _titles[mode] ?? mode),
+                  },
+                ),
+              ],
+            ),
           ),
         ),
         bottomNavigationBar: DecoratedBox(
@@ -312,7 +384,10 @@ class _TrainerDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final newCoachCount = ref.watch(trainersProvider).where((t) => !t.reviewedByOwner).length;
+    final newCoachCount = ref
+        .watch(trainersProvider)
+        .where((t) => !t.reviewedByOwner)
+        .length;
     final entries = [
       _DrawerEntry(LucideIcons.dumbbell, "Dashboard", "dashboard", true),
       _DrawerEntry(LucideIcons.users, "Clients", "clients", true),
@@ -331,7 +406,6 @@ class _TrainerDrawer extends ConsumerWidget {
       ),
       _DrawerEntry(LucideIcons.dumbbell, "Exercises", "exercises", true),
       _DrawerEntry(LucideIcons.trophy, "Challenges", "challenges", true),
-      _DrawerEntry(LucideIcons.fileText, "Assessments", "clients", true),
       _DrawerEntry(LucideIcons.messageSquare, "Chat", "chat", true),
       _DrawerEntry(LucideIcons.user, "My Profile", "myprofile", !isOwner),
       _DrawerEntry(LucideIcons.clipboardCheck, "Reports", "reports", isOwner),
@@ -357,7 +431,12 @@ class _TrainerDrawer extends ConsumerWidget {
         "waivers",
         isOwner,
       ),
-      _DrawerEntry(LucideIcons.users, newCoachCount > 0 ? "Coaches ($newCoachCount new)" : "Coaches", "coaches", isOwner),
+      _DrawerEntry(
+        LucideIcons.users,
+        newCoachCount > 0 ? "Coaches ($newCoachCount new)" : "Coaches",
+        "coaches",
+        isOwner,
+      ),
     ].where((e) => e.visible).toList();
 
     return Drawer(

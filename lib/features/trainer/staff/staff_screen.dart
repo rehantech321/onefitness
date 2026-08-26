@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/domain_labels.dart";
@@ -27,104 +28,132 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
     final trainers = ref.watch(trainersProvider);
 
     if (_editing != null || _creating) {
-      return TrainerEditForm(
-        initial: _editing,
-        isOwnerEditing: true,
-        onCancel: () => setState(() {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() {
           _editing = null;
           _creating = false;
         }),
-        onSave: (t, password) async {
-          String realId = t.id;
-          try {
-            if (_editing != null) {
-              await SupabaseService.updateTrainerRow(
-                t.id,
-                name: t.name,
-                email: t.email,
-                phone: t.phone,
-                photo: t.photo,
-                disciplines: t.disciplines,
-                sessionTypes: t.sessionTypes,
-                locations: t.locations,
-                bio: t.bio ?? "",
-                beforeAfters: t.beforeAfters,
-                availability: t.availability,
-                commissionRate: t.commissionRate,
-                payoutMode: t.payoutMode,
-                payoutRateCents: t.payoutRateCents,
-                referralCommissionPercent: t.referralCommissionPercent,
-                unavailability: t.unavailability,
-              );
-            } else {
-              // Brand-new trainer — real Supabase Auth account, created on
-              // the owner's behalf without disturbing the owner's own
-              // session (see signUpCoachOnBehalf's own doc comment).
-              realId = await SupabaseService.signUpCoachOnBehalf(
-                email: t.email ?? "",
-                password: password ?? "",
-                name: t.name,
-                phone: t.phone,
-                photo: t.photo,
-                disciplines: t.disciplines,
-                sessionTypes: t.sessionTypes,
-                locations: t.locations,
-                bio: t.bio,
-                beforeAfters: t.beforeAfters,
-                availability: t.availability,
-                commissionRate: t.commissionRate,
-                coachCode: t.coachCode,
-                payoutMode: t.payoutMode,
-                payoutRateCents: t.payoutRateCents,
-                referralCommissionPercent: t.referralCommissionPercent,
-                unavailability: t.unavailability,
-              );
-            }
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_editing != null ? "Couldn't save — check your connection and try again." : "Couldn't create that trainer — ${e.toString().replaceFirst('Exception: ', '').replaceFirst('AuthException: ', '')}")));
-            }
-            return;
-          }
-          ref.read(trainersProvider.notifier).upsert(realId == t.id ? t : Trainer(
-                id: realId,
-                name: t.name,
-                email: t.email,
-                phone: t.phone,
-                photo: t.photo,
-                disciplines: t.disciplines,
-                sessionTypes: t.sessionTypes,
-                locations: t.locations,
-                bio: t.bio,
-                beforeAfters: t.beforeAfters,
-                availability: t.availability,
-                commissionRate: t.commissionRate,
-                coachCode: t.coachCode,
-                payoutMode: t.payoutMode,
-                payoutRateCents: t.payoutRateCents,
-                referralCommissionPercent: t.referralCommissionPercent,
-                unavailability: t.unavailability,
-              ));
-          setState(() {
+        child: TrainerEditForm(
+          initial: _editing,
+          isOwnerEditing: true,
+          onCancel: () => setState(() {
             _editing = null;
             _creating = false;
-          });
-        },
-        onDelete: _editing == null
-            ? null
-            : () async {
-                final id = _editing!.id;
-                try {
-                  await SupabaseService.deleteTrainerRow(id);
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't remove that trainer — check your connection and try again.")));
+          }),
+          onSave: (t, password) async {
+            String realId = t.id;
+            try {
+              if (_editing != null) {
+                await SupabaseService.updateTrainerRow(
+                  t.id,
+                  name: t.name,
+                  email: t.email,
+                  phone: t.phone,
+                  photo: t.photo,
+                  disciplines: t.disciplines,
+                  sessionTypes: t.sessionTypes,
+                  locations: t.locations,
+                  bio: t.bio ?? "",
+                  beforeAfters: t.beforeAfters,
+                  availability: t.availability,
+                  commissionRate: t.commissionRate,
+                  payoutMode: t.payoutMode,
+                  payoutRateCents: t.payoutRateCents,
+                  referralCommissionPercent: t.referralCommissionPercent,
+                  unavailability: t.unavailability,
+                );
+              } else {
+                // Brand-new trainer — real Supabase Auth account, created on
+                // the owner's behalf without disturbing the owner's own
+                // session (see signUpCoachOnBehalf's own doc comment).
+                realId = await SupabaseService.signUpCoachOnBehalf(
+                  email: t.email ?? "",
+                  password: password ?? "",
+                  name: t.name,
+                  phone: t.phone,
+                  photo: t.photo,
+                  disciplines: t.disciplines,
+                  sessionTypes: t.sessionTypes,
+                  locations: t.locations,
+                  bio: t.bio,
+                  beforeAfters: t.beforeAfters,
+                  availability: t.availability,
+                  commissionRate: t.commissionRate,
+                  coachCode: t.coachCode,
+                  payoutMode: t.payoutMode,
+                  payoutRateCents: t.payoutRateCents,
+                  referralCommissionPercent: t.referralCommissionPercent,
+                  unavailability: t.unavailability,
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      _editing != null
+                          ? "Couldn't save — check your connection and try again."
+                          : "Couldn't create that trainer — ${e.toString().replaceFirst('Exception: ', '').replaceFirst('AuthException: ', '')}",
+                    ),
+                  ),
+                );
+              }
+              return;
+            }
+            ref
+                .read(trainersProvider.notifier)
+                .upsert(
+                  realId == t.id
+                      ? t
+                      : Trainer(
+                          id: realId,
+                          name: t.name,
+                          email: t.email,
+                          phone: t.phone,
+                          photo: t.photo,
+                          disciplines: t.disciplines,
+                          sessionTypes: t.sessionTypes,
+                          locations: t.locations,
+                          bio: t.bio,
+                          beforeAfters: t.beforeAfters,
+                          availability: t.availability,
+                          commissionRate: t.commissionRate,
+                          coachCode: t.coachCode,
+                          payoutMode: t.payoutMode,
+                          payoutRateCents: t.payoutRateCents,
+                          referralCommissionPercent:
+                              t.referralCommissionPercent,
+                          unavailability: t.unavailability,
+                        ),
+                );
+            setState(() {
+              _editing = null;
+              _creating = false;
+            });
+          },
+          onDelete: _editing == null
+              ? null
+              : () async {
+                  final id = _editing!.id;
+                  try {
+                    await SupabaseService.deleteTrainerRow(id);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            "Couldn't remove that trainer — check your connection and try again.",
+                          ),
+                        ),
+                      );
+                    }
+                    return;
                   }
-                  return;
-                }
-                ref.read(trainersProvider.notifier).remove(id);
-                setState(() => _editing = null);
-              },
+                  ref.read(trainersProvider.notifier).remove(id);
+                  setState(() => _editing = null);
+                },
+        ),
       );
     }
 
@@ -139,14 +168,27 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
               SectionLabel("Trainers (${trainers.length})"),
               TextButton.icon(
                 onPressed: () => setState(() => _creating = true),
-                icon: const Icon(LucideIcons.plus, size: 14, color: AppColors.gold),
-                label: const Text("Trainer", style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w700, fontSize: 12)),
+                icon: const Icon(
+                  LucideIcons.plus,
+                  size: 14,
+                  color: AppColors.gold,
+                ),
+                label: const Text(
+                  "Trainer",
+                  style: TextStyle(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
               ),
             ],
           ),
           ...trainers.map((t) {
             final disciplines = t.availability.map((b) => b.discipline).toSet();
-            final sessionTypes = t.availability.map((b) => b.sessionType).toSet();
+            final sessionTypes = t.availability
+                .map((b) => b.sessionType)
+                .toSet();
             return AppCard(
               onTap: () => setState(() => _editing = t),
               child: Column(
@@ -156,18 +198,49 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                     children: [
                       Avatar(name: t.name, size: 40),
                       const SizedBox(width: 12),
-                      Expanded(child: Text(t.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
-                      const Icon(LucideIcons.edit3, size: 15, color: AppColors.mute),
+                      Expanded(
+                        child: Text(
+                          t.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        LucideIcons.edit3,
+                        size: 15,
+                        color: AppColors.mute,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Wrap(spacing: 5, runSpacing: 5, children: [...sessionTypes.map((s) => Tag(text: sessionTypeLabel(s), gold: true)), ...disciplines.map((d) => Tag(text: disciplineLabel(d)))]),
+                  Wrap(
+                    spacing: 5,
+                    runSpacing: 5,
+                    children: [
+                      ...sessionTypes.map(
+                        (s) => Tag(text: sessionTypeLabel(s), gold: true),
+                      ),
+                      ...disciplines.map((d) => Tag(text: disciplineLabel(d))),
+                    ],
+                  ),
                   const SizedBox(height: 10),
-                  if (t.email != null) _IconLine(icon: LucideIcons.mail, text: t.email!),
-                  if (t.phone != null) _IconLine(icon: LucideIcons.phone, text: t.phone!),
-                  if (t.locationName != null) _IconLine(icon: LucideIcons.mapPin, text: t.locationName!),
-                  _IconLine(icon: LucideIcons.dollarSign, text: _payoutSummary(t)),
-                  if (t.coachCode != null && t.coachCode!.isNotEmpty) _IconLine(icon: LucideIcons.badgePercent, text: "Coach Code: ${t.coachCode}"),
+                  if (t.email != null)
+                    _IconLine(icon: LucideIcons.mail, text: t.email!),
+                  if (t.phone != null)
+                    _IconLine(icon: LucideIcons.phone, text: t.phone!),
+                  if (t.locationName != null)
+                    _IconLine(icon: LucideIcons.mapPin, text: t.locationName!),
+                  _IconLine(
+                    icon: LucideIcons.dollarSign,
+                    text: _payoutSummary(t),
+                  ),
+                  if (t.coachCode != null && t.coachCode!.isNotEmpty)
+                    _IconLine(
+                      icon: LucideIcons.badgePercent,
+                      text: "Coach Code: ${t.coachCode}",
+                    ),
                 ],
               ),
             );
@@ -201,7 +274,10 @@ class _IconLine extends StatelessWidget {
         children: [
           Icon(icon, size: 12, color: AppColors.mute),
           const SizedBox(width: 6),
-          Text(text, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+          ),
         ],
       ),
     );
