@@ -79,48 +79,57 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
     final assessmentBooked = onboardingStepDone(client, bookings, info.id, "physicalAssessmentBooked");
     final showOnboarding = (onboardingAlerts.isNotEmpty || !assessmentBooked) && !_skipOnboarding;
 
+    // Staggers each top-level section's entrance by 45ms, played once when
+    // the Dashboard first mounts.
+    var stagger = 0;
+    Widget stag(Widget child) {
+      final delay = Duration(milliseconds: 45 * stagger);
+      stagger++;
+      return FadeSlideIn(delay: delay, child: child);
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          stag(Text(
             "Hey $firstName, it's ${_hasSessionToday ? "lifting day!" : "a rest day"}",
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-          ),
+          )),
           const SizedBox(height: 2),
-          Padding(
+          stag(Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Text(dayLabel(isoToday()), style: const TextStyle(fontSize: 13, color: AppColors.mute)),
-          ),
+          )),
 
           if (widget.earnedBadges.any((b) => b.clientId == info.id && b.isActive)) ...[
-            MeritBadgeRow(clientId: info.id, earnedBadges: widget.earnedBadges),
+            stag(MeritBadgeRow(clientId: info.id, earnedBadges: widget.earnedBadges)),
             const SizedBox(height: 2),
           ],
-          TextButton(
+          stag(TextButton(
             onPressed: widget.onGoBadges,
             style: TextButton.styleFrom(foregroundColor: AppColors.gold, padding: EdgeInsets.zero, minimumSize: Size.zero, alignment: Alignment.centerLeft),
             child: const Padding(
               padding: EdgeInsets.only(bottom: 14),
               child: Text("See all Merit Badges →", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
             ),
-          ),
+          )),
 
           if (showOnboarding)
-            _OnboardingSection(
+            stag(_OnboardingSection(
               alerts: onboardingAlerts,
               showIntakeButtons: !assessmentBooked,
               onBookIntake: widget.onGoBooking,
               onGoToForm: widget.onGoToForm,
               onGoBookAssessment: widget.onGoBooking,
               onSkip: () => setState(() => _skipOnboarding = true),
-            ),
+            )),
 
-          SessionsRemainingBadge(info: info, bookings: bookings),
+          stag(SessionsRemainingBadge(info: info, bookings: bookings)),
 
           if (showHabitTile)
-            AppCard(
+            stag(AppCard(
               borderColor: AppColors.goldDim,
               onTap: widget.onGoHabits,
               child: Row(
@@ -144,12 +153,12 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
                   const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
                 ],
               ),
-            ),
+            )),
 
-          WorkoutCalendar(client: client, info: info, bookings: bookings, onPickDate: widget.onPickDate),
+          stag(WorkoutCalendar(client: client, info: info, bookings: bookings, onPickDate: widget.onPickDate)),
 
           const SizedBox(height: 4),
-          AppCard(
+          stag(AppCard(
             borderColor: AppColors.goldDim,
             margin: const EdgeInsets.only(top: 12, bottom: 12),
             child: Column(
@@ -193,9 +202,9 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
                 ],
               ],
             ),
-          ),
+          )),
 
-          AppCard(
+          stag(AppCard(
             onTap: widget.onLogWorkout,
             child: Row(
               children: [
@@ -216,7 +225,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
                 const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
               ],
             ),
-          ),
+          )),
         ],
       ),
     );

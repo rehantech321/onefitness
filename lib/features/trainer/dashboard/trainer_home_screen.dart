@@ -228,12 +228,21 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
       goMode("clients");
     }
 
+    // Staggers the greeting/stats header's entrance by 45ms per block,
+    // played once when the Dashboard first mounts.
+    var stagger = 0;
+    Widget stag(Widget child) {
+      final delay = Duration(milliseconds: 45 * stagger);
+      stagger++;
+      return FadeSlideIn(delay: delay, child: child);
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          stag(Row(
             children: [
               Avatar(name: isOwner ? "Owner" : myName, size: 48, active: true),
               const SizedBox(width: 12),
@@ -270,10 +279,10 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                 child: const Text("Sign out", style: TextStyle(fontSize: 12)),
               ),
             ],
-          ),
+          )),
           const SizedBox(height: 18),
           if (isOwner)
-            Padding(
+            stag(Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Row(
                 children: [
@@ -297,8 +306,8 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                   ),
                 ],
               ),
-            ),
-          const SectionLabel("Needs Attention"),
+            )),
+          stag(const SectionLabel("Needs Attention")),
           if (needsAttention.isEmpty)
             const HintBox(text: "Nothing needs your attention right now ✓")
           else

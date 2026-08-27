@@ -349,7 +349,9 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                     ),
                     // Content
                     Expanded(
-                      child: switch (screen) {
+                      child: AnimatedScreenSwitcher(
+                        screenKey: screen,
+                        child: switch (screen) {
                         "dashboard" => ClientDashboardScreen(
                           client: client,
                           info: info,
@@ -422,6 +424,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                           title: _titles[screen] ?? screen,
                         ),
                       },
+                      ),
                     ),
                   ],
                 ),
@@ -478,24 +481,10 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                           : () => go(item.key),
                       child: Padding(
                         padding: const EdgeInsets.only(top: 9, bottom: 11),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              item.icon,
-                              size: 21,
-                              color: on ? AppColors.gold : AppColors.mute,
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              item.label,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: on ? AppColors.gold : AppColors.mute,
-                              ),
-                            ),
-                          ],
+                        child: AnimatedTabIcon(
+                          icon: item.icon,
+                          label: item.label,
+                          selected: on,
                         ),
                       ),
                     ),

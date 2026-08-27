@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "../theme/app_colors.dart";
+import "pressable_scale.dart";
 
 /// Mirrors FormPrimitives.jsx `BtnGold` — solid gold pill button.
 class BtnGold extends StatelessWidget {
@@ -24,7 +25,8 @@ class BtnGold extends StatelessWidget {
       ),
       child: child,
     );
-    return full ? SizedBox(width: double.infinity, child: button) : button;
+    final scaled = PressableScale(child: button);
+    return full ? SizedBox(width: double.infinity, child: scaled) : scaled;
   }
 }
 
@@ -49,6 +51,7 @@ class BtnGhost extends StatelessWidget {
       ),
       child: child,
     );
-    return full ? SizedBox(width: double.infinity, child: button) : button;
+    final scaled = PressableScale(child: button);
+    return full ? SizedBox(width: double.infinity, child: scaled) : scaled;
   }
 }
