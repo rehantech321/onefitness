@@ -12,6 +12,7 @@ import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
+import "client_visits_section.dart";
 import "membership_hub_screen.dart";
 
 /// Mirrors ProfileSettingsScreen.jsx, trimmed to the rows that don't need
@@ -21,7 +22,12 @@ import "membership_hub_screen.dart";
 /// Two-Factor row is skipped entirely since it's gated behind a platform
 /// setting that defaults to "off".
 class ProfileSettingsScreen extends ConsumerStatefulWidget {
-  const ProfileSettingsScreen({super.key});
+  const ProfileSettingsScreen({super.key, required this.onReschedule});
+
+  /// Reuses client_shell.dart's own `startReschedule` — moves the app to the
+  /// Booking tab with the given booking pre-loaded for rescheduling, same as
+  /// every other Reschedule entry point in the app.
+  final ValueChanged<Booking> onReschedule;
 
   @override
   ConsumerState<ProfileSettingsScreen> createState() =>
@@ -39,6 +45,16 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         onBack: () => setState(() => _section = null),
         child: _EditProfileSection(
           onBack: () => setState(() => _section = null),
+        ),
+      );
+    }
+    if (_section == "visits") {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _section = null),
+        child: ClientVisitsSection(
+          onBack: () => setState(() => _section = null),
+          onReschedule: widget.onReschedule,
         ),
       );
     }
@@ -97,6 +113,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             label: "Payment Details",
             detail: "Managed by your coach",
             disabled: true,
+          ),
+          _SettingRow(
+            icon: LucideIcons.calendarClock,
+            label: "Visits",
+            detail: "Past & upcoming sessions",
+            onTap: () => setState(() => _section = "visits"),
           ),
           _SettingRow(
             icon: LucideIcons.mapPin,

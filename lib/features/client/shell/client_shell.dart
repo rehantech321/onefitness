@@ -321,11 +321,27 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                                 ),
                               ),
                             ),
-                            Avatar(
-                              src: info.photo,
-                              name: info.name,
-                              size: 30,
-                              active: true,
+                            InkWell(
+                              onTap: () => go("settings"),
+                              borderRadius: BorderRadius.circular(20),
+                              child: (info.photo != null && info.photo!.isNotEmpty)
+                                  ? Avatar(
+                                      src: info.photo,
+                                      name: info.name,
+                                      size: 30,
+                                      active: true,
+                                    )
+                                  : Container(
+                                      width: 30,
+                                      height: 30,
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: AppColors.gold, width: 1.5),
+                                        color: AppColors.gold.withValues(alpha: 0.15),
+                                      ),
+                                      child: Image.asset("assets/images/logo.png", fit: BoxFit.contain),
+                                    ),
                             ),
                           ],
                         ),
@@ -385,7 +401,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                           onOpenBadges: () => go("badges"),
                         ),
                         "badges" => BadgeGalleryScreen(clientId: info.id),
-                        "settings" => const ProfileSettingsScreen(),
+                        "settings" => ProfileSettingsScreen(onReschedule: startReschedule),
                         "squad" => const SquadDashboardScreen(),
                         "forms" => IntakeAreaScreen(
                           profileId: info.id,

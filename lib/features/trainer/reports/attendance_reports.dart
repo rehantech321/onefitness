@@ -6,7 +6,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/report_range.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
-import "../dashboard/trainer_home_screen.dart" show kAttendanceOptions;
+import "../../../core/utils/booking_utils.dart" show kAttendanceOptions;
 
 /// Mirrors AttendanceReports.jsx's AttendanceSummaryReport — count of
 /// bookings per attendance status (+ an "unmarked" bucket) in range.

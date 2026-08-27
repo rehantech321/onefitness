@@ -796,20 +796,6 @@ class _StatBox extends StatelessWidget {
   }
 }
 
-class AttendanceOption {
-  const AttendanceOption(this.key, this.label, this.color);
-  final String key;
-  final String label;
-  final Color color;
-}
-
-const kAttendanceOptions = [
-  AttendanceOption("checked-in", "Check In", AppColors.grn),
-  AttendanceOption("early-cancel", "Early Cancel", AppColors.info),
-  AttendanceOption("late-cancel", "Late Cancel", AppColors.warning),
-  AttendanceOption("no-show", "No Show", AppColors.danger),
-];
-
 const _attendanceLabels = {
   "checked-in": "Check In",
   "early-cancel": "Early Cancel",

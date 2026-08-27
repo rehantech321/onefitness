@@ -1,9 +1,11 @@
+import "package:flutter/material.dart";
 import "../../data/models/booking.dart";
 import "../../data/models/charge.dart";
 import "../../data/models/client_info.dart";
 import "../../data/models/client_record.dart";
 import "../../data/models/membership_plan.dart";
 import "../../data/models/trainer.dart";
+import "../theme/app_colors.dart";
 import "date_utils.dart";
 import "membership_utils.dart";
 import "platform_settings.dart";
@@ -111,6 +113,24 @@ CalendarDayStatus? calendarDayStatus(ClientRecord client, ClientInfo info, List<
 }
 
 String lateCancellationFeeLabel({int feeCents = kLateCancellationFeeCents}) => "\$${(feeCents / 100).toStringAsFixed(2)}";
+
+/// A booking's `attendanceStatus` value paired with its display label/color —
+/// shared between the coach's attendance-marking UI (trainer_home_screen.dart)
+/// and the client's own Past Visits history (client_visits_section.dart), so
+/// the two can never disagree on what a status is called.
+class AttendanceOption {
+  const AttendanceOption(this.key, this.label, this.color);
+  final String key;
+  final String label;
+  final Color color;
+}
+
+const kAttendanceOptions = [
+  AttendanceOption("checked-in", "Check In", AppColors.grn),
+  AttendanceOption("early-cancel", "Early Cancel", AppColors.info),
+  AttendanceOption("late-cancel", "Late Cancel", AppColors.warning),
+  AttendanceOption("no-show", "No Show", AppColors.danger),
+];
 
 /// Mirrors the Attendance & Cancellation Charging Policy (July 2026):
 /// Late Cancel and No-Show both carry an owner-set fee — but only a

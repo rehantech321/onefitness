@@ -12,7 +12,6 @@ import "../../../data/models/booking.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
-import "../dashboard/trainer_home_screen.dart" show kAttendanceOptions;
 import "client_search_picker.dart";
 
 /// Mirrors SessionDetail.jsx — the roster of every client in one
