@@ -3,6 +3,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/client_providers.dart";
@@ -523,6 +524,33 @@ class _TrainerDrawer extends ConsumerWidget {
                       ),
                     )
                     .toList(),
+              ),
+            ),
+            InkWell(
+              onTap: () {
+                SupabaseService.signOut();
+                ref.read(trainerAuthProvider.notifier).signOut();
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                child: Row(
+                  children: [
+                    Icon(
+                      LucideIcons.lock,
+                      size: 17,
+                      color: AppColors.errorText,
+                    ),
+                    SizedBox(width: 14),
+                    Text(
+                      "Sign out",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.errorText,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

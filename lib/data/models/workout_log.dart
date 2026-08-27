@@ -35,6 +35,7 @@ class WorkoutLogEntry {
     required this.dayTitle,
     this.exercises = const [],
     this.loggedAt,
+    this.loggedBy = "client",
   });
 
   final String id;
@@ -45,4 +46,8 @@ class WorkoutLogEntry {
   final String dayTitle;
   final List<LoggedExercise> exercises;
   final String? loggedAt; // ISO datetime, used to order same-day sessions
+
+  /// "client" (self-logged) | "coach" (logged on the client's behalf via
+  /// the coach's own Start Session flow) — see SessionLoggerView.
+  final String loggedBy;
 }

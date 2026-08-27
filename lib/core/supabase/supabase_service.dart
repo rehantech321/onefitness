@@ -34,6 +34,7 @@ import "../../data/models/trainer.dart";
 import "../../data/models/trainer_note.dart";
 import "../../data/models/waitlist_entry.dart";
 import "../../data/models/waiver_doc.dart";
+import "../../data/models/workout_log.dart";
 import "../../data/providers/platform_settings_provider.dart";
 import "supabase_config.dart";
 
@@ -135,7 +136,8 @@ class SupabaseService {
       // A referred client becomes that coach's client — this is what
       // makes the coach's roster-scoped Needs Attention alert (and their
       // Clients tab) actually show this signup.
-      if (referringTrainerId != null) "referred_by_trainer_id": referringTrainerId,
+      if (referringTrainerId != null)
+        "referred_by_trainer_id": referringTrainerId,
       if (referringTrainerId != null) "primary_trainer_id": referringTrainerId,
     });
     await client.from("client_records").insert({
@@ -227,7 +229,9 @@ class SupabaseService {
       });
     } on PostgrestException catch (e) {
       if (e.code == "23505")
-        throw Exception("That coach code is already taken — pick a different one.");
+        throw Exception(
+          "That coach code is already taken — pick a different one.",
+        );
       rethrow;
     }
     if (photo != null) {
@@ -293,11 +297,7 @@ class SupabaseService {
       body: jsonEncode({
         "email": email,
         "password": password,
-        "data": {
-          "requested_role": "coach",
-          "name": name,
-          "phone": phone ?? "",
-        },
+        "data": {"requested_role": "coach", "name": name, "phone": phone ?? ""},
       }),
     );
     final signUpBody =
@@ -341,7 +341,9 @@ class SupabaseService {
       });
     } on PostgrestException catch (e) {
       if (e.code == "23505")
-        throw Exception("That coach code is already taken — pick a different one.");
+        throw Exception(
+          "That coach code is already taken — pick a different one.",
+        );
       rethrow;
     }
     if (photo != null) {
@@ -637,7 +639,8 @@ class SupabaseService {
   }) async {
     final priorWinCounts = <String, int>{};
     for (final b in existingCoachBadges) {
-      if (b.badgeKey == "coach_of_month") priorWinCounts[b.trainerId] = (priorWinCounts[b.trainerId] ?? 0) + 1;
+      if (b.badgeKey == "coach_of_month")
+        priorWinCounts[b.trainerId] = (priorWinCounts[b.trainerId] ?? 0) + 1;
     }
 
     final composites = <CoachCompositeScore>[];
@@ -654,14 +657,24 @@ class SupabaseService {
         habitConsecutiveWeeks: habitConsecutiveWeeks,
         semiPrivateCap: semiPrivateCap,
       );
-      composites.add(coachCompositeScore(coach, roster, bookings, badges, monthRange));
+      composites.add(
+        coachCompositeScore(coach, roster, bookings, badges, monthRange),
+      );
       for (final b in badges) {
         if (!b.qualifies) continue;
-        await insertCoachMeritBadge(trainerId: coach.id, badgeKey: b.badgeKey, periodMonth: periodMonth, rewardCents: rewardCentsByBadgeKey[b.badgeKey] ?? 0);
+        await insertCoachMeritBadge(
+          trainerId: coach.id,
+          badgeKey: b.badgeKey,
+          periodMonth: periodMonth,
+          rewardCents: rewardCentsByBadgeKey[b.badgeKey] ?? 0,
+        );
       }
     }
 
-    final winner = pickCoachOfTheMonth(composites, priorWinCounts: priorWinCounts);
+    final winner = pickCoachOfTheMonth(
+      composites,
+      priorWinCounts: priorWinCounts,
+    );
     if (winner != null) {
       await insertCoachMeritBadge(
         trainerId: winner.trainer.id,
@@ -781,6 +794,39 @@ class SupabaseService {
     clientNoteAt: j["clientFlag"] is Map
         ? (j["clientFlag"] as Map)["at"] as String?
         : null,
+  );
+
+  static WorkoutLogEntry _workoutLogFromJson(Map<String, dynamic> j) =>
+      WorkoutLogEntry(
+        id: j["id"]?.toString() ?? "",
+        date: j["date"] as String? ?? "",
+        programId: j["programId"] as String? ?? "",
+        programName: j["programName"] as String? ?? "",
+        dayId: j["dayId"] as String? ?? "",
+        dayTitle: j["dayTitle"] as String? ?? "",
+        exercises: _safeMap(
+          ((j["exercises"] as List?) ?? const []).whereType<Map>(),
+          (m) => _loggedExerciseFromJson(m.cast<String, dynamic>()),
+        ),
+        loggedAt: j["loggedAt"] as String?,
+        loggedBy: j["loggedBy"] as String? ?? "client",
+      );
+
+  static LoggedExercise _loggedExerciseFromJson(Map<String, dynamic> j) =>
+      LoggedExercise(
+        name: j["name"] as String? ?? "",
+        sets: _safeMap(
+          ((j["sets"] as List?) ?? const []).whereType<Map>(),
+          (m) => _loggedSetFromJson(m.cast<String, dynamic>()),
+        ),
+      );
+
+  static LoggedSet _loggedSetFromJson(Map<String, dynamic> j) => LoggedSet(
+    setNum: _asInt(j["setNum"]) ?? 0,
+    targetReps: _asInt(j["targetReps"]) ?? 0,
+    completedReps: _asInt(j["completedReps"]),
+    completedWeight: (j["completedWeight"] as num?)?.toDouble(),
+    completed: j["completed"] as bool? ?? false,
   );
 
   static Future<List<MealDef>> loadCustomMeals() async {
@@ -1057,8 +1103,8 @@ class SupabaseService {
           access["messageIdentity"] as String? ?? defaults.messageIdentity,
       requiredProfileFields:
           ((clients["requiredProfileFields"] as List?)
-                  ?.whereType<String>()
-                  .toList()) ??
+              ?.whereType<String>()
+              .toList()) ??
           defaults.requiredProfileFields,
       customProfileFields: _customProfileFieldsFromJson(
         clients["customProfileFields"],
@@ -1076,8 +1122,7 @@ class SupabaseService {
           payments["checkoutDisclosureText"] as String? ??
           defaults.checkoutDisclosureText,
       refundFeeOnRefund:
-          payments["refundFeeOnRefund"] as bool? ??
-          defaults.refundFeeOnRefund,
+          payments["refundFeeOnRefund"] as bool? ?? defaults.refundFeeOnRefund,
       autoCarryOverLastWeight:
           workouts["autoCarryOverLastWeight"] as bool? ??
           defaults.autoCarryOverLastWeight,
@@ -1088,8 +1133,7 @@ class SupabaseService {
           workouts["clientsCanSwapExercises"] as bool? ??
           defaults.clientsCanSwapExercises,
       businessTimeZone:
-          workouts["businessTimeZone"] as String? ??
-          defaults.businessTimeZone,
+          workouts["businessTimeZone"] as String? ?? defaults.businessTimeZone,
       businessName:
           workouts["businessName"] as String? ?? defaults.businessName,
       meritBadgeProgressWeeks:
@@ -1110,8 +1154,7 @@ class SupabaseService {
       badgeCheckInCents:
           _asInt(workouts["badgeCheckInCents"]) ?? defaults.badgeCheckInCents,
       badgeComebackCents:
-          _asInt(workouts["badgeComebackCents"]) ??
-          defaults.badgeComebackCents,
+          _asInt(workouts["badgeComebackCents"]) ?? defaults.badgeComebackCents,
       badgeHabitCoachCents:
           _asInt(workouts["badgeHabitCoachCents"]) ??
           defaults.badgeHabitCoachCents,
@@ -1328,12 +1371,13 @@ class SupabaseService {
     if (b.right != null) "right": b.right,
   };
 
-  static Map<String, dynamic> _unavailabilityToJson(TrainerUnavailability u) => {
-    "id": u.id,
-    "startDate": u.startDate,
-    "endDate": u.endDate,
-    if (u.note != null) "note": u.note,
-  };
+  static Map<String, dynamic> _unavailabilityToJson(TrainerUnavailability u) =>
+      {
+        "id": u.id,
+        "startDate": u.startDate,
+        "endDate": u.endDate,
+        if (u.note != null) "note": u.note,
+      };
 
   static Map<String, dynamic> _availabilityToJson(AvailabilityBlock b) => {
     "sessionType": b.sessionType,
@@ -1477,6 +1521,19 @@ class SupabaseService {
     List<ProgramDay> days,
   ) => upsertClientRecordPatch(profileId, {
     "programDays": days.map(_programDayToJson).toList(),
+  });
+
+  /// `client_records.data.workoutLogs` — a completed logged session, either
+  /// self-logged by the client (SessionLoggerView via workout_tab.dart) or
+  /// logged on their behalf by a coach (SessionLoggerView via
+  /// trainer_home_screen.dart's Start Session) — see [WorkoutLogEntry.loggedBy].
+  /// Same shape as [updateClientProgramDays]: caller passes the full
+  /// accumulated list, not just the new entry.
+  static Future<void> updateClientWorkoutLogs(
+    String profileId,
+    List<WorkoutLogEntry> logs,
+  ) => upsertClientRecordPatch(profileId, {
+    "workoutLogs": logs.map(_workoutLogToJson).toList(),
   });
 
   /// `client_records.data.challengeProgress` — keyed by challenge id, each a
@@ -2129,7 +2186,10 @@ class SupabaseService {
   /// membership-package category pickers, so a category typed in one place
   /// shows up in the other.
   static Future<List<String>> loadPackageCategories() async {
-    final rows = await client.from("package_categories").select("name").order("created_at");
+    final rows = await client
+        .from("package_categories")
+        .select("name")
+        .order("created_at");
     return rows.map((r) => r["name"] as String).toList();
   }
 
@@ -2173,11 +2233,17 @@ class SupabaseService {
     "category": p.category,
     "allowGuests": p.allowGuests,
     "guestFeeCents": p.guestFeeCents,
-    "rollover": {"enabled": p.rolloverEnabled, "maxVisits": p.rolloverMaxVisits},
+    "rollover": {
+      "enabled": p.rolloverEnabled,
+      "maxVisits": p.rolloverMaxVisits,
+    },
     "cancellationNoticeDays": p.cancellationNoticeDays,
     "earlyTerminationFeeCents": p.earlyTerminationFeeCents,
     "serviceBalanceEnabled": p.serviceBalanceEnabled,
-    "sharing": {"enabled": p.sharingEnabled, "maxAccounts": p.sharingMaxAccounts},
+    "sharing": {
+      "enabled": p.sharingEnabled,
+      "maxAccounts": p.sharingMaxAccounts,
+    },
     "public": p.public,
     "limitOnePerAccount": p.limitOnePerAccount,
     "expiration": {"enabled": p.expirationEnabled, "days": p.expirationDays},
@@ -2232,6 +2298,31 @@ class SupabaseService {
     "clientFlag": e.clientNoteText != null
         ? {"note": e.clientNoteText, "at": e.clientNoteAt}
         : null,
+  };
+
+  static Map<String, dynamic> _workoutLogToJson(WorkoutLogEntry w) => {
+    "id": w.id,
+    "date": w.date,
+    "programId": w.programId,
+    "programName": w.programName,
+    "dayId": w.dayId,
+    "dayTitle": w.dayTitle,
+    "exercises": w.exercises.map(_loggedExerciseToJson).toList(),
+    "loggedAt": w.loggedAt,
+    "loggedBy": w.loggedBy,
+  };
+
+  static Map<String, dynamic> _loggedExerciseToJson(LoggedExercise e) => {
+    "name": e.name,
+    "sets": e.sets.map(_loggedSetToJson).toList(),
+  };
+
+  static Map<String, dynamic> _loggedSetToJson(LoggedSet s) => {
+    "setNum": s.setNum,
+    "targetReps": s.targetReps,
+    "completedReps": s.completedReps,
+    "completedWeight": s.completedWeight,
+    "completed": s.completed,
   };
 
   static Future<void> upsertProgramLibraryEntry(SavedProgram p) =>
@@ -2499,7 +2590,8 @@ class SupabaseService {
       signupAt: t["signup_at"] as String?,
       payoutMode: t["payout_mode"] as String? ?? "perSession",
       payoutRateCents: _asInt(t["payout_rate_cents"]) ?? 0,
-      referralCommissionPercent: (t["referral_commission_percent"] as num?) ?? 0,
+      referralCommissionPercent:
+          (t["referral_commission_percent"] as num?) ?? 0,
       coachCode: t["coach_code"] as String?,
       unavailability: _unavailabilityFromJson(t["unavailability"]),
     );
@@ -2542,7 +2634,8 @@ class SupabaseService {
           (e) => TrainerUnavailability(
             id: (e["id"] as String?) ?? "",
             startDate: (e["startDate"] as String?) ?? "",
-            endDate: (e["endDate"] as String?) ?? (e["startDate"] as String?) ?? "",
+            endDate:
+                (e["endDate"] as String?) ?? (e["startDate"] as String?) ?? "",
             note: e["note"] as String?,
           ),
         )
@@ -2729,6 +2822,17 @@ class SupabaseService {
         ((j["programDays"] as List?) ?? const []).whereType<Map>(),
         (m) => _programDayFromJson(m.cast<String, dynamic>()),
       ),
+      workoutLogs: _safeMap(
+        ((j["workoutLogs"] as List?) ?? const []).whereType<Map>(),
+        (m) => _workoutLogFromJson(m.cast<String, dynamic>()),
+      ),
+      // Not a persisted field in its own right — derived from workoutLogs
+      // (union of logged dates), same as the legacy web-only `client.logs`
+      // free-text path this port doesn't model.
+      loggedDates: _safeMap(
+        ((j["workoutLogs"] as List?) ?? const []).whereType<Map>(),
+        (m) => m["date"] as String?,
+      ).whereType<String>().toSet().toList(),
       tourSeenDashboard: j["tourSeen"] is Map
           ? (j["tourSeen"] as Map)["dashboard"] as bool? ?? false
           : false,
@@ -2927,7 +3031,8 @@ class SupabaseService {
       sharingMaxAccounts: _asInt((j["sharing"] as Map?)?["maxAccounts"]) ?? 1,
       public: j["public"] as bool? ?? true,
       limitOnePerAccount: j["limitOnePerAccount"] as bool? ?? false,
-      expirationEnabled: (j["expiration"] as Map?)?["enabled"] as bool? ?? false,
+      expirationEnabled:
+          (j["expiration"] as Map?)?["enabled"] as bool? ?? false,
       expirationDays: _asInt((j["expiration"] as Map?)?["days"]),
     );
   }
