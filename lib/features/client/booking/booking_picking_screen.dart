@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
@@ -102,7 +103,11 @@ class BookingPickingScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Text(
-              pick.sessionType == "semi-private" ? "Semi-private — up to 4 share the floor." : "One-on-one — just you.",
+              switch (pick.sessionType) {
+                "semi-private" => "Semi-private — up to 4 share the floor.",
+                "large-group" => "Large Group — up to ${capFor("large-group")} share the class.",
+                _ => "One-on-one — just you.",
+              },
               style: const TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ),

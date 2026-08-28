@@ -414,7 +414,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           if (plan != null && _rescheduling == null) _MembershipBanner(info: info, plan: plan, bookings: bookings),
 
           if (_chosenType == null)
-            _StepOne(plan: plan, isStaff: info.isStaff, onPick: _pickType)
+            _StepOne(plan: plan, isStaff: info.isStaff, trainers: trainers, onPick: _pickType)
           else if (_chosenDisc == null)
             _StepTwo(
               chosenType: _chosenType!,
@@ -497,14 +497,21 @@ class _MembershipBanner extends StatelessWidget {
 }
 
 class _StepOne extends StatelessWidget {
-  const _StepOne({required this.plan, required this.onPick, this.isStaff = false});
+  const _StepOne({required this.plan, required this.onPick, required this.trainers, this.isStaff = false});
   final MembershipPlan? plan;
   final ValueChanged<String> onPick;
+  final List<Trainer> trainers;
   final bool isStaff;
 
   @override
   Widget build(BuildContext context) {
     final allowedTypes = plan?.allowedTypes ?? const ["semi-private", "one-on-one"];
+    // Large Group is included with ANY active membership — not gated to a
+    // specific plan tier like allowedTypes — and visible for browsing even
+    // with no membership at all. Only hidden if literally no coach offers it.
+    final anyLargeGroupOffered = trainers.any(
+      (t) => t.availability.any((b) => b.sessionType == "large-group" && b.byDay.values.any((s) => s.isNotEmpty)),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -537,6 +544,22 @@ class _StepOne extends StatelessWidget {
                   "Your trainer's full attention in a private session tailored entirely to your goals, "
                   "fitness level, and needs.",
                   style: TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+        if (anyLargeGroupOffered)
+          AppCard(
+            onTap: () => onPick("large-group"),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Large Group", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                const SizedBox(height: 3),
+                Text(
+                  "Hike and Outdoor HIIT classes — 1 hour, capacity ${capFor("large-group")}, starting on the "
+                  "hour every hour. Included with any active membership.",
+                  style: const TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5),
                 ),
               ],
             ),

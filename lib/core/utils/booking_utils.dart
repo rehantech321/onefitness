@@ -237,7 +237,11 @@ BookingCheck canBookOffering(
   if (info.membershipCancelsAt != null && date.compareTo(info.membershipCancelsAt!) > 0) {
     return BookingCheck(ok: false, reason: "membership-ending", msg: "Your membership ends on ${info.membershipCancelsAt} — you can't book sessions after that date.");
   }
-  if (!plan.allowedTypes.contains(sessionType)) {
+  // Large Group classes (Hike, Outdoor HIIT) are included with any active
+  // membership — not gated to whichever specific Semi-Private/One-on-One
+  // tier the client's plan covers, unlike every other session type. Still
+  // subject to the session-budget check below, same as every other type.
+  if (sessionType != "large-group" && !plan.allowedTypes.contains(sessionType)) {
     return BookingCheck(ok: false, reason: "wrong-type", msg: "Your ${plan.name} doesn't cover this session type.");
   }
 
