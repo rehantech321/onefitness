@@ -137,10 +137,17 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     }
   }
 
+  // Screens that own their own horizontal swipe (a SwipeableTabView between
+  // sub-tabs) — the shell's swipe-to-go-back gesture below would otherwise
+  // fire on the exact same rightward drag a user makes to flip back a tab,
+  // navigating the whole screen away instead of just changing tabs.
+  static const _swipeOwnedByScreen = {"plans", "progress", "photos", "measurements"};
+
   void _onPointerUp(PointerUpEvent e) {
     final start = _dragStart;
     _dragStart = null;
     if (start == null) return;
+    if (_swipeOwnedByScreen.contains(ref.read(clientScreenProvider))) return;
     final delta = e.position - start;
     // Ignore drags starting inside the Drawer's own left-edge-swipe-to-
     // open hitbox (Scaffold's default drawerEdgeDragWidth) so the two
@@ -321,6 +328,19 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                                 ),
                               ),
                             ),
+                            if (screen == "chat") ...[
+                              IconButton(
+                                onPressed: () => showChatInfoSheet(context),
+                                icon: const Icon(
+                                  LucideIcons.info,
+                                  size: 20,
+                                  color: AppColors.mute,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              const SizedBox(width: 12),
+                            ],
                             InkWell(
                               onTap: () => go("settings"),
                               borderRadius: BorderRadius.circular(20),

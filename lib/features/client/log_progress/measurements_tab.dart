@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -23,6 +24,9 @@ class MeasurementsTab extends ConsumerStatefulWidget {
 
 class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
   bool _adding = false;
+  bool _saving = false;
+  String? _removingId;
+  String? _error;
   final _dateController = TextEditingController(text: isoToday());
   final Map<String, TextEditingController> _fieldControllers = {
     for (final k in _measureFieldKeys) k: TextEditingController(),
@@ -37,7 +41,8 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
+    if (_saving) return;
     final values = {for (final k in _measureFieldKeys) k: _fieldControllers[k]!.text.trim()};
     final entry = Measurement(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
@@ -50,19 +55,46 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
       arms: values["arms"]!.isEmpty ? null : values["arms"],
       thighs: values["thighs"]!.isEmpty ? null : values["thighs"],
     );
-    ref.read(clientRecordProvider.notifier).update((r) {
-      final next = [entry, ...r.measurements]..sort((a, b) => b.date.compareTo(a.date));
-      return r.copyWith(measurements: next);
+    final client = ref.read(clientRecordProvider);
+    final next = [entry, ...client.measurements]..sort((a, b) => b.date.compareTo(a.date));
+    setState(() {
+      _saving = true;
+      _error = null;
     });
-    for (final c in _fieldControllers.values) {
-      c.clear();
+    try {
+      await SupabaseService.updateClientMeasurements(client.id, next);
+      ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(measurements: next));
+      for (final c in _fieldControllers.values) {
+        c.clear();
+      }
+      _dateController.text = isoToday();
+      if (mounted) setState(() { _adding = false; _saving = false; });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = "Couldn't save — check your connection and try again.";
+        });
+      }
     }
-    _dateController.text = isoToday();
-    setState(() => _adding = false);
   }
 
-  void _remove(String id) {
-    ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(measurements: r.measurements.where((m) => m.id != id).toList()));
+  Future<void> _remove(String id) async {
+    if (_removingId != null) return;
+    final client = ref.read(clientRecordProvider);
+    final next = client.measurements.where((m) => m.id != id).toList();
+    setState(() {
+      _removingId = id;
+      _error = null;
+    });
+    try {
+      await SupabaseService.updateClientMeasurements(client.id, next);
+      ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(measurements: next));
+    } catch (e) {
+      if (mounted) setState(() => _error = "Couldn't delete — check your connection and try again.");
+    } finally {
+      if (mounted) setState(() => _removingId = null);
+    }
   }
 
   @override
@@ -146,20 +178,31 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                     children: [
                       Expanded(
                         child: BtnGold(
-                          onPressed: _save,
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [Icon(LucideIcons.check, size: 15, color: Colors.white), SizedBox(width: 6), Text("Save")],
-                          ),
+                          onPressed: _saving ? null : _save,
+                          child: _saving
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [Icon(LucideIcons.check, size: 15, color: Colors.white), SizedBox(width: 6), Text("Save")],
+                                ),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      BtnGhost(onPressed: () => setState(() => _adding = false), child: const Text("Cancel")),
+                      BtnGhost(onPressed: _saving ? null : () => setState(() => _adding = false), child: const Text("Cancel")),
                     ],
                   ),
                 ],
               ),
+            ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 4),
+              child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
             ),
           if (entries.isEmpty && !_adding)
             const HintBox(text: "No measurements logged yet. Track weight and body measurements over time.")
@@ -172,12 +215,18 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(dayLabel(m.date), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.gold, fontSize: 13)),
-                          IconButton(
-                            onPressed: () => _remove(m.id),
-                            icon: const Icon(LucideIcons.trash2, size: 14, color: Color(0xFF6B3B3B)),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
+                          _removingId == m.id
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6B3B3B)),
+                                )
+                              : IconButton(
+                                  onPressed: _removingId == null ? () => _remove(m.id) : null,
+                                  icon: const Icon(LucideIcons.trash2, size: 14, color: Color(0xFF6B3B3B)),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
                         ],
                       ),
                       const SizedBox(height: 8),

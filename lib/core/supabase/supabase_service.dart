@@ -21,11 +21,13 @@ import "../../data/models/habit_def.dart";
 import "../../data/models/habit_log_entry.dart";
 import "../../data/models/intake_schema.dart";
 import "../../data/models/meal_def.dart";
+import "../../data/models/measurement.dart";
 import "../../data/models/membership_plan.dart";
 import "../../data/models/nutrition_plan.dart";
 import "../../data/models/points_ledger_entry.dart";
 import "../../data/models/product.dart";
 import "../../data/models/program_day.dart";
+import "../../data/models/progress_photo.dart";
 import "../../data/models/report_range.dart";
 import "../../data/models/saved_program.dart";
 import "../../data/models/signature.dart";
@@ -1472,6 +1474,7 @@ class SupabaseService {
     "at": m.at,
     "trainerId": m.trainerId,
     "readByCoach": m.readByCoach,
+    "channel": m.channel,
   };
 
   static Future<void> updateClientComms(
@@ -1534,6 +1537,26 @@ class SupabaseService {
     List<WorkoutLogEntry> logs,
   ) => upsertClientRecordPatch(profileId, {
     "workoutLogs": logs.map(_workoutLogToJson).toList(),
+  });
+
+  /// `client_records.data.measurements` — the Body tab's weight/body-fat/
+  /// tape-measurement log (measurements_tab.dart). Same shape as
+  /// [updateClientProgramDays]: caller passes the full accumulated list.
+  static Future<void> updateClientMeasurements(
+    String profileId,
+    List<Measurement> measurements,
+  ) => upsertClientRecordPatch(profileId, {
+    "measurements": measurements.map(_measurementToJson).toList(),
+  });
+
+  /// `client_records.data.photos` — the Photos tab's progress-photo log
+  /// (progress_photos_tab.dart). Each entry's `img` is already a compressed
+  /// data URL (see pickProgressPhotoDataUrl) by the time it gets here.
+  static Future<void> updateClientPhotos(
+    String profileId,
+    List<ProgressPhoto> photos,
+  ) => upsertClientRecordPatch(profileId, {
+    "photos": photos.map(_progressPhotoToJson).toList(),
   });
 
   /// `client_records.data.challengeProgress` — keyed by challenge id, each a
@@ -2325,6 +2348,42 @@ class SupabaseService {
     "completed": s.completed,
   };
 
+  static Map<String, dynamic> _measurementToJson(Measurement m) => {
+    "id": m.id,
+    "date": m.date,
+    "weight": m.weight,
+    "bodyfat": m.bodyfat,
+    "chest": m.chest,
+    "waist": m.waist,
+    "hips": m.hips,
+    "arms": m.arms,
+    "thighs": m.thighs,
+  };
+
+  static Measurement _measurementFromJson(Map<String, dynamic> j) => Measurement(
+    id: j["id"]?.toString() ?? "",
+    date: j["date"] as String? ?? "",
+    weight: j["weight"] as String?,
+    bodyfat: j["bodyfat"] as String?,
+    chest: j["chest"] as String?,
+    waist: j["waist"] as String?,
+    hips: j["hips"] as String?,
+    arms: j["arms"] as String?,
+    thighs: j["thighs"] as String?,
+  );
+
+  static Map<String, dynamic> _progressPhotoToJson(ProgressPhoto p) => {
+    "id": p.id,
+    "date": p.date,
+    "img": p.img,
+  };
+
+  static ProgressPhoto _progressPhotoFromJson(Map<String, dynamic> j) => ProgressPhoto(
+    id: j["id"]?.toString() ?? "",
+    date: j["date"] as String? ?? "",
+    img: j["img"] as String? ?? "",
+  );
+
   static Future<void> upsertProgramLibraryEntry(SavedProgram p) =>
       _mergeJsonbUpsert("programs_library", p.id, _savedProgramToJson(p));
 
@@ -2729,10 +2788,9 @@ class SupabaseService {
     // singular client.program only for pre-migration records — that legacy
     // shape isn't modeled here since nothing in this app still writes it)
     // and SaveProgramDialog.jsx's client.savedPrograms entry shape.
-    // workoutLogs/photos/measurements/challengeProgress/trainerNotes/
-    // sessionFeedback/habitLogByDate/etc. are NOT parsed here yet — still
-    // open gaps beyond this pass's scope, tracked for a future audit of
-    // this parser.
+    // challengeProgress/trainerNotes/sessionFeedback/habitLogByDate/etc. are
+    // NOT parsed here yet — still open gaps beyond this pass's scope,
+    // tracked for a future audit of this parser.
     final commsRaw = (j["comms"] as List?) ?? const [];
     // Real roster data is messier than any one test account suggests — some
     // client_records rows carry `intake` as an empty array (a stale/older
@@ -2788,6 +2846,7 @@ class SupabaseService {
           at: m["at"] as String? ?? "",
           trainerId: m["trainerId"] as String?,
           readByCoach: m["readByCoach"] as bool? ?? false,
+          channel: m["channel"] as String?,
         ),
       ),
       intake: Map.fromEntries(
@@ -2825,6 +2884,14 @@ class SupabaseService {
       workoutLogs: _safeMap(
         ((j["workoutLogs"] as List?) ?? const []).whereType<Map>(),
         (m) => _workoutLogFromJson(m.cast<String, dynamic>()),
+      ),
+      measurements: _safeMap(
+        ((j["measurements"] as List?) ?? const []).whereType<Map>(),
+        (m) => _measurementFromJson(m.cast<String, dynamic>()),
+      ),
+      photos: _safeMap(
+        ((j["photos"] as List?) ?? const []).whereType<Map>(),
+        (m) => _progressPhotoFromJson(m.cast<String, dynamic>()),
       ),
       // Not a persisted field in its own right — derived from workoutLogs
       // (union of logged dates), same as the legacy web-only `client.logs`

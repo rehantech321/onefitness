@@ -1,9 +1,10 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-import "package:image_picker/image_picker.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/progress_photo.dart";
 import "../../../data/providers/client_providers.dart";
@@ -19,26 +20,52 @@ class ProgressPhotosTab extends ConsumerStatefulWidget {
 
 class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
   bool _busy = false;
+  String? _removingId;
+  String? _error;
 
   Future<void> _addPhoto() async {
-    setState(() => _busy = true);
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
-      final picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 900);
-      if (picked != null) {
-        final bytes = await picked.readAsBytes();
-        ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(
-              photos: [ProgressPhoto(id: DateTime.now().microsecondsSinceEpoch.toString(), date: isoToday(), bytes: bytes), ...r.photos],
-            ));
+      final img = await pickProgressPhotoDataUrl();
+      if (img == null) {
+        if (mounted) setState(() => _busy = false);
+        return;
       }
-    } catch (_) {
-      // No permission / user cancelled — nothing to log for a demo picker.
-    } finally {
+      final client = ref.read(clientRecordProvider);
+      final next = [ProgressPhoto(id: DateTime.now().microsecondsSinceEpoch.toString(), date: isoToday(), img: img), ...client.photos];
+      await SupabaseService.updateClientPhotos(client.id, next);
+      ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(photos: next));
       if (mounted) setState(() => _busy = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = "Couldn't save that photo — check your connection and try again.";
+        });
+      }
     }
   }
 
-  void _remove(String id) {
-    ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(photos: r.photos.where((p) => p.id != id).toList()));
+  Future<void> _remove(String id) async {
+    if (_removingId != null) return;
+    final client = ref.read(clientRecordProvider);
+    final next = client.photos.where((p) => p.id != id).toList();
+    setState(() {
+      _removingId = id;
+      _error = null;
+    });
+    try {
+      await SupabaseService.updateClientPhotos(client.id, next);
+      ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(photos: next));
+    } catch (e) {
+      if (mounted) setState(() => _error = "Couldn't delete — check your connection and try again.");
+    } finally {
+      if (mounted) setState(() => _removingId = null);
+    }
   }
 
   @override
@@ -67,6 +94,11 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
               ),
             ],
           ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+            ),
           const SizedBox(height: 12),
           if (photos.isEmpty)
             const HintBox(text: "No photos yet. Add progress photos to track visual change over time.")
@@ -96,10 +128,16 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(dayLabel(p.date), style: const TextStyle(fontSize: 11, color: Colors.white)),
-                              InkWell(
-                                onTap: () => _remove(p.id),
-                                child: const Icon(LucideIcons.trash2, size: 13, color: Color(0xFFE0A0A0)),
-                              ),
+                              _removingId == p.id
+                                  ? const SizedBox(
+                                      width: 12,
+                                      height: 12,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE0A0A0)),
+                                    )
+                                  : InkWell(
+                                      onTap: _removingId == null ? () => _remove(p.id) : null,
+                                      child: const Icon(LucideIcons.trash2, size: 13, color: Color(0xFFE0A0A0)),
+                                    ),
                             ],
                           ),
                         ),

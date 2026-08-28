@@ -29,4 +29,5 @@ export "pressable_scale.dart";
 export "section_label.dart";
 export "status_dot.dart";
 export "sub_badge_icon.dart";
+export "swipeable_tab_view.dart";
 export "tag.dart";

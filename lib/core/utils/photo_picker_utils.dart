@@ -1,4 +1,9 @@
+import "dart:convert";
+import "dart:typed_data";
+
+import "package:flutter/foundation.dart" show compute;
 import "package:flutter/material.dart";
+import "package:image/image.dart" as img;
 import "package:image_picker/image_picker.dart";
 import "../widgets/photo_cropper_screen.dart";
 
@@ -31,4 +36,36 @@ Future<String?> pickProfilePhotoDataUrl(BuildContext context) async {
   } catch (_) {
     return null;
   }
+}
+
+/// Picks an image from the gallery and returns it as a compressed
+/// `data:image/jpeg;base64,...` URL — no crop step (progress photos keep
+/// their own aspect ratio, shown 3:4 in the grid), just a longest-edge-700
+/// resize + JPEG quality 80, matching web's own `compressImage(file, 700)`
+/// (ProgressPhotos.jsx) so a phone photo doesn't balloon client_records the
+/// same way an uncompressed profile photo did — see pickProfilePhotoDataUrl.
+///
+/// Returns null if the user cancels, picking fails, or the file isn't
+/// decodable as an image.
+Future<String?> pickProgressPhotoDataUrl() async {
+  try {
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (picked == null) return null;
+    final bytes = await picked.readAsBytes();
+    return compute(_compressProgressPhoto, bytes);
+  } catch (_) {
+    return null;
+  }
+}
+
+String? _compressProgressPhoto(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) return null;
+  const max = 700;
+  final longest = decoded.width > decoded.height ? decoded.width : decoded.height;
+  final resized = longest <= max
+      ? decoded
+      : (decoded.width >= decoded.height ? img.copyResize(decoded, width: max) : img.copyResize(decoded, height: max));
+  final jpg = img.encodeJpg(resized, quality: 80);
+  return "data:image/jpeg;base64,${base64Encode(jpg)}";
 }

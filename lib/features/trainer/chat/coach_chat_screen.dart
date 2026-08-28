@@ -291,6 +291,7 @@ class _CoachComposeState extends ConsumerState<_CoachCompose> {
         at: stamp(),
         trainerId: trainerAuth,
         readByCoach: true,
+        channel: _channel.name,
       );
       ref
           .read(trainerClientRecordsProvider.notifier)

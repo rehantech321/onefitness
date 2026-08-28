@@ -161,7 +161,9 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
           stag(AppCard(
             borderColor: AppColors.goldDim,
             margin: const EdgeInsets.only(top: 12, bottom: 12),
-            child: Column(
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
@@ -201,6 +203,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
                   BtnGold(onPressed: widget.onGoBooking, child: const Text("Book a session", style: TextStyle(fontSize: 13))),
                 ],
               ],
+              ),
             ),
           )),
 
