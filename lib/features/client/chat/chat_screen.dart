@@ -5,6 +5,7 @@ import "package:shared_preferences/shared_preferences.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/comm_message.dart";
@@ -425,15 +426,32 @@ class _RecipientSetupState extends State<_RecipientSetup> {
                 const Text("Your coach", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
                 const SizedBox(height: 4),
                 if (widget.realCandidates.length > 1)
-                  DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: current.id,
-                      isDense: true,
-                      dropdownColor: AppColors.card,
-                      icon: const Icon(LucideIcons.chevronDown, size: 16, color: AppColors.mute),
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.txt),
-                      items: widget.realCandidates.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
-                      onChanged: (v) => setState(() => _recipientId = v),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showModalBottomSheet<Trainer>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: AppColors.card,
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+                        builder: (_) => _CoachSearchSheet(candidates: widget.realCandidates, selectedId: current.id),
+                      );
+                      if (picked != null) setState(() => _recipientId = picked.id);
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            current.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.txt),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(LucideIcons.search, size: 15, color: AppColors.mute),
+                      ],
                     ),
                   )
                 else
@@ -497,6 +515,115 @@ class _SelectableCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: child,
+      ),
+    );
+  }
+}
+
+/// Bottom sheet for finding a specific coach by name, discipline, or
+/// location — opened from `_coachCard()` whenever there's more than one
+/// candidate coach to choose between. Mirrors squad_member_search_screen
+/// .dart's search-field-over-a-filtered-list pattern; pops the picked
+/// Trainer back to the caller, or null if dismissed without a pick.
+class _CoachSearchSheet extends StatefulWidget {
+  const _CoachSearchSheet({required this.candidates, required this.selectedId});
+  final List<Trainer> candidates;
+  final String selectedId;
+
+  @override
+  State<_CoachSearchSheet> createState() => _CoachSearchSheetState();
+}
+
+class _CoachSearchSheetState extends State<_CoachSearchSheet> {
+  final _controller = TextEditingController();
+  String _query = "";
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = _query.trim().toLowerCase();
+    final results = q.isEmpty
+        ? widget.candidates
+        : widget.candidates.where((t) {
+            final nameMatch = t.name.toLowerCase().contains(q);
+            final discMatch = t.disciplines.any((d) => disciplineLabel(d).toLowerCase().contains(q));
+            final locMatch = (t.locationName ?? "").toLowerCase().contains(q);
+            return nameMatch || discMatch || locMatch;
+          }).toList();
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel("Find a coach"),
+                  const SizedBox(height: 8),
+                  AppField(
+                    controller: _controller,
+                    placeholder: "Search by name, discipline, or location…",
+                    onChanged: (v) => setState(() => _query = v),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: results.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(18),
+                      child: HintBox(text: "No coaches match your search."),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                      itemCount: results.length,
+                      itemBuilder: (context, i) {
+                        final t = results[i];
+                        final selected = t.id == widget.selectedId;
+                        return AppCard(
+                          borderColor: selected ? AppColors.gold : null,
+                          onTap: () => Navigator.of(context).pop(t),
+                          child: Row(
+                            children: [
+                              Avatar(src: t.photo, name: t.name, size: 40),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(t.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                                    if (t.disciplines.isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2),
+                                        child: Text(
+                                          t.disciplines.map(disciplineLabel).join(", "),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              if (selected) const Icon(LucideIcons.checkCircle2, size: 18, color: AppColors.gold),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

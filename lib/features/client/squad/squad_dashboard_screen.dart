@@ -9,6 +9,7 @@ import "../../../data/models/roster_client.dart";
 import "../../../data/models/squad.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
+import "squad_chat_tab.dart";
 import "squad_member_search_screen.dart";
 
 void _showMutateError(BuildContext context) {
@@ -19,6 +20,73 @@ void _showMutateError(BuildContext context) {
       ),
     );
   }
+}
+
+/// Lead-only "change later" action for [Squad.billingShared]. Turning on
+/// is immediate; turning off is blocked while a shared plan is still
+/// assigned (`squad.membership != null`) since there's no in-app way for a
+/// client to remove that plan themselves — the Membership tab's own hint
+/// text says it's staff-assigned only. Otherwise, confirms first since it
+/// hides the Membership/Payments tabs for the whole Squad.
+Future<void> _toggleBillingShared(BuildContext context, WidgetRef ref, Squad squad) async {
+  final info = ref.read(clientInfoProvider);
+  if (squad.billingShared) {
+    if (squad.membership != null) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Text("Can't turn off shared billing"),
+          content: const Text(
+            "This Squad has an active shared plan. Ask your coach to remove it before turning off shared billing.",
+            style: TextStyle(color: AppColors.mute),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("OK")),
+          ],
+        ),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text("Turn off shared billing?"),
+        content: const Text(
+          "Payments and Membership tabs will be hidden for everyone in this Squad.",
+          style: TextStyle(color: AppColors.mute),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Turn off")),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final ok = await mutateSquad(
+      ref,
+      squad,
+      (s) => s.copyWith(billingShared: false).withActivity(
+            "billing_sharing_disabled",
+            actorName: info.name,
+            description: "${info.name} turned off shared billing for the Squad",
+          ),
+    );
+    if (!ok && context.mounted) _showMutateError(context);
+    return;
+  }
+
+  final ok = await mutateSquad(
+    ref,
+    squad,
+    (s) => s.copyWith(billingShared: true).withActivity(
+          "billing_sharing_enabled",
+          actorName: info.name,
+          description: "${info.name} turned on shared billing for the Squad",
+        ),
+  );
+  if (!ok && context.mounted) _showMutateError(context);
 }
 
 /// Mirrors SquadDashboard.jsx (client-facing "My Squad" drawer tab) —
@@ -40,6 +108,11 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
   final _newSquadNameController = TextEditingController();
   bool _nameEditing = false;
   final _nameDraftController = TextEditingController();
+
+  /// Explicit choice for the new squad's `billingShared` — null until the
+  /// creator picks one, deliberately no default (see the plan's "not an
+  /// assumption" framing).
+  bool? _billingChoice;
 
   @override
   void dispose() {
@@ -81,35 +154,51 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                   text:
                       "You'll be the Lead Account. You can invite existing clients after creating the Squad.",
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 18),
+                const Text(
+                  "Will this Squad share a membership or session package?",
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.txt),
+                ),
+                const SizedBox(height: 8),
+                BillingChoiceRow(
+                  value: _billingChoice,
+                  onChanged: (v) => setState(() => _billingChoice = v),
+                ),
+                const SizedBox(height: 18),
                 BtnGold(
-                  onPressed: () async {
-                    final name = _newSquadNameController.text.trim();
-                    final newSquad =
-                        Squad(
-                          id: DateTime.now().microsecondsSinceEpoch.toString(),
-                          name: name.isEmpty ? null : name,
-                          leadId: info.id,
-                          memberIds: [info.id],
-                          memberMeta: {
-                            info.id: const SquadMemberMeta(
-                              paymentEnabled: true,
-                            ),
-                          },
-                        ).withActivity(
-                          "squad_created",
-                          actorName: info.name,
-                          description: "${info.name} created the Squad",
-                        );
-                    try {
-                      await SupabaseService.insertSquad(newSquad);
-                    } catch (e) {
-                      _showMutateError(context);
-                      return;
-                    }
-                    ref.read(squadsProvider.notifier).createSquad(newSquad);
-                    setState(() => _creating = false);
-                  },
+                  onPressed: _billingChoice == null
+                      ? null
+                      : () async {
+                          final name = _newSquadNameController.text.trim();
+                          final newSquad =
+                              Squad(
+                                id: DateTime.now().microsecondsSinceEpoch.toString(),
+                                name: name.isEmpty ? null : name,
+                                leadId: info.id,
+                                memberIds: [info.id],
+                                memberMeta: {
+                                  info.id: const SquadMemberMeta(
+                                    paymentEnabled: true,
+                                  ),
+                                },
+                                billingShared: _billingChoice!,
+                              ).withActivity(
+                                "squad_created",
+                                actorName: info.name,
+                                description: "${info.name} created the Squad",
+                              );
+                          try {
+                            await SupabaseService.insertSquad(newSquad);
+                          } catch (e) {
+                            _showMutateError(context);
+                            return;
+                          }
+                          ref.read(squadsProvider.notifier).createSquad(newSquad);
+                          setState(() {
+                            _creating = false;
+                            _billingChoice = null;
+                          });
+                        },
                   full: true,
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -223,17 +312,28 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
 
     final tabs = [
       ("members", "Members"),
-      ("membership", "Membership"),
-      if (isLead) ("payments", "Payments"),
+      if (squad.billingShared) ("membership", "Membership"),
+      if (isLead && squad.billingShared) ("payments", "Payments"),
+      ("chat", "Chat"),
       ("activity", "Activity"),
     ];
+    // Billing toggled off while Payments/Membership was open — fall back
+    // rather than render a hidden tab's content with no way to see it.
+    if (!tabs.any((t) => t.$1 == _sub)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _sub = "members");
+      });
+    }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
             children: [
               const Icon(LucideIcons.users2, size: 20, color: AppColors.gold),
               const SizedBox(width: 10),
@@ -332,22 +432,36 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                   .toList(),
             ),
           ),
-          const SizedBox(height: 16),
-          if (_sub == "members")
-            _MembersTab(
-              squad: squad,
-              members: members,
-              roster: roster,
-              meta: meta,
-              isLead: isLead,
-              onSearch: () => setState(() => _searching = true),
-            ),
-          if (_sub == "membership") _MembershipTab(squad: squad),
-          if (_sub == "payments" && isLead)
-            _PaymentsTab(squad: squad, members: members, meta: meta),
-          if (_sub == "activity") _ActivityTab(activity: squad.activity),
-        ],
-      ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: _sub == "chat"
+              ? SquadChatTab(squad: squad, members: members)
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_sub == "members")
+                        _MembersTab(
+                          squad: squad,
+                          members: members,
+                          roster: roster,
+                          meta: meta,
+                          isLead: isLead,
+                          onSearch: () => setState(() => _searching = true),
+                        ),
+                      if (_sub == "membership") _MembershipTab(squad: squad),
+                      if (_sub == "payments" && isLead)
+                        _PaymentsTab(squad: squad, members: members, meta: meta),
+                      if (_sub == "activity") _ActivityTab(activity: squad.activity),
+                    ],
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }
@@ -627,6 +741,35 @@ class _MembersTab extends ConsumerWidget {
                 style: const TextStyle(fontSize: 11, color: AppColors.mute),
               ),
             ),
+          const SizedBox(height: 12),
+          AppCard(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Share billing", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text(
+                        squad.billingShared
+                            ? "This Squad shares a membership or session package."
+                            : "This Squad is a connection only — no shared billing.",
+                        style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _toggleBillingShared(context, ref, squad),
+                  icon: Icon(
+                    squad.billingShared ? LucideIcons.toggleRight : LucideIcons.toggleLeft,
+                    size: 28,
+                    color: squad.billingShared ? AppColors.gold : AppColors.mute,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 12),
           TextButton(
             // Deleting the squad row outright is coach/owner-only

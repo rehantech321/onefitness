@@ -32,6 +32,7 @@ import "../../data/models/report_range.dart";
 import "../../data/models/saved_program.dart";
 import "../../data/models/signature.dart";
 import "../../data/models/squad.dart";
+import "../../data/models/squad_chat_message.dart";
 import "../../data/models/trainer.dart";
 import "../../data/models/trainer_note.dart";
 import "../../data/models/waitlist_entry.dart";
@@ -949,6 +950,11 @@ class SupabaseService {
       ((row["activity"] as List?) ?? const []).whereType<Map>(),
       _squadActivityFromJson,
     ),
+    billingShared: row["billing_shared"] as bool? ?? true,
+    chat: _safeMap(
+      ((row["chat"] as List?) ?? const []).whereType<Map>(),
+      (m) => _squadChatMessageFromJson(m.cast<String, dynamic>()),
+    ),
   );
 
   static SquadMemberMeta _squadMemberMetaFromJson(Map<String, dynamic> j) =>
@@ -985,6 +991,17 @@ class SupabaseService {
         sessionsRemaining: _asInt(j["sessionsRemaining"]) ?? 0,
         sessionsTotal: _asInt(j["sessionsTotal"]) ?? 0,
         renewalDate: j["renewalDate"] as String?,
+      );
+
+  static SquadChatMessage _squadChatMessageFromJson(Map<String, dynamic> j) =>
+      SquadChatMessage(
+        id: j["id"]?.toString() ?? "",
+        from: j["from"] as String? ?? "",
+        at: j["at"] as String? ?? "",
+        text: j["text"] as String?,
+        type: j["type"] as String? ?? "text",
+        shareKind: j["shareKind"] as String?,
+        payload: (j["payload"] as Map?)?.cast<String, dynamic>(),
       );
 
   static Future<List<Charge>> loadCharges() async {
@@ -2490,6 +2507,16 @@ class SupabaseService {
     "details": {"description": a.description},
   };
 
+  static Map<String, dynamic> _squadChatMessageToJson(SquadChatMessage m) => {
+    "id": m.id,
+    "from": m.from,
+    "at": m.at,
+    "text": m.text,
+    "type": m.type,
+    "shareKind": m.shareKind,
+    "payload": m.payload,
+  };
+
   static Future<void> insertSquad(Squad squad) async {
     final row = {
       "id": squad.id,
@@ -2502,6 +2529,8 @@ class SupabaseService {
       "max_size": squad.maxSize,
       "pending_invites": squad.pendingInvites.map(_squadInviteToJson).toList(),
       "activity": squad.activity.map(_squadActivityToJson).toList(),
+      "billing_shared": squad.billingShared,
+      "chat": squad.chat.map(_squadChatMessageToJson).toList(),
     };
     await client.from("squads").insert(row);
   }
@@ -2519,6 +2548,8 @@ class SupabaseService {
     int? maxSize,
     List<SquadInvite>? pendingInvites,
     List<SquadActivityEntry>? activity,
+    bool? billingShared,
+    List<SquadChatMessage>? chat,
   }) async {
     final row = <String, dynamic>{
       if (name != null) "name": name,
@@ -2532,6 +2563,8 @@ class SupabaseService {
         "pending_invites": pendingInvites.map(_squadInviteToJson).toList(),
       if (activity != null)
         "activity": activity.map(_squadActivityToJson).toList(),
+      if (billingShared != null) "billing_shared": billingShared,
+      if (chat != null) "chat": chat.map(_squadChatMessageToJson).toList(),
     };
     if (row.isEmpty) return;
     await client.from("squads").update(row).eq("id", id);

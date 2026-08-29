@@ -6,7 +6,9 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/measurement.dart";
+import "../../../data/models/squad_chat_message.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/supabase_bootstrap_provider.dart";
 import "line_chart_painter.dart";
 
 const _measureFieldKeys = ["weight", "bodyfat", "chest", "waist", "hips", "arms", "thighs"];
@@ -25,6 +27,7 @@ class MeasurementsTab extends ConsumerStatefulWidget {
 class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
   bool _adding = false;
   bool _saving = false;
+  bool _sharing = false;
   String? _removingId;
   String? _error;
   final _dateController = TextEditingController(text: isoToday());
@@ -79,6 +82,37 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
     }
   }
 
+  Future<void> _shareWithSquad(List<double> weights) async {
+    if (_sharing) return;
+    final info = ref.read(clientInfoProvider);
+    final squad = ref.read(squadsProvider.notifier).squadFor(info.id);
+    if (squad == null) return;
+    final trend = weights.length >= 2
+        ? (weights.last > weights.first ? "up" : (weights.last < weights.first ? "down" : "flat"))
+        : "flat";
+    final entry = SquadChatMessage(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      from: info.id,
+      at: stamp(),
+      type: "shared_progress",
+      shareKind: "measurements",
+      payload: {
+        "metric": "weight",
+        "rangeDays": widget.rangeDays,
+        "values": weights,
+        "latestValue": weights.isNotEmpty ? weights.last : null,
+        "trend": trend,
+      },
+    );
+    setState(() => _sharing = true);
+    final ok = await mutateSquad(ref, squad, (s) => s.copyWith(chat: [entry, ...s.chat]));
+    if (!mounted) return;
+    setState(() => _sharing = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? "Shared to Squad chat" : "Couldn't share — check your connection and try again.")),
+    );
+  }
+
   Future<void> _remove(String id) async {
     if (_removingId != null) return;
     final client = ref.read(clientRecordProvider);
@@ -100,6 +134,8 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
   @override
   Widget build(BuildContext context) {
     final client = ref.watch(clientRecordProvider);
+    final info = ref.watch(clientInfoProvider);
+    final squad = ref.watch(squadsProvider.notifier).squadFor(info.id);
     final cutoff = widget.rangeDays == 0 ? null : isoDate(DateTime.parse(isoToday()).subtract(Duration(days: widget.rangeDays)));
     final entries = client.measurements.where((m) => cutoff == null || m.date.compareTo(cutoff) >= 0).toList()
       ..sort((a, b) => a.date.compareTo(b.date));
@@ -134,6 +170,25 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
             )
           else
             const HintBox(text: "Log at least 2 measurements to see charts."),
+          if (squad != null && entries.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _sharing ? null : () => _shareWithSquad(weights),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.gold,
+                    side: const BorderSide(color: AppColors.goldDim),
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                  ),
+                  icon: _sharing
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+                      : const Icon(LucideIcons.users2, size: 14),
+                  label: Text(_sharing ? "Sharing…" : "Share with Squad", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ),
           const SizedBox(height: 4),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

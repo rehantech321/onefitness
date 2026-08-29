@@ -1,3 +1,5 @@
+import "squad_chat_message.dart";
+
 /// Mirrors one entry in `squad.memberMeta` — squadHelpers.js schema comment.
 class SquadMemberMeta {
   const SquadMemberMeta({this.relationship = "", this.status = "active", this.paymentEnabled = false, this.minBalance = 0});
@@ -63,6 +65,8 @@ class Squad {
     this.membership,
     this.pendingInvites = const [],
     this.activity = const [],
+    this.billingShared = true,
+    this.chat = const [],
   });
 
   final String id;
@@ -74,6 +78,17 @@ class Squad {
   final SquadMembership? membership;
   final List<SquadInvite> pendingInvites;
   final List<SquadActivityEntry> activity;
+
+  /// Whether this Squad shares a membership/session package at all — a
+  /// deliberate, explicit choice made at creation (see squad_dashboard_
+  /// screen.dart's create form), not an assumption. When false, the
+  /// Membership and Payments tabs don't apply to this squad; Squad Chat
+  /// and progress sharing are unaffected either way.
+  final bool billingShared;
+
+  /// Squad Chat's own message thread — see SquadChatMessage. Members only,
+  /// never a coach.
+  final List<SquadChatMessage> chat;
 
   String get displayName => name != null && name!.isNotEmpty ? name! : "Squad";
 
@@ -87,6 +102,8 @@ class Squad {
     Map<String, SquadMemberMeta>? memberMeta,
     List<SquadInvite>? pendingInvites,
     List<SquadActivityEntry>? activity,
+    bool? billingShared,
+    List<SquadChatMessage>? chat,
   }) =>
       Squad(
         id: id,
@@ -98,6 +115,8 @@ class Squad {
         membership: membership,
         pendingInvites: pendingInvites ?? this.pendingInvites,
         activity: activity ?? this.activity,
+        billingShared: billingShared ?? this.billingShared,
+        chat: chat ?? this.chat,
       );
 
   Squad withActivity(String type, {String? actorName, String? description}) => copyWith(

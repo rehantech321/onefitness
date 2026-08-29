@@ -34,6 +34,11 @@ class _SquadTabState extends ConsumerState<SquadTab> {
   String _sub = "members";
   bool _searching = false;
 
+  /// Explicit choice for the new squad's `billingShared` — null until the
+  /// coach picks one, deliberately no default (same as the client-side
+  /// create form in squad_dashboard_screen.dart).
+  bool? _billingChoice;
+
   @override
   Widget build(BuildContext context) {
     final roster = ref.watch(trainerRosterProvider);
@@ -58,22 +63,37 @@ class _SquadTabState extends ConsumerState<SquadTab> {
               const SizedBox(height: 14),
               Text("${info.name} isn't in a Squad yet", style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               const SizedBox(height: 16),
+              const Text(
+                "Will this Squad share a membership or session package?",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.txt),
+              ),
+              const SizedBox(height: 8),
+              BillingChoiceRow(
+                value: _billingChoice,
+                onChanged: (v) => setState(() => _billingChoice = v),
+              ),
+              const SizedBox(height: 16),
               BtnGold(
-                onPressed: () async {
-                  final newSquad = Squad(
-                    id: DateTime.now().microsecondsSinceEpoch.toString(),
-                    leadId: info.id,
-                    memberIds: [info.id],
-                    memberMeta: {info.id: const SquadMemberMeta(paymentEnabled: true)},
-                  ).withActivity("squad_created", actorName: info.name, description: "${info.name} created the Squad");
-                  try {
-                    await SupabaseService.insertSquad(newSquad);
-                  } catch (e) {
-                    _showMutateError(context);
-                    return;
-                  }
-                  ref.read(squadsProvider.notifier).createSquad(newSquad);
-                },
+                onPressed: _billingChoice == null
+                    ? null
+                    : () async {
+                        final newSquad = Squad(
+                          id: DateTime.now().microsecondsSinceEpoch.toString(),
+                          leadId: info.id,
+                          memberIds: [info.id],
+                          memberMeta: {info.id: const SquadMemberMeta(paymentEnabled: true)},
+                          billingShared: _billingChoice!,
+                        ).withActivity("squad_created", actorName: info.name, description: "${info.name} created the Squad");
+                        try {
+                          await SupabaseService.insertSquad(newSquad);
+                        } catch (e) {
+                          _showMutateError(context);
+                          return;
+                        }
+                        ref.read(squadsProvider.notifier).createSquad(newSquad);
+                        setState(() => _billingChoice = null);
+                      },
                 child: Text("Create Squad for ${info.name.split(' ').first}"),
               ),
             ],
@@ -109,6 +129,14 @@ class _SquadTabState extends ConsumerState<SquadTab> {
         .map((id) => id == info.id ? RosterClient(id: id, name: info.name, email: info.email) : clientRoster.firstWhere((r) => r.id == id, orElse: () => RosterClient(id: id, name: "Member")))
         .toList();
 
+    // Billing toggled off (by the Lead, client-side) while Membership was
+    // open here — fall back rather than render a hidden tab's content.
+    if (_sub == "membership" && !squad.billingShared) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _sub = "members");
+      });
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -126,7 +154,11 @@ class _SquadTabState extends ConsumerState<SquadTab> {
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(10)),
             child: Row(
-              children: [("members", "Members"), ("membership", "Membership"), ("activity", "Activity")]
+              children: [
+                ("members", "Members"),
+                if (squad.billingShared) ("membership", "Membership"),
+                ("activity", "Activity"),
+              ]
                   .map((t) => Expanded(
                         child: InkWell(
                           onTap: () => setState(() => _sub = t.$1),
@@ -307,6 +339,8 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                     membership: s.membership,
                     pendingInvites: s.pendingInvites,
                     activity: s.activity,
+                    billingShared: s.billingShared,
+                    chat: s.chat,
                   ).withActivity("admin_override", actorName: "Owner", description: "Owner set the Squad size limit to $v"),
                 );
                 if (!ok && context.mounted) _showMutateError(context);

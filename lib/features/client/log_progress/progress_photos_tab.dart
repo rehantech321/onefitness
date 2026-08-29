@@ -7,7 +7,9 @@ import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/progress_photo.dart";
+import "../../../data/models/squad_chat_message.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/supabase_bootstrap_provider.dart";
 
 /// Mirrors ProgressPhotos.jsx — upload progress photos and view them in a
 /// 2-column grid with the date + delete overlaid.
@@ -21,7 +23,30 @@ class ProgressPhotosTab extends ConsumerStatefulWidget {
 class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
   bool _busy = false;
   String? _removingId;
+  String? _sharingId;
   String? _error;
+
+  Future<void> _shareWithSquad(ProgressPhoto p) async {
+    if (_sharingId != null) return;
+    final info = ref.read(clientInfoProvider);
+    final squad = ref.read(squadsProvider.notifier).squadFor(info.id);
+    if (squad == null) return;
+    final entry = SquadChatMessage(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      from: info.id,
+      at: stamp(),
+      type: "shared_progress",
+      shareKind: "photo",
+      payload: {"img": p.img, "date": p.date},
+    );
+    setState(() => _sharingId = p.id);
+    final ok = await mutateSquad(ref, squad, (s) => s.copyWith(chat: [entry, ...s.chat]));
+    if (!mounted) return;
+    setState(() => _sharingId = null);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? "Shared to Squad chat" : "Couldn't share — check your connection and try again.")),
+    );
+  }
 
   Future<void> _addPhoto() async {
     if (_busy) return;
@@ -71,6 +96,8 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
   @override
   Widget build(BuildContext context) {
     final photos = ref.watch(clientRecordProvider).photos;
+    final info = ref.watch(clientInfoProvider);
+    final squad = ref.watch(squadsProvider.notifier).squadFor(info.id);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
@@ -117,6 +144,26 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
                     fit: StackFit.expand,
                     children: [
                       Container(color: AppColors.card, child: Image.memory(p.bytes, fit: BoxFit.cover)),
+                      if (squad != null)
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: _sharingId == p.id
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+                                )
+                              : InkWell(
+                                  onTap: _sharingId == null ? () => _shareWithSquad(p) : null,
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.55), shape: BoxShape.circle),
+                                    child: const Icon(LucideIcons.users2, size: 13, color: Colors.white),
+                                  ),
+                                ),
+                        ),
                       Positioned(
                         left: 0,
                         right: 0,

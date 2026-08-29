@@ -274,6 +274,8 @@ Future<bool> mutateSquad(dynamic ref, Squad squad, Squad Function(Squad) f) asyn
       maxSize: next.maxSize,
       pendingInvites: next.pendingInvites,
       activity: next.activity,
+      billingShared: next.billingShared,
+      chat: next.chat,
     );
   } catch (e) {
     return false;

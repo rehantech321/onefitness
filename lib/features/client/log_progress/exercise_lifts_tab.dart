@@ -1,8 +1,12 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/models/squad_chat_message.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/supabase_bootstrap_provider.dart";
 import "line_chart_painter.dart";
 
 const _chartColors = [Color(0xFF00E676), AppColors.gold, Color(0xFF64B5F6), Color(0xFFFF7043), Color(0xFFCE93D8), Color(0xFF80DEEA)];
@@ -18,10 +22,38 @@ class ExerciseLiftsTab extends ConsumerStatefulWidget {
 
 class _ExerciseLiftsTabState extends ConsumerState<ExerciseLiftsTab> {
   final List<String> _selected = [];
+  bool _sharing = false;
+
+  Future<void> _shareWithSquad(Map<String, List<double?>> seriesByName) async {
+    if (_sharing) return;
+    final info = ref.read(clientInfoProvider);
+    final squad = ref.read(squadsProvider.notifier).squadFor(info.id);
+    if (squad == null) return;
+    final entry = SquadChatMessage(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      from: info.id,
+      at: stamp(),
+      type: "shared_progress",
+      shareKind: "exercises",
+      payload: {
+        "exercises": _selected,
+        "series": seriesByName.map((k, v) => MapEntry(k, v.whereType<double>().toList())),
+      },
+    );
+    setState(() => _sharing = true);
+    final ok = await mutateSquad(ref, squad, (s) => s.copyWith(chat: [entry, ...s.chat]));
+    if (!mounted) return;
+    setState(() => _sharing = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? "Shared to Squad chat" : "Couldn't share — check your connection and try again.")),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final client = ref.watch(clientRecordProvider);
+    final info = ref.watch(clientInfoProvider);
+    final squad = ref.watch(squadsProvider.notifier).squadFor(info.id);
 
     // name -> [(date, weight)], mirrors LogProgressPage.jsx's exerciseHistory build-up.
     final history = <String, List<(String, double)>>{};
@@ -119,6 +151,24 @@ class _ExerciseLiftsTabState extends ConsumerState<ExerciseLiftsTab> {
                         ),
                     ],
                   ),
+                  if (squad != null) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _sharing ? null : () => _shareWithSquad({for (final n in _selected) n: seriesFor(n)!}),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.gold,
+                          side: const BorderSide(color: AppColors.goldDim),
+                          padding: const EdgeInsets.symmetric(vertical: 9),
+                        ),
+                        icon: _sharing
+                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+                            : const Icon(LucideIcons.users2, size: 14),
+                        label: Text(_sharing ? "Sharing…" : "Share with Squad", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
