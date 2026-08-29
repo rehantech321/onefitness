@@ -10,6 +10,7 @@ import "../models/points_ledger_entry.dart";
 import "../models/roster_client.dart";
 import "../models/squad.dart";
 import "../models/trainer.dart";
+import "trainer_providers.dart";
 
 /// Whether a client is currently signed in. UI-only phase: sign-in just
 /// flips this on, standing in for the Supabase auth flow in App.jsx.
@@ -137,7 +138,17 @@ class ChallengesNotifier extends Notifier<List<Challenge>> {
 final challengesProvider = NotifierProvider<ChallengesNotifier, List<Challenge>>(ChallengesNotifier.new);
 
 /// Other clients at the gym, for Squad member search (App.jsx `roster`).
-final rosterProvider = Provider<List<RosterClient>>((ref) => MockData.roster);
+/// Derived from trainerRosterProvider — the one place the full gym roster
+/// actually gets loaded from Supabase (loadAndSeedCoreData seeds it
+/// regardless of whether the signed-in session is a client or a coach) —
+/// rather than the MockData placeholder this used to return unconditionally,
+/// which made Squad search always come up empty against real clients.
+final rosterProvider = Provider<List<RosterClient>>(
+  (ref) => ref
+      .watch(trainerRosterProvider)
+      .map((c) => RosterClient(id: c.id, name: c.name, email: c.email, phone: c.phone, photo: c.photo))
+      .toList(),
+);
 
 /// All Squads (App.jsx `squads`) — starts empty; the signed-in client isn't
 /// in one until they create/join it.
