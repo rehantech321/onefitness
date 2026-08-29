@@ -41,6 +41,43 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
   bool _calendarOpen = false;
   int? _sessionSlot;
   String? _sessionClientId;
+  bool _noShowSweepDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sweepStaleAttendance();
+  }
+
+  /// Opportunistic, one-shot per screen visit — same "no cron, safe to call
+  /// speculatively" shape as checkGymCitizenExpiry. A past booking nobody
+  /// ever marked attendance for is auto-resolved to "no-show" so it stops
+  /// sitting there for the coach to react to; still changeable after.
+  Future<void> _sweepStaleAttendance() async {
+    if (_noShowSweepDone) return;
+    _noShowSweepDone = true;
+    final trainerAuth = ref.read(trainerAuthProvider);
+    final isOwner = trainerAuth == "owner";
+    final today = isoToday();
+    final stale = ref
+        .read(allBookingsProvider)
+        .where(
+          (b) =>
+              b.attendanceStatus == null &&
+              b.date.compareTo(today) < 0 &&
+              (isOwner || b.trainerId == trainerAuth),
+        )
+        .toList();
+    if (stale.isEmpty) return;
+    try {
+      await SupabaseService.markBookingsNoShow(stale.map((b) => b.id).toList());
+      if (!mounted) return;
+      final notifier = ref.read(allBookingsProvider.notifier);
+      for (final b in stale) {
+        notifier.updateAttendance(b.id, "no-show");
+      }
+    } catch (_) {}
+  }
 
   Future<void> _saveCoachSession(String clientId, WorkoutLogEntry entry) async {
     final record = ref.read(trainerClientRecordsProvider)[clientId];
@@ -309,7 +346,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
             )),
           stag(const SectionLabel("Needs Attention")),
           if (needsAttention.isEmpty)
-            const HintBox(text: "Nothing needs your attention right now ✓")
+            const HintBox(text: "Nothing needs your attention right now ✓", bordered: false)
           else
             ...grouped.entries.map(
               (entry) => Padding(
@@ -464,9 +501,14 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
           ),
           const SizedBox(height: 8),
           if (slots.isEmpty)
-            const HintBox(text: "No sessions booked this day.")
+            const HintBox(text: "No sessions booked this day.", bordered: false)
           else
             ...slots.map((slot) {
+              // A past day's sessions are for review only — logging a set
+              // against a session that already happened (or never did)
+              // isn't a real "start", so the button is disabled instead of
+              // hidden (still visible for context, just not actionable).
+              final isPastDate = _viewDate.compareTo(isoToday()) < 0;
               final group = byTime[slot]!;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
@@ -487,13 +529,17 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                           ),
                         ),
                         ElevatedButton(
-                          onPressed: () => setState(() {
-                            _sessionSlot = slot;
-                            _sessionClientId = null;
-                          }),
+                          onPressed: isPastDate
+                              ? null
+                              : () => setState(() {
+                                  _sessionSlot = slot;
+                                  _sessionClientId = null;
+                                }),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.gold,
+                            disabledBackgroundColor: AppColors.gold.withValues(alpha: 0.35),
                             foregroundColor: Colors.white,
+                            disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,

@@ -1612,8 +1612,12 @@ class SupabaseService {
         .eq("profile_id", profileId)
         .maybeSingle();
     final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
+    // Some rows carry `intake` as a stale `[]` instead of `{}` (see the same
+    // check in _clientRecordFromJson) — `as Map?` throws on those, so every
+    // save for that client failed silently as "couldn't save".
+    final intakeField = current["intake"];
     final currentIntake =
-        (current["intake"] as Map?)?.cast<String, dynamic>() ?? const {};
+        intakeField is Map ? intakeField.cast<String, dynamic>() : const <String, dynamic>{};
     final nextIntake = {
       ...currentIntake,
       assessmentKey: {
@@ -1645,8 +1649,9 @@ class SupabaseService {
         .eq("profile_id", profileId)
         .maybeSingle();
     final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
+    final tourSeenField = current["tourSeen"];
     final currentTourSeen =
-        (current["tourSeen"] as Map?)?.cast<String, dynamic>() ?? const {};
+        tourSeenField is Map ? tourSeenField.cast<String, dynamic>() : const <String, dynamic>{};
     final nextTourSeen = {
       ...currentTourSeen,
       if (dashboard != null) "dashboard": dashboard,
@@ -1885,6 +1890,20 @@ class SupabaseService {
         .from("bookings")
         .update({"attendance_status": status})
         .eq("id", id);
+  }
+
+  /// Opportunistic no-cron sweep (same shape as [checkGymCitizenExpiry] —
+  /// safe to call speculatively on coach dashboard load, a no-op when
+  /// `bookingIds` is empty) that auto-resolves past bookings nobody ever
+  /// marked attendance for to "no-show", so a coach isn't left reacting to
+  /// sessions that already happened. Reversible like any other attendance
+  /// write — a coach can still change it after.
+  static Future<void> markBookingsNoShow(List<String> bookingIds) async {
+    if (bookingIds.isEmpty) return;
+    await client
+        .from("bookings")
+        .update({"attendance_status": "no-show"})
+        .inFilter("id", bookingIds);
   }
 
   /// There is no insert/update/delete RLS policy on `points_ledger` or
