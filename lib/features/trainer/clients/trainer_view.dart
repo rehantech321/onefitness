@@ -1,6 +1,9 @@
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../data/providers/trainer_providers.dart";
 import "habits_tab.dart";
 import "intake_tab.dart";
 import "logged_tab.dart";
@@ -34,17 +37,40 @@ const _moreTabs = [
 
 /// Mirrors TrainerView.jsx — the per-client tab bar (3 primary tabs + a
 /// "More" dropdown for Habits/Notes/Squad), all fully built.
-class TrainerView extends StatefulWidget {
+class TrainerView extends ConsumerStatefulWidget {
   const TrainerView({super.key, required this.clientId});
 
   final String clientId;
 
   @override
-  State<TrainerView> createState() => _TrainerViewState();
+  ConsumerState<TrainerView> createState() => _TrainerViewState();
 }
 
-class _TrainerViewState extends State<TrainerView> {
+class _TrainerViewState extends ConsumerState<TrainerView> {
   String _tab = "profile";
+
+  @override
+  void initState() {
+    super.initState();
+    // trainerClientRecordsProvider is only ever bulk-loaded once, at sign-in
+    // — nothing refreshes it afterward (no realtime subscription on
+    // client_records), so a program/nutrition/etc. change made elsewhere
+    // (e.g. the web app, in a separate session) after this coach signed in
+    // would sit invisible for the rest of the app session. Re-fetching this
+    // one client's record whenever a coach opens them (this only runs once
+    // per TrainerView instance, since clients_screen.dart keys it by
+    // clientId) keeps every tab here current without refetching the whole
+    // roster.
+    _refreshRecord();
+  }
+
+  Future<void> _refreshRecord() async {
+    try {
+      final fresh = await SupabaseService.loadClientRecord(widget.clientId);
+      if (!mounted) return;
+      ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId, (_) => fresh);
+    } catch (_) {}
+  }
 
   @override
   void didUpdateWidget(covariant TrainerView oldWidget) {
