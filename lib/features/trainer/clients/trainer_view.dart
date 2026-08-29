@@ -65,9 +65,17 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
   }
 
   Future<void> _refreshRecord() async {
+    final baseline = ref.read(trainerClientRecordsProvider)[widget.clientId];
     try {
       final fresh = await SupabaseService.loadClientRecord(widget.clientId);
       if (!mounted) return;
+      // If a note/program/etc. was added locally while this fetch was in
+      // flight, the provider entry is no longer the same object we started
+      // from — applying this now-stale snapshot on top would silently wipe
+      // out that edit from the UI (it'd still be saved server-side, but
+      // would look "gone" to the coach). Skip the refresh in that case.
+      final current = ref.read(trainerClientRecordsProvider)[widget.clientId];
+      if (!identical(current, baseline)) return;
       ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId, (_) => fresh);
     } catch (_) {}
   }
