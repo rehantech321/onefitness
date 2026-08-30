@@ -916,6 +916,7 @@ class SupabaseService {
         .whereType<String>()
         .toList(),
     winnerClientId: row["winner"] as String?,
+    winnerMode: row["winner_mode"] as String? ?? "auto",
   );
 
   static Future<List<Squad>> loadSquads() async {
@@ -1592,6 +1593,18 @@ class SupabaseService {
         v.map((e) => {"value": e.value, "loggedAt": e.loggedAt}).toList(),
       ),
     ),
+  });
+
+  /// `client_records.data.challengeBadges` — mirrors CoachChallengeDetail.jsx
+  /// `awardBadges`'s direct JSONB patch (deliberately bypasses the
+  /// points-ledger/merit-badge Edge Functions, same as the web source).
+  static Future<void> updateClientChallengeBadges(
+    String profileId,
+    List<ChallengeBadge> badges,
+  ) => upsertClientRecordPatch(profileId, {
+    "challengeBadges": badges
+        .map((b) => {"challengeId": b.challengeId, "name": b.name, "awardedAt": b.awardedAt})
+        .toList(),
   });
 
   /// `client_records.data.intake` is itself keyed by assessment
@@ -2463,9 +2476,10 @@ class SupabaseService {
     await client.from("exercises").delete().eq("id", id);
   }
 
-  /// `winner_mode`/`status`/`created_at` are all left to the table's own
-  /// defaults ('auto', 'upcoming', '') — this app's Challenge model never
-  /// models or reads any of the three, so there's nothing to send.
+  /// `status`/`created_at` are left to the table's own defaults ('upcoming',
+  /// '') — this app's Challenge model derives active/upcoming/ended purely
+  /// from date comparisons (same as the web source's list screen) rather
+  /// than reading `status` back, so there's nothing to send for those two.
   static Future<void> insertChallenge(
     Challenge c, {
     required String createdBy,
@@ -2477,6 +2491,7 @@ class SupabaseService {
       "description": c.description ?? "",
       "prize": c.prize ?? "",
       "metric": c.metric,
+      "winner_mode": c.winnerMode,
       "start_date": c.startDate,
       "end_date": c.endDate,
       "created_by": createdBy,
@@ -2840,9 +2855,12 @@ class SupabaseService {
     // singular client.program only for pre-migration records — that legacy
     // shape isn't modeled here since nothing in this app still writes it)
     // and SaveProgramDialog.jsx's client.savedPrograms entry shape.
-    // challengeProgress/trainerNotes/sessionFeedback/habitLogByDate/etc. are
-    // NOT parsed here yet — still open gaps beyond this pass's scope,
-    // tracked for a future audit of this parser.
+    // sessionFeedback/habitLogByDate/etc. are still NOT parsed here —
+    // open gaps beyond this pass's scope, tracked for a future audit of
+    // this parser. trainerNotes/challengeProgress WERE missing here too
+    // (silently always empty on every load, regardless of what was really
+    // saved — the write side worked fine, so notes/progress genuinely
+    // persisted, they just never came back) until this pass added them.
     final commsRaw = (j["comms"] as List?) ?? const [];
     // Real roster data is messier than any one test account suggests — some
     // client_records rows carry `intake` as an empty array (a stale/older
@@ -2968,6 +2986,45 @@ class SupabaseService {
           summary: m["summary"] as String?,
         ),
       ),
+      trainerNotes: _safeMap(
+        ((j["trainerNotes"] as List?) ?? const []).whereType<Map>(),
+        (m) => TrainerNote(
+          id: m["id"]?.toString() ?? "",
+          flag: m["flag"] as String? ?? "yellow",
+          title: m["title"] as String?,
+          details: m["details"] as String? ?? "",
+          coachId: m["coachId"] as String? ?? "",
+          coachName: m["coachName"] as String? ?? "",
+          createdAt: m["createdAt"] as String? ?? "",
+          modifiedAt: m["modifiedAt"] as String?,
+          status: m["status"] as String? ?? "active",
+          bodyArea: m["bodyArea"] as String?,
+          followUpRequired: m["followUpRequired"] as bool? ?? false,
+          resolveBy: m["resolveBy"] as String?,
+        ),
+      ),
+      challengeBadges: _safeMap(
+        ((j["challengeBadges"] as List?) ?? const []).whereType<Map>(),
+        (m) => ChallengeBadge(
+          challengeId: m["challengeId"] as String? ?? "",
+          name: m["name"] as String? ?? "",
+          awardedAt: m["awardedAt"] as String? ?? "",
+        ),
+      ),
+      challengeProgress: j["challengeProgress"] is Map
+          ? (j["challengeProgress"] as Map).map(
+              (k, v) => MapEntry(
+                k.toString(),
+                _safeMap(
+                  ((v as List?) ?? const []).whereType<Map>(),
+                  (m) => ChallengeProgressEntry(
+                    value: (m["value"] as num?)?.toDouble() ?? 0,
+                    loggedAt: m["loggedAt"] as String? ?? "",
+                  ),
+                ),
+              ),
+            )
+          : const {},
     );
   }
 

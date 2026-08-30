@@ -38,6 +38,7 @@ class ClientRecord {
     this.trainerNotes = const [],
     this.sessionFeedback = const [],
     this.savedNutritionPrograms = const [],
+    this.challengeBadges = const [],
   });
 
   final String id;
@@ -113,6 +114,11 @@ class ClientRecord {
   /// already applied (client.savedNutritionPrograms) — see NutritionBuilder.
   final List<NutritionProgramEntry> savedNutritionPrograms;
 
+  /// Challenge badges awarded to this client (client.challengeBadges) — a
+  /// winner badge and/or a "complete-{challengeId}" participation badge per
+  /// finished challenge, written by a coach's "Award badges" action.
+  final List<ChallengeBadge> challengeBadges;
+
   bool loggedOn(String isoDate) => loggedDates.contains(isoDate);
 
   ClientRecord copyWith({
@@ -134,6 +140,7 @@ class ClientRecord {
     List<TrainerNote>? trainerNotes,
     List<SessionFeedbackEntry>? sessionFeedback,
     List<NutritionProgramEntry>? savedNutritionPrograms,
+    List<ChallengeBadge>? challengeBadges,
     bool? tourSeenDashboard,
     bool? tourSeenDrawer,
   }) =>
@@ -159,5 +166,6 @@ class ClientRecord {
         trainerNotes: trainerNotes ?? this.trainerNotes,
         sessionFeedback: sessionFeedback ?? this.sessionFeedback,
         savedNutritionPrograms: savedNutritionPrograms ?? this.savedNutritionPrograms,
+        challengeBadges: challengeBadges ?? this.challengeBadges,
       );
 }

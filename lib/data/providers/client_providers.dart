@@ -132,6 +132,9 @@ class ChallengesNotifier extends Notifier<List<Challenge>> {
 
   void remove(String id) => state = state.where((c) => c.id != id).toList();
 
+  void update(String id, Challenge Function(Challenge) f) =>
+      state = state.map((c) => c.id == id ? f(c) : c).toList();
+
   void setAll(List<Challenge> next) => state = next;
 }
 

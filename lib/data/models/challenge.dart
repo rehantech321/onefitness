@@ -7,6 +7,18 @@ class ChallengeProgressEntry {
   final String loggedAt;
 }
 
+/// A badge awarded for a challenge — either the actual winner's badge
+/// (`challengeId` == the challenge's own id) or the participation badge
+/// every registered client gets when a coach awards badges
+/// (`challengeId` == `"complete-{challengeId}"`) — mirrors
+/// `client.challengeBadges` (CoachChallengeDetail.jsx `awardBadges`).
+class ChallengeBadge {
+  const ChallengeBadge({required this.challengeId, required this.name, required this.awardedAt});
+  final String challengeId;
+  final String name;
+  final String awardedAt;
+}
+
 /// A named competitor's precomputed score, for leaderboard flavor without
 /// modeling every other client's full record.
 class LeaderboardEntry {
@@ -31,6 +43,7 @@ class Challenge {
     this.participantIds = const [],
     this.otherLeaderboard = const [],
     this.winnerClientId,
+    this.winnerMode = "auto",
   });
 
   final String id;
@@ -44,8 +57,9 @@ class Challenge {
   final List<String> participantIds;
   final List<LeaderboardEntry> otherLeaderboard;
   final String? winnerClientId;
+  final String winnerMode; // "auto" | "coach"
 
-  Challenge copyWith({List<String>? participantIds}) => Challenge(
+  Challenge copyWith({List<String>? participantIds, String? winnerClientId}) => Challenge(
         id: id,
         name: name,
         template: template,
@@ -56,6 +70,7 @@ class Challenge {
         prize: prize,
         participantIds: participantIds ?? this.participantIds,
         otherLeaderboard: otherLeaderboard,
-        winnerClientId: winnerClientId,
+        winnerClientId: winnerClientId ?? this.winnerClientId,
+        winnerMode: winnerMode,
       );
 }
