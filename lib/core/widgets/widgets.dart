@@ -15,6 +15,7 @@ export "billing_choice_row.dart";
 export "coach_profile_card.dart";
 export "coachmark_overlay.dart";
 export "collapsible_section.dart";
+export "download_csv_button.dart";
 export "fade_slide_in.dart";
 export "flag_alert.dart";
 export "gym_citizen_progress_ring.dart";

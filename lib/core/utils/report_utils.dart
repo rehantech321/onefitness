@@ -11,8 +11,10 @@ import "../../data/models/trainer.dart";
 /// Ported from reportHelpers.js / PayrollReports.js — pure local-array
 /// aggregation, no backend calls in the source either.
 
-/// Mirrors `presetRange`.
-ReportRange presetRange(String preset) {
+/// Mirrors `presetRange`. [customStart]/[customEnd] are only consulted for
+/// `preset == "custom"`, falling back to today when either is missing —
+/// same behavior as the web source.
+ReportRange presetRange(String preset, {String? customStart, String? customEnd}) {
   final today = isoToday();
   final now = DateTime.parse(today);
   switch (preset) {
@@ -28,6 +30,8 @@ ReportRange presetRange(String preset) {
       return ReportRange(preset: preset, start: isoDate(start), end: isoDate(end));
     case "year":
       return ReportRange(preset: preset, start: isoDate(DateTime(now.year, 1, 1)), end: isoDate(DateTime(now.year, 12, 31)));
+    case "custom":
+      return ReportRange(preset: preset, start: customStart ?? today, end: customEnd ?? today);
     case "month":
     default:
       final start = DateTime(now.year, now.month, 1);

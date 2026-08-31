@@ -24,6 +24,16 @@ class ItemizedSalesReport extends ConsumerWidget {
     final total = charges.fold<double>(0, (m, c) => m + (c.amount ?? 0));
     return Column(
       children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: DownloadCsvButton(
+            filename: "itemized-sales.csv",
+            rows: [
+              ["Date", "Client", "Item", "Category", "Amount"],
+              for (final c in charges) [c.date, c.clientName, c.description ?? c.planName ?? "—", c.category ?? "", _money(c.amount ?? 0)],
+            ],
+          ),
+        ),
         ...charges.map((c) => AppCard(
               child: Row(
                 children: [
@@ -78,7 +88,18 @@ class _RealTimeChargesReportState extends ConsumerState<RealTimeChargesReport> {
     final charges = revenueCharges(ref.watch(chargesProvider), widget.range);
     if (charges.isEmpty) return const HintBox(text: "No charges in this range.");
     return Column(
-      children: charges
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: DownloadCsvButton(
+            filename: "real-time-charges.csv",
+            rows: [
+              ["Logged", "Client", "Item", "Category", "Amount"],
+              for (final c in charges) [c.at, c.clientName, c.description ?? c.planName ?? "—", c.category ?? "", _money(c.amount ?? 0)],
+            ],
+          ),
+        ),
+        ...charges
           .map((c) => AppCard(
                 child: Row(
                   children: [
@@ -129,8 +150,8 @@ class _RealTimeChargesReportState extends ConsumerState<RealTimeChargesReport> {
                             ),
                   ],
                 ),
-              ))
-          .toList(),
+              )),
+      ],
     );
   }
 }
@@ -162,6 +183,16 @@ class ProjectedRevenueReport extends ConsumerWidget {
 
     return Column(
       children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: DownloadCsvButton(
+            filename: "projected-revenue.csv",
+            rows: [
+              ["Plan", "Type", "Active clients", "Monthly revenue"],
+              for (final r in rows) [r.$1.name, r.$1.kind == PlanKind.membership ? "Membership" : "Package", r.$2, _money(r.$3)],
+            ],
+          ),
+        ),
         ...rows.map((r) => AppCard(
               child: Row(
                 children: [

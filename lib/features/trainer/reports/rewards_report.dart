@@ -66,7 +66,19 @@ class RewardsPointsReport extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 18),
-        const Text("BY SOURCE", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Expanded(child: Text("BY SOURCE", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1))),
+            DownloadCsvButton(
+              filename: "rewards-by-source.csv",
+              rows: [
+                ["Source", "Net points", "Ledger rows"],
+                for (final e in sourceRows) [sourceLabel(e.key), e.value.$1, e.value.$2],
+              ],
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         if (sourceRows.isEmpty)
           const HintBox(text: "No points activity in this range.")
@@ -83,7 +95,19 @@ class RewardsPointsReport extends ConsumerWidget {
                 ),
               )),
         const SizedBox(height: 18),
-        const Text("DISCRETIONARY GRANTS BY COACH", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Expanded(child: Text("DISCRETIONARY GRANTS BY COACH", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1))),
+            DownloadCsvButton(
+              filename: "rewards-grants-by-coach.csv",
+              rows: [
+                ["Coach", "Grants", "Points"],
+                for (final g in grantRows) [g.$1, g.$3, g.$2],
+              ],
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         if (grantRows.isEmpty)
           const HintBox(text: "No discretionary grants in this range.")

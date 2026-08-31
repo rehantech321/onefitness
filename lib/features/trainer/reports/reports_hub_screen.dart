@@ -145,14 +145,12 @@ const _favoritesPrefKey = "onefit:report-favorites";
 /// category, each opening full-screen with a shared date-range filter.
 /// Search + favorites are ported (favorites persist per-device via
 /// SharedPreferences, same "local, not synced across devices" behavior as
-/// web's `window.storage`). CSV export is deliberately not ported: web's
-/// version is a single shared `<table>` component every report renders
-/// through; this port never had that — each report screen already renders
-/// its own mobile-card layout independently — so "CSV export, added once"
-/// would mean either a ground-up table-widget rewrite across 5 screens, or
-/// bolting a differently-shaped exporter onto each one individually. Given
-/// this is a coach/owner phone app (reports are for reading in-app, not
-/// piping to a spreadsheet on a phone), that cost isn't worth it here.
+/// web's `window.storage`). CSV export is ported too, via a per-report
+/// [DownloadCsvButton] (web's version is one shared `<table>` component
+/// every report renders through; this port never had that, so each report
+/// screen builds its own CSV rows next to its own card layout instead) —
+/// same column layout/order as web's `ReportTable`, handed to the OS share
+/// sheet instead of triggering a browser download.
 class ReportsHubScreen extends StatefulWidget {
   const ReportsHubScreen({super.key});
 

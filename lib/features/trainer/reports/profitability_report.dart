@@ -28,6 +28,18 @@ class RevenueVsPayrollReport extends ConsumerWidget {
 
     return Column(
       children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: DownloadCsvButton(
+            filename: "revenue-vs-payroll.csv",
+            rows: [
+              ["Line item", "Amount"],
+              ["Revenue (charges logged in range)", _money(revenue)],
+              ["Payroll (commission owed in range)", _money(-payroll)],
+              ["Net profit ($margin% margin)", _money(net)],
+            ],
+          ),
+        ),
         AppCard(child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Revenue", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), Text(_money(revenue), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.grn))])),
         AppCard(child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Payroll", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), Text("-${_money(payroll)}", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.danger))])),
         AppCard(

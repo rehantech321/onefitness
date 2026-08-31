@@ -38,7 +38,7 @@ class StaffHoursReport extends ConsumerWidget {
     final roster = ref.watch(trainerRosterProvider);
     final plans = ref.watch(membershipPlansProvider);
     final stats = perTrainerInRange(trainers, bookings, roster, plans, range)..sort((a, b) => b.sessionCount.compareTo(a.sessionCount));
-    return _StatsTable(stats: stats, valueLabel: "Hours", valueOf: (s) => s.hours.toStringAsFixed(1));
+    return _StatsTable(filename: "staff-session-hours-summary.csv", stats: stats, valueLabel: "Hours", valueOf: (s) => s.hours.toStringAsFixed(1));
   }
 }
 
@@ -54,7 +54,7 @@ class ServiceCommissionsReport extends ConsumerWidget {
     final roster = ref.watch(trainerRosterProvider);
     final plans = ref.watch(membershipPlansProvider);
     final stats = perTrainerInRange(trainers, bookings, roster, plans, range)..sort((a, b) => b.commission.compareTo(a.commission));
-    return _StatsTable(stats: stats, valueLabel: "Pay", valueOf: (s) => _money(s.commission), extraLabel: "Rate", extraOf: (s) => _payoutRateLabel(s.trainer));
+    return _StatsTable(filename: "service-commissions.csv", stats: stats, valueLabel: "Pay", valueOf: (s) => _money(s.commission), extraLabel: "Rate", extraOf: (s) => _payoutRateLabel(s.trainer));
   }
 }
 
@@ -75,6 +75,7 @@ class PayrollSummaryReport extends ConsumerWidget {
     final stats = perTrainerInRange(trainers, bookings, roster, plans, range).where((s) => s.sessionCount > 0 || totalPay(s) > 0).toList()
       ..sort((a, b) => totalPay(b).compareTo(totalPay(a)));
     return _StatsTable(
+      filename: "payroll-summary.csv",
       stats: stats,
       valueLabel: "Pay owed",
       valueOf: (s) => _money(totalPay(s)),
@@ -125,6 +126,24 @@ class MeritBadgeEarningsReport extends ConsumerWidget {
     final total = rows.fold(0.0, (sum, b) => sum + b.rewardCents / 100);
     return Column(
       children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: DownloadCsvButton(
+            filename: "coach-merit-badges.csv",
+            rows: [
+              [if (onlyTrainerId == null) "Coach", "Badge", "Period", "Status", "Amount"],
+              for (final b in rows)
+                [
+                  if (onlyTrainerId == null) trainerNames[b.trainerId] ?? "—",
+                  kCoachBadgeLabels[b.badgeKey] ?? b.badgeKey,
+                  b.periodMonth,
+                  b.payoutStatus,
+                  _money(b.rewardCents / 100),
+                ],
+              [if (onlyTrainerId == null) "", "Total", "", "", _money(total)],
+            ],
+          ),
+        ),
         ...rows.map((b) => AppCard(
               child: Row(
                 children: [
@@ -167,7 +186,8 @@ List<Trainer> _trainers(WidgetRef ref, String? onlyTrainerId) {
 typedef _ExtraLine = ({String label, String Function(TrainerRangeStats) value});
 
 class _StatsTable extends StatelessWidget {
-  const _StatsTable({required this.stats, required this.valueLabel, required this.valueOf, this.extraLabel, this.extraOf, this.extras = const []});
+  const _StatsTable({required this.filename, required this.stats, required this.valueLabel, required this.valueOf, this.extraLabel, this.extraOf, this.extras = const []});
+  final String filename;
   final List<TrainerRangeStats> stats;
   final String valueLabel;
   final String Function(TrainerRangeStats) valueOf;
@@ -187,7 +207,25 @@ class _StatsTable extends StatelessWidget {
   Widget build(BuildContext context) {
     if (stats.isEmpty) return const HintBox(text: "No data for this range.");
     return Column(
-      children: stats
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: DownloadCsvButton(
+            filename: filename,
+            rows: [
+              ["Coach", "Sessions", if (extraLabel != null) extraLabel!, for (final e in extras) e.label, valueLabel],
+              for (final s in stats)
+                [
+                  s.trainer.name,
+                  s.sessionCount,
+                  if (extraLabel != null) (extraOf?.call(s) ?? ""),
+                  for (final e in extras) e.value(s),
+                  valueOf(s),
+                ],
+            ],
+          ),
+        ),
+        ...stats
           .map((s) {
             final parts = <String>[];
             if (extraLabel != null) {
@@ -221,8 +259,8 @@ class _StatsTable extends StatelessWidget {
                   ],
                 ),
               );
-          })
-          .toList(),
+          }),
+      ],
     );
   }
 }

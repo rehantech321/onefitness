@@ -27,6 +27,17 @@ class AttendanceSummaryReport extends ConsumerWidget {
 
     return Column(
       children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: DownloadCsvButton(
+            filename: "attendance-summary.csv",
+            rows: [
+              ["Status", "Sessions"],
+              for (final r in rows) [r.$1, r.$2],
+              ["Total booked", total],
+            ],
+          ),
+        ),
         ...rows.map((r) => AppCard(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -78,8 +89,18 @@ class SessionUtilizationReport extends ConsumerWidget {
       ..sort((a, b) => b.$3.compareTo(a.$3));
 
     return Column(
-      children: rows
-          .map((r) => AppCard(
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: DownloadCsvButton(
+            filename: "session-utilization.csv",
+            rows: [
+              ["Coach", "Available slots", "Booked", "Utilization"],
+              for (final r in rows) [r.$1, r.$2, r.$3, r.$4 != null ? "${r.$4}%" : "—"],
+            ],
+          ),
+        ),
+        ...rows.map((r) => AppCard(
                 child: Row(
                   children: [
                     Expanded(
@@ -94,8 +115,8 @@ class SessionUtilizationReport extends ConsumerWidget {
                     Text(r.$4 != null ? "${r.$4}%" : "—", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.gold)),
                   ],
                 ),
-              ))
-          .toList(),
+              )),
+      ],
     );
   }
 }

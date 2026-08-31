@@ -42,6 +42,8 @@ dependencies:
   image: ^4.8.0
   image_picker: ^1.2.3
   lucide_flutter: ^1.25.0
+  path_provider: ^2.1.5
+  share_plus: ^11.0.0
   shared_preferences: ^2.5.5
   supabase_flutter: ^2.17.1
   url_launcher: ^6.3.1
