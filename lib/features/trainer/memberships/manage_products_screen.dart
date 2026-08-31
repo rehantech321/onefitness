@@ -157,6 +157,7 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
           onRestore: editingProduct == null || !editingProduct.archived
               ? null
               : () => _restore(editingProduct),
+          isInUse: editingProduct == null ? false : _inUseBy(editingProduct.id) > 0,
         ),
       );
     }
@@ -166,37 +167,15 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              SectionLabel("Products (${products.length})"),
-              TextButton.icon(
-                onPressed: () => setState(() => _creating = true),
-                icon: const Icon(
-                  LucideIcons.plus,
-                  size: 14,
-                  color: AppColors.gold,
-                ),
-                label: const Text(
-                  "Product",
-                  style: TextStyle(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          const SectionLabel("Products"),
+          const SizedBox(height: 8),
           const HintBox(
             text:
-                "Products referenced by a package can be archived but never deleted.",
+                'The fee items your One-Time Payment packages can charge for (the "Fee Item" picker in Package Setup). Products referenced by a package can be archived but never deleted.',
           ),
+          const SizedBox(height: 10),
           if (products.isEmpty)
-            const HintBox(
-              text:
-                  "No products yet — add fee items like initiation fees or gear charges.",
-            ),
+            const HintBox(text: "No products yet — add one below."),
           ...products.map((p) {
             final inUse = _inUseBy(p.id);
             return AppCard(
@@ -245,7 +224,7 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                             ],
                           ),
                           Text(
-                            "${p.category ?? 'Uncategorized'} · \$${(p.priceCents / 100).toStringAsFixed(2)} · used by $inUse package${inUse != 1 ? "s" : ""}",
+                            "\$${(p.priceCents / 100).toStringAsFixed(2)} · ${p.category ?? 'Uncategorized'} · used by $inUse package${inUse != 1 ? "s" : ""}",
                             style: const TextStyle(
                               fontSize: 11,
                               color: AppColors.mute,
@@ -264,6 +243,20 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
               ),
             );
           }),
+          const SizedBox(height: 6),
+          BtnGold(
+            full: true,
+            onPressed: () => setState(() => _creating = true),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.plus, size: 15),
+                SizedBox(width: 6),
+                Text("Add New Product"),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -277,12 +270,14 @@ class _ProductEditForm extends ConsumerStatefulWidget {
     required this.onSave,
     required this.onDelete,
     required this.onRestore,
+    required this.isInUse,
   });
   final Product? initial;
   final VoidCallback onCancel;
   final ValueChanged<Product> onSave;
   final VoidCallback? onDelete;
   final VoidCallback? onRestore;
+  final bool isInUse;
 
   @override
   ConsumerState<_ProductEditForm> createState() => _ProductEditFormState();
@@ -452,10 +447,7 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
                                 widget.initial?.id ??
                                 "product-${DateTime.now().microsecondsSinceEpoch}",
                             name: _name.text.trim(),
-                            priceCents:
-                                ((double.tryParse(_price.text.trim()) ?? 0) *
-                                        100)
-                                    .round(),
+                            priceCents: (((double.tryParse(_price.text.trim()) ?? 0) * 100).round()).clamp(0, 1 << 31),
                             category: _category,
                             archived: widget.initial?.archived ?? false,
                           ),
@@ -481,7 +473,7 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFC97F7F),
               ),
-              child: const Text("Delete or archive product"),
+              child: Text(widget.isInUse ? "Archive product (hide from new packages)" : "Delete product"),
             ),
           ],
         ],
