@@ -8,7 +8,38 @@ import "../../../data/models/waiver_doc.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
-const _tabs = [("scheduling", "Scheduling"), ("coaches", "Coaches"), ("clients", "Clients"), ("payments", "Payments"), ("workouts", "Workouts")];
+/// Dropdown option key/label pairs — mirrors SubTabs.jsx's mobile `<select>`
+/// (this app is mobile-only, so that's the correct web analog to port, not
+/// the desktop horizontal tab row). Labels here are the short dropdown
+/// text; each tab's own in-page [_sectionTitle] can be longer.
+const _tabs = [
+  ("scheduling", "Scheduling"),
+  ("access", "Coaches & Security"),
+  ("clients", "Clients"),
+  ("payments", "Payments"),
+  ("workouts", "Workouts & General"),
+];
+
+String _sectionTitle(String tab) => switch (tab) {
+  "scheduling" => "Scheduling",
+  "access" => "Coaches, Access & Security",
+  "clients" => "Clients",
+  "payments" => "Payments",
+  "workouts" => "Workouts & General",
+  _ => "",
+};
+
+String _sectionHint(String tab) => switch (tab) {
+  "scheduling" =>
+    "These policies apply gym-wide the moment you save — a client already mid-booking sees the change without reloading.",
+  "access" =>
+    "These policies apply gym-wide the moment you save. Two-factor changes take effect on each person's next sign-in — nobody already signed in gets kicked out.",
+  "clients" => "These policies apply gym-wide the moment you save.",
+  "payments" =>
+    "Applies to real Stripe Checkout payments (paid membership plans). Free plans are never affected. Card and bank transfer have their own fee below since they can charge different amounts — whenever both are offered, the client picks how to pay before checkout so the right one applies.",
+  "workouts" => "These apply gym-wide the moment you save.",
+  _ => "",
+};
 
 const _timeZones = [
   ("America/Los_Angeles", "Pacific Time (US)"),
@@ -24,13 +55,11 @@ const _requiredFieldOptions = [("phone", "Phone"), ("birthday", "Birthday"), ("c
 const _customFieldTypes = [("text", "Text"), ("number", "Number"), ("date", "Date")];
 
 /// Mirrors CustomizePlatform.jsx (owner-only) — 5 tabs of gym-wide config,
-/// now covering every field the real `platform_settings` row models
-/// (previously ~7 fields; the ~13 added here — bookingCoachScope, required/
-/// custom profile fields, full card+ACH fee profiles, checkout disclosure,
-/// refund-fee toggle, business time zone, merit-badge tuning — already
-/// existed in the real DB row and were silently ignored by this screen).
-/// Explicit dirty-tracking + Save button (was: save-on-every-keystroke) —
-/// matches web's draft/save flow so a partial edit can be discarded.
+/// covering every field the real `platform_settings` row models. Dropdown
+/// tab selector (mirrors web's own mobile layout), section label + hint per
+/// tab, and per-field explanatory hint text all match web's exact copy.
+/// Explicit dirty-tracking + Save button — matches web's draft/save flow so
+/// a partial edit can be discarded.
 class CustomizePlatformScreen extends ConsumerStatefulWidget {
   const CustomizePlatformScreen({super.key});
 
@@ -116,25 +145,19 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-          child: SizedBox(
-            height: 34,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: _tabs.map((t) {
-                final selected = _tab == t.$1;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: InkWell(
-                    onTap: () => _switchTab(t.$1),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                      decoration: BoxDecoration(color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card, border: Border.all(color: selected ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(16)),
-                      child: Text(t.$2, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.mute)),
-                    ),
-                  ),
-                );
-              }).toList(),
+          child: AppCard(
+            margin: EdgeInsets.zero,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            child: DropdownButton<String>(
+              value: _tab,
+              isExpanded: true,
+              underline: const SizedBox(),
+              dropdownColor: AppColors.card,
+              style: const TextStyle(color: AppColors.txt, fontSize: 14, fontWeight: FontWeight.w700),
+              items: _tabs.map((t) => DropdownMenuItem(value: t.$1, child: Text(t.$2))).toList(),
+              onChanged: (v) {
+                if (v != null) _switchTab(v);
+              },
             ),
           ),
         ),
@@ -144,57 +167,201 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                SectionLabel(_sectionTitle(_tab)),
+                const SizedBox(height: 8),
+                HintBox(text: _sectionHint(_tab)),
+                const SizedBox(height: 16),
                 if (_tab == "scheduling") ...[
-                  _NumberRow(label: "Late cancellation window (hours)", value: s.lateCancellationHours, onChange: (v) => _set((d) => d.copyWith(lateCancellationHours: v))),
+                  _NumberRow(
+                    label: "Late cancellation window (hours)",
+                    hint: "Cancelling or rescheduling outside this many hours before a session is free. Inside it, the late cancellation fee below applies.",
+                    suffix: "hours before session",
+                    value: s.lateCancellationHours,
+                    onChange: (v) => _set((d) => d.copyWith(lateCancellationHours: v)),
+                  ),
                   _MoneyRow(label: "Late cancellation fee", cents: s.lateCancellationFeeCents, onChange: (v) => _set((d) => d.copyWith(lateCancellationFeeCents: v))),
-                  _MoneyRow(label: "No-show fee", cents: s.noShowFeeCents, onChange: (v) => _set((d) => d.copyWith(noShowFeeCents: v))),
-                  _ChoiceRow(label: "Block rescheduling inside that window?", value: s.blockRescheduleInWindow ? "block" : "chargeInstead", options: const [("block", "Block it entirely"), ("chargeInstead", "Allow it, but charge the late fee")], onChange: (v) => _set((d) => d.copyWith(blockRescheduleInWindow: v == "block"))),
-                  _NumberRow(label: "Max booking horizon (days)", value: s.maxBookingHorizonDays, onChange: (v) => _set((d) => d.copyWith(maxBookingHorizonDays: v))),
-                  _NumberRow(label: "Min booking lead time (hours)", value: s.minBookingLeadHours, onChange: (v) => _set((d) => d.copyWith(minBookingLeadHours: v))),
-                  _ChoiceRow(label: "Clients book with", value: s.bookingCoachScope, options: const [("assigned", "Assigned coach only"), ("any", "Any coach")], onChange: (v) => _set((d) => d.copyWith(bookingCoachScope: v))),
-                  _NumberRow(label: "Semi-private capacity", value: s.semiPrivateCap, onChange: (v) => _set((d) => d.copyWith(semiPrivateCap: v))),
+                  _MoneyRow(
+                    label: "No-show fee",
+                    hint: "Charged when a coach marks a booking No-Show — unlike a late cancellation, a no-show does not give the session back.",
+                    cents: s.noShowFeeCents,
+                    onChange: (v) => _set((d) => d.copyWith(noShowFeeCents: v)),
+                  ),
+                  _ChoiceRow(
+                    label: "Block rescheduling inside that window?",
+                    hint: "\"Block it entirely\" hides the Reschedule option once a client is inside the window — they'd need to cancel (and pay the fee) instead.",
+                    value: s.blockRescheduleInWindow ? "block" : "chargeInstead",
+                    options: const [("block", "Block it entirely"), ("chargeInstead", "Allow it, but charge the late fee")],
+                    onChange: (v) => _set((d) => d.copyWith(blockRescheduleInWindow: v == "block")),
+                  ),
+                  _NumberRow(
+                    label: "How far ahead clients can book",
+                    suffix: "days",
+                    value: s.maxBookingHorizonDays,
+                    onChange: (v) => _set((d) => d.copyWith(maxBookingHorizonDays: v)),
+                  ),
+                  _NumberRow(
+                    label: "Minimum lead time to book",
+                    suffix: "hours before the slot",
+                    value: s.minBookingLeadHours,
+                    onChange: (v) => _set((d) => d.copyWith(minBookingLeadHours: v)),
+                  ),
+                  _ChoiceRow(
+                    label: "Clients book with",
+                    hint: "\"Assigned coach only\" restricts the booking screen to a client's assigned coach. If a client has no assigned coach yet, they still see every coach so they're never stuck with nothing bookable.",
+                    value: s.bookingCoachScope,
+                    options: const [("assigned", "Assigned coach only"), ("any", "Any coach")],
+                    onChange: (v) => _set((d) => d.copyWith(bookingCoachScope: v)),
+                  ),
+                  _NumberRow(
+                    label: "Default one-on-one session cap",
+                    hint: "Fixed by definition — a one-on-one session is always exactly one client, not configurable here.",
+                    suffix: "client per slot",
+                    value: 1,
+                    disabled: true,
+                    onChange: (_) {},
+                  ),
+                  _NumberRow(
+                    label: "Default semi-private session cap",
+                    suffix: "clients per slot",
+                    value: s.semiPrivateCap,
+                    onChange: (v) => _set((d) => d.copyWith(semiPrivateCap: v)),
+                  ),
                 ],
-                if (_tab == "coaches") ...[
-                  _ChoiceRow(label: "Two-factor requirement", value: s.twoFactorRequirement, options: const [("off", "Off"), ("staff", "Staff"), ("everyone", "Everyone")], onChange: (v) => _set((d) => d.copyWith(twoFactorRequirement: v))),
-                  _ChoiceRow(label: "Coach client scope", value: s.coachClientScope, options: const [("own", "Own clients only"), ("all", "All clients")], onChange: (v) => _set((d) => d.copyWith(coachClientScope: v))),
-                  _ToggleRow(label: "Coaches can view revenue", value: s.coachCanViewRevenue, onChange: (v) => _set((d) => d.copyWith(coachCanViewRevenue: v))),
-                  _ToggleRow(label: "Coaches can see other schedules", value: s.coachCanSeeOtherSchedules, onChange: (v) => _set((d) => d.copyWith(coachCanSeeOtherSchedules: v))),
-                  _ChoiceRow(label: "Coaches reply in messages as", value: s.messageIdentity, options: const [("self", "Themselves"), ("business", "ONE Fitness")], onChange: (v) => _set((d) => d.copyWith(messageIdentity: v))),
-                  const HintBox(text: "Building, approving, and assigning workout/nutrition programs is always owner-only — there's no coach-access toggle for it."),
+                if (_tab == "access") ...[
+                  _ChoiceRow(
+                    label: "Require two-factor authentication",
+                    hint: "\"Staff only\" covers Owner and Coach accounts. \"Everyone\" adds clients. Authenticator apps only for now — test with a disposable coach account before requiring it gym-wide.",
+                    value: s.twoFactorRequirement,
+                    options: const [("off", "Off"), ("staff", "Staff only"), ("everyone", "Everyone")],
+                    onChange: (v) => _set((d) => d.copyWith(twoFactorRequirement: v)),
+                  ),
+                  _ChoiceRow(
+                    label: "Coach client list",
+                    hint: "Scopes a coach's Clients tab and Chat inbox. Owner always sees everyone.",
+                    value: s.coachClientScope,
+                    options: const [("own", "Own clients only"), ("all", "All clients")],
+                    onChange: (v) => _set((d) => d.copyWith(coachClientScope: v)),
+                  ),
+                  _ToggleRow(
+                    label: "Coach can view revenue / pay data",
+                    hint: "Unlocks a coach's own My Pay screen — their sessions and commission only, never gym-wide financials.",
+                    value: s.coachCanViewRevenue,
+                    onChange: (v) => _set((d) => d.copyWith(coachCanViewRevenue: v)),
+                  ),
+                  _ToggleRow(
+                    label: "Coach can see other coaches' scheduled sessions",
+                    hint: "Off keeps a coach's Scheduling tab locked to their own sessions, like today.",
+                    value: s.coachCanSeeOtherSchedules,
+                    onChange: (v) => _set((d) => d.copyWith(coachCanSeeOtherSchedules: v)),
+                  ),
+                  _ChoiceRow(
+                    label: "Coaches reply in messages as",
+                    hint: "\"Themselves\" shows the actual coach's name in a client's message log. \"ONE Fitness\" hides individual coach names — the owner always appears as ONE Fitness either way.",
+                    value: s.messageIdentity,
+                    options: const [("self", "Themselves"), ("business", "ONE Fitness")],
+                    onChange: (v) => _set((d) => d.copyWith(messageIdentity: v)),
+                  ),
+                  _ToggleRow(
+                    label: "Coach can edit workouts assigned to their clients",
+                    hint: "Off gives coaches read-only Plans — only the owner can build or edit workout/nutrition programs.",
+                    value: s.coachCanEditClientWorkouts,
+                    onChange: (v) => _set((d) => d.copyWith(coachCanEditClientWorkouts: v)),
+                  ),
                 ],
                 if (_tab == "clients") ...[
                   _MultiChoiceRow(label: "Required profile fields", value: s.requiredProfileFields, options: _requiredFieldOptions, onChange: (v) => _set((d) => d.copyWith(requiredProfileFields: v))),
                   const SizedBox(height: 4),
                   _CustomFieldsEditor(fields: s.customProfileFields, onChange: (v) => _set((d) => d.copyWith(customProfileFields: v))),
                   const SizedBox(height: 10),
-                  _ToggleRow(label: "Require waiver at signup", value: s.requireWaiverAtSignup, onChange: (v) => _set((d) => d.copyWith(requireWaiverAtSignup: v))),
+                  _ToggleRow(
+                    label: "Require waiver at signup",
+                    hint: "Off skips the sign-a-waiver step entirely for new client signups.",
+                    value: s.requireWaiverAtSignup,
+                    onChange: (v) => _set((d) => d.copyWith(requireWaiverAtSignup: v)),
+                  ),
                   const SizedBox(height: 10),
                   const _SignupWaiverEditor(),
                   const SizedBox(height: 10),
-                  _ToggleRow(label: "Clients can message any coach", value: s.clientsCanMessageAnyCoach, onChange: (v) => _set((d) => d.copyWith(clientsCanMessageAnyCoach: v))),
+                  _ToggleRow(
+                    label: "Allow clients to message any coach",
+                    hint: "Off scopes a client's coach picker to coaches they've actually booked with or been assigned to.",
+                    value: s.clientsCanMessageAnyCoach,
+                    onChange: (v) => _set((d) => d.copyWith(clientsCanMessageAnyCoach: v)),
+                  ),
                 ],
                 if (_tab == "payments") ...[
-                  _FeeProfileEditor(title: "Card processing fee", profile: s.cardFee, onChange: (v) => _set((d) => d.copyWith(cardFee: v))),
+                  _FeeProfileEditor(
+                    title: "Card processing fee",
+                    hint: "Covers both credit and debit — Stripe Checkout can't tell them apart before the client pays, so they always move together.",
+                    profile: s.cardFee,
+                    onChange: (v) => _set((d) => d.copyWith(cardFee: v)),
+                  ),
                   const SizedBox(height: 10),
-                  _ToggleRow(label: "Offer bank transfer (ACH)", value: s.achOffered, onChange: (v) => _set((d) => d.copyWith(achOffered: v))),
+                  _ToggleRow(
+                    label: "Offer bank transfer (ACH) as a payment option",
+                    hint: "Off = ACH isn't offered at all, same as today. On = clients can also pay by bank transfer, with its own fee below — Stripe's cost to you is much lower for ACH, so it's common to waive the fee there to encourage it.",
+                    value: s.achOffered,
+                    onChange: (v) => _set((d) => d.copyWith(achOffered: v)),
+                  ),
                   if (s.achOffered) ...[
                     const SizedBox(height: 10),
-                    _FeeProfileEditor(title: "Bank transfer (ACH) fee", profile: s.achFee, onChange: (v) => _set((d) => d.copyWith(achFee: v))),
+                    _FeeProfileEditor(
+                      title: "Bank transfer (ACH) fee",
+                      hint: "Leave this off, or set percent/flat to 0, to offer ACH with no fee.",
+                      profile: s.achFee,
+                      onChange: (v) => _set((d) => d.copyWith(achFee: v)),
+                    ),
                   ],
                   if (anyFeeEnabled) ...[
                     const SizedBox(height: 10),
-                    FieldLabeled(label: "Checkout disclosure text", child: AppField(controller: TextEditingController(text: s.checkoutDisclosureText), placeholder: "A processing fee applies to this payment.", onChanged: (v) => _set((d) => d.copyWith(checkoutDisclosureText: v)))),
+                    const Text(
+                      "Each fee is calculated on its own pre-fee price only — never compounds on itself.",
+                      style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                    ),
                     const SizedBox(height: 10),
-                    _ToggleRow(label: "Refund fee when refunding a payment", value: s.refundFeeOnRefund, onChange: (v) => _set((d) => d.copyWith(refundFeeOnRefund: v))),
+                    FieldLabeled(
+                      label: "Checkout disclosure text",
+                      child: _StableTextField(
+                        value: s.checkoutDisclosureText,
+                        placeholder: "A processing fee applies to this payment.",
+                        onChanged: (v) => _set((d) => d.copyWith(checkoutDisclosureText: v)),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      "Shown next to the pay button on Stripe's checkout page, in addition to the fee's own line item — both are always visible before the client confirms. Not optional; there's no setting to hide either one.",
+                      style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                    ),
+                    const SizedBox(height: 10),
+                    _ToggleRow(
+                      label: "Refund fee when refunding a payment",
+                      hint: "Off (default): refunding a purchase returns only the original price — the processing fee is kept, like most real payment processors. On: refunds return the fee too.",
+                      value: s.refundFeeOnRefund,
+                      onChange: (v) => _set((d) => d.copyWith(refundFeeOnRefund: v)),
+                    ),
                   ],
                 ],
                 if (_tab == "workouts") ...[
-                  _ToggleRow(label: "Auto carry over last weight", value: s.autoCarryOverLastWeight, onChange: (v) => _set((d) => d.copyWith(autoCarryOverLastWeight: v))),
-                  _ChoiceRow(label: "Default weight unit", value: s.defaultWeightUnit, options: const [("lb", "lb"), ("kg", "kg")], onChange: (v) => _set((d) => d.copyWith(defaultWeightUnit: v))),
-                  _ToggleRow(label: "Clients can swap exercises", value: s.clientsCanSwapExercises, onChange: (v) => _set((d) => d.copyWith(clientsCanSwapExercises: v))),
+                  _ToggleRow(
+                    label: "Auto carry-over of last logged weight",
+                    hint: "On (default): a client's next session starts pre-filled with the weight they logged last time for each set — they can still edit or clear it. Off: sets start blank.",
+                    value: s.autoCarryOverLastWeight,
+                    onChange: (v) => _set((d) => d.copyWith(autoCarryOverLastWeight: v)),
+                  ),
+                  _ChoiceRow(
+                    label: "Default weight units",
+                    hint: "Changes the unit label shown throughout workout logging. Doesn't convert numbers already entered — switching from lb to kg relabels the same figures, it doesn't recalculate them.",
+                    value: s.defaultWeightUnit,
+                    options: const [("lb", "lb"), ("kg", "kg")],
+                    onChange: (v) => _set((d) => d.copyWith(defaultWeightUnit: v)),
+                  ),
+                  _ToggleRow(
+                    label: "Allow clients to swap or edit exercises",
+                    hint: "On: a client can rename an exercise or change its prescribed sets/reps for their own copy of the program while logging a session. Off (default): clients can only log performance — the coach controls the program.",
+                    value: s.clientsCanSwapExercises,
+                    onChange: (v) => _set((d) => d.copyWith(clientsCanSwapExercises: v)),
+                  ),
                   const SizedBox(height: 4),
-                  FieldLabeled(label: "Business name", child: AppField(controller: TextEditingController(text: s.businessName), onChanged: (v) => _set((d) => d.copyWith(businessName: v)))),
-                  const SizedBox(height: 10),
                   FieldLabeled(
                     label: "Business time zone",
                     child: AppCard(
@@ -211,11 +378,45 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                       ),
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Used to format message/charge timestamps consistently for every viewer, regardless of their own device's time zone. Booking dates themselves still follow each viewer's local device clock.",
+                    style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                  ),
+                  const SizedBox(height: 10),
+                  FieldLabeled(
+                    label: "Business / location name",
+                    child: _StableTextField(value: s.businessName, placeholder: "ONE Fitness", onChanged: (v) => _set((d) => d.copyWith(businessName: v))),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Updates the main header, login screens, and email sender name. Some deeper copy (legal/waiver boilerplate, etc.) may still say \"ONE Fitness\" — flag any you spot and they're quick to update.",
+                    style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                  ),
                   const SizedBox(height: 10),
                   const SectionLabel("Merit Badges"),
-                  _NumberRow(label: "Progress Tracker — consecutive weeks", value: s.meritBadgeProgressWeeks, onChange: (v) => _set((d) => d.copyWith(meritBadgeProgressWeeks: v))),
-                  _NumberRow(label: "Habit — consistency percent required", value: s.meritBadgeHabitPercent, onChange: (v) => _set((d) => d.copyWith(meritBadgeHabitPercent: v))),
-                  _NumberRow(label: "Habit — consecutive weeks required", value: s.meritBadgeHabitWeeks, onChange: (v) => _set((d) => d.copyWith(meritBadgeHabitWeeks: v))),
+                  const SizedBox(height: 8),
+                  _NumberRow(
+                    label: "Progress Tracker — consecutive weeks required",
+                    hint: "A client needs a photo, measurement, or workout log at least once a week for this many weeks in a row to earn the badge.",
+                    suffix: "weeks",
+                    value: s.meritBadgeProgressWeeks,
+                    onChange: (v) => _set((d) => d.copyWith(meritBadgeProgressWeeks: v)),
+                  ),
+                  _NumberRow(
+                    label: "Habit — consistency percent required",
+                    hint: "The minimum weekly habit-completion percentage a client must sustain to earn the badge.",
+                    suffix: "%",
+                    value: s.meritBadgeHabitPercent,
+                    onChange: (v) => _set((d) => d.copyWith(meritBadgeHabitPercent: v)),
+                  ),
+                  _NumberRow(
+                    label: "Habit — consecutive weeks required",
+                    hint: "How many weeks in a row that percentage must be sustained.",
+                    suffix: "weeks",
+                    value: s.meritBadgeHabitWeeks,
+                    onChange: (v) => _set((d) => d.copyWith(meritBadgeHabitWeeks: v)),
+                  ),
                   const SizedBox(height: 10),
                   const SectionLabel("Coach Merit Badges"),
                   const HintBox(text: "Monthly coaching-performance badges — each pays the coach automatically when earned. Changing a value only affects badges earned after the change; already-earned badges keep the amount they were awarded at."),
@@ -250,20 +451,71 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
   }
 }
 
+/// A text/number entry field that keeps a stable [TextEditingController]
+/// across rebuilds — every row here used to build a fresh controller on
+/// every keystroke's rebuild, which reset the cursor to the end of the
+/// field each time. Only resyncs from [value] when it's genuinely different
+/// from what's already displayed (an external reset — tab-switch discard,
+/// a realtime update landing while this field isn't dirty — never a normal
+/// typed edit, since [onChanged] immediately feeds the same value back in).
+class _StableTextField extends StatefulWidget {
+  const _StableTextField({required this.value, required this.onChanged, this.keyboardType, this.placeholder});
+  final String value;
+  final ValueChanged<String> onChanged;
+  final TextInputType? keyboardType;
+  final String? placeholder;
+
+  @override
+  State<_StableTextField> createState() => _StableTextFieldState();
+}
+
+class _StableTextFieldState extends State<_StableTextField> {
+  late final _controller = TextEditingController(text: widget.value);
+
+  @override
+  void didUpdateWidget(covariant _StableTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.value != _controller.text) _controller.text = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppField(controller: _controller, keyboardType: widget.keyboardType, placeholder: widget.placeholder, onChanged: widget.onChanged);
+  }
+}
+
 class _ToggleRow extends StatelessWidget {
-  const _ToggleRow({required this.label, required this.value, required this.onChange});
+  const _ToggleRow({required this.label, required this.value, required this.onChange, this.hint});
   final String label;
   final bool value;
   final ValueChanged<bool> onChange;
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      onTap: () => onChange(!value),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-          Icon(value ? LucideIcons.toggleRight : LucideIcons.toggleLeft, size: 30, color: value ? AppColors.gold : AppColors.mute),
+          InkWell(
+            onTap: () => onChange(!value),
+            child: Row(
+              children: [
+                Expanded(child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                Icon(value ? LucideIcons.toggleRight : LucideIcons.toggleLeft, size: 30, color: value ? AppColors.gold : AppColors.mute),
+              ],
+            ),
+          ),
+          if (hint != null) ...[
+            const SizedBox(height: 6),
+            Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+          ],
         ],
       ),
     );
@@ -271,21 +523,43 @@ class _ToggleRow extends StatelessWidget {
 }
 
 class _NumberRow extends StatelessWidget {
-  const _NumberRow({required this.label, required this.value, required this.onChange});
+  const _NumberRow({required this.label, required this.value, required this.onChange, this.hint, this.suffix, this.disabled = false});
   final String label;
   final int value;
   final ValueChanged<int> onChange;
+  final String? hint;
+  final String? suffix;
+  final bool disabled;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-          SizedBox(
-            width: 70,
-            child: AppField(controller: TextEditingController(text: "$value"), keyboardType: TextInputType.number, onChanged: (v) => onChange(int.tryParse(v) ?? value)),
+          Row(
+            children: [
+              Expanded(child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+              SizedBox(
+                width: 60,
+                child: Opacity(
+                  opacity: disabled ? 0.6 : 1,
+                  child: IgnorePointer(
+                    ignoring: disabled,
+                    child: _StableTextField(value: "$value", keyboardType: TextInputType.number, onChanged: (v) => onChange(int.tryParse(v) ?? value)),
+                  ),
+                ),
+              ),
+              if (suffix != null) ...[
+                const SizedBox(width: 6),
+                Flexible(child: Text(suffix!, style: const TextStyle(fontSize: 11, color: AppColors.mute))),
+              ],
+            ],
           ),
+          if (hint != null) ...[
+            const SizedBox(height: 6),
+            Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+          ],
         ],
       ),
     );
@@ -295,27 +569,37 @@ class _NumberRow extends StatelessWidget {
 /// Cents-backed dollar field (e.g. "$5.00") — mirrors NumberField's
 /// `prefix="$"` + `/100`/`*100` conversion in CustomizePlatform.jsx.
 class _MoneyRow extends StatelessWidget {
-  const _MoneyRow({required this.label, required this.cents, required this.onChange});
+  const _MoneyRow({required this.label, required this.cents, required this.onChange, this.hint});
   final String label;
   final int cents;
   final ValueChanged<int> onChange;
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-          const Text("\$", style: TextStyle(color: AppColors.mute, fontSize: 13)),
-          const SizedBox(width: 4),
-          SizedBox(
-            width: 70,
-            child: AppField(
-              controller: TextEditingController(text: (cents / 100).toStringAsFixed(2)),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              onChanged: (v) => onChange(((double.tryParse(v) ?? cents / 100) * 100).round()),
-            ),
+          Row(
+            children: [
+              Expanded(child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+              const Text("\$", style: TextStyle(color: AppColors.mute, fontSize: 13)),
+              const SizedBox(width: 4),
+              SizedBox(
+                width: 70,
+                child: _StableTextField(
+                  value: (cents / 100).toStringAsFixed(2),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (v) => onChange(((double.tryParse(v) ?? cents / 100) * 100).round()),
+                ),
+              ),
+            ],
           ),
+          if (hint != null) ...[
+            const SizedBox(height: 6),
+            Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+          ],
         ],
       ),
     );
@@ -337,8 +621,8 @@ class _PercentRow extends StatelessWidget {
           Expanded(child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
           SizedBox(
             width: 70,
-            child: AppField(
-              controller: TextEditingController(text: "$value"),
+            child: _StableTextField(
+              value: "$value",
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (v) => onChange(double.tryParse(v) ?? value),
             ),
@@ -352,11 +636,12 @@ class _PercentRow extends StatelessWidget {
 }
 
 class _ChoiceRow extends StatelessWidget {
-  const _ChoiceRow({required this.label, required this.value, required this.options, required this.onChange});
+  const _ChoiceRow({required this.label, required this.value, required this.options, required this.onChange, this.hint});
   final String label;
   final String value;
   final List<(String, String)> options;
   final ValueChanged<String> onChange;
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
@@ -381,6 +666,10 @@ class _ChoiceRow extends StatelessWidget {
               );
             }).toList(),
           ),
+          if (hint != null) ...[
+            const SizedBox(height: 8),
+            Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+          ],
         ],
       ),
     );
@@ -428,7 +717,10 @@ class _MultiChoiceRow extends StatelessWidget {
             }).toList(),
           ),
           const SizedBox(height: 6),
-          const Text("Full name and email can't be turned off. Phone / Birthday / City above are optional-or-required, your call.", style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+          const Text(
+            "Full name and email can't be turned off — every client needs both for their account, enforced at signup. Phone / Birthday / City above are optional-or-required, your call.",
+            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+          ),
         ],
       ),
     );
@@ -522,8 +814,8 @@ class _CustomFieldsEditorState extends State<_CustomFieldsEditor> {
                   ),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: AppField(
-                      controller: TextEditingController(text: f.label),
+                    child: _StableTextField(
+                      value: f.label,
                       onChanged: (v) => widget.onChange(widget.fields.map((x) => x.id == f.id ? CustomProfileField(id: x.id, label: v, type: x.type) : x).toList()),
                     ),
                   ),
@@ -560,10 +852,11 @@ class _CustomFieldsEditorState extends State<_CustomFieldsEditor> {
 /// One fee profile's fields (card's or ACH's) — mirrors FeeProfileFields in
 /// CustomizePlatform.jsx.
 class _FeeProfileEditor extends StatelessWidget {
-  const _FeeProfileEditor({required this.title, required this.profile, required this.onChange});
+  const _FeeProfileEditor({required this.title, required this.profile, required this.onChange, this.hint});
   final String title;
   final FeeProfile profile;
   final ValueChanged<FeeProfile> onChange;
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
@@ -572,21 +865,25 @@ class _FeeProfileEditor extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-              InkWell(
-                onTap: () => onChange(FeeProfile(enabled: !profile.enabled, label: profile.label, structure: profile.structure, percent: profile.percent, flatCents: profile.flatCents)),
-                child: Icon(profile.enabled ? LucideIcons.toggleRight : LucideIcons.toggleLeft, size: 30, color: profile.enabled ? AppColors.gold : AppColors.mute),
-              ),
-            ],
+          InkWell(
+            onTap: () => onChange(FeeProfile(enabled: !profile.enabled, label: profile.label, structure: profile.structure, percent: profile.percent, flatCents: profile.flatCents)),
+            child: Row(
+              children: [
+                Expanded(child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+                Icon(profile.enabled ? LucideIcons.toggleRight : LucideIcons.toggleLeft, size: 30, color: profile.enabled ? AppColors.gold : AppColors.mute),
+              ],
+            ),
           ),
+          if (hint != null) ...[
+            const SizedBox(height: 6),
+            Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+          ],
           if (profile.enabled) ...[
             const SizedBox(height: 10),
             FieldLabeled(
               label: "Fee label (shown to the client)",
-              child: AppField(
-                controller: TextEditingController(text: profile.label),
+              child: _StableTextField(
+                value: profile.label,
                 placeholder: title,
                 onChanged: (v) => onChange(FeeProfile(enabled: profile.enabled, label: v, structure: profile.structure, percent: profile.percent, flatCents: profile.flatCents)),
               ),

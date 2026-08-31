@@ -4,8 +4,10 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/models/availability_block.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
 import "trainer_edit_form.dart";
@@ -236,6 +238,8 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                     icon: LucideIcons.dollarSign,
                     text: _payoutSummary(t),
                   ),
+                  const SizedBox(height: 8),
+                  _AvailSummary(availability: t.availability),
                   if (t.coachCode != null && t.coachCode!.isNotEmpty)
                     _IconLine(
                       icon: LucideIcons.badgePercent,
@@ -259,6 +263,72 @@ String _payoutSummary(Trainer t) {
     _ => "session",
   };
   return "$rate/$unit";
+}
+
+const _weekdayLabels = {1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat"};
+
+/// Mirrors FormPrimitives.jsx `AvailSummary` — a compact weekly Mon-Sat
+/// slot grid per availability block (session type/discipline label, then
+/// one line per working day of that block's open slots).
+class _AvailSummary extends StatelessWidget {
+  const _AvailSummary({required this.availability});
+  final List<AvailabilityBlock> availability;
+
+  @override
+  Widget build(BuildContext context) {
+    if (availability.isEmpty) {
+      return const _IconLine(icon: LucideIcons.clock, text: "No availability set");
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: availability.map((b) {
+        final working = _weekdayLabels.entries.where((e) => (b.byDay[e.key] ?? const []).isNotEmpty).toList();
+        if (working.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(LucideIcons.clock, size: 12, color: AppColors.gold),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "${sessionTypeLabel(b.sessionType)} · ${disciplineLabel(b.discipline)}",
+                      style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
+                    ),
+                    ...working.map((e) {
+                      final slots = [...b.byDay[e.key]!]..sort();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: RichText(
+                          text: TextSpan(
+                            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                            children: [
+                              TextSpan(
+                                text: "${e.value}  ",
+                                style: const TextStyle(color: AppColors.txt, fontWeight: FontWeight.w700),
+                              ),
+                              TextSpan(text: slots.map(fmtSlotShort).join(" ")),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
 }
 
 class _IconLine extends StatelessWidget {

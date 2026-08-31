@@ -1119,6 +1119,9 @@ class SupabaseService {
       coachCanSeeOtherSchedules:
           access["coachCanSeeOtherSchedules"] as bool? ??
           defaults.coachCanSeeOtherSchedules,
+      coachCanEditClientWorkouts:
+          access["coachCanEditClientWorkouts"] as bool? ??
+          defaults.coachCanEditClientWorkouts,
       messageIdentity:
           access["messageIdentity"] as String? ?? defaults.messageIdentity,
       requiredProfileFields:
@@ -2110,6 +2113,7 @@ class SupabaseService {
       "coachCanViewRevenue": s.coachCanViewRevenue,
       "twoFactorRequirement": s.twoFactorRequirement,
       "coachCanSeeOtherSchedules": s.coachCanSeeOtherSchedules,
+      "coachCanEditClientWorkouts": s.coachCanEditClientWorkouts,
     },
     "clients": {
       "requiredProfileFields": s.requiredProfileFields,

@@ -7,6 +7,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_record.dart";
 import "../../../data/models/nutrition_plan.dart";
 import "../../../data/models/saved_program.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../programs/nutrition_builder_screen.dart";
 import "../programs/program_builder_screen.dart";
@@ -37,7 +38,8 @@ class _PlansTabState extends ConsumerState<PlansTab> {
     if (record == null) return const SizedBox.shrink();
 
     final isOwner = ref.watch(trainerAuthProvider) == "owner";
-    if (!isOwner) {
+    final canEdit = isOwner || ref.watch(platformSettingsProvider).coachCanEditClientWorkouts;
+    if (!canEdit) {
       return const Padding(
         padding: EdgeInsets.all(18),
         child: HintBox(

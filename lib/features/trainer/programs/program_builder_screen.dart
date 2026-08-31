@@ -10,6 +10,7 @@ import "../../../data/models/exercise_prescription.dart";
 import "../../../data/models/program_day.dart";
 import "../../../data/models/saved_program.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "exercise_picker_sheet.dart";
 
@@ -189,7 +190,9 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (ref.watch(trainerAuthProvider) != "owner") {
+    final isOwner = ref.watch(trainerAuthProvider) == "owner";
+    final canEdit = isOwner || ref.watch(platformSettingsProvider).coachCanEditClientWorkouts;
+    if (!canEdit) {
       return const Padding(
         padding: EdgeInsets.all(18),
         child: HintBox(

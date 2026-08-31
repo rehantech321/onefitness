@@ -49,6 +49,7 @@ class PlatformSettings {
     this.coachClientScope = "all",
     this.coachCanViewRevenue = false,
     this.coachCanSeeOtherSchedules = false,
+    this.coachCanEditClientWorkouts = true,
     this.messageIdentity = "self",
     this.requiredProfileFields = const ["phone", "birthday", "city"],
     this.customProfileFields = const [],
@@ -100,6 +101,10 @@ class PlatformSettings {
   final String coachClientScope; // own | all
   final bool coachCanViewRevenue;
   final bool coachCanSeeOtherSchedules;
+
+  /// Off gives coaches read-only Plans — only the owner can build or edit
+  /// workout/nutrition programs (see plans_tab.dart / program_builder_screen.dart).
+  final bool coachCanEditClientWorkouts;
   final String messageIdentity; // self | business
   final List<String> requiredProfileFields; // subset of phone|birthday|city
   final List<CustomProfileField> customProfileFields;
@@ -145,6 +150,7 @@ class PlatformSettings {
     String? coachClientScope,
     bool? coachCanViewRevenue,
     bool? coachCanSeeOtherSchedules,
+    bool? coachCanEditClientWorkouts,
     String? messageIdentity,
     List<String>? requiredProfileFields,
     List<CustomProfileField>? customProfileFields,
@@ -184,6 +190,7 @@ class PlatformSettings {
         coachClientScope: coachClientScope ?? this.coachClientScope,
         coachCanViewRevenue: coachCanViewRevenue ?? this.coachCanViewRevenue,
         coachCanSeeOtherSchedules: coachCanSeeOtherSchedules ?? this.coachCanSeeOtherSchedules,
+        coachCanEditClientWorkouts: coachCanEditClientWorkouts ?? this.coachCanEditClientWorkouts,
         messageIdentity: messageIdentity ?? this.messageIdentity,
         requiredProfileFields: requiredProfileFields ?? this.requiredProfileFields,
         customProfileFields: customProfileFields ?? this.customProfileFields,

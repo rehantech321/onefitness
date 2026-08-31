@@ -238,7 +238,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                       "memberships" => const ManageMembershipsScreen(),
                       "products" => const ManageProductsScreen(),
                       "waivers" => const ManageWaiversScreen(),
-                      "platformSettings" => const CustomizePlatformScreen(),
+                      "platformSettings" when isOwner => const CustomizePlatformScreen(),
                       "challenges" => const CoachChallengesScreen(),
                       "selfbook" => const SelfBookScreen(),
                       _ => PlaceholderScreen(title: _titles[mode] ?? mode),
