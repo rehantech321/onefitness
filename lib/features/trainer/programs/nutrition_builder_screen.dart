@@ -11,6 +11,7 @@ import "../../../core/utils/nutrition_helpers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/nutrition_library_entry.dart";
 import "../../../data/models/nutrition_plan.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "calorie_budget_panel.dart";
 import "meal_picker_sheet.dart";
@@ -318,7 +319,9 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (ref.watch(trainerAuthProvider) != "owner") {
+    final isOwner = ref.watch(trainerAuthProvider) == "owner";
+    final canEdit = isOwner || ref.watch(platformSettingsProvider).coachCanEditClientWorkouts;
+    if (!canEdit) {
       return const Padding(padding: EdgeInsets.all(18), child: HintBox(text: "Only the owner can build, approve, or assign nutrition programs."));
     }
     final clientId = widget.clientId;
@@ -416,17 +419,20 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
                     style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
                   ),
                   const SizedBox(height: 10),
-                  BtnGold(
-                    full: true,
-                    onPressed: (_generatingDraft || _regeneratingDraft)
-                        ? null
-                        : (hasAnyAiNutrition ? _regenerateNutritionDraft : _generateNutritionDraft),
-                    child: Text(_generatingDraft || _regeneratingDraft
-                        ? "Generating…"
-                        : hasAnyAiNutrition
-                            ? "Regenerate AI Nutrition Targets"
-                            : "Generate AI Nutrition Targets"),
-                  ),
+                  if (isOwner)
+                    BtnGold(
+                      full: true,
+                      onPressed: (_generatingDraft || _regeneratingDraft)
+                          ? null
+                          : (hasAnyAiNutrition ? _regenerateNutritionDraft : _generateNutritionDraft),
+                      child: Text(_generatingDraft || _regeneratingDraft
+                          ? "Generating…"
+                          : hasAnyAiNutrition
+                              ? "Regenerate AI Nutrition Targets"
+                              : "Generate AI Nutrition Targets"),
+                    )
+                  else
+                    const Text("Only the owner can generate AI drafts.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
                 ],
               ),
             ),
@@ -480,13 +486,15 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
                       Expanded(
                         child: BtnGold(onPressed: _saving ? null : () => _applyNutritionDraft(p), child: const Text("Apply to this plan")),
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: BtnGhost(
-                          onPressed: _regeneratingDraft ? null : _regenerateNutritionDraft,
-                          child: Text(_regeneratingDraft ? "Regenerating…" : "Regenerate"),
+                      if (isOwner) ...[
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: BtnGhost(
+                            onPressed: _regeneratingDraft ? null : _regenerateNutritionDraft,
+                            child: Text(_regeneratingDraft ? "Regenerating…" : "Regenerate"),
+                          ),
                         ),
-                      ),
+                      ],
                       const SizedBox(width: 6),
                       Expanded(
                         child: OutlinedButton(

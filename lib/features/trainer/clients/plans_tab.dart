@@ -362,6 +362,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final isOwner = ref.watch(trainerAuthProvider) == "owner";
     final record = _record;
     final workoutDrafts = record.savedPrograms.where((p) => p.source == "ai" && p.status == "draft").toList();
     final workoutPrograms = record.savedPrograms.where((p) => !(p.source == "ai" && p.status == "draft")).toList();
@@ -402,15 +403,18 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                   style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
                 ),
                 const SizedBox(height: 10),
-                BtnGold(
-                  full: true,
-                  onPressed: (_generatingWorkoutDraft || _regeneratingWorkoutDraft) ? null : (hasAnyAiWorkout ? _regenerateWorkoutDraft : _generateWorkoutDraft),
-                  child: Text(_generatingWorkoutDraft || _regeneratingWorkoutDraft
-                      ? "Generating…"
-                      : hasAnyAiWorkout
-                          ? "Regenerate AI Workout Draft"
-                          : "Draft a Workout with AI"),
-                ),
+                if (isOwner)
+                  BtnGold(
+                    full: true,
+                    onPressed: (_generatingWorkoutDraft || _regeneratingWorkoutDraft) ? null : (hasAnyAiWorkout ? _regenerateWorkoutDraft : _generateWorkoutDraft),
+                    child: Text(_generatingWorkoutDraft || _regeneratingWorkoutDraft
+                        ? "Generating…"
+                        : hasAnyAiWorkout
+                            ? "Regenerate AI Workout Draft"
+                            : "Draft a Workout with AI"),
+                  )
+                else
+                  const Text("Only the owner can generate AI drafts.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
               ],
             ),
           ),
@@ -444,13 +448,15 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Expanded(
-                      child: BtnGhost(
-                        onPressed: _regeneratingWorkoutDraft ? null : _regenerateWorkoutDraft,
-                        child: Text(_regeneratingWorkoutDraft ? "Regenerating…" : "Regenerate"),
+                    if (isOwner) ...[
+                      Expanded(
+                        child: BtnGhost(
+                          onPressed: _regeneratingWorkoutDraft ? null : _regenerateWorkoutDraft,
+                          child: Text(_regeneratingWorkoutDraft ? "Regenerating…" : "Regenerate"),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
+                      const SizedBox(width: 6),
+                    ],
                     Expanded(
                       child: OutlinedButton(
                         onPressed: _busy ? null : () => _discardWorkoutDraft(p.id),
@@ -488,15 +494,18 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                   style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
                 ),
                 const SizedBox(height: 10),
-                BtnGold(
-                  full: true,
-                  onPressed: (_generatingNutritionDraft || _regeneratingNutritionDraft) ? null : (hasAnyAiNutrition ? _regenerateNutritionDraft : _generateNutritionDraft),
-                  child: Text(_generatingNutritionDraft || _regeneratingNutritionDraft
-                      ? "Generating…"
-                      : hasAnyAiNutrition
-                          ? "Regenerate AI Nutrition Targets"
-                          : "Generate AI Nutrition Targets"),
-                ),
+                if (isOwner)
+                  BtnGold(
+                    full: true,
+                    onPressed: (_generatingNutritionDraft || _regeneratingNutritionDraft) ? null : (hasAnyAiNutrition ? _regenerateNutritionDraft : _generateNutritionDraft),
+                    child: Text(_generatingNutritionDraft || _regeneratingNutritionDraft
+                        ? "Generating…"
+                        : hasAnyAiNutrition
+                            ? "Regenerate AI Nutrition Targets"
+                            : "Generate AI Nutrition Targets"),
+                  )
+                else
+                  const Text("Only the owner can generate AI drafts.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
               ],
             ),
           ),
@@ -531,13 +540,15 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Expanded(
-                      child: BtnGhost(
-                        onPressed: _regeneratingNutritionDraft ? null : _regenerateNutritionDraft,
-                        child: Text(_regeneratingNutritionDraft ? "Regenerating…" : "Regenerate"),
+                    if (isOwner) ...[
+                      Expanded(
+                        child: BtnGhost(
+                          onPressed: _regeneratingNutritionDraft ? null : _regenerateNutritionDraft,
+                          child: Text(_regeneratingNutritionDraft ? "Regenerating…" : "Regenerate"),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
+                      const SizedBox(width: 6),
+                    ],
                     Expanded(
                       child: OutlinedButton(
                         onPressed: _busy ? null : () => _discardNutritionDraft(p.id),
