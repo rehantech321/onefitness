@@ -67,6 +67,19 @@ const Map<String, String> kCoachBadgeLabels = {
   "coach_of_month": "Coach of the Month",
 };
 
+/// badgeKey -> artwork — mirrors merit_badge_def.dart's `kBadgeImagePaths`
+/// for the (separate, client-facing) merit badge system, same pattern, own
+/// asset set (owner-supplied, not part of that other catalog).
+const Map<String, String> kCoachBadgeImagePaths = {
+  "full_house": "assets/images/full_house.png",
+  "pr_factory": "assets/images/pr_factory.png",
+  "check_in": "assets/images/check_in.png",
+  "comeback": "assets/images/comeback.png",
+  "habit_coach": "assets/images/habits.png",
+  "challenge_coach": "assets/images/challenge.png",
+  "coach_of_month": "assets/images/coach_of_the_month.png",
+};
+
 /// Owner-facing description text for each badge — used by My Pay's Coach
 /// Merit Badges section (badgeKey -> description).
 const Map<String, String> kCoachBadgeDescriptions = {

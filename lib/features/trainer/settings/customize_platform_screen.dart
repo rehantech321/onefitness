@@ -420,13 +420,13 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                   const SizedBox(height: 10),
                   const SectionLabel("Coach Merit Badges"),
                   const HintBox(text: "Monthly coaching-performance badges — each pays the coach automatically when earned. Changing a value only affects badges earned after the change; already-earned badges keep the amount they were awarded at."),
-                  _MoneyRow(label: "Full House", cents: s.badgeFullHouseCents, onChange: (v) => _set((d) => d.copyWith(badgeFullHouseCents: v))),
-                  _MoneyRow(label: "PR Factory", cents: s.badgePrFactoryCents, onChange: (v) => _set((d) => d.copyWith(badgePrFactoryCents: v))),
-                  _MoneyRow(label: "Check-In", cents: s.badgeCheckInCents, onChange: (v) => _set((d) => d.copyWith(badgeCheckInCents: v))),
-                  _MoneyRow(label: "Comeback", cents: s.badgeComebackCents, onChange: (v) => _set((d) => d.copyWith(badgeComebackCents: v))),
-                  _MoneyRow(label: "Habit Coach", cents: s.badgeHabitCoachCents, onChange: (v) => _set((d) => d.copyWith(badgeHabitCoachCents: v))),
-                  _MoneyRow(label: "Challenge Coach", cents: s.badgeChallengeCoachCents, onChange: (v) => _set((d) => d.copyWith(badgeChallengeCoachCents: v))),
-                  _MoneyRow(label: "Coach of the Month", cents: s.badgeCoachOfMonthCents, onChange: (v) => _set((d) => d.copyWith(badgeCoachOfMonthCents: v))),
+                  _MoneyRow(label: "Full House", badgeKey: "full_house", cents: s.badgeFullHouseCents, onChange: (v) => _set((d) => d.copyWith(badgeFullHouseCents: v))),
+                  _MoneyRow(label: "PR Factory", badgeKey: "pr_factory", cents: s.badgePrFactoryCents, onChange: (v) => _set((d) => d.copyWith(badgePrFactoryCents: v))),
+                  _MoneyRow(label: "Check-In", badgeKey: "check_in", cents: s.badgeCheckInCents, onChange: (v) => _set((d) => d.copyWith(badgeCheckInCents: v))),
+                  _MoneyRow(label: "Comeback", badgeKey: "comeback", cents: s.badgeComebackCents, onChange: (v) => _set((d) => d.copyWith(badgeComebackCents: v))),
+                  _MoneyRow(label: "Habit Coach", badgeKey: "habit_coach", cents: s.badgeHabitCoachCents, onChange: (v) => _set((d) => d.copyWith(badgeHabitCoachCents: v))),
+                  _MoneyRow(label: "Challenge Coach", badgeKey: "challenge_coach", cents: s.badgeChallengeCoachCents, onChange: (v) => _set((d) => d.copyWith(badgeChallengeCoachCents: v))),
+                  _MoneyRow(label: "Coach of the Month", badgeKey: "coach_of_month", cents: s.badgeCoachOfMonthCents, onChange: (v) => _set((d) => d.copyWith(badgeCoachOfMonthCents: v))),
                 ],
                 if (_saveError != null) ...[
                   const SizedBox(height: 14),
@@ -569,11 +569,16 @@ class _NumberRow extends StatelessWidget {
 /// Cents-backed dollar field (e.g. "$5.00") — mirrors NumberField's
 /// `prefix="$"` + `/100`/`*100` conversion in CustomizePlatform.jsx.
 class _MoneyRow extends StatelessWidget {
-  const _MoneyRow({required this.label, required this.cents, required this.onChange, this.hint});
+  const _MoneyRow({required this.label, required this.cents, required this.onChange, this.hint, this.badgeKey});
   final String label;
   final int cents;
   final ValueChanged<int> onChange;
   final String? hint;
+
+  /// When set, shows that Coach Merit Badge's artwork before the label —
+  /// see [kCoachBadgeImagePaths]. Null for every non-badge money field
+  /// (late-cancellation fee, no-show fee, flat fee amounts, etc.).
+  final String? badgeKey;
 
   @override
   Widget build(BuildContext context) {
@@ -583,6 +588,10 @@ class _MoneyRow extends StatelessWidget {
         children: [
           Row(
             children: [
+              if (badgeKey != null) ...[
+                CoachBadgeShield(badgeKey: badgeKey!, size: 26),
+                const SizedBox(width: 8),
+              ],
               Expanded(child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
               const Text("\$", style: TextStyle(color: AppColors.mute, fontSize: 13)),
               const SizedBox(width: 4),

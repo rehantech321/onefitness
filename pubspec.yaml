@@ -104,6 +104,13 @@ flutter:
     - assets/images/logo.png
     - assets/images/login_bg.jpg
     - assets/images/badges/
+    - assets/images/full_house.png
+    - assets/images/pr_factory.png
+    - assets/images/check_in.png
+    - assets/images/comeback.png
+    - assets/images/habits.png
+    - assets/images/challenge.png
+    - assets/images/coach_of_the_month.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -9,10 +9,13 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/attention_utils.dart";
 import "../../../core/utils/booking_utils.dart" show addDaysIso;
+import "../../../core/utils/coach_merit_badge_utils.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/report_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
 /// Mirrors CoachesOverview.jsx (owner-only) — a real coach-approval-code
@@ -159,6 +162,9 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
     final roster = ref.watch(trainerRosterProvider);
     final records = ref.watch(trainerClientRecordsProvider);
     final bookings = ref.watch(allBookingsProvider);
+    final prEvents = ref.watch(coachPrEventsProvider);
+    final challenges = ref.watch(challengesProvider);
+    final settings = ref.watch(platformSettingsProvider);
 
     final code = (_codeRow?["code"] as String?) ?? "000000";
     final expiresAt = _codeRow?["expires_at"] as String?;
@@ -343,6 +349,34 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                       const SizedBox(height: 4),
                       Text("Signed up: ${niceDate(t.signupAt!)}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
                     ],
+                    const SizedBox(height: 10),
+                    const Text("Coach Merit Badges — this month:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 6,
+                      children: computeAllCoachBadges(
+                        coach: t,
+                        roster: roster,
+                        clientRecords: records,
+                        bookings: bookings,
+                        prEvents: prEvents,
+                        challenges: challenges,
+                        range: presetRange("month"),
+                        habitPercent: settings.meritBadgeHabitPercent,
+                        habitConsecutiveWeeks: settings.meritBadgeHabitWeeks,
+                      ).map((b) => Tooltip(
+                            message: "${b.label}: ${b.detail}",
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CoachBadgeShield(badgeKey: b.badgeKey, size: 30, grayscale: !b.qualifies),
+                                const SizedBox(height: 2),
+                                Text(b.label, style: TextStyle(fontSize: 9, color: b.qualifies ? AppColors.gold : AppColors.mute, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          )).toList(),
+                    ),
                     if (flags.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       const Text("Needs attention on their roster:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),

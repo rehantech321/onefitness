@@ -147,6 +147,8 @@ class MeritBadgeEarningsReport extends ConsumerWidget {
         ...rows.map((b) => AppCard(
               child: Row(
                 children: [
+                  CoachBadgeShield(badgeKey: b.badgeKey, size: 28),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

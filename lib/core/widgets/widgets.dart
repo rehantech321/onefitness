@@ -12,6 +12,7 @@ export "back_bar.dart";
 export "badge_earned_modal.dart";
 export "before_after_editor.dart";
 export "billing_choice_row.dart";
+export "coach_badge_shield.dart";
 export "coach_profile_card.dart";
 export "coachmark_overlay.dart";
 export "collapsible_section.dart";

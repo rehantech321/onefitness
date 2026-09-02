@@ -121,6 +121,8 @@ class _CoachBadgeProgressList extends ConsumerWidget {
                         Expanded(
                           child: Row(
                             children: [
+                              CoachBadgeShield(badgeKey: b.badgeKey, size: 28, grayscale: !b.qualifies),
+                              const SizedBox(width: 8),
                               Icon(b.qualifies ? LucideIcons.checkCircle2 : LucideIcons.circle, size: 15, color: b.qualifies ? AppColors.gold : AppColors.mute),
                               const SizedBox(width: 6),
                               Text(b.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
