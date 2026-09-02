@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../core/navigation/local_back_stack.dart";
 import "../../core/theme/app_colors.dart";
 import "../../core/utils/date_utils.dart";
 import "../../core/utils/program_utils.dart";
@@ -178,29 +179,36 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
     );
 
     if (_saved) {
-      return Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            const Text("\u{1F4AA}", style: TextStyle(fontSize: 44)),
-            const SizedBox(height: 10),
-            const Text(
-              "Session logged!",
-              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 20),
-            BtnGold(
-              onPressed: () => setState(() => _saved = false),
-              full: true,
-              child: const Text("Back to Days"),
-            ),
-          ],
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _saved = false),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              const Text("\u{1F4AA}", style: TextStyle(fontSize: 44)),
+              const SizedBox(height: 10),
+              const Text(
+                "Session logged!",
+                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 20),
+              BtnGold(
+                onPressed: () => setState(() => _saved = false),
+                full: true,
+                child: const Text("Back to Days"),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return SingleChildScrollView(
+    return LocalBackScope(
+      isOpen: _sessionStarted,
+      onBack: () => setState(() => _sessionStarted = false),
+      child: SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -457,6 +465,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
             ),
           ],
         ],
+      ),
       ),
     );
   }

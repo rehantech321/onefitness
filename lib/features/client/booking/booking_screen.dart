@@ -413,41 +413,50 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
 
           if (plan != null && _rescheduling == null) _MembershipBanner(info: info, plan: plan, bookings: bookings),
 
-          if (_chosenType == null)
-            _StepOne(plan: plan, isStaff: info.isStaff, trainers: trainers, onPick: _pickType)
-          else if (_chosenDisc == null)
-            _StepTwo(
-              chosenType: _chosenType!,
-              trainers: trainers,
-              onChangeType: () => _pickType(null),
-              onPick: (d) => setState(() => _chosenDisc = d),
-            )
-          else
-            _StepThree(
-              date: _date,
-              chosenType: _chosenType!,
-              chosenDisc: _chosenDisc!,
-              info: info,
-              trainers: trainers,
-              // Gym-wide, not clientBookingsProvider's self-scoped `bookings`
-              // above — capacity/fullness has to account for every client's
-              // bookings on this trainer/date/slot, not just the signed-in
-              // client's own (which would make a slot never show full unless
-              // they themselves already occupy it).
-              bookings: ref.watch(allBookingsProvider),
-              waitlist: ref.watch(waitlistProvider),
-              onDateChange: (d) => setState(() => _date = d),
-              onChangeType: () => setState(() {
-                _chosenType = null;
+          LocalBackScope(
+            isOpen: _chosenType != null,
+            onBack: () => setState(() {
+              if (_chosenDisc != null) {
                 _chosenDisc = null;
-              }),
-              onChangeDisc: () => setState(() => _chosenDisc = null),
-              onSlotTap: _onSlotTap,
-              onJoinWaitlist: _joinWaitlist,
-              onLeaveWaitlist: _leaveWaitlist,
-              waitlistBusyKeys: _waitlistBusyKeys,
-              semiPrivateCap: ref.watch(platformSettingsProvider).semiPrivateCap,
-            ),
+              } else {
+                _chosenType = null;
+              }
+            }),
+            child: _chosenType == null
+                ? _StepOne(plan: plan, isStaff: info.isStaff, trainers: trainers, onPick: _pickType)
+                : _chosenDisc == null
+                    ? _StepTwo(
+                        chosenType: _chosenType!,
+                        trainers: trainers,
+                        onChangeType: () => _pickType(null),
+                        onPick: (d) => setState(() => _chosenDisc = d),
+                      )
+                    : _StepThree(
+                        date: _date,
+                        chosenType: _chosenType!,
+                        chosenDisc: _chosenDisc!,
+                        info: info,
+                        trainers: trainers,
+                        // Gym-wide, not clientBookingsProvider's self-scoped `bookings`
+                        // above — capacity/fullness has to account for every client's
+                        // bookings on this trainer/date/slot, not just the signed-in
+                        // client's own (which would make a slot never show full unless
+                        // they themselves already occupy it).
+                        bookings: ref.watch(allBookingsProvider),
+                        waitlist: ref.watch(waitlistProvider),
+                        onDateChange: (d) => setState(() => _date = d),
+                        onChangeType: () => setState(() {
+                          _chosenType = null;
+                          _chosenDisc = null;
+                        }),
+                        onChangeDisc: () => setState(() => _chosenDisc = null),
+                        onSlotTap: _onSlotTap,
+                        onJoinWaitlist: _joinWaitlist,
+                        onLeaveWaitlist: _leaveWaitlist,
+                        waitlistBusyKeys: _waitlistBusyKeys,
+                        semiPrivateCap: ref.watch(platformSettingsProvider).semiPrivateCap,
+                      ),
+          ),
         ],
       ),
     );

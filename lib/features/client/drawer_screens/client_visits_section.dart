@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
@@ -92,22 +93,26 @@ class _ClientVisitsSectionState extends ConsumerState<ClientVisitsSection> {
     final trainers = ref.watch(trainersProvider);
 
     if (_cancelTarget != null) {
-      return Column(
-        children: [
-          Expanded(
-            child: BookingCancelScreen(
-              booking: _cancelTarget!,
-              trainers: trainers,
-              onBack: () => setState(() => _cancelTarget = null),
-              onConfirmCancel: _confirmCancel,
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _cancelTarget = null),
+        child: Column(
+          children: [
+            Expanded(
+              child: BookingCancelScreen(
+                booking: _cancelTarget!,
+                trainers: trainers,
+                onBack: () => setState(() => _cancelTarget = null),
+                onConfirmCancel: _confirmCancel,
+              ),
             ),
-          ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-              child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
-            ),
-        ],
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+              ),
+          ],
+        ),
       );
     }
 

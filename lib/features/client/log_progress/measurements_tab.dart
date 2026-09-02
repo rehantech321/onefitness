@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
@@ -209,7 +210,10 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
             ],
           ),
           if (_adding)
-            AppCard(
+            LocalBackScope(
+              isOpen: true,
+              onBack: () => setState(() => _adding = false),
+              child: AppCard(
               borderColor: AppColors.goldDim,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -252,6 +256,7 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                     ],
                   ),
                 ],
+              ),
               ),
             ),
           if (_error != null)

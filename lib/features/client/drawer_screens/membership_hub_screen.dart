@@ -2,6 +2,7 @@ import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:url_launcher/url_launcher.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
@@ -325,7 +326,10 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     if (_prorateChoicePlanId != null) {
       final p = plansNotifier.byId(_prorateChoicePlanId);
       if (p == null) return const SizedBox.shrink();
-      return SingleChildScrollView(
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _prorateChoicePlanId = null),
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -378,13 +382,17 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             ),
           ],
         ),
+        ),
       );
     }
 
     if (_timingChoicePlanId != null) {
       final p = plansNotifier.byId(_timingChoicePlanId);
       if (p == null) return const SizedBox.shrink();
-      return SingleChildScrollView(
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _timingChoicePlanId = null),
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -439,10 +447,14 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             ),
           ],
         ),
+        ),
       );
     }
 
-    return SingleChildScrollView(
+    return LocalBackScope(
+      isOpen: _browsing,
+      onBack: () => setState(() => _browsing = false),
+      child: SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,6 +646,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             ],
           ],
         ],
+      ),
       ),
     );
   }

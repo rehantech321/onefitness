@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
@@ -103,25 +104,29 @@ class _SquadTabState extends ConsumerState<SquadTab> {
     }
 
     if (_searching) {
-      return SquadMemberSearchScreen(
-        roster: clientRoster,
-        squad: squad,
-        onCancel: () => setState(() => _searching = false),
-        onSelect: (c) async {
-          final ok = await mutateSquad(ref, squad, (s) {
-            final invites = [...s.pendingInvites, SquadInvite(clientId: c.id, sentAt: _nowLabel())];
-            var updated = s.copyWith(pendingInvites: invites);
-            if (!s.canAddMember() && isOwner) {
-              updated = updated.withActivity("admin_override", actorName: "Owner", description: "Owner overrode the ${s.maxSize}-member cap to invite ${c.name}");
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _searching = false),
+        child: SquadMemberSearchScreen(
+          roster: clientRoster,
+          squad: squad,
+          onCancel: () => setState(() => _searching = false),
+          onSelect: (c) async {
+            final ok = await mutateSquad(ref, squad, (s) {
+              final invites = [...s.pendingInvites, SquadInvite(clientId: c.id, sentAt: _nowLabel())];
+              var updated = s.copyWith(pendingInvites: invites);
+              if (!s.canAddMember() && isOwner) {
+                updated = updated.withActivity("admin_override", actorName: "Owner", description: "Owner overrode the ${s.maxSize}-member cap to invite ${c.name}");
+              }
+              return updated.withActivity("invite_sent", actorName: info.name, description: "${c.name} was invited to the Squad");
+            });
+            if (!ok) {
+              _showMutateError(context);
+              return;
             }
-            return updated.withActivity("invite_sent", actorName: info.name, description: "${c.name} was invited to the Squad");
-          });
-          if (!ok) {
-            _showMutateError(context);
-            return;
-          }
-          setState(() => _searching = false);
-        },
+            setState(() => _searching = false);
+          },
+        ),
       );
     }
 

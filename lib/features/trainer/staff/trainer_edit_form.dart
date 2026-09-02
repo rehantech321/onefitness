@@ -1,6 +1,7 @@
 import "dart:convert";
 import "package:flutter/material.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
@@ -253,21 +254,25 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
   Widget build(BuildContext context) {
     if (_editingBlock != null) {
       final req = _editingBlock!;
-      return AvailabilityBlockEditor(
-        sessionType: req.sessionType,
-        disciplineOptions: req.disciplineOptions,
-        initial: req.editIndex != null ? _availability[req.editIndex!] : null,
-        isLargeGroup: req.isLargeGroup,
-        onCancel: () => setState(() => _editingBlock = null),
-        onSave: (block) => setState(() {
-          if (req.editIndex != null) {
-            _availability = [..._availability];
-            _availability[req.editIndex!] = block;
-          } else {
-            _availability = [..._availability, block];
-          }
-          _editingBlock = null;
-        }),
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _editingBlock = null),
+        child: AvailabilityBlockEditor(
+          sessionType: req.sessionType,
+          disciplineOptions: req.disciplineOptions,
+          initial: req.editIndex != null ? _availability[req.editIndex!] : null,
+          isLargeGroup: req.isLargeGroup,
+          onCancel: () => setState(() => _editingBlock = null),
+          onSave: (block) => setState(() {
+            if (req.editIndex != null) {
+              _availability = [..._availability];
+              _availability[req.editIndex!] = block;
+            } else {
+              _availability = [..._availability, block];
+            }
+            _editingBlock = null;
+          }),
+        ),
       );
     }
 
