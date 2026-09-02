@@ -379,56 +379,74 @@ class _TrainerDrawer extends ConsumerWidget {
         .watch(trainersProvider)
         .where((t) => !t.reviewedByOwner)
         .length;
-    final entries = [
-      _DrawerEntry(LucideIcons.dumbbell, "Dashboard", "dashboard", true),
-      _DrawerEntry(LucideIcons.users, "Clients", "clients", true),
-      _DrawerEntry(LucideIcons.calendar, "Scheduling", "schedule", true),
-      _DrawerEntry(
-        LucideIcons.clipboardList,
-        "Build Workout Program",
-        "builderWorkout",
-        isOwner,
-      ),
-      _DrawerEntry(
-        LucideIcons.apple,
-        "Build Nutrition Program",
-        "builderNutrition",
-        isOwner,
-      ),
-      _DrawerEntry(LucideIcons.dumbbell, "Exercises", "exercises", true),
-      _DrawerEntry(LucideIcons.trophy, "Challenges", "challenges", true),
-      _DrawerEntry(LucideIcons.messageSquare, "Chat", "chat", true),
-      _DrawerEntry(LucideIcons.user, "My Profile", "myprofile", !isOwner),
-      _DrawerEntry(LucideIcons.clipboardCheck, "Reports", "reports", isOwner),
-      _DrawerEntry(LucideIcons.clipboardCheck, "My Pay", "mypay", !isOwner),
-      _DrawerEntry(LucideIcons.clock, "Waitlist", "waitlist", isOwner),
-      _DrawerEntry(LucideIcons.user, "Settings / Staff", "staff", isOwner),
-      _DrawerEntry(
-        LucideIcons.slidersHorizontal,
-        "Customize Platform",
-        "platformSettings",
-        isOwner,
-      ),
-      _DrawerEntry(
-        LucideIcons.clipboardList,
-        "Memberships",
-        "memberships",
-        isOwner,
-      ),
-      _DrawerEntry(LucideIcons.package, "Products", "products", isOwner),
-      _DrawerEntry(
-        LucideIcons.fileSignature,
-        "Waivers & Contracts",
-        "waivers",
-        isOwner,
-      ),
-      _DrawerEntry(
-        LucideIcons.users,
-        newCoachCount > 0 ? "Coaches ($newCoachCount new)" : "Coaches",
-        "coaches",
-        isOwner,
-      ),
-    ].where((e) => e.visible).toList();
+    // Admin (owner) hamburger order follows a fixed spec exactly: Dashboard,
+    // Chat, Build Workout Program, Build Nutrition Program, Exercises,
+    // Challenges, Waitlist, Access/Memberships, Products, Coaches, Reports
+    // (kept — it has no other entry point in the app), Staff Settings,
+    // Customize Platform, Waivers & Contracts. Coach (non-owner) menu is a
+    // separate list, unchanged from before.
+    final entries = isOwner
+        ? [
+            _DrawerEntry(LucideIcons.dumbbell, "Dashboard", "dashboard", true),
+            _DrawerEntry(LucideIcons.messageSquare, "Chat", "chat", true),
+            _DrawerEntry(
+              LucideIcons.clipboardList,
+              "Build Workout Program",
+              "builderWorkout",
+              true,
+            ),
+            _DrawerEntry(
+              LucideIcons.apple,
+              "Build Nutrition Program",
+              "builderNutrition",
+              true,
+            ),
+            _DrawerEntry(LucideIcons.dumbbell, "Exercises", "exercises", true),
+            _DrawerEntry(LucideIcons.trophy, "Challenges", "challenges", true),
+            _DrawerEntry(LucideIcons.clock, "Waitlist", "waitlist", true),
+            _DrawerEntry(
+              LucideIcons.clipboardList,
+              "Access/Memberships",
+              "memberships",
+              true,
+            ),
+            _DrawerEntry(LucideIcons.package, "Products", "products", true),
+            _DrawerEntry(
+              LucideIcons.users,
+              newCoachCount > 0 ? "Coaches ($newCoachCount new)" : "Coaches",
+              "coaches",
+              true,
+            ),
+            _DrawerEntry(
+              LucideIcons.clipboardCheck,
+              "Reports",
+              "reports",
+              true,
+            ),
+            _DrawerEntry(LucideIcons.user, "Staff Settings", "staff", true),
+            _DrawerEntry(
+              LucideIcons.slidersHorizontal,
+              "Customize Platform",
+              "platformSettings",
+              true,
+            ),
+            _DrawerEntry(
+              LucideIcons.fileSignature,
+              "Waivers & Contracts",
+              "waivers",
+              true,
+            ),
+          ]
+        : [
+            _DrawerEntry(LucideIcons.dumbbell, "Dashboard", "dashboard", true),
+            _DrawerEntry(LucideIcons.users, "Clients", "clients", true),
+            _DrawerEntry(LucideIcons.calendar, "Scheduling", "schedule", true),
+            _DrawerEntry(LucideIcons.dumbbell, "Exercises", "exercises", true),
+            _DrawerEntry(LucideIcons.trophy, "Challenges", "challenges", true),
+            _DrawerEntry(LucideIcons.messageSquare, "Chat", "chat", true),
+            _DrawerEntry(LucideIcons.user, "My Profile", "myprofile", true),
+            _DrawerEntry(LucideIcons.clipboardCheck, "My Pay", "mypay", true),
+          ];
 
     return Drawer(
       backgroundColor: AppColors.card,
