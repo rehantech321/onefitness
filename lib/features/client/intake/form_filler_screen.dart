@@ -105,7 +105,7 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = "Couldn't save — check your connection and try again.";
+        _error = e.toString().replaceFirst("Exception: ", "");
       });
     }
   }
