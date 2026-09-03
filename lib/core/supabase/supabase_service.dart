@@ -2753,8 +2753,14 @@ class SupabaseService {
           c["redeem_points_next_renewal"] as bool? ?? false,
       referredByTrainerId: c["referred_by_trainer_id"] as String?,
       coachCodeAlertSeen: c["coach_code_alert_seen"] as bool? ?? false,
+      smsOptIn: c["sms_opt_in"] as bool? ?? false,
     );
   }
+
+  /// Notifications spec — the client's own SMS opt-in toggle (Profile
+  /// Settings → Notification Preferences).
+  static Future<void> updateSmsOptIn(String clientId, bool optIn) =>
+      client.from("clients").update({"sms_opt_in": optIn}).eq("profile_id", clientId);
 
   static Trainer _trainerFromRow(
     Map<String, dynamic> profile,

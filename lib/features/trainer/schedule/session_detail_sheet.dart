@@ -6,6 +6,7 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
+import "../../../core/utils/notification_triggers.dart";
 import "../../../core/utils/scheduling_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
@@ -170,6 +171,10 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                               SupabaseService.updateBookingAttendance(b.id, opt.key).catchError((Object _) {
                                 ref.read(allBookingsProvider.notifier).updateAttendance(b.id, null);
                               });
+                              if (opt.key == "checked-in") {
+                                final total = ref.read(allBookingsProvider).where((x) => x.clientId == client.id && x.attendanceStatus == "checked-in").length;
+                                notifySessionMilestoneIfCrossed(toEmail: client.email ?? "", toName: client.name, totalCheckedIn: total);
+                              }
                               final charge = attendanceChargeFor(
                                 b,
                                 opt.key,

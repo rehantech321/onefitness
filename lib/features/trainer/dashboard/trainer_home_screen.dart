@@ -9,6 +9,7 @@ import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/client_status_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
+import "../../../core/utils/notification_triggers.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
@@ -680,6 +681,21 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                             .read(allBookingsProvider.notifier)
                                             .updateAttendance(b.id, prev);
                                       });
+                                      if (next == "checked-in" &&
+                                          next != prev) {
+                                        final total = ref
+                                            .read(allBookingsProvider)
+                                            .where((x) =>
+                                                x.clientId == b.clientId &&
+                                                x.attendanceStatus ==
+                                                    "checked-in")
+                                            .length;
+                                        notifySessionMilestoneIfCrossed(
+                                          toEmail: rosterClient.email ?? "",
+                                          toName: rosterClient.name,
+                                          totalCheckedIn: total,
+                                        );
+                                      }
                                       // Late Cancel / No-Show carry an owner-set fee, fired
                                       // once on the transition into that status — not on
                                       // every toggle, and not on transitions between two

@@ -58,6 +58,15 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         ),
       );
     }
+    if (_section == "notifications") {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _section = null),
+        child: _NotificationPreferencesSection(
+          onBack: () => setState(() => _section = null),
+        ),
+      );
+    }
     if (_section == "membership") {
       return LocalBackScope(
         isOpen: true,
@@ -133,11 +142,11 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
               decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: AppColors.line)),
               ),
-              child: const _SettingRow(
+              child: _SettingRow(
                 icon: LucideIcons.bell,
                 label: "Notification Preferences",
-                detail: "Coming soon",
-                disabled: true,
+                detail: info.smsOptIn ? "SMS alerts on" : "SMS alerts off",
+                onTap: () => setState(() => _section = "notifications"),
               ),
             ),
           ),
@@ -232,6 +241,81 @@ class _SettingRow extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Notifications spec — the only channel this app currently lets a client
+/// control directly: SMS. Email notifications (plan assigned, milestones,
+/// payment receipts) are transactional, not marketing, so they aren't
+/// gated behind a toggle here; SMS defaults to off (see ClientInfo.smsOptIn)
+/// since sending it without consent is a real compliance issue, not just a
+/// preference.
+class _NotificationPreferencesSection extends ConsumerStatefulWidget {
+  const _NotificationPreferencesSection({required this.onBack});
+  final VoidCallback onBack;
+
+  @override
+  ConsumerState<_NotificationPreferencesSection> createState() => _NotificationPreferencesSectionState();
+}
+
+class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPreferencesSection> {
+  bool _saving = false;
+
+  Future<void> _toggle(bool value) async {
+    setState(() => _saving = true);
+    final info = ref.read(clientInfoProvider);
+    try {
+      await SupabaseService.updateSmsOptIn(info.id, value);
+      ref.read(clientInfoProvider.notifier).update((c) => c.copyWith(smsOptIn: value));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't save — check your connection and try again.")),
+        );
+      }
+    }
+    if (mounted) setState(() => _saving = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final info = ref.watch(clientInfoProvider);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          BackBar(onBack: widget.onBack, title: "Notification Preferences"),
+          const SizedBox(height: 14),
+          AppCard(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Text messages (SMS)", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Payment issues and other time-sensitive alerts, sent to ${info.phone?.isNotEmpty == true ? info.phone : "the phone number on your profile"}.",
+                        style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: info.smsOptIn,
+                  onChanged: _saving ? null : _toggle,
+                  activeThumbColor: AppColors.gold,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          const HintBox(text: "Email notifications for plan updates, milestones, and payment receipts are always on — there's no separate opt-out for those since they're about your own account activity, not marketing."),
+        ],
       ),
     );
   }

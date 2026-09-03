@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/notification_triggers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_record.dart";
 import "../../../data/models/nutrition_plan.dart";
@@ -185,9 +186,12 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
     if (mounted) setState(() => _regeneratingWorkoutDraft = false);
   }
 
-  Future<void> _approveWorkoutDraft(SavedProgram draft) => _writeSavedPrograms(
-        _record.savedPrograms.map((p) => p.id == draft.id ? p.copyWith(status: "active") : p).toList(),
-      );
+  Future<void> _approveWorkoutDraft(SavedProgram draft) async {
+    await _writeSavedPrograms(
+      _record.savedPrograms.map((p) => p.id == draft.id ? p.copyWith(status: "active") : p).toList(),
+    );
+    _notifyClientPlanAssigned("workout");
+  }
 
   Future<void> _discardWorkoutDraft(String id) => _writeSavedPrograms(_record.savedPrograms.where((p) => p.id != id).toList());
 
@@ -199,6 +203,17 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
     } catch (_) {}
     if (mounted) setState(() => _busy = false);
     widget.onEditWorkout();
+  }
+
+  /// Notifications spec — "New workout/nutrition plan assigned" email, for
+  /// [widget.clientId] specifically. Best-effort (see notifyPlanAssigned),
+  /// looked up fresh off the roster each call rather than cached, since
+  /// this tab can stay open across a roster refresh.
+  void _notifyClientPlanAssigned(String kind) {
+    final matches = ref.read(trainerRosterProvider).where((c) => c.id == widget.clientId);
+    if (matches.isEmpty) return;
+    final info = matches.first;
+    notifyPlanAssigned(toEmail: info.email ?? "", toName: info.name, kind: kind);
   }
 
   Future<void> _writeSavedPrograms(List<SavedProgram> next) async {
@@ -263,6 +278,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
       await SupabaseService.updateClientNutrition(widget.clientId, nextPlan);
       await SupabaseService.updateClientSavedNutritionPrograms(widget.clientId, nextPrograms);
       ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId, (r) => r.copyWith(nutrition: nextPlan, savedNutritionPrograms: nextPrograms));
+      _notifyClientPlanAssigned("nutrition");
     } catch (e) {
       if (mounted) setState(() => _error = "Couldn't apply this draft — check your connection and try again.");
     }
@@ -302,6 +318,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
         createdAt: stamp(),
       );
       await SupabaseService.updateClientSavedPrograms(target.id, [...targetRecord.savedPrograms, copy]);
+      notifyPlanAssigned(toEmail: target.email ?? "", toName: target.name, kind: "workout");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Assigned to ${target.name}.")));
       }
@@ -329,6 +346,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
         createdAt: stamp(),
       );
       await SupabaseService.updateClientSavedNutritionPrograms(target.id, [...targetRecord.savedNutritionPrograms, copy]);
+      notifyPlanAssigned(toEmail: target.email ?? "", toName: target.name, kind: "nutrition");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Assigned to ${target.name}.")));
       }
@@ -579,10 +597,13 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                   onArchiveToggle: () => _writeSavedPrograms(
                     _record.savedPrograms.map((x) => x.id == p.id ? x.copyWith(status: x.status == "archived" ? "active" : "archived") : x).toList(),
                   ),
-                  onDuplicate: () => _writeSavedPrograms([
-                    ..._record.savedPrograms,
-                    SavedProgram(id: "${DateTime.now().microsecondsSinceEpoch}", name: "${p.name} (copy)", status: "active", coachName: p.coachName, programDays: p.programDays, createdAt: stamp()),
-                  ]),
+                  onDuplicate: () async {
+                    await _writeSavedPrograms([
+                      ..._record.savedPrograms,
+                      SavedProgram(id: "${DateTime.now().microsecondsSinceEpoch}", name: "${p.name} (copy)", status: "active", coachName: p.coachName, programDays: p.programDays, createdAt: stamp()),
+                    ]);
+                    _notifyClientPlanAssigned("workout");
+                  },
                   onAssign: () => _assignWorkoutElsewhere(p),
                   onDelete: () async {
                     if (!await _confirm("Delete \"${p.name}\"? This can't be undone.", confirmLabel: "Delete")) return;
@@ -607,20 +628,23 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                   onArchiveToggle: () => _writeSavedNutritionPrograms(
                     _record.savedNutritionPrograms.map((x) => x.id == p.id ? x.copyWith(status: x.status == "archived" ? "active" : "archived") : x).toList(),
                   ),
-                  onDuplicate: () => _writeSavedNutritionPrograms([
-                    ..._record.savedNutritionPrograms,
-                    NutritionProgramEntry(
-                      id: "${DateTime.now().microsecondsSinceEpoch}",
-                      name: "${p.name} (copy)",
-                      status: "active",
-                      source: "coach",
-                      trainingTargets: p.trainingTargets,
-                      restTargets: p.restTargets,
-                      mealBudgets: p.mealBudgets,
-                      guidelines: p.guidelines,
-                      createdAt: stamp(),
-                    ),
-                  ]),
+                  onDuplicate: () async {
+                    await _writeSavedNutritionPrograms([
+                      ..._record.savedNutritionPrograms,
+                      NutritionProgramEntry(
+                        id: "${DateTime.now().microsecondsSinceEpoch}",
+                        name: "${p.name} (copy)",
+                        status: "active",
+                        source: "coach",
+                        trainingTargets: p.trainingTargets,
+                        restTargets: p.restTargets,
+                        mealBudgets: p.mealBudgets,
+                        guidelines: p.guidelines,
+                        createdAt: stamp(),
+                      ),
+                    ]);
+                    _notifyClientPlanAssigned("nutrition");
+                  },
                   onAssign: () => _assignNutritionElsewhere(p),
                   onDelete: () async {
                     if (!await _confirm("Delete \"${p.name}\"? This can't be undone.", confirmLabel: "Delete")) return;
@@ -660,10 +684,13 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _LibraryCard(
                   name: p.name,
-                  onAssign: () => _writeSavedPrograms([
-                    ..._record.savedPrograms,
-                    SavedProgram(id: "${DateTime.now().microsecondsSinceEpoch}", name: p.name, status: "active", programDays: p.programDays, createdAt: stamp()),
-                  ]),
+                  onAssign: () async {
+                    await _writeSavedPrograms([
+                      ..._record.savedPrograms,
+                      SavedProgram(id: "${DateTime.now().microsecondsSinceEpoch}", name: p.name, status: "active", programDays: p.programDays, createdAt: stamp()),
+                    ]);
+                    _notifyClientPlanAssigned("workout");
+                  },
                   onDuplicate: () async {
                     final copy = p.copyWith(name: "${p.name} (copy)");
                     try {
@@ -690,6 +717,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                   name: e.name,
                   onAssign: () => SupabaseService.updateClientNutrition(widget.clientId, e.plan).then((_) {
                     ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId, (r) => r.copyWith(nutrition: e.plan));
+                    _notifyClientPlanAssigned("nutrition");
                   }).catchError((Object _) {
                     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't assign — check your connection and try again.")));
                   }),

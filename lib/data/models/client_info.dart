@@ -28,6 +28,7 @@ class ClientInfo {
     this.isStaff = false,
     this.referredByTrainerId,
     this.coachCodeAlertSeen = false,
+    this.smsOptIn = false,
   });
 
   final String id;
@@ -99,6 +100,12 @@ class ClientInfo {
   /// disappears from their dashboard) once they open this client's profile.
   final bool coachCodeAlertSeen;
 
+  /// Notifications spec — explicit SMS opt-in (Twilio). Defaults to false
+  /// (opt-out) since sending SMS without consent is a real TCPA exposure,
+  /// not just a UX nicety — the only SMS trigger wired so far (failed
+  /// payment) checks this before sending anything.
+  final bool smsOptIn;
+
   ClientInfo copyWith({
     String? name,
     String? email,
@@ -126,6 +133,7 @@ class ClientInfo {
     bool clearMembershipCancelsAt = false,
     bool? redeemPointsNextRenewal,
     bool? coachCodeAlertSeen,
+    bool? smsOptIn,
   }) =>
       ClientInfo(
         id: id,
@@ -152,5 +160,6 @@ class ClientInfo {
         isStaff: isStaff,
         referredByTrainerId: referredByTrainerId,
         coachCodeAlertSeen: coachCodeAlertSeen ?? this.coachCodeAlertSeen,
+        smsOptIn: smsOptIn ?? this.smsOptIn,
       );
 }
