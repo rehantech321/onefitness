@@ -39,6 +39,10 @@ class ClientRecord {
     this.sessionFeedback = const [],
     this.savedNutritionPrograms = const [],
     this.challengeBadges = const [],
+    this.adoptedSignatureImage,
+    this.adoptedInitialsImage,
+    this.photoVideoOptOut = false,
+    this.guardianName,
   });
 
   final String id;
@@ -119,6 +123,23 @@ class ClientRecord {
   /// finished challenge, written by a coach's "Award badges" action.
   final List<ChallengeBadge> challengeBadges;
 
+  /// "Adopt a signature" (Variable & Signature Capture spec §3) — the
+  /// client's saved initials/signature image (data URL), drawn or typed
+  /// once and reused across every document's capture points; each new
+  /// document still requires a fresh confirming tap/timestamp, never
+  /// silently auto-applied.
+  final String? adoptedSignatureImage;
+  final String? adoptedInitialsImage;
+
+  /// Snapshotted at signing time onto each [SignedDocument] too (so a later
+  /// policy change doesn't retroactively alter what a past signature meant)
+  /// — this is just the client's current/latest choice.
+  final bool photoVideoOptOut;
+
+  /// Last-used parent/legal guardian name (minor-signer flow) — reusable
+  /// across documents, same as the adopted signature.
+  final String? guardianName;
+
   bool loggedOn(String isoDate) => loggedDates.contains(isoDate);
 
   ClientRecord copyWith({
@@ -143,6 +164,10 @@ class ClientRecord {
     List<ChallengeBadge>? challengeBadges,
     bool? tourSeenDashboard,
     bool? tourSeenDrawer,
+    String? adoptedSignatureImage,
+    String? adoptedInitialsImage,
+    bool? photoVideoOptOut,
+    String? guardianName,
   }) =>
       ClientRecord(
         id: id,
@@ -167,5 +192,9 @@ class ClientRecord {
         sessionFeedback: sessionFeedback ?? this.sessionFeedback,
         savedNutritionPrograms: savedNutritionPrograms ?? this.savedNutritionPrograms,
         challengeBadges: challengeBadges ?? this.challengeBadges,
+        adoptedSignatureImage: adoptedSignatureImage ?? this.adoptedSignatureImage,
+        adoptedInitialsImage: adoptedInitialsImage ?? this.adoptedInitialsImage,
+        photoVideoOptOut: photoVideoOptOut ?? this.photoVideoOptOut,
+        guardianName: guardianName ?? this.guardianName,
       );
 }

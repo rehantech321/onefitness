@@ -28,9 +28,10 @@ import "upcoming_session_card.dart";
 /// booking and the waitlist are not built yet — each is its own sizeable
 /// feature.
 class BookingScreen extends ConsumerStatefulWidget {
-  const BookingScreen({super.key, required this.onGoMemberships, this.initialDate, this.initialReschedule});
+  const BookingScreen({super.key, required this.onGoMemberships, required this.onGoSignatures, this.initialDate, this.initialReschedule});
 
   final VoidCallback onGoMemberships;
+  final VoidCallback onGoSignatures;
 
   /// Set when arriving from a dashboard calendar tap on an empty future
   /// date (see client_shell.dart's pickCalendarDate) — jumps the date strip
@@ -135,6 +136,11 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     if (_rescheduling == null) {
       final plan = ref.read(membershipPlansProvider.notifier).byId(info.membershipPlanId);
       final settings = ref.read(platformSettingsProvider);
+      final waiverCheck = waiverGateCheck(info: info, record: ref.read(clientRecordProvider), waiverDocs: ref.read(waiversProvider));
+      if (waiverCheck != null) {
+        setState(() => _denied = waiverCheck);
+        return;
+      }
       final check = canBookOffering(
         info,
         sessionType,
@@ -167,6 +173,11 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     final bookings = ref.read(clientBookingsProvider);
     final plan = ref.read(membershipPlansProvider.notifier).byId(info.membershipPlanId);
     final settings = ref.read(platformSettingsProvider);
+    final waiverCheck = waiverGateCheck(info: info, record: ref.read(clientRecordProvider), waiverDocs: ref.read(waiversProvider));
+    if (waiverCheck != null) {
+      setState(() => _denied = waiverCheck);
+      return;
+    }
     final check = canBookOffering(
       info,
       sessionType,
@@ -296,6 +307,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           check: _denied,
           onBack: () => setState(() => _denied = null),
           onGoMemberships: widget.onGoMemberships,
+          onGoSignatures: widget.onGoSignatures,
         ),
       );
     }

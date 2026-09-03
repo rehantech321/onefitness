@@ -51,7 +51,7 @@ class SelfBookScreen extends ConsumerWidget {
               },
             )),
       ],
-      child: BookingScreen(onGoMemberships: () {}),
+      child: BookingScreen(onGoMemberships: () {}, onGoSignatures: () {}),
     );
   }
 }

@@ -2305,6 +2305,64 @@ class SupabaseService {
     await client.from("waiver_docs").delete().eq("id", id);
   }
 
+  /// Variable & Signature Capture spec — records one e-signature event.
+  /// Runs server-side (sign-waiver, service-role): re-derives every merge
+  /// token itself (never trusts a client-submitted resolved-text blob),
+  /// hashes the current document version, validates completeness (one
+  /// initials image per `{{initial}}` token, a signature, the guardian
+  /// block if the client is a minor), captures IP/device/session, generates
+  /// the completion-certificate PDF, and merges the result into
+  /// `client_records.data.signatures`. [initialsImages]/[signatureImage]/
+  /// [guardianSignatureImage] are data URLs from [SignaturePad].
+  static Future<SignedDocument> signWaiver({
+    required String clientId,
+    required String waiverId,
+    required List<String> initialsImages,
+    required String signatureImage,
+    String? guardianName,
+    String? guardianSignatureImage,
+    bool? photoOptOut,
+    required bool consentAcknowledged,
+    required String deviceInfo,
+    bool adoptSignature = false,
+    bool adoptInitials = false,
+  }) async {
+    final res = await _invokeFunction("sign-waiver", {
+      "clientId": clientId,
+      "waiverId": waiverId,
+      "initialsImages": initialsImages,
+      "signatureImage": signatureImage,
+      "guardianName": guardianName,
+      "guardianSignatureImage": guardianSignatureImage,
+      "photoOptOut": photoOptOut,
+      "consentAcknowledged": consentAcknowledged,
+      "deviceInfo": deviceInfo,
+      "adoptSignature": adoptSignature,
+      "adoptInitials": adoptInitials,
+    });
+    final s = (res["signature"] as Map).cast<String, dynamic>();
+    return SignedDocument(
+      id: s["id"]?.toString() ?? "",
+      docId: s["docId"] as String?,
+      title: s["title"] as String? ?? "",
+      signedAt: s["signedAt"] as String? ?? "",
+      summary: s["summary"] as String?,
+      signedBodyText: s["signedBodyText"] as String?,
+      documentVersionHash: s["documentVersionHash"] as String?,
+      initialsImages: ((s["initialsImages"] as List?) ?? const []).whereType<String>().toList(),
+      initialsTimestamps: ((s["initialsTimestamps"] as List?) ?? const []).whereType<String>().toList(),
+      signatureImage: s["signatureImage"] as String?,
+      guardianName: s["guardianName"] as String?,
+      guardianSignatureImage: s["guardianSignatureImage"] as String?,
+      photoVideoOptOut: s["photoVideoOptOut"] as bool?,
+      consentCheckboxAt: s["consentCheckboxAt"] as String?,
+      ipAddress: s["ipAddress"] as String?,
+      userAgent: s["userAgent"] as String?,
+      sessionId: s["sessionId"] as String?,
+      pdfDataUrl: s["pdfDataUrl"] as String?,
+    );
+  }
+
   static Map<String, dynamic> _membershipPlanToJson(MembershipPlan p) => {
     "id": p.id,
     "name": p.name,
@@ -2997,8 +3055,25 @@ class SupabaseService {
           title: m["title"] as String? ?? "",
           signedAt: m["signedAt"] as String? ?? "",
           summary: m["summary"] as String?,
+          signedBodyText: m["signedBodyText"] as String?,
+          documentVersionHash: m["documentVersionHash"] as String?,
+          initialsImages: ((m["initialsImages"] as List?) ?? const []).whereType<String>().toList(),
+          initialsTimestamps: ((m["initialsTimestamps"] as List?) ?? const []).whereType<String>().toList(),
+          signatureImage: m["signatureImage"] as String?,
+          guardianName: m["guardianName"] as String?,
+          guardianSignatureImage: m["guardianSignatureImage"] as String?,
+          photoVideoOptOut: m["photoVideoOptOut"] as bool?,
+          consentCheckboxAt: m["consentCheckboxAt"] as String?,
+          ipAddress: m["ipAddress"] as String?,
+          userAgent: m["userAgent"] as String?,
+          sessionId: m["sessionId"] as String?,
+          pdfDataUrl: m["pdfDataUrl"] as String?,
         ),
       ),
+      adoptedSignatureImage: j["adoptedSignatureImage"] as String?,
+      adoptedInitialsImage: j["adoptedInitialsImage"] as String?,
+      photoVideoOptOut: j["photoVideoOptOut"] as bool? ?? false,
+      guardianName: j["guardianName"] as String?,
       trainerNotes: _safeMap(
         ((j["trainerNotes"] as List?) ?? const []).whereType<Map>(),
         (m) => TrainerNote(

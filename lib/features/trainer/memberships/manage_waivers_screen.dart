@@ -333,6 +333,19 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
     );
   }
 
+  /// Inserts a raw token at the cursor (or the end, if nothing's focused)
+  /// — used for both merge-token variables and the structural capture
+  /// tokens (`{{initial}}` etc.), unlike [_wrap] which wraps a selection.
+  void _insertToken(String token) {
+    final sel = _body.selection;
+    final text = _body.text;
+    final at = sel.start < 0 ? text.length : sel.start;
+    setState(() {
+      _body.text = text.replaceRange(at, sel.end < 0 ? at : sel.end, token);
+      _body.selection = TextSelection.collapsed(offset: at + token.length);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -429,7 +442,57 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
                   color: AppColors.mute,
                 ),
               ),
+              const SizedBox(width: 4),
+              PopupMenuButton<String>(
+                tooltip: "Insert a client variable",
+                onSelected: (t) => _insertToken("{{$t}}"),
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: "client_first_name", child: Text("First name")),
+                  PopupMenuItem(value: "client_last_name", child: Text("Last name")),
+                  PopupMenuItem(value: "client_full_name", child: Text("Full name")),
+                  PopupMenuItem(value: "client_dob", child: Text("Date of birth")),
+                  PopupMenuItem(value: "emergency_contact_name", child: Text("Emergency contact name")),
+                  PopupMenuItem(value: "emergency_contact_phone", child: Text("Emergency contact phone")),
+                  PopupMenuItem(value: "coach_name", child: Text("Coach name")),
+                  PopupMenuItem(value: "signature_date", child: Text("Today's date")),
+                  PopupMenuItem(value: "guardian_name", child: Text("Guardian name")),
+                ],
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.atSign, size: 14, color: AppColors.mute),
+                    SizedBox(width: 3),
+                    Text("Variable", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              PopupMenuButton<String>(
+                tooltip: "Insert a signing capture point",
+                onSelected: (t) => _insertToken("{{$t}}"),
+                itemBuilder: (context) => const [
+                  PopupMenuItem(value: "initial", child: Text("Client Initials box")),
+                  PopupMenuItem(value: "signature", child: Text("Client Signature line")),
+                  PopupMenuItem(value: "guardian_signature", child: Text("Guardian Signature (if minor)")),
+                  PopupMenuItem(value: "photo_opt_out", child: Text("Photo/video opt-out checkbox")),
+                ],
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.penTool, size: 14, color: AppColors.gold),
+                    SizedBox(width: 3),
+                    Text("Sign here…", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
             ],
+          ),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: Text(
+              "Insert Client Initials/Signature wherever the client needs to place one — they'll become tap-to-sign boxes when the client reads this document. Variables like {{client_full_name}} are replaced with the client's real info automatically.",
+              style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+            ),
           ),
           TextField(
             controller: _body,

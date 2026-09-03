@@ -80,9 +80,10 @@ class _Summary {
 /// can still be requested for the owner's waitlist ("pending-approval")
 /// rather than skipped outright.
 class AdvancedBookingScreen extends ConsumerStatefulWidget {
-  const AdvancedBookingScreen({super.key, required this.onDone});
+  const AdvancedBookingScreen({super.key, required this.onDone, required this.onGoSignatures});
 
   final VoidCallback onDone;
+  final VoidCallback onGoSignatures;
 
   @override
   ConsumerState<AdvancedBookingScreen> createState() =>
@@ -396,6 +397,23 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
               text:
                   "You need an active membership or package to use Advanced Booking.",
             ),
+          ],
+        ),
+      );
+    }
+
+    final waiverCheck = waiverGateCheck(info: info, record: ref.watch(clientRecordProvider), waiverDocs: ref.watch(waiversProvider));
+    if (waiverCheck != null) {
+      return Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _breadcrumb(_back),
+            const SizedBox(height: 10),
+            HintBox(text: waiverCheck.msg ?? "You need to sign a document before you can book."),
+            const SizedBox(height: 10),
+            BtnGold(onPressed: widget.onGoSignatures, child: const Text("Go to Signatures")),
           ],
         ),
       );

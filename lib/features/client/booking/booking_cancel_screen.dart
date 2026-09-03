@@ -109,23 +109,28 @@ class BookingDeniedScreen extends StatelessWidget {
     required this.check,
     required this.onBack,
     required this.onGoMemberships,
+    required this.onGoSignatures,
   });
 
   final BookingCheck check;
   final VoidCallback onBack;
   final VoidCallback onGoMemberships;
+  final VoidCallback onGoSignatures;
 
   @override
   Widget build(BuildContext context) {
     final isLimitHit = check.reason == "capacity" || check.reason == "trainer-conflict";
     final isConflict = check.reason == "conflict";
+    final needsWaiver = check.reason == "waiver-required";
     final title = isConflict
         ? "Session conflict"
         : check.reason == "capacity"
             ? "Session full"
             : check.reason == "trainer-conflict"
                 ? "Not actually available"
-                : "Can't book this session";
+                : needsWaiver
+                    ? "Signature needed"
+                    : "Can't book this session";
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 50, 18, 18),
@@ -148,7 +153,21 @@ class BookingDeniedScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 26),
-          if (!isConflict && !isLimitHit)
+          if (needsWaiver)
+            BtnGold(
+              onPressed: onGoSignatures,
+              full: true,
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.fileSignature, size: 15, color: Colors.white),
+                  SizedBox(width: 6),
+                  Text("Go to Signatures"),
+                ],
+              ),
+            )
+          else if (!isConflict && !isLimitHit)
             BtnGold(
               onPressed: onGoMemberships,
               full: true,

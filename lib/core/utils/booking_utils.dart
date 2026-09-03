@@ -6,9 +6,11 @@ import "../../data/models/client_info.dart";
 import "../../data/models/client_record.dart";
 import "../../data/models/membership_plan.dart";
 import "../../data/models/trainer.dart";
+import "../../data/models/waiver_doc.dart";
 import "../theme/app_colors.dart";
 import "date_utils.dart";
 import "membership_utils.dart";
+import "merge_token_utils.dart";
 import "platform_settings.dart";
 
 /// Booking/scheduling helpers ported from
@@ -273,6 +275,29 @@ BookingCheck canBookOffering(
     return BookingCheck(ok: false, reason: "budget", msg: "You've used all $max sessions $period.");
   }
   return const BookingCheck(ok: true);
+}
+
+/// Variable & Signature Capture spec §5: "Block session booking until
+/// document_version_hash for the current waiver version is signed."
+/// Returns null when there's nothing
+/// outstanding; otherwise a [BookingCheck] in the same shape every other
+/// booking-denial reason already uses, so callers don't need a separate
+/// code path.
+BookingCheck? waiverGateCheck({
+  required ClientInfo info,
+  required ClientRecord record,
+  required List<WaiverDoc> waiverDocs,
+}) {
+  if (info.isStaff) return null; // a coach booking themselves needs no waiver, same as the membership bypass above
+  final outstanding = outstandingWaivers(allDocs: waiverDocs, signatures: record.signatures, clientPlanId: info.membershipPlanId);
+  if (outstanding.isEmpty) return null;
+  return BookingCheck(
+    ok: false,
+    reason: "waiver-required",
+    msg: outstanding.length == 1
+        ? 'You need to sign "${outstanding.first.title}" before you can book — it only takes a minute.'
+        : "You have ${outstanding.length} documents to sign before you can book — it only takes a minute.",
+  );
 }
 
 const _weekdayKeys = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];

@@ -394,6 +394,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                         "plans" => const PlansScreen(),
                         "booking" => BookingScreen(
                           onGoMemberships: () => go("memberships"),
+                          onGoSignatures: () => go("signatures"),
                           initialDate: ref
                               .watch(pendingBookingTargetProvider)
                               ?.initialDate,
@@ -411,6 +412,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                         ),
                         "advancedBooking" => AdvancedBookingScreen(
                           onDone: () => go("booking"),
+                          onGoSignatures: () => go("signatures"),
                         ),
                         "nutrition" => const NutritionTab(),
                         "habits" => const HabitTrackerScreen(),
