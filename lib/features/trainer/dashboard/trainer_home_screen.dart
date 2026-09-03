@@ -576,7 +576,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                           !attendee.isStaff && rosterClient != null;
                       final rec = clickable ? clientRecords[b.clientId] : null;
                       final status = rec != null
-                          ? computeClientStatus(rec)
+                          ? computeClientStatus(rec, bookings: bookings.where((x) => x.clientId == b.clientId).toList())
                           : null;
                       final t = trainers.where((x) => x.id == b.trainerId);
                       return AppCard(

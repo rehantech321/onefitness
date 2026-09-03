@@ -65,17 +65,17 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     final info = matches.first;
     final records = ref.watch(trainerClientRecordsProvider);
     final record = records[widget.clientId];
+    final bookings = ref
+        .watch(allBookingsProvider)
+        .where((b) => b.clientId == widget.clientId)
+        .toList();
     final status = record != null
-        ? computeClientStatus(record)
+        ? computeClientStatus(record, bookings: bookings)
         : ClientStatus.newClient;
     final meta = kStatusMeta[status]!;
     final plan = ref
         .watch(membershipPlansProvider.notifier)
         .byId(info.membershipPlanId);
-    final bookings = ref
-        .watch(allBookingsProvider)
-        .where((b) => b.clientId == widget.clientId)
-        .toList();
     final notes = record != null ? getClientProgramNotes(record) : const [];
     final earnedBadges = ref.watch(earnedBadgesProvider);
     final hasActiveBadges = earnedBadges.any(

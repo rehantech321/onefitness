@@ -42,6 +42,7 @@ class _RosterBarState extends ConsumerState<RosterBar> {
     final isOwner = trainerAuth == "owner";
     final roster = ref.watch(trainerRosterProvider);
     final clientRecords = ref.watch(trainerClientRecordsProvider);
+    final bookings = ref.watch(allBookingsProvider);
     final activeId = ref.watch(selectedClientIdProvider);
 
     // Platform → Coaches, Access & Security controls this — owner is never
@@ -97,7 +98,9 @@ class _RosterBarState extends ConsumerState<RosterBar> {
                 ...visible.map((c) {
                   final isActive = activeId == c.id;
                   final rec = clientRecords[c.id];
-                  final status = rec != null ? computeClientStatus(rec) : ClientStatus.newClient;
+                  final status = rec != null
+                      ? computeClientStatus(rec, bookings: bookings.where((b) => b.clientId == c.id).toList())
+                      : ClientStatus.newClient;
                   return Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: InkWell(
