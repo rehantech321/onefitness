@@ -23,6 +23,7 @@ import "../reports/reports_hub_screen.dart";
 import "../schedule/schedule_screen.dart";
 import "../schedule/waitlist_screen.dart";
 import "../settings/customize_platform_screen.dart";
+import "../staff/coach_merit_badges_screen.dart";
 import "../staff/coaches_overview_screen.dart";
 import "../staff/my_pay_screen.dart";
 import "../staff/my_profile_screen.dart";
@@ -60,6 +61,7 @@ const _titles = {
   "waivers": "Waivers & Contracts",
   "coaches": "Coaches",
   "platformSettings": "Customize Platform",
+  "coachbadges": "Merit Badges",
   "mypay": "My Pay",
   "exercises": "Exercises",
   "builderWorkout": "Build Workout Program",
@@ -233,6 +235,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                       "staff" when isOwner => const StaffScreen(),
                       "coaches" => const CoachesOverviewScreen(),
                       "myprofile" => const MyProfileScreen(),
+                      "coachbadges" when !isOwner => const CoachMeritBadgesScreen(),
                       "mypay" => const MyPayScreen(),
                       "reports" when isOwner => const ReportsHubScreen(),
                       "memberships" when isOwner => const ManageMembershipsScreen(),
@@ -445,6 +448,7 @@ class _TrainerDrawer extends ConsumerWidget {
             _DrawerEntry(LucideIcons.trophy, "Challenges", "challenges", true),
             _DrawerEntry(LucideIcons.messageSquare, "Chat", "chat", true),
             _DrawerEntry(LucideIcons.user, "My Profile", "myprofile", true),
+            _DrawerEntry(LucideIcons.award, "Merit Badges", "coachbadges", true),
             _DrawerEntry(LucideIcons.clipboardCheck, "My Pay", "mypay", true),
           ];
 

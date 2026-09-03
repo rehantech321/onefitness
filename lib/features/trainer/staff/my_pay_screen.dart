@@ -1,15 +1,12 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
-import "../../../core/utils/coach_merit_badge_utils.dart";
 import "../../../core/utils/report_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/report_range.dart";
-import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
-import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "coach_badge_progress_list.dart";
 import "../reports/date_range_filter.dart";
 import "../reports/payroll_reports.dart";
 
@@ -70,79 +67,9 @@ class _MyPayScreenState extends ConsumerState<MyPayScreen> {
             style: TextStyle(fontSize: 11, color: AppColors.mute),
           ),
           const SizedBox(height: 8),
-          _CoachBadgeProgressList(coach: me),
+          CoachBadgeProgressList(coach: me),
         ],
       ),
-    );
-  }
-}
-
-class _CoachBadgeProgressList extends ConsumerWidget {
-  const _CoachBadgeProgressList({required this.coach});
-  final Trainer coach;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final roster = ref.watch(trainerRosterProvider);
-    final clientRecords = ref.watch(trainerClientRecordsProvider);
-    final bookings = ref.watch(allBookingsProvider);
-    final prEvents = ref.watch(coachPrEventsProvider);
-    final challenges = ref.watch(challengesProvider);
-    final settings = ref.watch(platformSettingsProvider);
-    final badges = computeAllCoachBadges(
-      coach: coach,
-      roster: roster,
-      clientRecords: clientRecords,
-      bookings: bookings,
-      prEvents: prEvents,
-      challenges: challenges,
-      range: presetRange("month"),
-      habitPercent: settings.meritBadgeHabitPercent,
-      habitConsecutiveWeeks: settings.meritBadgeHabitWeeks,
-    );
-    final rewardCentsByKey = {
-      "full_house": settings.badgeFullHouseCents,
-      "pr_factory": settings.badgePrFactoryCents,
-      "check_in": settings.badgeCheckInCents,
-      "comeback": settings.badgeComebackCents,
-      "habit_coach": settings.badgeHabitCoachCents,
-      "challenge_coach": settings.badgeChallengeCoachCents,
-    };
-    return Column(
-      children: badges
-          .map((b) => AppCard(
-                borderColor: b.qualifies ? AppColors.gold : AppColors.line,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              CoachBadgeShield(badgeKey: b.badgeKey, size: 28, grayscale: !b.qualifies),
-                              const SizedBox(width: 8),
-                              Icon(b.qualifies ? LucideIcons.checkCircle2 : LucideIcons.circle, size: 15, color: b.qualifies ? AppColors.gold : AppColors.mute),
-                              const SizedBox(width: 6),
-                              Text(b.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          "\$${((rewardCentsByKey[b.badgeKey] ?? 0) / 100).toStringAsFixed(2)}",
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.gold),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(kCoachBadgeDescriptions[b.badgeKey] ?? "", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
-                    const SizedBox(height: 4),
-                    Text(b.detail, style: const TextStyle(fontSize: 11, color: AppColors.txt)),
-                  ],
-                ),
-              ))
-          .toList(),
     );
   }
 }
