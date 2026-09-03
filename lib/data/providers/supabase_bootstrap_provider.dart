@@ -243,6 +243,16 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   } else if (role == "coach" && trainers.any((t) => t.id == id)) {
     ref.read(roleProvider.notifier).set("trainer");
     ref.read(trainerAuthProvider.notifier).signIn(id);
+  } else if (role == "coach") {
+    // A `profiles` row says "coach" but there's no matching `trainers` row
+    // (e.g. left behind by the old coach-delete path that only ever
+    // removed `trainers`, or a signup that never finished) — same
+    // "session exists but their app-side row is gone" situation the client
+    // branch below already handles explicitly; without this, a coach in
+    // this state would silently authenticate into no role at all instead
+    // of a clear "signed out, sign in again" state.
+    await SupabaseService.signOut();
+    return;
   } else if (role == "client") {
     final matches = roster.where((c) => c.id == id);
     if (matches.isEmpty) {
