@@ -30,18 +30,24 @@ class TrainerAuthNotifier extends Notifier<String?> {
 
 final trainerAuthProvider = NotifierProvider<TrainerAuthNotifier, String?>(TrainerAuthNotifier.new);
 
+List<ClientInfo> _byName(List<ClientInfo> list) =>
+    list.toList()..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
 /// Every client at the gym (App.jsx `roster`, trainer-side view — a
-/// superset of the client-side single-client providers).
+/// superset of the client-side single-client providers). Kept alphabetical
+/// by name at all times so every admin/coach screen that lists clients
+/// shows them in the same, predictable order without each screen having to
+/// sort it separately.
 class TrainerRosterNotifier extends Notifier<List<ClientInfo>> {
   @override
-  List<ClientInfo> build() => MockData.trainerRoster();
+  List<ClientInfo> build() => _byName(MockData.trainerRoster());
 
   void update(String clientId, ClientInfo Function(ClientInfo) updater) =>
-      state = state.map((c) => c.id == clientId ? updater(c) : c).toList();
+      state = _byName(state.map((c) => c.id == clientId ? updater(c) : c).toList());
 
   void remove(String clientId) => state = state.where((c) => c.id != clientId).toList();
 
-  void setAll(List<ClientInfo> next) => state = next;
+  void setAll(List<ClientInfo> next) => state = _byName(next);
 }
 
 final trainerRosterProvider = NotifierProvider<TrainerRosterNotifier, List<ClientInfo>>(TrainerRosterNotifier.new);
@@ -53,6 +59,8 @@ class TrainerClientRecordsNotifier extends Notifier<Map<String, ClientRecord>> {
 
   void update(String clientId, ClientRecord Function(ClientRecord) updater) =>
       state = {...state, clientId: updater(state[clientId]!)};
+
+  void remove(String clientId) => state = {...state}..remove(clientId);
 
   void setAll(Map<String, ClientRecord> next) => state = next;
 }

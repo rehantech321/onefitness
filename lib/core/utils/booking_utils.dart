@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "../../data/models/blocked_time.dart";
 import "../../data/models/booking.dart";
 import "../../data/models/charge.dart";
 import "../../data/models/client_info.dart";
@@ -55,6 +56,26 @@ List<Offering> trainerOfferings(Trainer t, int weekday) {
 /// `trainerOfferings` only knows the weekday, not the actual calendar date.
 bool fallsInUnavailability(Trainer t, String date) =>
     t.unavailability.any((u) => date.compareTo(u.startDate) >= 0 && date.compareTo(u.endDate) <= 0);
+
+/// Delete/Archive Behavior spec, "Session availability": a coach's ad-hoc
+/// Block Time entries (block_time_sheet.dart) must actually stop those
+/// slots from being offered/bookable to clients, not just show as "Blocked"
+/// on the coach's own Day View. True when [date]+[slot] (a [sessionLen]
+/// window starting at [slot]) falls inside any full-day or partial-day
+/// block for [trainerId]. Callers should check this the same way as
+/// [fallsInUnavailability] — before offering a slot, not just at confirm
+/// time.
+bool fallsInBlockedTime(List<BlockedTime> blockedTimes, String trainerId, String date, int slot, {int sessionLen = kSessionLen}) {
+  final slotEnd = slot + sessionLen;
+  for (final b in blockedTimes) {
+    if (b.trainerId != trainerId || b.date != date) continue;
+    if (b.allDay) return true;
+    final start = b.startMin ?? 0;
+    final end = b.endMin ?? 24 * 60;
+    if (start < slotEnd && end > slot) return true;
+  }
+  return false;
+}
 
 /// Mirrors schedulingHelpers.js `capFor`. [semiPrivateCap] defaults to the
 /// hardcoded fallback but should be passed the live

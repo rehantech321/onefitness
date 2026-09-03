@@ -9,6 +9,7 @@ import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/models/blocked_time.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/models/trainer.dart";
@@ -443,6 +444,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         // client's own (which would make a slot never show full unless
                         // they themselves already occupy it).
                         bookings: ref.watch(allBookingsProvider),
+                        blockedTimes: ref.watch(blockedTimesProvider),
                         waitlist: ref.watch(waitlistProvider),
                         onDateChange: (d) => setState(() => _date = d),
                         onChangeType: () => setState(() {
@@ -681,6 +683,7 @@ class _StepThree extends StatefulWidget {
     required this.info,
     required this.trainers,
     required this.bookings,
+    required this.blockedTimes,
     required this.waitlist,
     required this.onDateChange,
     required this.onChangeType,
@@ -703,6 +706,11 @@ class _StepThree extends StatefulWidget {
   /// date/slot. The "mine" flag below still filters back down to `info.id`
   /// per booking, so a single shared list serves both purposes correctly.
   final List<Booking> bookings;
+
+  /// Gym-wide ad-hoc Block Time entries — a slot a coach has blocked off
+  /// must stop being offered here, same as [fallsInUnavailability]'s
+  /// recurring-window check just below it.
+  final List<BlockedTime> blockedTimes;
   final List<WaitlistEntry> waitlist;
   final ValueChanged<String> onDateChange;
   final VoidCallback onChangeType;
@@ -751,6 +759,7 @@ class _StepThreeState extends State<_StepThree> {
         if (fallsInUnavailability(t, date)) continue;
         for (final o in trainerOfferings(t, wd)) {
           if (o.sessionType != chosenType || o.discipline != chosenDisc) continue;
+          if (fallsInBlockedTime(widget.blockedTimes, t.id, date, o.slot)) continue;
           final used = bookedCount(bookings, t.id, date, o.slot);
           final cap = capFor(o.sessionType, semiPrivateCap: widget.semiPrivateCap);
           final mine = bookings.any((b) => b.clientId == info.id && b.trainerId == t.id && b.date == date && b.slot == o.slot);

@@ -1368,18 +1368,27 @@ class SupabaseService {
       await client.from("trainers").update(trainerFields).eq("profile_id", id);
   }
 
-  /// Owner-only — mirrors `deleteTrainerRow` in supabaseData.js. Only
-  /// removes the `trainers` row (coach-specific fields); the `profiles`
-  /// row and the underlying Auth account are left alone, same as web.
-  static Future<void> deleteTrainerRow(String id) =>
-      client.from("trainers").delete().eq("profile_id", id);
+  /// Owner-only — Delete/Archive Behavior spec: a deleted coach is "fully
+  /// removed; must sign up and register again from step one as a new
+  /// profile." Runs server-side (delete-coach-account, service-role): nulls
+  /// audit-trail references on other people's rows, deletes this coach's
+  /// own subject-of-record rows, clears every client's dangling
+  /// primary/referred trainer id, then deletes the Auth account itself —
+  /// which cascades away the `trainers` row, their own bookings/blocked
+  /// time, and frees the email for a genuinely fresh signup.
+  static Future<void> deleteCoachAccount(String trainerId) =>
+      _invokeFunction("delete-coach-account", {"trainerId": trainerId});
 
-  /// Owner-only — mirrors `deleteClientRow` in supabaseData.js. Only
-  /// removes the `clients` row; `profiles`/Auth account untouched, same as
-  /// web (a client whose row was deleted gets caught by
-  /// getSessionProfile's "stale session" handling on next load).
-  static Future<void> deleteClientRow(String id) =>
-      client.from("clients").delete().eq("profile_id", id);
+  /// Coach/owner — Delete/Archive Behavior spec: a deleted client is "fully
+  /// removed; must sign up and register again from step one as a new
+  /// profile." Runs server-side (delete-client-account, service-role):
+  /// nulls audit-trail references on other people's rows, deletes this
+  /// client's own subject-of-record rows, strips them out of every squad
+  /// and challenge they were in, then deletes the Auth account itself —
+  /// which cascades away `clients`/`client_records`, their own bookings,
+  /// and frees the email for a genuinely fresh signup.
+  static Future<void> deleteClientAccount(String clientId) =>
+      _invokeFunction("delete-client-account", {"clientId": clientId});
 
   static Map<String, dynamic> _trainerLocationToJson(TrainerLocation l) => {
     "id": l.id,

@@ -185,6 +185,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
       return byDate != 0 ? byDate : a.$3.compareTo(b.$3);
     });
 
+    final blockedTimes = ref.read(blockedTimesProvider);
     final provisional = [...bookings];
     var usedBudget = 0;
     _occurrences = candidates.map((c) {
@@ -203,9 +204,12 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
         if (!offers) continue;
         anyOffered = true;
         // Offers this slot in general, but marked themselves unavailable on
-        // this specific calendar date (Coach Availability Tab spec) — same
-        // treatment as being fully booked, just a more precise reason.
+        // this specific calendar date (Coach Availability Tab spec), or
+        // blocked this specific date/time off (Delete/Archive Behavior
+        // spec's "session availability" rule) — same treatment as being
+        // fully booked, just a more precise reason.
         if (fallsInUnavailability(t, date)) continue;
+        if (fallsInBlockedTime(blockedTimes, t.id, date, slot)) continue;
         anyAvailableToday = true;
         if (bookedCount(provisional, t.id, date, slot) <
             capFor(_sessionType!, semiPrivateCap: settings.semiPrivateCap)) {

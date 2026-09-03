@@ -10,6 +10,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/availability_block.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/trainer_providers.dart";
 import "trainer_edit_form.dart";
 
 /// Mirrors StaffManager.jsx (owner-only) — trainer roster with add/edit
@@ -137,23 +138,42 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
           onDelete: _editing == null
               ? null
               : () async {
-                  final id = _editing!.id;
+                  final t = _editing!;
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: AppColors.card,
+                      title: const Text("Delete trainer?"),
+                      content: Text(
+                        "Delete ${t.name}? This permanently removes their profile and login, and stops every future session/availability of theirs from being offered or bookable — everywhere in the app, immediately. They can't be reactivated; to come back, they'd have to sign up again from scratch as a brand-new profile. This can't be undone.",
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Cancel")),
+                        TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Delete")),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true) return;
                   try {
-                    await SupabaseService.deleteTrainerRow(id);
+                    await SupabaseService.deleteCoachAccount(t.id);
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            "Couldn't remove that trainer — check your connection and try again.",
-                          ),
-                        ),
+                        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
                       );
                     }
                     return;
                   }
-                  ref.read(trainersProvider.notifier).remove(id);
+                  ref.read(trainersProvider.notifier).remove(t.id);
                   setState(() => _editing = null);
+                  // Best-effort freshness — the server-side cleanup already
+                  // cleared every client's dangling primary/referred trainer
+                  // id, this just pulls that down so the roster doesn't keep
+                  // scoping a client out of an "own"-scoped coach's view.
+                  try {
+                    final freshRoster = await SupabaseService.loadRoster();
+                    ref.read(trainerRosterProvider.notifier).setAll(freshRoster);
+                  } catch (_) {}
                 },
         ),
       );

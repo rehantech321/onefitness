@@ -135,24 +135,34 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
-        title: const Text("Remove coach?"),
-        content: Text("Remove ${t.name}? Their clients keep their history; this only removes their coach profile and login access. This can't be undone."),
+        title: const Text("Delete coach?"),
+        content: Text(
+          "Delete ${t.name}? This permanently removes their profile and login, and stops every future session/availability of theirs from being offered or bookable — everywhere in the app, immediately. Their past sessions with clients are removed too. They can't be reactivated; to come back, they'd have to sign up again from scratch as a brand-new profile. This can't be undone.",
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Cancel")),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Remove")),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Delete")),
         ],
       ),
     );
     if (confirmed != true) return;
     try {
-      await SupabaseService.deleteTrainerRow(t.id);
+      await SupabaseService.deleteCoachAccount(t.id);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't remove that coach — check your connection and try again.")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))));
       }
       return;
     }
     ref.read(trainersProvider.notifier).remove(t.id);
+    // Best-effort freshness — the server-side cleanup already cleared every
+    // client's dangling primary/referred trainer id, this just pulls that
+    // down so the roster doesn't keep scoping a client out of an
+    // "own"-scoped coach's view.
+    try {
+      final freshRoster = await SupabaseService.loadRoster();
+      ref.read(trainerRosterProvider.notifier).setAll(freshRoster);
+    } catch (_) {}
   }
 
   @override

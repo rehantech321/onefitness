@@ -534,7 +534,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
         backgroundColor: AppColors.card,
         title: const Text("Delete client?"),
         content: Text(
-          "Delete ${info.name}? This permanently removes their profile, programs, logs, and history. This can't be undone.",
+          "Delete ${info.name}? This permanently removes their profile, programs, logs, history, squad/challenge participation, and login — everywhere in the app, immediately. They can't be reactivated; to come back, they'd have to sign up again from scratch as a brand-new profile. This can't be undone.",
         ),
         actions: [
           TextButton(
@@ -550,21 +550,31 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
     );
     if (confirmed != true) return;
     try {
-      await SupabaseService.deleteClientRow(info.id);
+      await SupabaseService.deleteClientAccount(info.id);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Couldn't delete that client — check your connection and try again.",
-            ),
+          SnackBar(
+            content: Text(e.toString().replaceFirst("Exception: ", "")),
           ),
         );
       }
       return;
     }
     ref.read(trainerRosterProvider.notifier).remove(info.id);
+    ref.read(trainerClientRecordsProvider.notifier).remove(info.id);
     ref.read(selectedClientIdProvider.notifier).select(null);
+    // Best-effort freshness for the two other places this client could
+    // still be lingering in memory — the server-side cleanup already
+    // stripped them out of squads/challenges, this just pulls that down so
+    // the UI doesn't keep showing a ghost member/participant until the next
+    // full reload.
+    try {
+      final freshSquads = await SupabaseService.loadSquads();
+      ref.read(squadsProvider.notifier).setAll(freshSquads);
+      final freshChallenges = await SupabaseService.loadChallenges();
+      ref.read(challengesProvider.notifier).setAll(freshChallenges);
+    } catch (_) {}
   }
 
   String _membershipLabel(MembershipPlan plan) {
