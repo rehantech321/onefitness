@@ -2068,6 +2068,31 @@ class SupabaseService {
     "text": text,
   });
 
+  /// Notifications spec — registers/refreshes this device's FCM token
+  /// (register-device-token). Safe to call even before Firebase is set up
+  /// on the client — there's simply no token to pass yet, so callers should
+  /// no-op rather than call this until a real token exists.
+  static Future<void> registerDeviceToken(String token, String platform) =>
+      _invokeFunction("register-device-token", {"token": token, "platform": platform});
+
+  /// Notifications spec — push counterpart to [sendEmail], for events that
+  /// happen inside a live app session (booking confirmation, reschedule,
+  /// cancellation, a new coach DM, low session balance). Same "any
+  /// authenticated caller" posture as sendEmail — see send-push/index.ts.
+  /// Silently a no-op end-to-end until the recipient has a registered
+  /// device token, which won't exist until Firebase is configured.
+  static Future<void> sendPushNotification({
+    required String profileId,
+    required String title,
+    required String body,
+    Map<String, String>? data,
+  }) => _invokeFunction("send-push", {
+    "profileId": profileId,
+    "title": title,
+    "body": body,
+    if (data != null) "data": data,
+  });
+
   /// Real Stripe Checkout — mirrors createCheckoutSession in
   /// supabaseData.js, trimmed to card payments only (this app doesn't
   /// model the platform-settings ACH-availability toggle) and without the

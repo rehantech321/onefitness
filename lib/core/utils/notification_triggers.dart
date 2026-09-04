@@ -24,24 +24,50 @@ Future<void> notifyPlanAssigned({
 
 const kSessionMilestones = [10, 25, 50, 100];
 
+/// Push counterpart to every email trigger above/below that also appears on
+/// the PUSH NOTIFICATION list — deliberately generic (one function, not a
+/// wrapper per event) since a push is just a short title/body, unlike the
+/// longer per-event email copy. Silently a no-op end-to-end until the
+/// recipient has a registered device token (see SupabaseService.
+/// sendPushNotification's own doc comment).
+Future<void> notifyPush({
+  required String profileId,
+  required String title,
+  required String body,
+  Map<String, String>? data,
+}) async {
+  if (profileId.isEmpty) return;
+  try {
+    await SupabaseService.sendPushNotification(profileId: profileId, title: title, body: body, data: data);
+  } catch (_) {}
+}
+
 /// Fires once when [totalCheckedIn] (this client's total checked-in session
 /// count, AFTER the attendance mark that triggered this call) lands exactly
 /// on one of [kSessionMilestones] — called right after a booking is marked
 /// checked-in, with the freshly-recounted total, so it only ever fires on
-/// the one booking that actually crosses the line.
+/// the one booking that actually crosses the line. Sends both the email and
+/// (if [profileId] is given) the matching push in one call, since they
+/// share the exact same "did we just cross a milestone" gate.
 Future<void> notifySessionMilestoneIfCrossed({
   required String toEmail,
   required String toName,
   required int totalCheckedIn,
+  String? profileId,
 }) async {
-  if (toEmail.isEmpty || !kSessionMilestones.contains(totalCheckedIn)) return;
-  try {
-    await SupabaseService.sendEmail(
-      to: toEmail,
-      subject: "You just hit $totalCheckedIn sessions!",
-      text: "Hi $toName,\n\nCongratulations — you've completed $totalCheckedIn sessions at ONE Fitness. Keep up the great work!\n\n— ONE Fitness",
-    );
-  } catch (_) {}
+  if (!kSessionMilestones.contains(totalCheckedIn)) return;
+  if (toEmail.isNotEmpty) {
+    try {
+      await SupabaseService.sendEmail(
+        to: toEmail,
+        subject: "You just hit $totalCheckedIn sessions!",
+        text: "Hi $toName,\n\nCongratulations — you've completed $totalCheckedIn sessions at ONE Fitness. Keep up the great work!\n\n— ONE Fitness",
+      );
+    } catch (_) {}
+  }
+  if (profileId != null) {
+    notifyPush(profileId: profileId, title: "Milestone reached! 🎉", body: "You've completed $totalCheckedIn sessions at ONE Fitness.");
+  }
 }
 
 /// "Coach comments on a workout, progress photo, or measurement" — fires to

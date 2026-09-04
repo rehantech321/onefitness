@@ -8,6 +8,7 @@ import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/membership_utils.dart";
+import "../../../core/utils/notification_triggers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/blocked_time.dart";
 import "../../../data/models/booking.dart";
@@ -258,8 +259,33 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       if (rescheduling != null) {
         await SupabaseService.deleteBooking(rescheduling.id);
         ref.read(clientBookingsProvider.notifier).reschedule(saved, rescheduling.id);
+        notifyPush(
+          profileId: info.id,
+          title: "Session rescheduled",
+          body: "Your session is now ${niceDate(_date)} at ${fmtSlot(pick.slot)}.",
+        );
       } else {
         ref.read(clientBookingsProvider.notifier).addBooking(saved);
+        notifyPush(
+          profileId: info.id,
+          title: "Booking confirmed",
+          body: "You're booked for ${niceDate(_date)} at ${fmtSlot(pick.slot)}.",
+        );
+      }
+      // Notifications spec — "Low session balance": fires once, right at
+      // the exact booking that brings a client down to their last 1 or 2
+      // remaining sessions this period — never on every booking after, so
+      // it can't spam.
+      final plan = ref.read(membershipPlansProvider.notifier).byId(info.membershipPlanId);
+      if (plan != null) {
+        final remaining = effectiveMaxSessions(info, plan) - sessionsUsedThisPeriod(info, plan, ref.read(clientBookingsProvider));
+        if (remaining == 1 || remaining == 2) {
+          notifyPush(
+            profileId: info.id,
+            title: "Low session balance",
+            body: "You have $remaining session${remaining == 1 ? '' : 's'} left this period.",
+          );
+        }
       }
       setState(() {
         _busy = false;

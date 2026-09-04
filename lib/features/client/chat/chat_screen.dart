@@ -174,7 +174,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ).catchError((Object e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Couldn't send the email — the message is still logged below.")),
+            SnackBar(content: Text("Couldn't send the email: ${e.toString().replaceFirst("Exception: ", "")}")),
           );
         }
       });

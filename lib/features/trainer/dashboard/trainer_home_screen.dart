@@ -694,6 +694,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                           toEmail: rosterClient.email ?? "",
                                           toName: rosterClient.name,
                                           totalCheckedIn: total,
+                                          profileId: rosterClient.id,
                                         );
                                       }
                                       // Late Cancel / No-Show carry an owner-set fee, fired

@@ -146,6 +146,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                                   try {
                                     await SupabaseService.deleteBooking(b.id);
                                     ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
+                                    notifyPush(profileId: b.clientId, title: "Appointment canceled", body: "Your session on ${niceDate(b.date)} at ${fmtSlot(b.slot)} was canceled.");
                                   } catch (e) {
                                     _showError();
                                   } finally {
@@ -173,7 +174,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                               });
                               if (opt.key == "checked-in") {
                                 final total = ref.read(allBookingsProvider).where((x) => x.clientId == client.id && x.attendanceStatus == "checked-in").length;
-                                notifySessionMilestoneIfCrossed(toEmail: client.email ?? "", toName: client.name, totalCheckedIn: total);
+                                notifySessionMilestoneIfCrossed(toEmail: client.email ?? "", toName: client.name, totalCheckedIn: total, profileId: client.id);
                               }
                               final charge = attendanceChargeFor(
                                 b,
@@ -222,6 +223,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                         for (final b in active) {
                           await SupabaseService.deleteBooking(b.id);
                           ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
+                          notifyPush(profileId: b.clientId, title: "Appointment canceled", body: "Your session on ${niceDate(b.date)} at ${fmtSlot(b.slot)} was canceled.");
                         }
                         if (context.mounted) Navigator.of(context).pop();
                       } catch (e) {

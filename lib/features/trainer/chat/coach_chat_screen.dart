@@ -5,6 +5,7 @@ import "package:shared_preferences/shared_preferences.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/notification_triggers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/comm_message.dart";
@@ -157,6 +158,7 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
     try {
       final comms = ref.read(trainerClientRecordsProvider)[client.id]!.comms;
       await SupabaseService.updateClientComms(client.id, comms);
+      notifyPush(profileId: client.id, title: "New message from your coach", body: text);
     } catch (e) {
       ref.read(trainerClientRecordsProvider.notifier).update(
             client.id,
@@ -181,7 +183,7 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
       ).catchError((Object e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Couldn't send the email — the message is still logged below.")),
+            SnackBar(content: Text("Couldn't send the email: ${e.toString().replaceFirst("Exception: ", "")}")),
           );
         }
       });
