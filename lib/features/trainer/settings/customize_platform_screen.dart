@@ -340,6 +340,22 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                       onChange: (v) => _set((d) => d.copyWith(refundFeeOnRefund: v)),
                     ),
                   ],
+                  const SizedBox(height: 10),
+                  _ToggleRow(
+                    label: "Set a default billing date for new memberships",
+                    hint: "Off (default): a new membership just bills on whatever day the client checks out on, like today. On: every new subscription bills on the same day-of-month going forward — you can still override this per client later, including already-active memberships, from their profile.",
+                    value: s.defaultBillingAnchorDay != null,
+                    onChange: (v) => _set((d) => v ? d.copyWith(defaultBillingAnchorDay: d.defaultBillingAnchorDay ?? 1) : d.copyWith(clearDefaultBillingAnchorDay: true)),
+                  ),
+                  if (s.defaultBillingAnchorDay != null) ...[
+                    const SizedBox(height: 10),
+                    _NumberRow(
+                      label: "Day of the month",
+                      hint: "1-28 only, to avoid short-month issues (every month has a 28th). Applies to new memberships from now on — never retroactively shifts an existing client's billing date.",
+                      value: s.defaultBillingAnchorDay!,
+                      onChange: (v) => _set((d) => d.copyWith(defaultBillingAnchorDay: v.clamp(1, 28))),
+                    ),
+                  ],
                 ],
                 if (_tab == "workouts") ...[
                   _ToggleRow(

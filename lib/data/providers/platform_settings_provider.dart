@@ -59,6 +59,7 @@ class PlatformSettings {
     this.cardFee = const FeeProfile(label: "Card Processing Fee"),
     this.achFee = const FeeProfile(label: "Bank Transfer Fee"),
     this.checkoutDisclosureText = "",
+    this.defaultBillingAnchorDay,
     this.refundFeeOnRefund = false,
     this.autoCarryOverLastWeight = true,
     this.defaultWeightUnit = "lb",
@@ -114,6 +115,14 @@ class PlatformSettings {
   final FeeProfile cardFee;
   final FeeProfile achFee;
   final String checkoutDisclosureText;
+
+  /// Billing Cycle Anchor Date spec §2 — day-of-month (1-28) new
+  /// subscriptions bill on going forward. Null means "off" — a new
+  /// membership just bills on whatever day checkout happens, the
+  /// pre-this-feature default. Only used at creation time (create-
+  /// checkout-session); never retroactively shifts an existing client's
+  /// own billing_anchor_day (see ClientInfo.billingAnchorDay).
+  final int? defaultBillingAnchorDay;
   final bool refundFeeOnRefund;
   final bool autoCarryOverLastWeight;
   final String defaultWeightUnit; // lb | kg
@@ -160,6 +169,8 @@ class PlatformSettings {
     FeeProfile? cardFee,
     FeeProfile? achFee,
     String? checkoutDisclosureText,
+    int? defaultBillingAnchorDay,
+    bool clearDefaultBillingAnchorDay = false,
     bool? refundFeeOnRefund,
     bool? autoCarryOverLastWeight,
     String? defaultWeightUnit,
@@ -200,6 +211,7 @@ class PlatformSettings {
         cardFee: cardFee ?? this.cardFee,
         achFee: achFee ?? this.achFee,
         checkoutDisclosureText: checkoutDisclosureText ?? this.checkoutDisclosureText,
+        defaultBillingAnchorDay: clearDefaultBillingAnchorDay ? null : (defaultBillingAnchorDay ?? this.defaultBillingAnchorDay),
         refundFeeOnRefund: refundFeeOnRefund ?? this.refundFeeOnRefund,
         autoCarryOverLastWeight: autoCarryOverLastWeight ?? this.autoCarryOverLastWeight,
         defaultWeightUnit: defaultWeightUnit ?? this.defaultWeightUnit,

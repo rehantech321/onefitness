@@ -5,6 +5,7 @@ import "../utils/coach_merit_badge_utils.dart";
 import "../utils/date_utils.dart";
 import "../../data/models/availability_block.dart";
 import "../../data/models/blocked_time.dart";
+import "../../data/models/billing_anchor_history_entry.dart";
 import "../../data/models/booking.dart";
 import "../../data/models/challenge.dart";
 import "../../data/models/charge.dart";
@@ -1146,6 +1147,7 @@ class SupabaseService {
       checkoutDisclosureText:
           payments["checkoutDisclosureText"] as String? ??
           defaults.checkoutDisclosureText,
+      defaultBillingAnchorDay: _asInt(payments["defaultBillingAnchorDay"]),
       refundFeeOnRefund:
           payments["refundFeeOnRefund"] as bool? ?? defaults.refundFeeOnRefund,
       autoCarryOverLastWeight:
@@ -2162,6 +2164,7 @@ class SupabaseService {
       "cardFee": _feeProfileToJson(s.cardFee),
       "achFee": _feeProfileToJson(s.achFee),
       "checkoutDisclosureText": s.checkoutDisclosureText,
+      "defaultBillingAnchorDay": s.defaultBillingAnchorDay,
       "refundFeeOnRefund": s.refundFeeOnRefund,
     },
     "workouts": {
@@ -2791,6 +2794,7 @@ class SupabaseService {
       referredByTrainerId: c["referred_by_trainer_id"] as String?,
       coachCodeAlertSeen: c["coach_code_alert_seen"] as bool? ?? false,
       smsOptIn: c["sms_opt_in"] as bool? ?? false,
+      billingAnchorDay: _asInt(c["billing_anchor_day"]),
     );
   }
 
@@ -2798,6 +2802,53 @@ class SupabaseService {
   /// Settings → Notification Preferences).
   static Future<void> updateSmsOptIn(String clientId, bool optIn) =>
       client.from("clients").update({"sms_opt_in": optIn}).eq("profile_id", clientId);
+
+  /// Billing Cycle Anchor Date spec §3 — read-only preview, owner-only.
+  /// Never writes anything; safe to call repeatedly while the owner picks a
+  /// date. Response shape: `{hasActiveSubscription, proratedAmountCents?,
+  /// currency?, nextChargeDate?, message?}`.
+  static Future<Map<String, dynamic>> previewBillingAnchorChange({
+    required String clientId,
+    required int newAnchorDay,
+  }) => _invokeFunction("preview-billing-anchor-change", {
+    "clientId": clientId,
+    "newAnchorDay": newAnchorDay,
+  });
+
+  /// Billing Cycle Anchor Date spec §3 — actually applies the change:
+  /// updates the live Stripe subscription (with proration) if one exists,
+  /// persists clients.billing_anchor_day, and writes a
+  /// client_billing_anchor_history row. Owner-only; rejects with a clear
+  /// message if this client's anchor was already changed within the last
+  /// 90 days.
+  static Future<Map<String, dynamic>> changeBillingAnchor({
+    required String clientId,
+    required int newAnchorDay,
+  }) => _invokeFunction("change-billing-anchor", {
+    "clientId": clientId,
+    "newAnchorDay": newAnchorDay,
+  });
+
+  static BillingAnchorHistoryEntry _billingAnchorHistoryFromRow(Map<String, dynamic> row) => BillingAnchorHistoryEntry(
+        id: row["id"] as String,
+        oldValue: _asInt(row["old_value"]),
+        newValue: _asInt(row["new_value"]) ?? 0,
+        changedAt: row["changed_at"] as String? ?? "",
+        changedByName: (row["profiles"] as Map?)?["name"] as String?,
+        proratedAmountCents: _asInt(row["prorated_amount_cents"]),
+        nextChargeDate: row["next_charge_date"] as String?,
+      );
+
+  /// Owner-only (RLS-enforced — see the table's select policy). Newest
+  /// first.
+  static Future<List<BillingAnchorHistoryEntry>> loadBillingAnchorHistory(String clientId) async {
+    final rows = await client
+        .from("client_billing_anchor_history")
+        .select("id, old_value, new_value, changed_at, prorated_amount_cents, next_charge_date, profiles!changed_by(name)")
+        .eq("client_id", clientId)
+        .order("changed_at", ascending: false);
+    return _safeMap(rows, _billingAnchorHistoryFromRow);
+  }
 
   static Trainer _trainerFromRow(
     Map<String, dynamic> profile,

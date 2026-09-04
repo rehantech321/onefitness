@@ -29,6 +29,7 @@ class ClientInfo {
     this.referredByTrainerId,
     this.coachCodeAlertSeen = false,
     this.smsOptIn = false,
+    this.billingAnchorDay,
   });
 
   final String id;
@@ -106,6 +107,14 @@ class ClientInfo {
   /// payment) checks this before sending anything.
   final bool smsOptIn;
 
+  /// Billing Cycle Anchor Date spec — the day-of-month (1-28) this
+  /// client's recurring charge runs on. Null means "never explicitly
+  /// set" (Stripe just uses whatever day their subscription happened to
+  /// start on, the pre-this-feature default). Copied at creation time from
+  /// the business default, or set later via an owner override — either
+  /// way it's read back off the real Stripe subscription, never assumed.
+  final int? billingAnchorDay;
+
   ClientInfo copyWith({
     String? name,
     String? email,
@@ -134,6 +143,7 @@ class ClientInfo {
     bool? redeemPointsNextRenewal,
     bool? coachCodeAlertSeen,
     bool? smsOptIn,
+    int? billingAnchorDay,
   }) =>
       ClientInfo(
         id: id,
@@ -161,5 +171,6 @@ class ClientInfo {
         referredByTrainerId: referredByTrainerId,
         coachCodeAlertSeen: coachCodeAlertSeen ?? this.coachCodeAlertSeen,
         smsOptIn: smsOptIn ?? this.smsOptIn,
+        billingAnchorDay: billingAnchorDay ?? this.billingAnchorDay,
       );
 }

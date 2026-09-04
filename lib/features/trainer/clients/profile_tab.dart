@@ -17,6 +17,7 @@ import "../../../data/models/intake_schema.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "billing_anchor_section.dart";
 
 /// Mirrors Profile.jsx (viewed from the coach side, via TrainerView). Trimmed
 /// vs. the web: Edit Profile is a simplified name/email/phone/city form here
@@ -42,6 +43,7 @@ class ProfileTab extends ConsumerStatefulWidget {
 class _ProfileTabState extends ConsumerState<ProfileTab> {
   bool _editing = false;
   bool _charging = false;
+  bool _billingAnchor = false;
   bool _freezing = false;
   bool _freezeBusy = false;
   late final _freezeStart = TextEditingController(text: isoToday());
@@ -111,6 +113,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             );
             if (mounted) setState(() => _editing = false);
           },
+        ),
+      );
+    }
+
+    if (_billingAnchor) {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _billingAnchor = false),
+        child: BillingAnchorSection(
+          info: info,
+          onBack: () => setState(() => _billingAnchor = false),
+          onChanged: (day) => update((c) => c.copyWith(billingAnchorDay: day)),
         ),
       );
     }
@@ -449,6 +463,33 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               ],
             ),
           ),
+          if (ref.watch(trainerAuthProvider) == "owner" &&
+              plan != null &&
+              plan.kind == PlanKind.membership) ...[
+            AppCard(
+              onTap: () => setState(() => _billingAnchor = true),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.calendarClock, size: 17, color: AppColors.gold),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("BILLING DATE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+                        Text(
+                          info.billingAnchorDay != null ? "Bills on the ${ordinalDay(info.billingAnchorDay!)} of the month" : "Bills on whatever day they signed up",
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
           _ContactRow(
             icon: LucideIcons.mail,
             label: "Email",
