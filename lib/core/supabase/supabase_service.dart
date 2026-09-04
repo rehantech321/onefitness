@@ -813,6 +813,8 @@ class SupabaseService {
         ),
         loggedAt: j["loggedAt"] as String?,
         loggedBy: j["loggedBy"] as String? ?? "client",
+        coachComment: j["coachComment"] as String?,
+        coachCommentAt: j["coachCommentAt"] as String?,
       );
 
   static LoggedExercise _loggedExerciseFromJson(Map<String, dynamic> j) =>
@@ -2453,6 +2455,8 @@ class SupabaseService {
     "exercises": w.exercises.map(_loggedExerciseToJson).toList(),
     "loggedAt": w.loggedAt,
     "loggedBy": w.loggedBy,
+    "coachComment": w.coachComment,
+    "coachCommentAt": w.coachCommentAt,
   };
 
   static Map<String, dynamic> _loggedExerciseToJson(LoggedExercise e) => {
@@ -2478,6 +2482,8 @@ class SupabaseService {
     "hips": m.hips,
     "arms": m.arms,
     "thighs": m.thighs,
+    "coachComment": m.coachComment,
+    "coachCommentAt": m.coachCommentAt,
   };
 
   static Measurement _measurementFromJson(Map<String, dynamic> j) => Measurement(
@@ -2490,18 +2496,24 @@ class SupabaseService {
     hips: j["hips"] as String?,
     arms: j["arms"] as String?,
     thighs: j["thighs"] as String?,
+    coachComment: j["coachComment"] as String?,
+    coachCommentAt: j["coachCommentAt"] as String?,
   );
 
   static Map<String, dynamic> _progressPhotoToJson(ProgressPhoto p) => {
     "id": p.id,
     "date": p.date,
     "img": p.img,
+    "coachComment": p.coachComment,
+    "coachCommentAt": p.coachCommentAt,
   };
 
   static ProgressPhoto _progressPhotoFromJson(Map<String, dynamic> j) => ProgressPhoto(
     id: j["id"]?.toString() ?? "",
     date: j["date"] as String? ?? "",
     img: j["img"] as String? ?? "",
+    coachComment: j["coachComment"] as String?,
+    coachCommentAt: j["coachCommentAt"] as String?,
   );
 
   static Future<void> upsertProgramLibraryEntry(SavedProgram p) =>

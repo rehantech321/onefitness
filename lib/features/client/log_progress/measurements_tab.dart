@@ -5,6 +5,7 @@ import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/notification_triggers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/measurement.dart";
 import "../../../data/models/squad_chat_message.dart";
@@ -68,6 +69,17 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
     try {
       await SupabaseService.updateClientMeasurements(client.id, next);
       ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(measurements: next));
+      final info = ref.read(clientInfoProvider);
+      final goalWeight = parseLeadingNum(
+        (client.intake["nutritional"]?.answers["goalWeight"] ?? client.intake["personalTraining"]?.answers["goalWeight"])?.toString(),
+      );
+      notifyGoalReachedIfCrossed(
+        toEmail: info.email ?? "",
+        toName: info.name,
+        priorMeasurements: client.measurements,
+        latest: entry,
+        goalWeight: goalWeight,
+      );
       for (final c in _fieldControllers.values) {
         c.clear();
       }
@@ -303,6 +315,26 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                           );
                         }).toList(),
                       ),
+                      if (m.coachComment != null && m.coachComment!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppColors.gold.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.goldDim),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("COACH'S NOTE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gold, letterSpacing: 0.5)),
+                                const SizedBox(height: 4),
+                                Text(m.coachComment!, style: const TextStyle(fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 )),

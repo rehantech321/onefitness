@@ -138,12 +138,35 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
               mainAxisSpacing: 10,
               childAspectRatio: 3 / 4,
               children: photos.map((p) {
+                final hasComment = p.coachComment != null && p.coachComment!.isNotEmpty;
                 return ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
                       Container(color: AppColors.card, child: Image.memory(p.bytes, fit: BoxFit.cover)),
+                      if (hasComment)
+                        Positioned(
+                          top: 6,
+                          left: 6,
+                          child: InkWell(
+                            onTap: () => showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: AppColors.card,
+                                title: const Text("Coach's note", style: TextStyle(fontSize: 14)),
+                                content: Text(p.coachComment!, style: const TextStyle(fontSize: 13)),
+                                actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Close"))],
+                              ),
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                              child: const Icon(LucideIcons.messageSquare, size: 13, color: Colors.white),
+                            ),
+                          ),
+                        ),
                       if (squad != null)
                         Positioned(
                           top: 6,

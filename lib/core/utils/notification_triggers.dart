@@ -1,3 +1,4 @@
+import "../../data/models/measurement.dart";
 import "../supabase/supabase_service.dart";
 
 /// Notifications spec — event-triggered emails. Each function is
@@ -39,6 +40,63 @@ Future<void> notifySessionMilestoneIfCrossed({
       to: toEmail,
       subject: "You just hit $totalCheckedIn sessions!",
       text: "Hi $toName,\n\nCongratulations — you've completed $totalCheckedIn sessions at ONE Fitness. Keep up the great work!\n\n— ONE Fitness",
+    );
+  } catch (_) {}
+}
+
+/// "Coach comments on a workout, progress photo, or measurement" — fires to
+/// the client whenever a coach saves a comment on one of their entries.
+/// [kind] is purely for the email wording ("workout session" | "progress
+/// photo" | "measurement entry").
+Future<void> notifyCoachComment({
+  required String toEmail,
+  required String toName,
+  required String kind,
+}) async {
+  if (toEmail.isEmpty) return;
+  try {
+    await SupabaseService.sendEmail(
+      to: toEmail,
+      subject: "Your coach left you a comment",
+      text: "Hi $toName,\n\nYour coach just left a comment on one of your $kind entries. Open the ONE Fitness app to see it.\n\n— ONE Fitness",
+    );
+  } catch (_) {}
+}
+
+/// Mirrors helpers.js `parseLeadingNum` — measurement fields are free text
+/// (e.g. "185" or "185 lbs"), so this pulls the leading numeric portion.
+double? parseLeadingNum(String? s) {
+  if (s == null || s.isEmpty) return null;
+  final m = RegExp(r"\d+(\.\d+)?").firstMatch(s);
+  return m == null ? null : double.tryParse(m.group(0)!);
+}
+
+/// "Goal reached" — fires once, the first time a client's logged weight
+/// lands within half a pound of their stated goal weight (intake's
+/// `goalWeight` — nutritional intake takes precedence, same fallback order
+/// challenge scoring already uses). [priorMeasurements] is the list BEFORE
+/// [latest] was added, so this can tell "just crossed" from "was already
+/// there" and never re-fire on every measurement after the first.
+Future<void> notifyGoalReachedIfCrossed({
+  required String toEmail,
+  required String toName,
+  required List<Measurement> priorMeasurements,
+  required Measurement latest,
+  required double? goalWeight,
+}) async {
+  if (toEmail.isEmpty || goalWeight == null) return;
+  final latestWeight = parseLeadingNum(latest.weight);
+  if (latestWeight == null || (latestWeight - goalWeight).abs() > 0.5) return;
+  final alreadyThereBefore = priorMeasurements
+      .map((m) => parseLeadingNum(m.weight))
+      .whereType<double>()
+      .any((w) => (w - goalWeight).abs() <= 0.5);
+  if (alreadyThereBefore) return;
+  try {
+    await SupabaseService.sendEmail(
+      to: toEmail,
+      subject: "You reached your goal weight!",
+      text: "Hi $toName,\n\nCongratulations — your latest measurement shows you've reached your goal weight. Amazing work!\n\n— ONE Fitness",
     );
   } catch (_) {}
 }

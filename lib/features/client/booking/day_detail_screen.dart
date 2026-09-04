@@ -184,6 +184,26 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                 }).toList(),
               ),
             ),
+            if (log.coachComment != null && log.coachComment!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.goldDim),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("COACH'S NOTE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gold, letterSpacing: 0.5)),
+                      const SizedBox(height: 4),
+                      Text(log.coachComment!, style: const TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ),
           ] else if (dayBookings.isNotEmpty) ...[
             ...dayBookings.map((b) {
               final matches = trainers.where((t) => t.id == b.trainerId);

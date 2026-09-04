@@ -36,6 +36,8 @@ class WorkoutLogEntry {
     this.exercises = const [],
     this.loggedAt,
     this.loggedBy = "client",
+    this.coachComment,
+    this.coachCommentAt,
   });
 
   final String id;
@@ -50,4 +52,24 @@ class WorkoutLogEntry {
   /// "client" (self-logged) | "coach" (logged on the client's behalf via
   /// the coach's own Start Session flow) — see SessionLoggerView.
   final String loggedBy;
+
+  /// A coach's note left on this specific session (Notifications spec —
+  /// "Coach comments on a workout"), shown to the client and emailed once
+  /// on save. One comment per session, editable — not a full thread.
+  final String? coachComment;
+  final String? coachCommentAt;
+
+  WorkoutLogEntry copyWith({String? coachComment, String? coachCommentAt}) => WorkoutLogEntry(
+        id: id,
+        date: date,
+        programId: programId,
+        programName: programName,
+        dayId: dayId,
+        dayTitle: dayTitle,
+        exercises: exercises,
+        loggedAt: loggedAt,
+        loggedBy: loggedBy,
+        coachComment: coachComment ?? this.coachComment,
+        coachCommentAt: coachCommentAt ?? this.coachCommentAt,
+      );
 }

@@ -4,11 +4,13 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "coach_measurements_tab.dart";
 import "habits_tab.dart";
 import "intake_tab.dart";
 import "logged_tab.dart";
 import "merit_badges_tab.dart";
 import "notes_tab.dart";
+import "photos_tab.dart";
 import "plans_tab.dart";
 import "points_tab.dart";
 import "profile_tab.dart";
@@ -33,6 +35,8 @@ const _moreTabs = [
   _TabDef("squad", "Squad", LucideIcons.users2),
   _TabDef("points", "Points", LucideIcons.gift),
   _TabDef("badges", "Badges", LucideIcons.award),
+  _TabDef("photos", "Photos", LucideIcons.image),
+  _TabDef("measurements", "Measurements", LucideIcons.ruler),
 ];
 
 /// Mirrors TrainerView.jsx — the per-client tab bar (3 primary tabs + a
@@ -177,6 +181,10 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
         return PointsTab(clientId: widget.clientId);
       case "badges":
         return MeritBadgesTab(clientId: widget.clientId);
+      case "photos":
+        return PhotosTab(clientId: widget.clientId);
+      case "measurements":
+        return CoachMeasurementsTab(clientId: widget.clientId);
       default:
         return const SizedBox.shrink();
     }
