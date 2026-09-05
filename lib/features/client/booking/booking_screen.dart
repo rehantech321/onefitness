@@ -920,36 +920,44 @@ class _StepThreeState extends State<_StepThree> {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(a.trainer.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                                          // Session type leads the card — what's
+                                          // being booked matters more than who's
+                                          // running it, and every slot in a day
+                                          // otherwise opens with the same coach
+                                          // name repeated down the list.
                                           Text(
-                                            "${disciplineLabel(chosenDisc)} · ${sessionTypeLabel(chosenType)}",
-                                            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                                            "${sessionTypeLabel(chosenType)} · ${disciplineLabel(chosenDisc)}",
+                                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 2),
+                                            child: Text(a.trainer.name, style: const TextStyle(fontSize: 12, color: AppColors.txt)),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 3),
+                                            child: GestureDetector(
+                                              onTap: () => CoachProfileCard.show(context, a.trainer),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: const [
+                                                  Text("Meet the Coach", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mute)),
+                                                  SizedBox(width: 3),
+                                                  Icon(LucideIcons.chevronRight, size: 11, color: AppColors.mute),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                           if (a.trainer.locationName != null)
                                             Padding(
                                               padding: const EdgeInsets.only(top: 3),
                                               child: Row(
                                                 children: [
-                                                  const Icon(LucideIcons.mapPin, size: 11, color: AppColors.goldDim),
+                                                  const Icon(LucideIcons.mapPin, size: 11, color: AppColors.mute),
                                                   const SizedBox(width: 3),
                                                   Text(a.trainer.locationName!, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
                                                 ],
                                               ),
                                             ),
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 5),
-                                            child: GestureDetector(
-                                              onTap: () => CoachProfileCard.show(context, a.trainer),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: const [
-                                                  Text("Meet the Coach", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gold)),
-                                                  SizedBox(width: 3),
-                                                  Icon(LucideIcons.chevronRight, size: 11, color: AppColors.gold),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
                                         ],
                                       ),
                                     ),
