@@ -180,17 +180,29 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     }
     if (mounted) setState(() => _cancelBusy = false);
     if (!mounted) return;
-    final periodEndsAt = preview["periodEndsAt"] as String?;
+    final periodEndsAt = (preview["periodEndsAt"] ?? preview["renewsAt"]) as String?;
+    // A free plan, a one-time package, or a coach-assigned plan has no
+    // billing period to run out, so there's nothing to schedule — it ends
+    // the moment they confirm. Saying "access continues through <date>" for
+    // one of those would be a straight-up lie, so both the wording and the
+    // confirm button change to match what will actually happen.
+    final immediate = preview["immediate"] == true || periodEndsAt == null;
+    final currentPlan = ref.read(membershipPlansProvider.notifier).byId(ref.read(clientInfoProvider).membershipPlanId);
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
-        title: const Text("Cancel your membership?", style: TextStyle(color: AppColors.txt, fontSize: 16, fontWeight: FontWeight.w800)),
+        title: Text(
+          immediate ? "Cancel your ${currentPlan?.name ?? "plan"}?" : "Cancel your membership?",
+          style: const TextStyle(color: AppColors.txt, fontSize: 16, fontWeight: FontWeight.w800),
+        ),
         content: Text(
-          "Access continues through ${periodEndsAt ?? 'the end of your current billing period'}. After that date: any bookings scheduled "
-          "beyond it are cancelled, you won't be able to book new sessions past it, and unused sessions aren't carried over. There's no refund, "
-          "and this can't be undone.",
+          immediate
+              ? "This ends now — you'll lose access straight away, any bookings you already have are cancelled, and unused sessions aren't carried "
+                  "over. There's no refund, and this can't be undone."
+              : "Access continues through $periodEndsAt. After that date: any bookings scheduled beyond it are cancelled, you won't be able to "
+                  "book new sessions past it, and unused sessions aren't carried over. There's no refund, and this can't be undone.",
           style: const TextStyle(color: AppColors.mute, fontSize: 13, height: 1.5),
         ),
         actions: [
@@ -202,7 +214,10 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)),
-            child: const Text("Cancel at end of billing period", style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              immediate ? "Cancel it now" : "Cancel at end of billing period",
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -215,7 +230,14 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     });
     try {
       final result = await SupabaseService.cancelMembership();
-      ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(membershipCancelsAt: result["cancelsAt"] as String?));
+      final cancelsAt = result["cancelsAt"] as String?;
+      ref.read(clientInfoProvider.notifier).update(
+            (i) => cancelsAt != null
+                ? i.copyWith(membershipCancelsAt: cancelsAt)
+                // Cancelled outright — drop the plan locally too, so the
+                // screen doesn't keep showing a plan the server just removed.
+                : i.copyWith(clearMembershipPlanId: true, clearStripeSubscriptionId: true, clearPendingPlan: true),
+          );
     } catch (e) {
       if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
     } finally {
