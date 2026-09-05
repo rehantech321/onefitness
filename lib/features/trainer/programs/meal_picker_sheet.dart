@@ -42,22 +42,32 @@ class _MealPickerBodyState extends ConsumerState<_MealPickerBody> {
   @override
   Widget build(BuildContext context) {
     if (_creating) {
-      return CustomMealForm(
-        mealType: widget.mealType,
-        onCancel: () => setState(() => _creating = false),
-        onSave: (meal) {
-          // Optimistic: pop immediately so the nutrition builder flow this
-          // meal was created from isn't blocked on a round-trip. Best-effort
-          // persist — on failure the meal just won't be in the shared
-          // catalog on the next reload, no local state to unwind (`ref`
-          // isn't safe to touch after this widget is popped/disposed).
-          ref.read(customMealsProvider.notifier).add(meal);
-          Navigator.of(context).pop(meal);
-          SupabaseService.insertCustomMeal(meal).catchError((Object e) {
-            // ignore: avoid_print
-            print("[meal_picker_sheet] failed to persist custom meal: $e");
-          });
+      // A sub-view inside a real showModalBottomSheet — the shell's own
+      // back handling (LocalBackScope) can't see into a Navigator route,
+      // so without this PopScope, hardware back/an OS edge-swipe would
+      // dismiss the whole sheet instead of just backing out of this form.
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) setState(() => _creating = false);
         },
+        child: CustomMealForm(
+          mealType: widget.mealType,
+          onCancel: () => setState(() => _creating = false),
+          onSave: (meal) {
+            // Optimistic: pop immediately so the nutrition builder flow this
+            // meal was created from isn't blocked on a round-trip. Best-effort
+            // persist — on failure the meal just won't be in the shared
+            // catalog on the next reload, no local state to unwind (`ref`
+            // isn't safe to touch after this widget is popped/disposed).
+            ref.read(customMealsProvider.notifier).add(meal);
+            Navigator.of(context).pop(meal);
+            SupabaseService.insertCustomMeal(meal).catchError((Object e) {
+              // ignore: avoid_print
+              print("[meal_picker_sheet] failed to persist custom meal: $e");
+            });
+          },
+        ),
       );
     }
 

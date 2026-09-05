@@ -41,44 +41,54 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
   @override
   Widget build(BuildContext context) {
     if (_custom) {
-      return Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            BackBar(onBack: () => setState(() => _custom = false), title: "Custom Exercise"),
-            const SizedBox(height: 12),
-            FieldLabeled(label: "Name", child: AppField(controller: _customName)),
-            const SizedBox(height: 10),
-            const Text("MUSCLE GROUP", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              children: kMuscleGroups.map((g) {
-                final selected = _customGroup == g;
-                return InkWell(
-                  onTap: () => setState(() => _customGroup = g),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
-                      border: Border.all(color: selected ? AppColors.gold : AppColors.line),
-                      borderRadius: BorderRadius.circular(7),
+      // A sub-view inside a real showModalBottomSheet — the shell's own
+      // back handling (LocalBackScope) can't see into a Navigator route,
+      // so without this PopScope, hardware back/an OS edge-swipe would
+      // dismiss the whole sheet instead of just backing out of this form.
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) setState(() => _custom = false);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              BackBar(onBack: () => setState(() => _custom = false), title: "Custom Exercise"),
+              const SizedBox(height: 12),
+              FieldLabeled(label: "Name", child: AppField(controller: _customName)),
+              const SizedBox(height: 10),
+              const Text("MUSCLE GROUP", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                children: kMuscleGroups.map((g) {
+                  final selected = _customGroup == g;
+                  return InkWell(
+                    onTap: () => setState(() => _customGroup = g),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                        border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Text(g, style: TextStyle(fontSize: 11, color: selected ? AppColors.gold : AppColors.txt)),
                     ),
-                    child: Text(g, style: TextStyle(fontSize: 11, color: selected ? AppColors.gold : AppColors.txt)),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-            BtnGold(
-              full: true,
-              onPressed: _customName.text.trim().isEmpty
-                  ? null
-                  : () => Navigator.of(context).pop(ExerciseDef(id: "custom-${DateTime.now().microsecondsSinceEpoch}", name: _customName.text.trim(), movementPattern: "Isolation", primaryMuscle: _customGroup)),
-              child: const Text("Add"),
-            ),
-          ],
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              BtnGold(
+                full: true,
+                onPressed: _customName.text.trim().isEmpty
+                    ? null
+                    : () => Navigator.of(context).pop(ExerciseDef(id: "custom-${DateTime.now().microsecondsSinceEpoch}", name: _customName.text.trim(), movementPattern: "Isolation", primaryMuscle: _customGroup)),
+                child: const Text("Add"),
+              ),
+            ],
+          ),
         ),
       );
     }

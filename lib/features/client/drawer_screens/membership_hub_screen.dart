@@ -13,14 +13,16 @@ import "../dashboard/sessions_remaining_badge.dart";
 
 /// Mirrors MembershipsHub.jsx — current plan status (reusing the same badge
 /// shown on the Dashboard), plan details, browse-and-buy for a client with
-/// no plan yet, and three self-service actions for a client who already
-/// has one: Change Access (real Stripe proration, a billing-cycle reset,
-/// or a scheduled switch at next renewal), Pause Access (the same real
-/// freeze/unfreeze mechanism the coach-side client-profile screen already
-/// uses, opened up to client self-service), and Cancel (schedules the real
-/// Stripe subscription to end at the close of the current billing period —
-/// access and billing both run through what's already paid for; no fee,
-/// no refund).
+/// no plan yet, and two self-service actions for a client who already has
+/// one: Change Access (real Stripe proration, a billing-cycle reset, or a
+/// scheduled switch at next renewal) and Cancel (schedules the real Stripe
+/// subscription to end at the close of the current billing period — access
+/// and billing both run through what's already paid for; no fee, no
+/// refund). Pausing/freezing is deliberately NOT self-service here — that
+/// stays coach/owner-only (see freeze-membership/unfreeze-membership's own
+/// server-side role check, and the coach-side client-profile screen) — a
+/// paused client only ever sees a read-only status banner and a pointer to
+/// ask their coach.
 /// Trimmed vs. the web app: no referral-email capture and no card/ACH
 /// choice (this app is card-only) — both scoped out in Part 8.
 class MembershipHubScreen extends ConsumerStatefulWidget {
@@ -38,7 +40,6 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
   String? _timingChoicePlanId;
   String? _prorateChoicePlanId;
   bool _cancelBusy = false;
-  bool _pauseBusy = false;
 
   Future<void> _buy(String clientId, MembershipPlan plan) async {
     setState(() {
@@ -202,112 +203,6 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
     } finally {
       if (mounted) setState(() => _cancelBusy = false);
-    }
-  }
-
-  Future<void> _openPauseSheet(ClientInfo info) async {
-    String? start;
-    String? end;
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: AppColors.card,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (sheetCtx) => StatefulBuilder(
-        builder: (sheetCtx, setSheetState) {
-          Future<void> pickDate(bool isStart) async {
-            final now = DateTime.now();
-            final picked = await showDatePicker(context: sheetCtx, initialDate: now, firstDate: now, lastDate: DateTime(now.year + 3));
-            if (picked == null) return;
-            final iso = "${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
-            setSheetState(() {
-              if (isStart) {
-                start = iso;
-              } else {
-                end = iso;
-              }
-            });
-          }
-
-          Widget dateField(String label, String? value, VoidCallback onTap) => FieldLabeled(
-                label: label,
-                child: InkWell(
-                  onTap: onTap,
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: AppColors.bg,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-                    ),
-                    child: Text(value ?? "Select date", style: TextStyle(fontSize: 14, color: value == null ? AppColors.mute : AppColors.txt)),
-                  ),
-                ),
-              );
-
-          return Padding(
-            padding: EdgeInsets.fromLTRB(18, 18, 18, MediaQuery.of(sheetCtx).viewInsets.bottom + 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Pause Access", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.txt)),
-                const SizedBox(height: 6),
-                const Text(
-                  "Your access is fully paused for this window; billing pauses too and resumes automatically when it ends.",
-                  style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
-                ),
-                const SizedBox(height: 16),
-                dateField("Start date", start, () => pickDate(true)),
-                const SizedBox(height: 10),
-                dateField("End date", end, () => pickDate(false)),
-                const SizedBox(height: 16),
-                BtnGold(
-                  full: true,
-                  onPressed: (start != null && end != null) ? () => Navigator.of(sheetCtx).pop(true) : null,
-                  child: const Text("Pause my access"),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-    if (confirmed == true && start != null && end != null) {
-      await _confirmPause(info, start!, end!);
-    }
-  }
-
-  Future<void> _confirmPause(ClientInfo info, String start, String end) async {
-    setState(() {
-      _pauseBusy = true;
-      _error = null;
-    });
-    try {
-      await SupabaseService.freezeMembership(info.id, start, end);
-      ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(membershipPaused: true, membershipPausedAt: start, membershipFreezeEndsAt: end));
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
-    } finally {
-      if (mounted) setState(() => _pauseBusy = false);
-    }
-  }
-
-  Future<void> _resumeAccess(ClientInfo info) async {
-    setState(() {
-      _pauseBusy = true;
-      _error = null;
-    });
-    try {
-      await SupabaseService.unfreezeMembership(info.id);
-      ref.read(clientInfoProvider.notifier).update(
-            (i) => i.copyWith(membershipPaused: false, clearMembershipPausedAt: true, clearMembershipFreezeEndsAt: true),
-          );
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
-    } finally {
-      if (mounted) setState(() => _pauseBusy = false);
     }
   }
 
@@ -518,35 +413,32 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             ),
             const SizedBox(height: 10),
             if (!cancelPending) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _cancelBusy || _pauseBusy ? null : () => setState(() => _browsing = true),
-                      style: OutlinedButton.styleFrom(backgroundColor: AppColors.gold.withValues(alpha: 0.12), side: const BorderSide(color: AppColors.goldDim), foregroundColor: AppColors.gold, padding: const EdgeInsets.symmetric(vertical: 10)),
-                      child: const Text("Change Access", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _cancelBusy || _pauseBusy
-                          ? null
-                          : () => info.membershipPaused ? _resumeAccess(info) : _openPauseSheet(info),
-                      style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.line), foregroundColor: AppColors.txt, padding: const EdgeInsets.symmetric(vertical: 10)),
-                      child: Text(
-                        _pauseBusy ? "Working…" : (info.membershipPaused ? "Resume Access" : "Pause Access"),
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: _cancelBusy || _pauseBusy ? null : _startCancel,
+                  onPressed: _cancelBusy ? null : () => setState(() => _browsing = true),
+                  style: OutlinedButton.styleFrom(backgroundColor: AppColors.gold.withValues(alpha: 0.12), side: const BorderSide(color: AppColors.goldDim), foregroundColor: AppColors.gold, padding: const EdgeInsets.symmetric(vertical: 10)),
+                  child: const Text("Change Access", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Pausing/freezing a membership is coach/owner-only — see
+              // freeze-membership/unfreeze-membership's own server-side
+              // role check. No self-service action here; just a pointer to
+              // who can actually do it, so a paused client isn't left
+              // wondering how to resume.
+              if (info.membershipPaused)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    "Your access is paused by your coach or ONE Fitness — ask them to resume it.",
+                    style: TextStyle(fontSize: 11, color: AppColors.mute),
+                  ),
+                ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _cancelBusy ? null : _startCancel,
                   style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.line), foregroundColor: const Color(0xFFC97F7F), padding: const EdgeInsets.symmetric(vertical: 5)),
                   child: Text(_cancelBusy ? "Working…" : "Cancel", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 ),

@@ -70,13 +70,23 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
     final isPast = widget.date.compareTo(isoToday()) < 0;
 
     if (_adding) {
-      return Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            BackBar(onBack: () => setState(() => _adding = false), title: "Add a client"),
+      // This whole sheet is a real showModalBottomSheet — a genuine
+      // Navigator route the shell's own back handling (LocalBackScope)
+      // can't see. Without this PopScope, hardware back / an OS edge-swipe
+      // while "Add a client" is open would dismiss the ENTIRE sheet
+      // instead of just backing out of this one sub-view.
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) setState(() => _adding = false);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              BackBar(onBack: () => setState(() => _adding = false), title: "Add a client"),
             const SizedBox(height: 10),
             ClientSearchPicker(
               roster: roster,
@@ -99,7 +109,8 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                 }
               },
             ),
-          ],
+            ],
+          ),
         ),
       );
     }
