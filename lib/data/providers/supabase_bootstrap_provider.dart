@@ -9,6 +9,7 @@ import "../models/client_info.dart";
 import "../models/client_record.dart";
 import "../models/coach_merit_badge.dart";
 import "../models/coach_pr_event.dart";
+import "../models/coupon.dart";
 import "../models/earned_badge.dart";
 import "../models/exercise_def.dart";
 import "../models/meal_def.dart";
@@ -115,6 +116,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final List<EarnedBadge> badges;
   final List<BlockedTime> blockedTime;
   final List<Product> products;
+  final List<Coupon> coupons;
   final List<WaiverDoc> waivers;
   final List<SavedProgram> programsLibrary;
   final List<MealDef> customMeals;
@@ -143,6 +145,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     final badgesF = SupabaseService.loadMeritBadgesAll();
     final blockedTimeF = SupabaseService.loadBlockedTime();
     final productsF = SupabaseService.loadProducts();
+    final couponsF = SupabaseService.loadCoupons();
     final waiversF = SupabaseService.loadWaiverDocs();
     final programsLibraryF = SupabaseService.loadProgramsLibrary();
     final customMealsF = SupabaseService.loadCustomMeals();
@@ -164,6 +167,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     badges = await badgesF;
     blockedTime = await blockedTimeF;
     products = await productsF;
+    coupons = await couponsF;
     waivers = await waiversF;
     programsLibrary = await programsLibraryF;
     customMeals = await customMealsF;
@@ -196,6 +200,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   ref.read(earnedBadgesProvider.notifier).setAll(badges);
   ref.read(blockedTimesProvider.notifier).setAll(blockedTime);
   ref.read(productsProvider.notifier).setAll(products);
+  ref.read(couponsProvider.notifier).setAll(coupons);
   // Real, even if empty — but an empty real waiver list would silently drop
   // the one built-in default (used at client signup) that every mock-data
   // session had; keep that default until a gym actually defines their own.

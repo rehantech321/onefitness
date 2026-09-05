@@ -19,6 +19,7 @@ const kDashboardTourSteps = [
   TourStep("dash-nav-plans", "Plans", "Your workout program, laid out day by day."),
   TourStep("dash-nav-booking", "Booking", "Book, reschedule, or cancel your sessions here."),
   TourStep("dash-nav-chat", "Chat", "Message your coach directly, any time."),
+  TourStep("dash-nav-memberships", "Membership Hub", "Your plan, sessions remaining, and upgrade options."),
 ];
 
 /// Mirrors tourSteps.js `DRAWER_TOUR_STEPS` — shown once, the first time a
@@ -32,7 +33,6 @@ const kDrawerTourSteps = [
   TourStep("drawer-forms", "Assessments", "Fill out or review your intake and assessment forms."),
   TourStep("drawer-challenges", "Challenges", "Join gym-wide challenges and see the leaderboard."),
   TourStep("drawer-squad", "My Squad", "See your training squad and their progress."),
-  TourStep("drawer-memberships", "Membership Hub", "Your plan, sessions remaining, and upgrade options."),
   TourStep("drawer-signatures", "Signatures", "View your signed agreements and waivers."),
   TourStep("drawer-settings", "Profile Settings", "Update your personal info and photo."),
 ];

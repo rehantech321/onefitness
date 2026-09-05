@@ -9,6 +9,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/trainer_providers.dart";
 import "../dashboard/sessions_remaining_badge.dart";
 
 /// Mirrors MembershipsHub.jsx — current plan status (reusing the same badge
@@ -40,8 +41,20 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
   String? _timingChoicePlanId;
   String? _prorateChoicePlanId;
   bool _cancelBusy = false;
+  final _couponController = TextEditingController();
+
+  @override
+  void dispose() {
+    _couponController.dispose();
+    super.dispose();
+  }
 
   Future<void> _buy(String clientId, MembershipPlan plan) async {
+    final couponCode = _couponController.text.trim();
+    if (couponCode.isNotEmpty && ref.read(couponsProvider.notifier).byCode(couponCode) == null) {
+      setState(() => _error = "That coupon code isn't valid or is no longer active.");
+      return;
+    }
     setState(() {
       _busyPlanId = plan.id;
       _error = null;
@@ -62,7 +75,11 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
         // plan is only ever granted by stripe-webhook, never by this
         // "return" landing itself.
         final returnUrl = kIsWeb ? Uri.base.origin + Uri.base.path : "onefitness://checkout-return";
-        final url = await SupabaseService.createCheckoutSession(planId: plan.id, returnUrl: returnUrl);
+        final url = await SupabaseService.createCheckoutSession(
+          planId: plan.id,
+          returnUrl: returnUrl,
+          couponCode: couponCode.isEmpty ? null : couponCode,
+        );
         // "_self" — a full same-tab redirect to Stripe's hosted page, same
         // as the web app's own `window.location.href = url` (a new-tab
         // popup would leave the "return" landing in a tab the client isn't
@@ -475,6 +492,31 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 ],
               ),
               const SizedBox(height: 12),
+              FieldLabeled(
+                label: "Coupon code (optional)",
+                child: AppField(
+                  controller: _couponController,
+                  placeholder: "Enter a code",
+                  onChanged: (_) => setState(() => _error = null),
+                ),
+              ),
+              Builder(builder: (context) {
+                final entered = _couponController.text.trim();
+                if (entered.isEmpty) return const SizedBox(height: 12);
+                final match = ref.watch(couponsProvider.notifier).byCode(entered);
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6, bottom: 12),
+                  child: Text(
+                    match != null ? "✓ ${match.valueLabel} will be applied at checkout." : "No active coupon matches that code.",
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: match != null ? AppColors.success : AppColors.mute),
+                  ),
+                );
+              }),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text("⚠ $_error", style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
               if (filteredBuyable.isEmpty)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),

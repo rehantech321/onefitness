@@ -13,6 +13,7 @@ import "../models/coach_pr_event.dart";
 import "../models/exercise_def.dart";
 import "../models/meal_def.dart";
 import "../models/nutrition_library_entry.dart";
+import "../models/coupon.dart";
 import "../models/product.dart";
 import "../models/saved_program.dart";
 import "../models/waitlist_entry.dart";
@@ -234,6 +235,33 @@ class ProductsNotifier extends Notifier<List<Product>> {
 }
 
 final productsProvider = NotifierProvider<ProductsNotifier, List<Product>>(ProductsNotifier.new);
+
+/// Owner-managed coupon-code catalog — reachable from Customize Platform's
+/// "Coupons" tab, and read by any purchase surface (Membership Hub
+/// self-checkout, the coach/owner Purchase for Client flow).
+class CouponsNotifier extends Notifier<List<Coupon>> {
+  @override
+  List<Coupon> build() => [];
+
+  void upsert(Coupon c) {
+    final exists = state.any((x) => x.id == c.id);
+    state = exists ? state.map((x) => x.id == c.id ? c : x).toList() : [...state, c];
+  }
+
+  void remove(String id) => state = state.where((c) => c.id != id).toList();
+
+  void setAll(List<Coupon> next) => state = next;
+
+  Coupon? byCode(String code) {
+    final needle = code.trim().toUpperCase();
+    for (final c in state) {
+      if (!c.archived && c.code.toUpperCase() == needle) return c;
+    }
+    return null;
+  }
+}
+
+final couponsProvider = NotifierProvider<CouponsNotifier, List<Coupon>>(CouponsNotifier.new);
 
 /// Shared category catalog (package_categories table) — used by both
 /// Products and membership-package category pickers.

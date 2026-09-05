@@ -444,13 +444,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(child: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
-                    const SizedBox(width: 6),
-                    const Tag(text: "AI Draft", gold: true),
-                  ],
-                ),
+                Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 const SizedBox(height: 6),
                 Text("${p.programDays.length} day split${p.createdAt != null ? " · generated ${p.createdAt}" : ""}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
                 const SizedBox(height: 8),
@@ -497,13 +491,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(child: Text(hasAnyAiNutrition ? "Regenerate Nutrition Targets from Intake" : "Draft Nutrition Targets with AI", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
-                    const SizedBox(width: 6),
-                    const Tag(text: "AI", gold: true),
-                  ],
-                ),
+                Text(hasAnyAiNutrition ? "Regenerate Nutrition Targets from Intake" : "Draft Nutrition Targets with AI", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 const SizedBox(height: 6),
                 Text(
                   hasAnyAiNutrition

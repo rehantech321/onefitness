@@ -7,6 +7,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/waiver_doc.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "manage_coupons_screen.dart";
 
 /// Dropdown option key/label pairs — mirrors SubTabs.jsx's mobile `<select>`
 /// (this app is mobile-only, so that's the correct web analog to port, not
@@ -18,6 +19,7 @@ const _tabs = [
   ("clients", "Clients"),
   ("payments", "Payments"),
   ("workouts", "Workouts & General"),
+  ("coupons", "Coupons"),
 ];
 
 String _sectionTitle(String tab) => switch (tab) {
@@ -140,27 +142,40 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
     final s = _draft;
     final anyFeeEnabled = s.cardFee.enabled || (s.achOffered && s.achFee.enabled);
 
+    final tabSelector = Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      child: AppCard(
+        margin: EdgeInsets.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        child: DropdownButton<String>(
+          value: _tab,
+          isExpanded: true,
+          underline: const SizedBox(),
+          dropdownColor: AppColors.card,
+          style: const TextStyle(color: AppColors.txt, fontSize: 14, fontWeight: FontWeight.w700),
+          items: _tabs.map((t) => DropdownMenuItem(value: t.$1, child: Text(t.$2))).toList(),
+          onChanged: (v) {
+            if (v != null) _switchTab(v);
+          },
+        ),
+      ),
+    );
+
+    // Coupons manage their own catalog with immediate per-row saves — it
+    // doesn't fit this screen's single-draft/one-Save-button flow for the
+    // other 5 tabs, so it gets its own independent scroll area instead of
+    // nesting inside the shared SingleChildScrollView below.
+    if (_tab == "coupons") {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [tabSelector, const Expanded(child: ManageCouponsScreen())],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-          child: AppCard(
-            margin: EdgeInsets.zero,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-            child: DropdownButton<String>(
-              value: _tab,
-              isExpanded: true,
-              underline: const SizedBox(),
-              dropdownColor: AppColors.card,
-              style: const TextStyle(color: AppColors.txt, fontSize: 14, fontWeight: FontWeight.w700),
-              items: _tabs.map((t) => DropdownMenuItem(value: t.$1, child: Text(t.$2))).toList(),
-              onChanged: (v) {
-                if (v != null) _switchTab(v);
-              },
-            ),
-          ),
-        ),
+        tabSelector,
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(18),

@@ -44,6 +44,7 @@ const _bottomItems = [
   _NavItem("plans", "Plans", LucideIcons.clipboardList),
   _NavItem("booking", "Booking", LucideIcons.calendar),
   _NavItem("chat", "Chat", LucideIcons.messageSquare),
+  _NavItem("memberships", "Membership", LucideIcons.creditCard),
 ];
 
 const _drawerItems = [
@@ -57,7 +58,6 @@ const _drawerItems = [
   _NavItem("badges", "Merit Badges", LucideIcons.award),
   _NavItem("challenges", "Challenges", LucideIcons.trophy),
   _NavItem("squad", "My Squad", LucideIcons.users2),
-  _NavItem("memberships", "Membership Hub", LucideIcons.creditCard),
   _NavItem("signatures", "Signatures", LucideIcons.fileSignature),
   _NavItem("settings", "Profile Settings", LucideIcons.settings2),
 ];
@@ -96,7 +96,7 @@ class ClientShell extends ConsumerStatefulWidget {
 
 // Bottom-tab-bar destinations — back/swipe from any of these jumps
 // straight to Dashboard instead of walking tab-visit history.
-const _tabRootKeys = {"dashboard", "plans", "booking", "chat"};
+const _tabRootKeys = {"dashboard", "plans", "booking", "chat", "memberships"};
 
 class _ClientShellState extends ConsumerState<ClientShell> {
   OverlayEntry? _dashboardTourEntry;

@@ -18,6 +18,7 @@ import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "billing_anchor_section.dart";
+import "purchase_for_client_section.dart";
 
 /// Mirrors Profile.jsx (viewed from the coach side, via TrainerView). Trimmed
 /// vs. the web: Edit Profile is a simplified name/email/phone/city form here
@@ -44,6 +45,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   bool _editing = false;
   bool _charging = false;
   bool _billingAnchor = false;
+  bool _purchasing = false;
   bool _freezing = false;
   bool _freezeBusy = false;
   late final _freezeStart = TextEditingController(text: isoToday());
@@ -125,6 +127,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           info: info,
           onBack: () => setState(() => _billingAnchor = false),
           onChanged: (day) => update((c) => c.copyWith(billingAnchorDay: day)),
+        ),
+      );
+    }
+
+    if (_purchasing) {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _purchasing = false),
+        child: PurchaseForClientSection(
+          info: info,
+          onBack: () => setState(() => _purchasing = false),
+          onPlanAssigned: (planId) => update((c) => c.copyWith(membershipPlanId: planId)),
         ),
       );
     }
@@ -543,6 +557,20 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          BtnGold(
+            full: true,
+            onPressed: () => setState(() => _purchasing = true),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.shoppingCart, size: 14),
+                SizedBox(width: 6),
+                Text("Purchase for client"),
+              ],
+            ),
           ),
           const SizedBox(height: 18),
           Container(height: 1, color: AppColors.line),

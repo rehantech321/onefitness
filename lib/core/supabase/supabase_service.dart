@@ -26,6 +26,7 @@ import "../../data/models/measurement.dart";
 import "../../data/models/membership_plan.dart";
 import "../../data/models/nutrition_plan.dart";
 import "../../data/models/points_ledger_entry.dart";
+import "../../data/models/coupon.dart";
 import "../../data/models/product.dart";
 import "../../data/models/program_day.dart";
 import "../../data/models/progress_photo.dart";
@@ -2105,11 +2106,18 @@ class SupabaseService {
   static Future<String> createCheckoutSession({
     required String planId,
     String? returnUrl,
+    String? couponCode,
+    String? targetClientId,
   }) async {
     final data = await _invokeFunction("create-checkout-session", {
       "planId": planId,
       if (returnUrl != null) "returnUrl": returnUrl,
       "paymentMethod": "card",
+      if (couponCode != null && couponCode.trim().isNotEmpty) "couponCode": couponCode.trim(),
+      // Coach/owner "Purchase for Client" flow — server re-checks the
+      // caller's role before honoring this; see create-checkout-session's
+      // own targetClientId branch.
+      if (targetClientId != null) "targetClientId": targetClientId,
     });
     final url = data["url"] as String?;
     if (url == null) throw Exception("Couldn't start checkout.");
@@ -2250,6 +2258,39 @@ class SupabaseService {
     if (auditRows.isNotEmpty) {
       await client.from("platform_settings_audit").insert(auditRows);
     }
+  }
+
+  static Map<String, dynamic> _couponToJson(Coupon c) => {
+    "id": c.id,
+    "code": c.code,
+    "type": c.type,
+    "percentOff": c.percentOff,
+    "flatOffCents": c.flatOffCents,
+    "archived": c.archived,
+  };
+
+  static Coupon _couponFromJson(Map<String, dynamic> j) => Coupon(
+    id: j["id"] as String,
+    code: j["code"] as String? ?? "",
+    type: j["type"] as String? ?? "percent",
+    percentOff: _asInt(j["percentOff"]) ?? 0,
+    flatOffCents: _asInt(j["flatOffCents"]) ?? 0,
+    archived: j["archived"] as bool? ?? false,
+  );
+
+  static Future<List<Coupon>> loadCoupons() async {
+    final rows = await client.from("coupons").select();
+    return _safeMap(
+      rows,
+      (r) => _couponFromJson((r["data"] as Map).cast<String, dynamic>()),
+    );
+  }
+
+  static Future<void> upsertCoupon(Coupon c) =>
+      _mergeJsonbUpsert("coupons", c.id, _couponToJson(c));
+
+  static Future<void> deleteCoupon(String id) async {
+    await client.from("coupons").delete().eq("id", id);
   }
 
   static Map<String, dynamic> _productToJson(Product p) => {
