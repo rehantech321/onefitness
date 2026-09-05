@@ -193,7 +193,38 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
     _notifyClientPlanAssigned("workout");
   }
 
-  Future<void> _discardWorkoutDraft(String id) => _writeSavedPrograms(_record.savedPrograms.where((p) => p.id != id).toList());
+  Future<void> _discardWorkoutDraft(SavedProgram draft) async {
+    await _writeSavedPrograms(_record.savedPrograms.where((p) => p.id != draft.id).toList());
+    await _clearLiveSplitIfItMirrors(draft);
+  }
+
+  /// "Review & Edit" copies a program's days verbatim into the client's live
+  /// split ([_editWorkout] below), which is what the Training sub-tab shows
+  /// and the client's own plan reads. Deleting the program therefore has to
+  /// clear that copy too — otherwise the Training tab (and the client) keep
+  /// showing a program that no longer exists anywhere else.
+  ///
+  /// Matched on the exact set of day ids: ids are unique per program (the
+  /// generator and the builder both mint fresh ones), so this reliably
+  /// catches a loaded copy — including one whose exercises the coach has
+  /// since edited, since editing exercises never changes a day's id — while
+  /// never touching a split the coach built independently.
+  Future<void> _clearLiveSplitIfItMirrors(SavedProgram p) async {
+    if (!_liveSplitMirrors(p)) return;
+    try {
+      await SupabaseService.updateClientProgramDays(widget.clientId, const []);
+      ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId, (r) => r.copyWith(programDays: const []));
+    } catch (_) {
+      if (mounted) setState(() => _error = "Deleted, but the working copy in the Training tab couldn't be cleared — check your connection and try again.");
+    }
+  }
+
+  bool _liveSplitMirrors(SavedProgram p) {
+    final liveIds = _record.programDays.map((d) => d.id).toSet();
+    if (liveIds.isEmpty) return false;
+    final programIds = p.programDays.map((d) => d.id).toSet();
+    return liveIds.length == programIds.length && liveIds.containsAll(programIds);
+  }
 
   Future<void> _editWorkout(SavedProgram p) async {
     setState(() => _busy = true);
@@ -286,6 +317,45 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
   }
 
   Future<void> _discardNutritionDraft(String id) => _writeSavedNutritionPrograms(_record.savedNutritionPrograms.where((p) => p.id != id).toList());
+
+  /// The nutrition counterpart of [_clearLiveSplitIfItMirrors]. Approving a
+  /// draft copies its targets into the client's live nutrition plan (see
+  /// [_approveNutritionDraft]) — what the Nutrition sub-tab and the client's
+  /// own plan read — so deleting the program has to clear those copied
+  /// values too. Only the fields the program actually owns are reset; meals,
+  /// grocery items and attachments are the coach's separate work and are
+  /// left untouched.
+  Future<void> _clearLiveNutritionIfItMirrors(NutritionProgramEntry p) async {
+    final live = _record.nutrition;
+    if (live == null) return;
+    // An entry with nothing set would "match" any empty plan — only act when
+    // the program genuinely carries targets.
+    final hasTargets = p.trainingTargets.asMap().values.any((v) => v != null && v.isNotEmpty) ||
+        p.restTargets.asMap().values.any((v) => v != null && v.isNotEmpty);
+    if (!hasTargets) return;
+    if (!_sameTargets(live.trainingTargets, p.trainingTargets) || !_sameTargets(live.restTargets, p.restTargets)) return;
+    final next = NutritionPlan(
+      breakfast: live.breakfast,
+      lunch: live.lunch,
+      dinner: live.dinner,
+      snacks: live.snacks,
+      smoothies: live.smoothies,
+      extraGroceryItems: live.extraGroceryItems,
+      attachments: live.attachments,
+    );
+    try {
+      await SupabaseService.updateClientNutrition(widget.clientId, next);
+      ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId, (r) => r.copyWith(nutrition: next));
+    } catch (_) {
+      if (mounted) setState(() => _error = "Deleted, but this client's live targets couldn't be cleared — check your connection and try again.");
+    }
+  }
+
+  bool _sameTargets(MacroTargets a, MacroTargets b) {
+    final am = a.asMap();
+    final bm = b.asMap();
+    return am.keys.every((k) => am[k] == bm[k]);
+  }
 
   Future<void> _writeSavedNutritionPrograms(List<NutritionProgramEntry> next) async {
     setState(() {
@@ -471,7 +541,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                     ],
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: _busy ? null : () => _discardWorkoutDraft(p.id),
+                        onPressed: _busy ? null : () => _discardWorkoutDraft(p),
                         style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF6B3B3B)), foregroundColor: const Color(0xFFC97F7F)),
                         child: const Text("Discard"),
                       ),
@@ -596,6 +666,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                   onDelete: () async {
                     if (!await _confirm("Delete \"${p.name}\"? This can't be undone.", confirmLabel: "Delete")) return;
                     await _writeSavedPrograms(_record.savedPrograms.where((x) => x.id != p.id).toList());
+                    await _clearLiveSplitIfItMirrors(p);
                   },
                 ),
               )),
@@ -637,6 +708,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                   onDelete: () async {
                     if (!await _confirm("Delete \"${p.name}\"? This can't be undone.", confirmLabel: "Delete")) return;
                     await _writeSavedNutritionPrograms(_record.savedNutritionPrograms.where((x) => x.id != p.id).toList());
+                    await _clearLiveNutritionIfItMirrors(p);
                   },
                 ),
               )),

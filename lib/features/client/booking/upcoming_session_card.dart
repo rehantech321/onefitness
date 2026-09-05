@@ -54,92 +54,93 @@ class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
           border: Border.all(color: charged ? const Color(0xFFA8632F) : AppColors.line),
           borderRadius: BorderRadius.circular(10),
         ),
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _expanded = !_expanded),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(shortDate, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.txt)),
-                    const SizedBox(height: 2),
-                    Text(
-                      fmtSlot(b.slot),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold),
+            InkWell(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(shortDate, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.txt)),
+                  const SizedBox(height: 1),
+                  Text(
+                    fmtSlot(b.slot),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.gold),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    trainer?.name ?? "Removed",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10.5, color: AppColors.mute),
+                  ),
+                  if (charged)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 2),
+                      child: Text("⚠ Fee window", maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 9, color: Color(0xFFD68A4F), fontWeight: FontWeight.w700)),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      trainer?.name ?? "Removed",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11, color: AppColors.mute),
-                    ),
-                    if (charged)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 3),
-                        child: Text("⚠ Fee window", maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 9.5, color: Color(0xFFD68A4F), fontWeight: FontWeight.w700)),
-                      ),
-                    if (_expanded)
-                      Padding(
+                  if (_expanded)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Container(
                         padding: const EdgeInsets.only(top: 6),
-                        child: Container(
-                          padding: const EdgeInsets.only(top: 6),
-                          decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(disciplineLabel(b.discipline), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, color: AppColors.mute)),
-                              if (b.locationName != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 5),
-                                  child: Text(b.locationName!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, color: AppColors.gold, fontWeight: FontWeight.w600)),
+                        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(disciplineLabel(b.discipline), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, color: AppColors.mute)),
+                            if (b.locationName != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 5),
+                                child: Text(b.locationName!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, color: AppColors.gold, fontWeight: FontWeight.w600)),
+                              ),
+                            if (charged)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 5),
+                                child: Text(
+                                  "Within ${settings.lateCancellationHours} hrs — late window.${!reschedulable ? " Rescheduling is blocked this close to your session." : ""}",
+                                  style: const TextStyle(fontSize: 10, color: AppColors.mute, height: 1.35),
                                 ),
-                              if (charged)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 5),
-                                  child: Text(
-                                    "Within ${settings.lateCancellationHours} hrs — late window.${!reschedulable ? " Rescheduling is blocked this close to your session." : ""}",
-                                    style: const TextStyle(fontSize: 10, color: AppColors.mute, height: 1.35),
-                                  ),
-                                ),
-                            ],
-                          ),
+                              ),
+                          ],
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Column(
+              padding: const EdgeInsets.only(top: 4),
+              // Side by side (not stacked) — halves the vertical space the
+              // action row needs vs. the old Reschedule-then-Cancel stack,
+              // which is most of what made room for shrinking the card.
+              child: Row(
                 children: [
-                  if (reschedulable)
-                    SizedBox(
-                      width: double.infinity,
+                  if (reschedulable) ...[
+                    Expanded(
                       child: OutlinedButton(
                         onPressed: () => widget.onReschedule(b),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.gold,
                           backgroundColor: AppColors.gold.withValues(alpha: 0.12),
                           side: const BorderSide(color: AppColors.goldDim),
-                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Text("Reschedule", maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                        child: const Text("Reschedule", maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700)),
                       ),
                     ),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: double.infinity,
+                    const SizedBox(width: 4),
+                  ],
+                  Expanded(
                     // Plain "Cancel" only outside the fee window — inside it,
                     // the button itself says "Late Cancel" so the fee is
                     // obvious before they even tap it, not just buried in
@@ -151,18 +152,18 @@ class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
                               foregroundColor: const Color(0xFFD68A4F),
                               backgroundColor: const Color(0x1AC9784A),
                               side: const BorderSide(color: Color(0xFFA8632F)),
-                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              padding: const EdgeInsets.symmetric(vertical: 4),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             )
                           : OutlinedButton.styleFrom(
                               foregroundColor: AppColors.errorText,
                               side: const BorderSide(color: AppColors.line),
-                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              padding: const EdgeInsets.symmetric(vertical: 4),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
-                      child: Text(charged ? "Late Cancel" : "Cancel", maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                      child: Text(charged ? "Late Cancel" : "Cancel", maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ],

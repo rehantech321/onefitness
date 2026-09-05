@@ -375,7 +375,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                 maxCrossAxisExtent: 150,
-                mainAxisExtent: 176,
+                mainAxisExtent: 108,
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
