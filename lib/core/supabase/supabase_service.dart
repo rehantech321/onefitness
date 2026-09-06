@@ -2071,6 +2071,18 @@ class SupabaseService {
     "text": text,
   });
 
+  /// Enrolls in a FREE plan (paid ones go through createCheckoutSession and
+  /// are granted by stripe-webhook once payment confirms). Server-side
+  /// because `clients.plans` is a grant — it decides which intake forms are
+  /// unlocked — so prevent_membership_self_grant reverts any client-side
+  /// write to it. [clientId] enrolls someone else and is staff-only,
+  /// enforced by the function.
+  static Future<void> enrollFreePlan(String planId, {String? clientId}) =>
+      _invokeFunction("enroll-free-plan", {
+        "planId": planId,
+        if (clientId != null) "clientId": clientId,
+      });
+
   /// The caller's private calendar-feed URL, for subscribing to their own
   /// schedule in Google Calendar (or Apple Calendar / Outlook — it's a plain
   /// iCalendar feed, not a Google-specific integration). Minted on first
@@ -3417,7 +3429,14 @@ class SupabaseService {
     const kindByName = {
       "membership": PlanKind.membership,
       "package": PlanKind.package,
+      // "program" stays the personalized *training* program, so every plan
+      // created before nutrition programs existed keeps its meaning.
       "program": PlanKind.program,
+      // Written as `kind.name` (see _membershipPlanToJson); the snake_case
+      // spelling is accepted too in case a row is ever authored by hand or
+      // by the web app rather than through this client.
+      "nutritionProgram": PlanKind.nutritionProgram,
+      "nutrition_program": PlanKind.nutritionProgram,
     };
     return MembershipPlan(
       id: j["id"] as String,

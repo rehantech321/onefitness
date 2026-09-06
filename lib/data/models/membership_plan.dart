@@ -1,6 +1,26 @@
 /// Mirrors the shape produced by src/data/membershipPlans.js — trimmed to the
 /// fields the client-facing screens actually read.
-enum PlanKind { membership, package, program }
+///
+/// [program] is the personalized *training* program; [nutritionProgram] is
+/// the nutrition-only one. They're separate kinds rather than one "program"
+/// bucket because they unlock different intake forms — see
+/// intake_entitlements.dart — and a client can hold either, both, or neither.
+enum PlanKind { membership, package, program, nutritionProgram }
+
+/// What the client sees for each kind. "Program" alone was ambiguous once a
+/// second program type existed.
+String planKindLabel(PlanKind k) => switch (k) {
+  PlanKind.membership => "Membership",
+  PlanKind.package => "Package",
+  PlanKind.program => "Personalized Program",
+  PlanKind.nutritionProgram => "Nutrition Program",
+};
+
+/// Neither program kind is a membership or a session package — they grant
+/// programming, not gym access or a session balance. Grouped here so the
+/// several places that need "is this a program?" don't each re-list the
+/// kinds and then get missed when another is added.
+bool isProgramKind(PlanKind k) => k == PlanKind.program || k == PlanKind.nutritionProgram;
 
 class MembershipPlan {
   const MembershipPlan({
@@ -86,7 +106,14 @@ class MembershipPlan {
   final int? expirationDays;
 }
 
-/// Mirrors membershipPlans.js `planPaymentType` — a plan with no explicit
-/// paymentType defaults to "one-time" for a package, "subscription"
-/// otherwise (memberships, and programs which are never sold directly).
-String effectivePaymentType(MembershipPlan p) => p.paymentType ?? (p.kind == PlanKind.package ? "one-time" : "subscription");
+/// Mirrors membershipPlans.js `planPaymentType`, extended for programs.
+///
+/// Programs are always one-time, even if a plan row says otherwise: the
+/// subscription slot on a client (`stripe_subscription_id`) belongs to their
+/// membership, and cancel/change/freeze all operate on it. A recurring
+/// program would either have to steal that slot — taking the membership's
+/// billing controls with it — or bill forever with nothing in the app able to
+/// stop it. Kept in sync with create-checkout-session, which enforces the
+/// same rule server-side where the real charge is made.
+String effectivePaymentType(MembershipPlan p) =>
+    isProgramKind(p.kind) ? "one-time" : (p.paymentType ?? (p.kind == PlanKind.package ? "one-time" : "subscription"));

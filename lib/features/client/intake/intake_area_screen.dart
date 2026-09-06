@@ -3,8 +3,11 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/intake_entitlements.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/intake_forms.dart";
+import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/trainer_providers.dart";
 import "../../../data/models/client_record.dart";
 import "../../../data/models/intake_schema.dart";
 import "../shell/client_shell_state.dart";
@@ -14,6 +17,15 @@ const _groupIcons = {
   "training": LucideIcons.clipboardCheck,
   "nutrition": LucideIcons.apple,
 };
+/// Why a given form is locked, in terms of what would unlock it — more use to
+/// a client than a bare "locked", since the answer differs per form.
+String _unlockHint(String assessmentKey) => switch (assessmentKey) {
+  "personalTraining" => "Unlocks with a membership, package, or personalized program.",
+  "nutritional" => "Unlocks with a membership, package, personalized program, or nutrition program.",
+  "physical" => "Included with a membership or package.",
+  _ => "Unlocks with a purchase.",
+};
+
 const _assessmentIcons = {
   "personalTraining": LucideIcons.clipboardList,
   "physical": LucideIcons.dumbbell,
@@ -115,13 +127,61 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
       );
     }
 
+    // What this client's purchases have unlocked. Read from the roster on the
+    // coach side and from the signed-in client's own record on theirs, so both
+    // views agree about the same person.
+    final isClientView = widget.who == "client";
+    final info = isClientView
+        ? ref.watch(clientInfoProvider)
+        : ref.watch(trainerRosterProvider).where((c) => c.id == widget.profileId).firstOrNull;
+    final entitlements = info == null
+        ? IntakeEntitlements.none
+        : computeIntakeEntitlements(info: info, allPlans: ref.watch(membershipPlansProvider));
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: kIntakeForms.map((group) {
+        children: [
+          // Nothing bought yet — the forms below are all locked, so say why
+          // once at the top and hand them the way out, rather than leaving
+          // them to tap a locked row to find out.
+          if (isClientView && !entitlements.hasAnyPurchase)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: AppCard(
+                borderColor: AppColors.goldDim,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Choose a plan to get started",
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      "Your intake forms unlock once you have a membership, package or program. What you buy decides which "
+                      "forms you fill in — a membership or package opens all of them, a personalized program opens training "
+                      "and nutrition, and a nutrition program opens nutrition.",
+                      style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.45),
+                    ),
+                    const SizedBox(height: 12),
+                    BtnGold(
+                      full: true,
+                      onPressed: () => ref.read(clientScreenProvider.notifier).go("memberships"),
+                      child: const Text("Go to Membership Hub"),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ...kIntakeForms.map((group) {
           final visible = group.assessments
               .where((a) => a.clientCanFill || a.physical)
+              // The coach-run physical assessment comes with a membership or
+              // package; with only a program (or nothing) there's no session
+              // to conduct, so it isn't part of this client's intake at all.
+              .where((a) => !a.physical || entitlements.physical)
               .toList();
           if (visible.isEmpty) return const SizedBox.shrink();
           return Padding(
@@ -150,16 +210,24 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                 ...visible.map((a) {
                   final rec = client.intake[a.key];
                   final done = rec?.completed ?? false;
+                  // Locked forms stay listed — seeing what's on offer is the
+                  // point — but a client can't open one until a purchase
+                  // entitles them. A coach is never blocked: they may need to
+                  // record answers for a client mid-signup, so on their side
+                  // the lock is shown as information only.
+                  final locked = !entitlements.allows(a.key);
+                  final blocked = locked && isClientView;
                   return AppCard(
                     padding: EdgeInsets.zero,
-                    onTap: () => setState(() => _open = a),
+                    onTap: blocked ? null : () => setState(() => _open = a),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Row(
                         children: [
                           Icon(
-                            _assessmentIcons[a.key] ??
-                                LucideIcons.clipboardList,
+                            locked
+                                ? LucideIcons.lock
+                                : (_assessmentIcons[a.key] ?? LucideIcons.clipboardList),
                             size: 16,
                             color: AppColors.mute,
                           ),
@@ -196,6 +264,16 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                                       ),
                                     ),
                                   ),
+                                if (locked)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Text(
+                                      isClientView
+                                          ? _unlockHint(a.key)
+                                          : "Not unlocked by this client's purchases yet.",
+                                      style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.35),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -216,11 +294,11 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                               borderRadius: BorderRadius.circular(5),
                             ),
                             child: Text(
-                              done ? "COMPLETE" : "OPEN",
+                              locked ? "LOCKED" : (done ? "COMPLETE" : "OPEN"),
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                color: done ? AppColors.gold : AppColors.mute,
+                                color: done && !locked ? AppColors.gold : AppColors.mute,
                               ),
                             ),
                           ),
@@ -238,7 +316,8 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
               ],
             ),
           );
-        }).toList(),
+        }),
+        ],
       ),
     );
   }

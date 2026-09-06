@@ -39,7 +39,12 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
 
   @override
   Widget build(BuildContext context) {
-    final plans = ref.watch(membershipPlansProvider).where((p) => !p.archived && p.kind != PlanKind.program).toList();
+    // Programs included: a coach selling a client a personalized or nutrition
+    // program is exactly the case this screen exists for, and unlike a
+    // membership swap it adds to what they already hold rather than replacing
+    // it (see enroll-free-plan / stripe-webhook, which keep the two apart).
+    final plans = ref.watch(membershipPlansProvider).where((p) => !p.archived).toList()
+      ..sort((a, b) => a.kind.index.compareTo(b.kind.index));
     final coupons = ref.watch(couponsProvider).where((c) => !c.archived).toList();
     final plan = plans.where((p) => p.id == _planId).firstOrNull;
     final coupon = coupons.where((c) => c.id == _couponId).firstOrNull;
@@ -188,8 +193,10 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
     });
     try {
       if (plan.priceCents <= 0) {
-        await SupabaseService.updateClientRow(widget.info.id, membershipPlanId: plan.id);
-        widget.onPlanAssigned(plan.id);
+        // Server-side: `plans` is a grant (it unlocks intake forms), and this
+        // also keeps a program from overwriting the client's membership.
+        await SupabaseService.enrollFreePlan(plan.id, clientId: widget.info.id);
+        if (!isProgramKind(plan.kind)) widget.onPlanAssigned(plan.id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${plan.name} assigned to ${widget.info.name}.")));
           widget.onBack();

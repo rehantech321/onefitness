@@ -326,11 +326,7 @@ class _ManageMembershipsScreenState
   }
 }
 
-String _kindLabel(PlanKind k) => switch (k) {
-  PlanKind.membership => "Membership",
-  PlanKind.package => "Package",
-  PlanKind.program => "Program",
-};
+String _kindLabel(PlanKind k) => planKindLabel(k);
 
 class _PlanEditForm extends ConsumerStatefulWidget {
   const _PlanEditForm({

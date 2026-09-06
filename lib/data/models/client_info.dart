@@ -144,6 +144,7 @@ class ClientInfo {
     bool? coachCodeAlertSeen,
     bool? smsOptIn,
     int? billingAnchorDay,
+    List<ClientPlanEnrollment>? plans,
   }) =>
       ClientInfo(
         id: id,
@@ -154,7 +155,7 @@ class ClientInfo {
         city: city ?? this.city,
         birthday: birthday ?? this.birthday,
         membershipPlanId: clearMembershipPlanId ? null : (membershipPlanId ?? this.membershipPlanId),
-        plans: plans,
+        plans: plans ?? this.plans,
         membershipPaused: membershipPaused ?? this.membershipPaused,
         membershipPausedAt: clearMembershipPausedAt ? null : (membershipPausedAt ?? this.membershipPausedAt),
         membershipFreezeEndsAt: clearMembershipFreezeEndsAt ? null : (membershipFreezeEndsAt ?? this.membershipFreezeEndsAt),

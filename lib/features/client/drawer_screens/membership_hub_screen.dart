@@ -5,8 +5,10 @@ import "package:url_launcher/url_launcher.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
+import "../../../data/models/client_plan.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
@@ -62,10 +64,25 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     });
     try {
       if (plan.priceCents <= 0) {
-        // Free plan — no Stripe involved, matches MembershipsHub.jsx's own
-        // direct-assign path for a $0 plan.
-        await SupabaseService.updateClientRow(clientId, membershipPlanId: plan.id);
-        ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(membershipPlanId: plan.id));
+        // Free plan — no Stripe involved. Goes through the server rather
+        // than writing the row directly: `plans` is a grant (it unlocks
+        // intake forms), so client-side writes to it are reverted by
+        // prevent_membership_self_grant.
+        await SupabaseService.enrollFreePlan(plan.id, clientId: clientId);
+        final enrollment = ClientPlanEnrollment(
+          planId: plan.id,
+          status: "active",
+          startDate: isoToday(),
+          termMonths: plan.termMonths,
+        );
+        ref.read(clientInfoProvider.notifier).update(
+              (i) => i.copyWith(
+                // A program sits alongside the membership rather than
+                // replacing it — mirrors what the server just did.
+                membershipPlanId: isProgramKind(plan.kind) ? i.membershipPlanId : plan.id,
+                plans: [...i.plans.where((e) => e.planId != plan.id), enrollment],
+              ),
+            );
       } else {
         // Uri.base.origin only resolves on Flutter web (the native build's
         // Uri.base is a non-http asset path and throws on `.origin`) — on
@@ -254,7 +271,12 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     final plansNotifier = ref.watch(membershipPlansProvider.notifier);
     final plan = plansNotifier.byId(info.membershipPlanId);
     final pendingPlan = info.pendingPlanId != null ? plansNotifier.byId(info.pendingPlanId) : null;
-    final buyable = plans.where((p) => !p.archived && p.kind != PlanKind.program).toList();
+    // "Change Access" is about swapping the plan that grants gym access, so
+    // it lists memberships and packages only. Programs are bought alongside
+    // access rather than instead of it — they live in the Membership Hub
+    // catalogue (see the _catalog branch), which is also where a client with
+    // no membership at all is sent to get started.
+    final buyable = plans.where((p) => !p.archived && !isProgramKind(p.kind)).toList();
     final filteredBuyable = _typeFilter == "all" ? buyable : buyable.where((p) => p.kind.name == _typeFilter).toList();
     final cancelPending = info.membershipCancelsAt != null;
 
@@ -351,17 +373,20 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                   _CatalogCard(
                     plan: p,
                     isCurrent: current != null && p.id == current.id,
+                    held: info.plans.any((e) => e.planId == p.id && e.status == "active"),
                     busy: _busyPlanId != null,
-                    onSelect: p.kind == PlanKind.program
-                        ? null
-                        : () {
-                            setState(() => _catalog = false);
-                            if (current != null) {
-                              _selectPlanForSwitch(info, p);
-                            } else {
-                              _buy(info.id, p);
-                            }
-                          },
+                    onSelect: () {
+                      setState(() => _catalog = false);
+                      // A program is an addition, never a switch — buying one
+                      // must not disturb the membership that drives sessions
+                      // and billing. Only access plans go through the
+                      // switch/proration flow.
+                      if (isProgramKind(p.kind) || current == null) {
+                        _buy(info.id, p);
+                      } else {
+                        _selectPlanForSwitch(info, p);
+                      }
+                    },
                   ),
                   const SizedBox(height: 10),
                 ],
@@ -679,21 +704,29 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
 /// self-serve purchase path, so it's shown for information with a pointer to
 /// the coach rather than a button that would go nowhere.
 class _CatalogCard extends StatelessWidget {
-  const _CatalogCard({required this.plan, required this.isCurrent, required this.busy, required this.onSelect});
+  const _CatalogCard({
+    required this.plan,
+    required this.isCurrent,
+    required this.held,
+    required this.busy,
+    required this.onSelect,
+  });
 
   final MembershipPlan plan;
+
+  /// This is the client's current access plan (their membership/package).
   final bool isCurrent;
+
+  /// Already enrolled — true for programs they've bought, which they keep
+  /// while also holding a membership.
+  final bool held;
   final bool busy;
   final VoidCallback? onSelect;
 
   @override
   Widget build(BuildContext context) {
-    final isProgram = plan.kind == PlanKind.program;
-    final kindLabel = switch (plan.kind) {
-      PlanKind.membership => "Membership",
-      PlanKind.package => "Package",
-      PlanKind.program => "Program",
-    };
+    final isProgram = isProgramKind(plan.kind);
+    final kindLabel = planKindLabel(plan.kind);
     return AppCard(
       borderColor: isCurrent ? AppColors.gold : null,
       child: Column(
@@ -723,24 +756,30 @@ class _CatalogCard extends StatelessWidget {
             style: const TextStyle(fontSize: 11, color: AppColors.mute),
           ),
           const SizedBox(height: 10),
-          if (isCurrent)
+          if (isCurrent || held)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8),
               alignment: Alignment.center,
               decoration: BoxDecoration(border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(8)),
-              child: const Text("Your current plan", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold)),
-            )
-          else if (isProgram)
-            const Text(
-              "Arranged with your coach — ask them about this one.",
-              style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
+              child: Text(
+                isCurrent ? "Your current plan" : "Active",
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold),
+              ),
             )
           else
             BtnGold(
               full: true,
               onPressed: busy ? null : onSelect,
-              child: Text(plan.priceCents > 0 ? "Choose this plan" : "Start free plan"),
+              child: Text(
+                plan.priceCents > 0
+                    // A program is bought in addition to whatever access the
+                    // client already has, so "Add" rather than "Choose" —
+                    // "Choose this plan" would imply giving up their
+                    // membership, which is exactly what it doesn't do.
+                    ? (isProgram ? "Add this program" : "Choose this plan")
+                    : (isProgram ? "Add this program" : "Start free plan"),
+              ),
             ),
         ],
       ),
