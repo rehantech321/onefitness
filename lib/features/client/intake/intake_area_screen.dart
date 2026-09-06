@@ -88,6 +88,28 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
   Widget build(BuildContext context) {
     final client = widget.client;
 
+    // Computed before the open-form branch so a deep link (the dashboard's
+    // onboarding prompt sets pendingIntakeFormKeyProvider, which initState
+    // turns straight into an open form) can't route around the lock the list
+    // below applies.
+    final isClientView = widget.who == "client";
+    final info = isClientView
+        ? ref.watch(clientInfoProvider)
+        : ref.watch(trainerRosterProvider).where((c) => c.id == widget.profileId).firstOrNull;
+    final entitlements = info == null
+        ? IntakeEntitlements.none
+        : computeIntakeEntitlements(info: info, allPlans: ref.watch(membershipPlansProvider));
+
+    if (_open != null && isClientView && !entitlements.allows(_open!.key)) {
+      // Shouldn't be reachable through the UI, but a stale deep link (or a
+      // purchase that lapsed between tap and build) would otherwise drop them
+      // into a form they're not entitled to fill in.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _open = null);
+      });
+      return const SizedBox.shrink();
+    }
+
     if (_open != null) {
       final a = _open!;
       if (a.physical) {
@@ -126,17 +148,6 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
         ),
       );
     }
-
-    // What this client's purchases have unlocked. Read from the roster on the
-    // coach side and from the signed-in client's own record on theirs, so both
-    // views agree about the same person.
-    final isClientView = widget.who == "client";
-    final info = isClientView
-        ? ref.watch(clientInfoProvider)
-        : ref.watch(trainerRosterProvider).where((c) => c.id == widget.profileId).firstOrNull;
-    final entitlements = info == null
-        ? IntakeEntitlements.none
-        : computeIntakeEntitlements(info: info, allPlans: ref.watch(membershipPlansProvider));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),

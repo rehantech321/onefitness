@@ -3,6 +3,7 @@ import "package:flutter/widgets.dart" show IconData;
 import "../../data/models/booking.dart";
 import "../../data/models/client_record.dart";
 import "../../data/models/membership_plan.dart";
+import "intake_entitlements.dart";
 
 /// Mirrors constants/domain.js `ONBOARDING_STEPS`.
 class OnboardingStep {
@@ -56,11 +57,34 @@ bool onboardingStepDone(ClientRecord client, List<Booking> bookings, String clie
 /// memberships/packages (maxSessions > 0) prompt for the physical assessment.
 bool hasSessionPlan(MembershipPlan? plan) => plan != null && (plan.maxSessions ?? 0) > 0;
 
-/// Mirrors intakeHelpers.js `getOnboardingAlerts`.
-List<OnboardingStep> getOnboardingAlerts(ClientRecord client, List<Booking> bookings, String clientId, MembershipPlan? plan) {
+/// Which onboarding step corresponds to which intake assessment — the two
+/// vocabularies differ (the dashboard's step keys vs. the form catalogue's
+/// assessment keys), and entitlements are expressed in the latter.
+const _stepToAssessment = {
+  "personalizedIntake": "personalTraining",
+  "nutritionIntake": "nutritional",
+  "physicalAssessmentBooked": "physical",
+};
+
+/// Mirrors intakeHelpers.js `getOnboardingAlerts`, plus purchase gating.
+///
+/// [entitlements] filters out steps the client hasn't unlocked. Prompting
+/// someone to "complete your training questionnaire" and then handing them a
+/// locked form would be a dead end — and the dashboard's prompt deep-links
+/// straight into the form, so this is also what stops that link bypassing the
+/// lock entirely.
+List<OnboardingStep> getOnboardingAlerts(
+  ClientRecord client,
+  List<Booking> bookings,
+  String clientId,
+  MembershipPlan? plan, {
+  required IntakeEntitlements entitlements,
+}) {
   final showAssessment = hasSessionPlan(plan);
   return kOnboardingSteps.where((step) {
     if (step.key == "physicalAssessmentBooked" && !showAssessment) return false;
+    final assessmentKey = _stepToAssessment[step.key];
+    if (assessmentKey != null && !entitlements.allows(assessmentKey)) return false;
     return !onboardingStepDone(client, bookings, clientId, step.key);
   }).toList();
 }

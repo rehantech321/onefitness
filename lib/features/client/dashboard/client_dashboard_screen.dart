@@ -1,9 +1,12 @@
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/habit_utils.dart";
+import "../../../core/utils/intake_entitlements.dart";
 import "../../../core/utils/onboarding_utils.dart";
+import "../../../data/providers/client_providers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
@@ -14,7 +17,7 @@ import "sessions_remaining_badge.dart";
 import "workout_calendar.dart";
 
 /// Mirrors ClientDashboard.jsx — the client's home tab.
-class ClientDashboardScreen extends StatefulWidget {
+class ClientDashboardScreen extends ConsumerStatefulWidget {
   const ClientDashboardScreen({
     super.key,
     required this.client,
@@ -46,10 +49,10 @@ class ClientDashboardScreen extends StatefulWidget {
   final ValueChanged<String> onGoToForm;
 
   @override
-  State<ClientDashboardScreen> createState() => _ClientDashboardScreenState();
+  ConsumerState<ClientDashboardScreen> createState() => _ClientDashboardScreenState();
 }
 
-class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
+class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
   bool _skipOnboarding = false;
 
   ClientRecord get client => widget.client;
@@ -75,9 +78,15 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> {
     final done = habits.where((h) => todayLog.checked[h.id] == true).length;
     final showHabitTile = habits.isNotEmpty && done < habits.length;
 
-    final onboardingAlerts = getOnboardingAlerts(client, bookings, info.id, widget.plan);
+    final entitlements = computeIntakeEntitlements(info: info, allPlans: ref.watch(membershipPlansProvider));
+    final onboardingAlerts = getOnboardingAlerts(client, bookings, info.id, widget.plan, entitlements: entitlements);
     final assessmentBooked = onboardingStepDone(client, bookings, info.id, "physicalAssessmentBooked");
-    final showOnboarding = (onboardingAlerts.isNotEmpty || !assessmentBooked) && !_skipOnboarding;
+    // With nothing purchased there's no onboarding to do yet — every form is
+    // locked — so the whole block stays hidden rather than prompting for
+    // steps that can't be started. Membership Hub is where they go first.
+    final showOnboarding = entitlements.hasAnyPurchase &&
+        (onboardingAlerts.isNotEmpty || !assessmentBooked) &&
+        !_skipOnboarding;
 
     // Staggers each top-level section's entrance by 45ms, played once when
     // the Dashboard first mounts.
