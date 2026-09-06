@@ -293,6 +293,10 @@ String _timeOnly(DateTime d) {
   return "$h:${d.minute.toString().padLeft(2, '0')} $ampm";
 }
 
+/// Roster size at or below which every client is listed up front. Above it,
+/// the picker waits for a search query rather than rendering the whole gym.
+const _browseAllMax = 8;
+
 /// State 1 — "Who are you messaging?": search the coach's (scoped) roster
 /// and pick a client, used both as the initial full-screen setup and
 /// (pre-filled, with Cancel/Save) as the "Change" bottom sheet.
@@ -333,11 +337,24 @@ class _RecipientSetupState extends State<_RecipientSetup> {
   Widget build(BuildContext context) {
     final canConfirm = _recipientId != null && _channel != null;
     final q = _query.trim().toLowerCase();
-    final results = q.isEmpty
+    final searching = q.isNotEmpty;
+    // A short roster is quicker to scan than to type into, so it stays
+    // listed. Past that, listing everyone buries the search box under a
+    // scroll of cards and makes the picker slower the more clients the gym
+    // signs up — so the search does the work instead.
+    final browseable = widget.roster.length <= _browseAllMax;
+    final matches = searching
         ? widget.roster
-        : widget.roster
             .where((c) => c.name.toLowerCase().contains(q) || (c.email ?? "").toLowerCase().contains(q))
-            .toList();
+            .toList()
+        : widget.roster;
+    // Whoever's already picked stays on screen even with the search empty —
+    // this same widget is the "Change" sheet, and hiding the current
+    // recipient there would lose the context of who you're switching from.
+    final results = (searching || browseable)
+        ? matches
+        : widget.roster.where((c) => c.id == _recipientId).toList();
+    final promptToSearch = !searching && !browseable;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -356,7 +373,7 @@ class _RecipientSetupState extends State<_RecipientSetup> {
             onChanged: (v) => setState(() => _query = v),
           ),
           const SizedBox(height: 10),
-          if (results.isEmpty)
+          if (results.isEmpty && searching)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 10),
               child: HintBox(text: "No clients match your search.", bordered: false),
@@ -401,6 +418,14 @@ class _RecipientSetupState extends State<_RecipientSetup> {
                 ),
               );
             }),
+          if (promptToSearch)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: HintBox(
+                text: "Start typing a name or email to find one of your ${widget.roster.length} clients.",
+                bordered: false,
+              ),
+            ),
           const SizedBox(height: 12),
           const Text("Send via", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
           const SizedBox(height: 8),
