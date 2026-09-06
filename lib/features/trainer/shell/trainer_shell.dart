@@ -5,6 +5,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/widgets/calendar_sync_section.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
@@ -54,6 +55,7 @@ const _titles = {
   "selfbook": "Book Session",
   "challenges": "Challenges",
   "myprofile": "My Profile",
+  "calendarsync": "Calendar Sync",
   "products": "Products",
   "reports": "Reports",
   "waitlist": "Waitlist",
@@ -235,6 +237,10 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                       "staff" when isOwner => const StaffScreen(),
                       "coaches" => const CoachesOverviewScreen(),
                       "myprofile" => const MyProfileScreen(),
+                      "calendarsync" when !isOwner => const SingleChildScrollView(
+                        padding: EdgeInsets.all(18),
+                        child: CalendarSyncSection(),
+                      ),
                       "coachbadges" when !isOwner => const CoachMeritBadgesScreen(),
                       "mypay" => const MyPayScreen(),
                       "reports" when isOwner => const ReportsHubScreen(),
@@ -448,6 +454,7 @@ class _TrainerDrawer extends ConsumerWidget {
             _DrawerEntry(LucideIcons.trophy, "Challenges", "challenges", true),
             _DrawerEntry(LucideIcons.messageSquare, "Chat", "chat", true),
             _DrawerEntry(LucideIcons.user, "My Profile", "myprofile", true),
+            _DrawerEntry(LucideIcons.calendar, "Calendar Sync", "calendarsync", true),
             _DrawerEntry(LucideIcons.award, "Merit Badges", "coachbadges", true),
             _DrawerEntry(LucideIcons.clipboardCheck, "My Pay", "mypay", true),
           ];

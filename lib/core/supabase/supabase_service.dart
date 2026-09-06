@@ -2071,6 +2071,20 @@ class SupabaseService {
     "text": text,
   });
 
+  /// The caller's private calendar-feed URL, for subscribing to their own
+  /// schedule in Google Calendar (or Apple Calendar / Outlook — it's a plain
+  /// iCalendar feed, not a Google-specific integration). Minted on first
+  /// call; [regenerate] issues a fresh one, which immediately invalidates
+  /// any copy of the old URL already handed out.
+  static Future<String> getCalendarFeedUrl({bool regenerate = false}) async {
+    final data = await _invokeFunction("get-calendar-link", {
+      if (regenerate) "regenerate": true,
+    });
+    final url = data["url"] as String?;
+    if (url == null) throw Exception("Couldn't create your calendar link.");
+    return url;
+  }
+
   /// Notifications spec — registers/refreshes this device's FCM token
   /// (register-device-token). Safe to call even before Firebase is set up
   /// on the client — there's simply no token to pass yet, so callers should

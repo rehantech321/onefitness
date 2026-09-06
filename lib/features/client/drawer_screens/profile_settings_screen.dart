@@ -7,6 +7,7 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/utils/photo_picker_utils.dart";
+import "../../../core/widgets/calendar_sync_section.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
@@ -64,6 +65,25 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         onBack: () => setState(() => _section = null),
         child: _NotificationPreferencesSection(
           onBack: () => setState(() => _section = null),
+        ),
+      );
+    }
+    if (_section == "calendar") {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _section = null),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              BackBar(onBack: () => setState(() => _section = null), title: "Profile Settings"),
+              const SizedBox(height: 10),
+              const SectionLabel("Calendar Sync"),
+              const SizedBox(height: 8),
+              const CalendarSyncSection(),
+            ],
+          ),
         ),
       );
     }
@@ -134,6 +154,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             label: "Your City",
             detail: info.city ?? "Not set",
             onTap: () => setState(() => _section = "profile"),
+          ),
+          _SettingRow(
+            icon: LucideIcons.calendar,
+            label: "Calendar Sync",
+            detail: "Add your sessions to Google Calendar",
+            onTap: () => setState(() => _section = "calendar"),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 24),
