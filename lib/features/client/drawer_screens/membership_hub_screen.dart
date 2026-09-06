@@ -41,6 +41,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
   String? _timingChoicePlanId;
   String? _prorateChoicePlanId;
   bool _cancelBusy = false;
+  bool _catalog = false;
   final _couponController = TextEditingController();
 
   @override
@@ -320,6 +321,58 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       );
     }
 
+    if (_catalog) {
+      final current = plansNotifier.byId(info.membershipPlanId);
+      // Everything the gym offers, not just what's switchable — including
+      // programs, which aren't self-serve purchases today. Showing them
+      // (clearly marked) is the point of this screen: a client asking
+      // "what else could I do here?" gets a real answer instead of a list
+      // silently filtered down to what the checkout happens to support.
+      final visible = plans.where((p) => !p.archived && p.public).toList()
+        ..sort((a, b) => a.kind.index.compareTo(b.kind.index));
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _catalog = false),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              BackBar(onBack: () => setState(() => _catalog = false), title: "Your Membership"),
+              const SizedBox(height: 10),
+              const SectionLabel("All Access Options"),
+              const SizedBox(height: 8),
+              const HintBox(text: "Everything ONE Fitness offers. Your current plan is highlighted."),
+              const SizedBox(height: 12),
+              if (visible.isEmpty)
+                const HintBox(text: "No plans are published yet — ask your coach what's available.")
+              else
+                for (final p in visible) ...[
+                  _CatalogCard(
+                    plan: p,
+                    isCurrent: current != null && p.id == current.id,
+                    busy: _busyPlanId != null,
+                    onSelect: p.kind == PlanKind.program
+                        ? null
+                        : () {
+                            setState(() => _catalog = false);
+                            if (current != null) {
+                              _selectPlanForSwitch(info, p);
+                            } else {
+                              _buy(info.id, p);
+                            }
+                          },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              if (_error != null)
+                Text("⚠ $_error", style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_timingChoicePlanId != null) {
       final p = plansNotifier.byId(_timingChoicePlanId);
       if (p == null) return const SizedBox.shrink();
@@ -458,6 +511,20 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                   onPressed: _cancelBusy ? null : () => setState(() => _browsing = true),
                   style: OutlinedButton.styleFrom(backgroundColor: AppColors.gold.withValues(alpha: 0.12), side: const BorderSide(color: AppColors.goldDim), foregroundColor: AppColors.gold, padding: const EdgeInsets.symmetric(vertical: 10)),
                   child: const Text("Change Access", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Sits between Change Access and Cancel on purpose: browsing
+              // everything on offer is a lighter, more common thing to want
+              // than either committing to a switch or giving the plan up.
+              // "Change Access" only lists what this client can switch to;
+              // this shows the whole catalogue, programs included.
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _cancelBusy ? null : () => setState(() => _catalog = true),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.goldDim), foregroundColor: AppColors.gold, padding: const EdgeInsets.symmetric(vertical: 10)),
+                  child: const Text("Membership Hub", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -603,6 +670,79 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
           ],
         ],
       ),
+      ),
+    );
+  }
+}
+
+/// One row of the "All Access Options" catalogue. A program has no
+/// self-serve purchase path, so it's shown for information with a pointer to
+/// the coach rather than a button that would go nowhere.
+class _CatalogCard extends StatelessWidget {
+  const _CatalogCard({required this.plan, required this.isCurrent, required this.busy, required this.onSelect});
+
+  final MembershipPlan plan;
+  final bool isCurrent;
+  final bool busy;
+  final VoidCallback? onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final isProgram = plan.kind == PlanKind.program;
+    final kindLabel = switch (plan.kind) {
+      PlanKind.membership => "Membership",
+      PlanKind.package => "Package",
+      PlanKind.program => "Program",
+    };
+    return AppCard(
+      borderColor: isCurrent ? AppColors.gold : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(plan.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+              const SizedBox(width: 8),
+              Text(
+                plan.priceCents > 0
+                    ? "\$${(plan.priceCents / 100).toStringAsFixed(2)}${plan.kind == PlanKind.membership ? '/mo' : ''}"
+                    : "Free",
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            [
+              kindLabel,
+              if ((plan.maxSessions ?? 0) > 0)
+                "${plan.maxSessions} sessions ${plan.kind == PlanKind.membership ? "per month" : "total"}",
+              if (plan.allowedTypes.isNotEmpty)
+                plan.allowedTypes.map((t) => t == "semi-private" ? "Semi-Private" : "One-on-One").join(", "),
+            ].join(" · "),
+            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+          ),
+          const SizedBox(height: 10),
+          if (isCurrent)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(8)),
+              child: const Text("Your current plan", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold)),
+            )
+          else if (isProgram)
+            const Text(
+              "Arranged with your coach — ask them about this one.",
+              style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
+            )
+          else
+            BtnGold(
+              full: true,
+              onPressed: busy ? null : onSelect,
+              child: Text(plan.priceCents > 0 ? "Choose this plan" : "Start free plan"),
+            ),
+        ],
       ),
     );
   }
