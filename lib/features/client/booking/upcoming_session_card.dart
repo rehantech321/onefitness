@@ -118,55 +118,69 @@ class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
             ),
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              // Side by side (not stacked) — halves the vertical space the
-              // action row needs vs. the old Reschedule-then-Cancel stack,
-              // which is most of what made room for shrinking the card.
-              child: Row(
-                children: [
-                  if (reschedulable) ...[
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => widget.onReschedule(b),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.gold,
-                          backgroundColor: AppColors.gold.withValues(alpha: 0.12),
-                          side: const BorderSide(color: AppColors.goldDim),
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text("Reschedule", maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700)),
-                      ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final reschedule = OutlinedButton(
+                    onPressed: () => widget.onReschedule(b),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.gold,
+                      backgroundColor: AppColors.gold.withValues(alpha: 0.12),
+                      side: const BorderSide(color: AppColors.goldDim),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    const SizedBox(width: 4),
-                  ],
-                  Expanded(
-                    // Plain "Cancel" only outside the fee window — inside it,
-                    // the button itself says "Late Cancel" so the fee is
-                    // obvious before they even tap it, not just buried in
-                    // the confirm screen that follows.
-                    child: OutlinedButton(
-                      onPressed: () => widget.onCancel(b),
-                      style: charged
-                          ? OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFD68A4F),
-                              backgroundColor: const Color(0x1AC9784A),
-                              side: const BorderSide(color: Color(0xFFA8632F)),
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            )
-                          : OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.errorText,
-                              side: const BorderSide(color: AppColors.line),
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                      child: Text(charged ? "Late Cancel" : "Cancel", maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
+                    child: const Text("Reschedule", maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700)),
+                  );
+                  // Plain "Cancel" only outside the fee window — inside it,
+                  // the button itself says "Late Cancel" so the fee is
+                  // obvious before they even tap it, not just buried in
+                  // the confirm screen that follows.
+                  final cancel = OutlinedButton(
+                    onPressed: () => widget.onCancel(b),
+                    style: charged
+                        ? OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFD68A4F),
+                            backgroundColor: const Color(0x1AC9784A),
+                            side: const BorderSide(color: Color(0xFFA8632F)),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          )
+                        : OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.errorText,
+                            side: const BorderSide(color: AppColors.line),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                    child: Text(charged ? "Late Cancel" : "Cancel", maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700)),
+                  );
+
+                  if (!reschedulable) return SizedBox(width: double.infinity, child: cancel);
+
+                  // Measured, not assumed: side by side only where both
+                  // labels actually fit. Below roughly this width
+                  // "Reschedule" degrades to "Resc…", so the pair stacks
+                  // instead — which is what happens on a phone at 4 cards
+                  // across, while a tablet still gets the compact row.
+                  if (constraints.maxWidth >= 132) {
+                    return Row(
+                      children: [
+                        Expanded(child: reschedule),
+                        const SizedBox(width: 4),
+                        Expanded(child: cancel),
+                      ],
+                    );
+                  }
+                  return Column(
+                    children: [
+                      SizedBox(width: double.infinity, child: reschedule),
+                      const SizedBox(height: 3),
+                      SizedBox(width: double.infinity, child: cancel),
+                    ],
+                  );
+                },
               ),
             ),
           ],

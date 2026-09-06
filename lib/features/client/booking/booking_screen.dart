@@ -368,15 +368,31 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Above the upcoming-sessions grid, not below it: how many sessions
+          // are left is the thing that decides whether booking another one is
+          // even possible, so it shouldn't sit under a list the client has to
+          // scroll past (or expand) to reach.
+          if (plan != null && _rescheduling == null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: _MembershipBanner(info: info, plan: plan, bookings: bookings),
+            ),
+
           if (myUpcoming.isNotEmpty) ...[
             const SectionLabel("Your upcoming sessions"),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 150,
-                mainAxisExtent: 108,
-                crossAxisSpacing: 8,
+              // Fixed count, not max-extent: 4 across on every screen, with
+              // the cards themselves flexing to whatever width that leaves.
+              // At 4 columns a card is roughly half the width it had at 3, so
+              // the actions inside stack instead of sitting side by side —
+              // see UpcomingSessionCard, which lays itself out from its own
+              // measured width rather than assuming either shape.
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                mainAxisExtent: 130,
+                crossAxisSpacing: 6,
                 mainAxisSpacing: 8,
               ),
               itemCount: (_showAllUpcoming ? myUpcoming : myUpcoming.take(4).toList()).length,
@@ -449,8 +465,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                 ],
               ),
             ),
-
-          if (plan != null && _rescheduling == null) _MembershipBanner(info: info, plan: plan, bookings: bookings),
 
           LocalBackScope(
             isOpen: _chosenType != null,
