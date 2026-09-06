@@ -145,13 +145,6 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                const Center(
-                                  child: Text(
-                                    "Staff",
-                                    style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w300, letterSpacing: 1),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
                                 FieldLabeled(
                                   label: "Email",
                                   child: AppField(
