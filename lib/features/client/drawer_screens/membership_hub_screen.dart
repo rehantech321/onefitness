@@ -1,8 +1,8 @@
-import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-import "package:url_launcher/url_launcher.dart";
 import "../../../core/navigation/local_back_stack.dart";
+import "../../../core/payments/payment_method_picker.dart";
+import "../../../core/payments/payment_sheet_service.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
@@ -11,6 +11,7 @@ import "../../../data/models/client_info.dart";
 import "../../../data/models/client_plan.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../dashboard/sessions_remaining_badge.dart";
 
@@ -84,25 +85,53 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               ),
             );
       } else {
-        // Uri.base.origin only resolves on Flutter web (the native build's
-        // Uri.base is a non-http asset path and throws on `.origin`) — on
-        // mobile, send the app's own custom-scheme deep link instead, so
-        // the browser hands control back to the app once Stripe redirects
-        // (see AndroidManifest.xml/Info.plist's "onefitness://checkout-return"
-        // intent filter and main.dart's _AppLinksListener). Either way the
-        // plan is only ever granted by stripe-webhook, never by this
-        // "return" landing itself.
-        final returnUrl = kIsWeb ? Uri.base.origin + Uri.base.path : "onefitness://checkout-return";
-        final url = await SupabaseService.createCheckoutSession(
+        // Which tenders are offered depends on the product type, not a
+        // global setting: a membership takes card/debit/ACH, a package also
+        // takes Apple Pay and cash.
+        if (!mounted) return;
+        final tender = await showPaymentMethodPicker(context, plan);
+        if (tender == null) {
+          if (mounted) setState(() => _busyPlanId = null);
+          return;
+        }
+
+        if (tender == PayTender.cash) {
+          // Cash never reaches Stripe, so nothing can confirm it was handed
+          // over — the purchase is recorded unpaid and a coach grants it on
+          // collection.
+          await SupabaseService.recordCashPurchase(planId: plan.id);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Recorded — pay at the gym and your coach will activate it.")),
+            );
+            setState(() => _browsing = false);
+          }
+          return;
+        }
+
+        // Native Payment Sheet — card entry and confirmation happen in-app,
+        // with no browser and nothing to redirect back from. The plan is
+        // still only ever granted by stripe-webhook once Stripe confirms the
+        // payment, never by this call returning.
+        final result = await PaymentSheetService.purchase(
           planId: plan.id,
-          returnUrl: returnUrl,
           couponCode: couponCode.isEmpty ? null : couponCode,
+          paymentMethod: tender == PayTender.ach ? "ach" : "card",
+          businessName: ref.read(platformSettingsProvider).businessName,
         );
-        // "_self" — a full same-tab redirect to Stripe's hosted page, same
-        // as the web app's own `window.location.href = url` (a new-tab
-        // popup would leave the "return" landing in a tab the client isn't
-        // looking at). On mobile this opens the external browser instead.
-        await launchUrl(Uri.parse(url), webOnlyWindowName: "_self", mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.externalApplication);
+        if (result.cancelled) {
+          if (mounted) setState(() => _busyPlanId = null);
+          return;
+        }
+        if (!result.ok && !result.noPaymentNeeded) {
+          if (mounted) setState(() => _error = result.error);
+          return;
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Payment received — your plan is being activated.")),
+          );
+        }
       }
       if (mounted) setState(() => _browsing = false);
     } catch (e) {

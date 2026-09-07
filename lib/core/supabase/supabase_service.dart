@@ -2083,6 +2083,43 @@ class SupabaseService {
         if (clientId != null) "clientId": clientId,
       });
 
+  /// In-app payment — everything Stripe's native Payment Sheet needs to
+  /// collect and confirm a purchase without leaving the app. Card details go
+  /// straight from the sheet to Stripe using the returned client secret;
+  /// nothing card-shaped passes through this app or our servers.
+  ///
+  /// [paymentMethod] only selects which processing-fee profile applies
+  /// ("card" or "ach") — the sheet still decides what the client can pick
+  /// from, bounded by the server's per-product-type rules.
+  static Future<Map<String, dynamic>> createPaymentIntent({
+    required String planId,
+    String? couponCode,
+    String? targetClientId,
+    String paymentMethod = "card",
+  }) =>
+      _invokeFunction("create-payment-intent", {
+        "planId": planId,
+        "paymentMethod": paymentMethod,
+        if (couponCode != null && couponCode.trim().isNotEmpty) "couponCode": couponCode.trim(),
+        if (targetClientId != null) "targetClientId": targetClientId,
+      });
+
+  /// Cash purchase of a package — the one tender that never reaches Stripe.
+  /// A client choosing it books an unpaid charge and gets nothing until staff
+  /// confirm the money arrived; staff recording it for a client in person are
+  /// the confirmation, so that grants immediately. Returns whether the plan
+  /// was granted.
+  static Future<bool> recordCashPurchase({
+    required String planId,
+    String? targetClientId,
+  }) async {
+    final data = await _invokeFunction("record-cash-purchase", {
+      "planId": planId,
+      if (targetClientId != null) "targetClientId": targetClientId,
+    });
+    return data["granted"] == true;
+  }
+
   /// The caller's private calendar-feed URL, for subscribing to their own
   /// schedule in Google Calendar (or Apple Calendar / Outlook — it's a plain
   /// iCalendar feed, not a Google-specific integration). Minted on first
@@ -2122,13 +2159,15 @@ class SupabaseService {
     if (data != null) "data": data,
   });
 
-  /// Real Stripe Checkout — mirrors createCheckoutSession in
-  /// supabaseData.js, trimmed to card payments only (this app doesn't
-  /// model the platform-settings ACH-availability toggle) and without the
-  /// referral-email step (a growth-marketing nicety, not core to "can a
-  /// client buy a plan"). Returns the Stripe-hosted Checkout URL to send
-  /// the browser to — the plan is only ever actually granted later, by
-  /// stripe-webhook confirming payment, never here and never client-side.
+  /// LEGACY — the hosted-Checkout redirect, no longer used by any screen.
+  /// Purchases now run through [createPaymentIntent] and Stripe's native
+  /// Payment Sheet so card entry happens inside the app with no browser.
+  ///
+  /// Kept (along with the "onefitness://checkout-return" deep link and the
+  /// create-checkout-session function) as a working fallback: it still grants
+  /// correctly, since stripe-webhook handles both checkout.session.completed
+  /// and payment_intent.succeeded through the same code path. Delete all
+  /// three together if the redirect flow is ever formally retired.
   static Future<String> createCheckoutSession({
     required String planId,
     String? returnUrl,

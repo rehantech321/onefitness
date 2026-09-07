@@ -23,7 +23,10 @@ android {
         applicationId = "com.sajiddev.onefitness"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // Pinned rather than inherited from Flutter: the Stripe Android SDK
+        // (payment sheet) requires API 21+, and stripe_android's own manifest
+        // merge fails the build outright on anything lower.
+        minSdk = maxOf(flutter.minSdkVersion, 23)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

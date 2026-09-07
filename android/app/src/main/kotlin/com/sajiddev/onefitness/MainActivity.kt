@@ -1,5 +1,8 @@
 package com.sajiddev.onefitness
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+// FlutterFragmentActivity, not FlutterActivity: Stripe's native Payment Sheet
+// is presented as an Android fragment, so it needs a FragmentActivity host.
+// With plain FlutterActivity the sheet fails to launch at runtime.
+class MainActivity : FlutterFragmentActivity()

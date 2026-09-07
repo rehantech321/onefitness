@@ -1,24 +1,26 @@
-import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
-import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
-import "package:url_launcher/url_launcher.dart";
+import "../../../core/payments/payment_method_picker.dart";
+import "../../../core/payments/payment_sheet_service.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
-/// Coach/owner "individual purchase for a client" flow. There's no saved
-/// card to charge off-session, and this app doesn't collect card details
-/// directly (PCI scope), so the coach picks a plan (and optional coupon)
-/// and the app generates a real Stripe Checkout link — same session type
-/// membership_hub_screen.dart's self-checkout creates, just attributed to
-/// the chosen client via create-checkout-session's targetClientId — for
-/// the coach to hand to the client, who completes payment themselves.
+/// Coach/owner "individual purchase for a client" flow. The coach picks a
+/// plan (and optional coupon), then takes payment in person on this device
+/// through Stripe's native Payment Sheet — the client taps their own card in,
+/// and nothing leaves the app. Card details never reach us: the sheet talks
+/// to Stripe directly, which is what keeps this out of PCI scope.
+///
+/// Tender options follow the product type (memberships: card/debit/ACH;
+/// packages also Apple Pay and cash), and a cash sale recorded by staff is
+/// granted immediately since they're the ones collecting it.
 class PurchaseForClientSection extends ConsumerStatefulWidget {
   const PurchaseForClientSection({super.key, required this.info, required this.onBack, required this.onPlanAssigned});
 
@@ -35,7 +37,6 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
   String? _couponId;
   bool _busy = false;
   String? _error;
-  String? _generatedUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +61,7 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
           const Padding(
             padding: EdgeInsets.only(top: 4, bottom: 14),
             child: Text(
-              "Pick a plan and, if you'd like, a coupon code. For a paid plan, this generates a secure Stripe checkout link — send it to the client (or hand them your phone) to complete payment. A free plan is assigned right away, no checkout needed.",
+              "Pick a plan and, if you'd like, a coupon code. For a paid plan you'll take payment right here — hand the client your phone to enter their card. A free plan is assigned right away, with nothing to pay.",
               style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ),
@@ -75,8 +76,7 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
                 borderColor: selected ? AppColors.gold : null,
                 onTap: () => setState(() {
                   _planId = p.id;
-                  _generatedUrl = null;
-                  _error = null;
+                              _error = null;
                 }),
                 child: Row(
                   children: [
@@ -112,8 +112,7 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
                 ],
                 onChanged: (v) => setState(() {
                   _couponId = v;
-                  _generatedUrl = null;
-                }),
+                            }),
               ),
             ),
           ],
@@ -123,63 +122,15 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
               padding: const EdgeInsets.only(bottom: 10),
               child: Text(_error!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12)),
             ),
-          if (_generatedUrl == null)
-            BtnGold(
-              full: true,
-              onPressed: plan == null || _busy ? null : () => _submit(plan, coupon?.code),
-              child: Text(_busy ? "Working…" : (plan != null && plan.priceCents > 0 ? "Generate checkout link" : "Assign plan")),
-            )
-          else
-            AppCard(
-              borderColor: AppColors.goldDim,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("CHECKOUT LINK", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
-                  const SizedBox(height: 6),
-                  SelectableText(_generatedUrl!, style: const TextStyle(fontSize: 12)),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: BtnGhost(
-                          onPressed: () async {
-                            await Clipboard.setData(ClipboardData(text: _generatedUrl!));
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Link copied.")));
-                            }
-                          },
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [Icon(LucideIcons.copy, size: 14), SizedBox(width: 6), Text("Copy link")],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: BtnGhost(
-                          onPressed: () => launchUrl(Uri.parse(_generatedUrl!), mode: LaunchMode.externalApplication),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [Icon(LucideIcons.externalLink, size: 14), SizedBox(width: 6), Text("Open")],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: Text(
-                      "The plan is only granted once the client actually completes payment on this link — nothing changes until then.",
-                      style: TextStyle(fontSize: 11, color: AppColors.mute),
-                    ),
-                  ),
-                ],
-              ),
+          BtnGold(
+            full: true,
+            onPressed: plan == null || _busy ? null : () => _submit(plan, coupon?.code),
+            child: Text(
+              _busy
+                  ? "Working…"
+                  : (plan != null && plan.priceCents > 0 ? "Take payment" : "Assign plan"),
             ),
+          ),
         ],
       ),
     );
@@ -189,7 +140,6 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
     setState(() {
       _busy = true;
       _error = null;
-      _generatedUrl = null;
     });
     try {
       if (plan.priceCents <= 0) {
@@ -203,14 +153,48 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
         }
         return;
       }
-      final returnUrl = kIsWeb ? Uri.base.origin + Uri.base.path : "onefitness://checkout-return";
-      final url = await SupabaseService.createCheckoutSession(
+      // Taken in person on this device rather than by sending the client a
+      // link: the client taps their own card into Stripe's sheet while
+      // they're standing there, and nothing leaves the app.
+      if (!mounted) return;
+      final tender = await showPaymentMethodPicker(context, plan);
+      if (tender == null) {
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+
+      if (tender == PayTender.cash) {
+        // Staff recording cash ARE the confirmation — unlike a client
+        // choosing "I'll pay cash", this grants immediately.
+        await SupabaseService.recordCashPurchase(planId: plan.id, targetClientId: widget.info.id);
+        if (!isProgramKind(plan.kind)) widget.onPlanAssigned(plan.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Cash recorded — ${plan.name} activated for ${widget.info.name}.")),
+          );
+          widget.onBack();
+        }
+        return;
+      }
+
+      final result = await PaymentSheetService.purchase(
         planId: plan.id,
-        returnUrl: returnUrl,
         couponCode: couponCode,
         targetClientId: widget.info.id,
+        paymentMethod: tender == PayTender.ach ? "ach" : "card",
+        businessName: ref.read(platformSettingsProvider).businessName,
       );
-      if (mounted) setState(() => _generatedUrl = url);
+      if (result.cancelled) return;
+      if (!result.ok && !result.noPaymentNeeded) {
+        if (mounted) setState(() => _error = result.error);
+        return;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Payment received — ${plan.name} is being activated for ${widget.info.name}.")),
+        );
+        widget.onBack();
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
     } finally {
