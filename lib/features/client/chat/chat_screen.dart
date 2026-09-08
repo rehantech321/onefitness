@@ -2,18 +2,23 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "package:shared_preferences/shared_preferences.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
+import "../../../data/models/client_record.dart";
 import "../../../data/models/comm_message.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 
 enum _Channel { email, inapp, both }
+
+/// The three things the Chat tab can be showing.
+enum _ChatView { list, thread, picker }
 
 const _channelLabels = {_Channel.email: "Email", _Channel.inapp: "In App", _Channel.both: "Both"};
 
@@ -39,6 +44,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _prefsLoaded = false;
   String? _recipientId; // coach id or "business"
   _Channel? _channel;
+
+  /// Chat opens on the recents list; a thread sits on top of it, and the
+  /// picker is only reached deliberately via "New message".
+  _ChatView _view = _ChatView.list;
   final Set<String> _pendingIds = {};
 
   @override
@@ -181,6 +190,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  /// Coaches this client has actually exchanged messages with, newest
+  /// first. Messages with no trainerId are legacy/business-wide ones, which
+  /// belong to whichever coach the thread view would show them under.
+  List<ChatConversation> _recentConversations(ClientRecord client, List<Trainer> candidates) {
+    final byCoach = <String, List<CommMessage>>{};
+    for (final m in client.comms) {
+      final key = m.trainerId ?? (candidates.isEmpty ? "business" : candidates.first.id);
+      byCoach.putIfAbsent(key, () => []).add(m);
+    }
+    final out = <ChatConversation>[];
+    byCoach.forEach((coachId, msgs) {
+      final coach = candidates.where((t) => t.id == coachId).firstOrNull;
+      if (coach == null) return;
+      msgs.sort((a, b) => b.sentAt.compareTo(a.sentAt));
+      final last = msgs.first;
+      out.add(ChatConversation(
+        id: coach.id,
+        name: coach.name,
+        photo: coach.photo,
+        preview: last.text,
+        at: last.sentAt,
+        outgoing: last.who == "client",
+      ));
+    });
+    out.sort((a, b) => b.at.compareTo(a.at));
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_prefsLoaded) return const SizedBox.shrink();
@@ -194,17 +231,35 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     final hasSelection = _recipientId != null && _channel != null;
 
-    if (!hasSelection) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: _RecipientSetup(
-          realCandidates: realCandidates,
-          businessName: settings.businessName,
-          initialRecipientId: _recipientId,
-          initialChannel: _channel,
-          confirmLabel: "Start chat",
-          onConfirm: _confirmSetup,
+    if (_view == _ChatView.picker || (_view == _ChatView.thread && !hasSelection)) {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _view = _ChatView.list),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: _RecipientSetup(
+            realCandidates: realCandidates,
+            businessName: settings.businessName,
+            initialRecipientId: _recipientId,
+            initialChannel: _channel,
+            confirmLabel: "Start chat",
+            onConfirm: _confirmSetup,
+          ),
         ),
+      );
+    }
+
+    if (_view == _ChatView.list) {
+      return ConversationList(
+        conversations: _recentConversations(client, candidates),
+        emptyText: "No conversations yet. Message your coach below — they'll see it right away.",
+        newChatLabel: "New message",
+        onOpen: (coachId) => setState(() {
+          _recipientId = coachId;
+          _channel ??= _Channel.inapp;
+          _view = _ChatView.thread;
+        }),
+        onNewChat: () => setState(() => _view = _ChatView.picker),
       );
     }
 
@@ -218,7 +273,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         .toList()
       ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
 
-    return Column(
+    return LocalBackScope(
+      isOpen: true,
+      onBack: () => setState(() => _view = _ChatView.list),
+      child: Column(
       children: [
         _ContextBar(
           coach: selectedCoach,
@@ -249,6 +307,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           onSend: () => _send(selectedCoach: selectedCoach, info: info, settings: settings, channel: channel),
         ),
       ],
+      ),
     );
   }
 

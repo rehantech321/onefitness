@@ -2,17 +2,22 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "package:shared_preferences/shared_preferences.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/notification_triggers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
+import "../../../data/models/client_record.dart";
 import "../../../data/models/comm_message.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
 enum _Channel { email, inapp, both }
+
+/// The three things the Chat tab can be showing.
+enum _ChatView { list, thread, picker }
 
 const _channelLabels = {_Channel.email: "Email", _Channel.inapp: "In App", _Channel.both: "Both"};
 
@@ -40,6 +45,11 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
   bool _prefsLoaded = false;
   String? _recipientId;
   _Channel? _channel;
+
+  /// Which of the three views is showing. Chat opens on the recents list
+  /// (like every messaging app), a thread is pushed on top of it, and the
+  /// picker is only reached deliberately via "New message".
+  _ChatView _view = _ChatView.list;
   final Set<String> _pendingIds = {};
 
   @override
@@ -190,6 +200,38 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
     }
   }
 
+  /// Clients this coach has actually exchanged messages with, newest first.
+  /// Built from the same trainer-scoped filter the thread itself uses, so a
+  /// coach never sees a conversation in the list they can't then open.
+  List<ChatConversation> _recentConversations(
+    List<ClientInfo> roster,
+    Map<String, ClientRecord> records,
+    String? trainerAuth,
+    bool isOwner,
+  ) {
+    final out = <ChatConversation>[];
+    for (final c in roster) {
+      final comms = records[c.id]?.comms ?? const <CommMessage>[];
+      final mine = comms.where((m) => isOwner || m.trainerId == null || m.trainerId == trainerAuth).toList();
+      if (mine.isEmpty) continue;
+      mine.sort((a, b) => b.sentAt.compareTo(a.sentAt));
+      final last = mine.first;
+      out.add(ChatConversation(
+        id: c.id,
+        name: c.name,
+        photo: c.photo,
+        preview: last.text,
+        at: last.sentAt,
+        outgoing: last.who == "trainer",
+        // Unread means the client wrote something the coach hasn't opened
+        // yet — the same flag the thread clears on open.
+        unread: mine.any((m) => m.who == "client" && !m.readByCoach),
+      ));
+    }
+    out.sort((a, b) => b.at.compareTo(a.at));
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_prefsLoaded) return const SizedBox.shrink();
@@ -210,16 +252,39 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
     final hasSelection = _recipientId != null && _channel != null;
     final selectedMatches = roster.where((c) => c.id == _recipientId);
 
-    if (!hasSelection || selectedMatches.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: _RecipientSetup(
-          roster: roster,
-          initialRecipientId: _recipientId,
-          initialChannel: _channel,
-          confirmLabel: "Start chat",
-          onConfirm: _confirmSetup,
+    if (_view == _ChatView.picker || (_view == _ChatView.thread && (!hasSelection || selectedMatches.isEmpty))) {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _view = _ChatView.list),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: _RecipientSetup(
+            roster: roster,
+            initialRecipientId: _recipientId,
+            initialChannel: _channel,
+            confirmLabel: "Start chat",
+            onConfirm: _confirmSetup,
+          ),
         ),
+      );
+    }
+
+    if (_view == _ChatView.list) {
+      return ConversationList(
+        conversations: _recentConversations(roster, records, trainerAuth, isOwner),
+        emptyText: "No conversations yet. Start one with a client below — everything you send is timestamped and logged.",
+        onOpen: (clientId) {
+          setState(() {
+            _recipientId = clientId;
+            // Keep whatever channel they last used; only the picker changes
+            // it, so reopening a thread doesn't silently switch how a
+            // message goes out.
+            _channel ??= _Channel.inapp;
+            _view = _ChatView.thread;
+          });
+          _markThreadRead(clientId);
+        },
+        onNewChat: () => setState(() => _view = _ChatView.picker),
       );
     }
 
@@ -229,7 +294,10 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
     final thread = comms.where((m) => isOwner || m.trainerId == null || m.trainerId == trainerAuth).toList()
       ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
 
-    return Column(
+    return LocalBackScope(
+      isOpen: true,
+      onBack: () => setState(() => _view = _ChatView.list),
+      child: Column(
       children: [
         _ContextBar(
           client: client,
@@ -260,6 +328,7 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
           onSend: () => _send(client: client, settings: settings, channel: channel, trainerAuth: trainerAuth),
         ),
       ],
+      ),
     );
   }
 
