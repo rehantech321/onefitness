@@ -3,6 +3,7 @@ import "package:app_links/app_links.dart";
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "core/notifications/push_service.dart";
 import "core/supabase/supabase_service.dart";
 import "core/theme/app_colors.dart";
 import "core/theme/app_theme.dart";
@@ -19,6 +20,10 @@ import "features/trainer/shell/trainer_shell.dart";
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseService.initialize();
+  // Firebase only — the permission prompt and token registration wait
+  // until sign-in, so the OS asks with context rather than on a cold
+  // first launch. Never throws: push failing must not block startup.
+  await PushService.init();
   runApp(const ProviderScope(child: OneFitnessApp()));
 }
 

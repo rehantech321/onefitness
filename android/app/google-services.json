@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "466488089989",
+    "project_id": "onefitness-8ee62",
+    "storage_bucket": "onefitness-8ee62.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:466488089989:android:d4057cf62517513013f8ec",
+        "android_client_info": {
+          "package_name": "com.fitnessworkout.onefitness"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPPHS6us-axqcPXpvI2pxMK9bFQ7_tYCc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

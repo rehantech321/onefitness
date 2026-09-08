@@ -21,6 +21,10 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "8.11.1" apply false
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    // Reads android/app/google-services.json and wires the Firebase
+    // project into the build. Declared here (apply false) and applied
+    // in the app module, per Firebase's Android setup.
+    id("com.google.gms.google-services") version "4.4.2" apply false
 }
 
 include(":app")

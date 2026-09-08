@@ -1,5 +1,6 @@
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
+import "../../core/notifications/push_service.dart";
 import "../../core/supabase/supabase_service.dart";
 import "../models/blocked_time.dart";
 import "../models/booking.dart";
@@ -271,6 +272,14 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     ref.read(clientBookingsProvider.notifier).setAll(bookings.where((b) => b.clientId == id).toList());
     ref.read(clientSignedInProvider.notifier).signIn();
   }
+
+  // Register this device for push now that we know who's signed in — the
+  // token is stored against their profile, so it has to happen after the
+  // session is resolved, not at startup. This runs on both a cold start with
+  // an existing session and a fresh sign-in, which is exactly the coverage
+  // needed. Never throws (see PushService), so a push problem can't break
+  // sign-in.
+  await PushService.registerForCurrentUser();
 }
 
 /// Shared by squad_dashboard_screen.dart (client) and squad_tab.dart (coach)

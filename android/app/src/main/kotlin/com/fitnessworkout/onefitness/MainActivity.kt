@@ -1,4 +1,4 @@
-package com.sajiddev.onefitness
+package com.fitnessworkout.onefitness
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
