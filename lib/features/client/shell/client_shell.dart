@@ -29,6 +29,7 @@ import "../log_progress/log_progress_screen.dart";
 import "../plans/nutrition_tab.dart";
 import "../plans/plans_screen.dart";
 import "../rewards/rewards_screen.dart";
+import "../shop/shop_screen.dart";
 import "../squad/squad_dashboard_screen.dart";
 import "client_shell_state.dart";
 
@@ -54,6 +55,7 @@ const _drawerItems = [
   _NavItem("habits", "Habit Tracker", LucideIcons.flame),
   _NavItem("history", "History", LucideIcons.history),
   _NavItem("forms", "Assessments", LucideIcons.fileText),
+  _NavItem("shop", "Shop", LucideIcons.shoppingBag),
   _NavItem("rewards", "Rewards", LucideIcons.gift),
   _NavItem("badges", "Merit Badges", LucideIcons.award),
   _NavItem("challenges", "Challenges", LucideIcons.trophy),
@@ -74,6 +76,7 @@ const _titles = {
   "progress": "Log Progress",
   "habits": "Habit Tracker",
   "challenges": "Challenges",
+  "shop": "Shop",
   "rewards": "Rewards",
   "badges": "Merit Badges",
   "forms": "Assessments",
@@ -419,6 +422,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                         "history" => const HistoryScreen(),
                         "signatures" => const SignaturesScreen(),
                         "memberships" => const MembershipHubScreen(),
+                        "shop" => const ShopScreen(),
                         "challenges" => const ChallengesScreen(),
                         "rewards" => RewardsScreen(
                           clientId: info.id,

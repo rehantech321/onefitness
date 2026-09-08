@@ -701,9 +701,19 @@ class SupabaseService {
   static Product _productFromJson(Map<String, dynamic> j) => Product(
     id: j["id"] as String,
     name: j["name"] as String? ?? "",
+    description: j["description"] as String?,
     priceCents: _asInt(j["priceCents"]) ?? 0,
     category: j["category"] as String?,
     archived: j["archived"] as bool? ?? false,
+    photos: ((j["photos"] as List?) ?? const []).whereType<String>().toList(),
+    sizes: ((j["sizes"] as List?) ?? const [])
+        .whereType<Map>()
+        .map((m) => ProductSize(
+              label: m["label"] as String? ?? "",
+              inventory: _asInt(m["inventory"]) ?? 0,
+            ))
+        .where((sz) => sz.label.isNotEmpty)
+        .toList(),
   );
 
   static Future<List<WaiverDoc>> loadWaiverDocs() async {
@@ -2104,6 +2114,20 @@ class SupabaseService {
         if (targetClientId != null) "targetClientId": targetClientId,
       });
 
+  /// Merchandise purchase. Separate from [createPaymentIntent] because a
+  /// product grants no access and has stock to check — the server validates
+  /// price and availability from the catalogue, never from this call.
+  static Future<Map<String, dynamic>> createProductPayment({
+    required String productId,
+    required String size,
+    int quantity = 1,
+  }) =>
+      _invokeFunction("create-product-payment", {
+        "productId": productId,
+        "size": size,
+        "quantity": quantity,
+      });
+
   /// Cash purchase of a package — the one tender that never reaches Stripe.
   /// A client choosing it books an unpaid charge and gets nothing until staff
   /// confirm the money arrived; staff recording it for a client in person are
@@ -2361,9 +2385,14 @@ class SupabaseService {
   static Map<String, dynamic> _productToJson(Product p) => {
     "id": p.id,
     "name": p.name,
+    "description": p.description,
     "priceCents": p.priceCents,
     "category": p.category,
     "archived": p.archived,
+    "photos": p.photos,
+    // Per-size counts only — totalInventory is derived on read, so there's
+    // no stored copy that can disagree with them.
+    "sizes": p.sizes.map((sz) => {"label": sz.label, "inventory": sz.inventory}).toList(),
   };
 
   /// Shared by every jsonb-blob table write below (products, waiver_docs,

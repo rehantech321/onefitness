@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
+import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/product.dart";
@@ -290,21 +291,67 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
         ? (widget.initial!.priceCents / 100).toStringAsFixed(2)
         : "",
   );
+  late final _description = TextEditingController(text: widget.initial?.description ?? "");
   String? _category;
   bool _addingCategory = false;
   final _newCategory = TextEditingController();
+
+  /// Working copies of the size rows. Held as plain label/count pairs rather
+  /// than ProductSize objects so a half-typed row (blank label, blank count)
+  /// is representable while editing.
+  late List<({TextEditingController label, TextEditingController qty})> _sizes;
+  late List<String> _photos;
+  bool _pickingPhoto = false;
 
   @override
   void initState() {
     super.initState();
     _category = widget.initial?.category;
+    _photos = [...(widget.initial?.photos ?? const [])];
+    final existing = widget.initial?.sizes ?? const <ProductSize>[];
+    _sizes = existing.isEmpty
+        // A brand-new product starts with one row already there: inventory
+        // lives on sizes, so a product with none is unsellable, and an empty
+        // list would quietly produce exactly that.
+        ? [(label: TextEditingController(text: "One Size"), qty: TextEditingController(text: "0"))]
+        : existing
+            .map((sz) => (
+                  label: TextEditingController(text: sz.label),
+                  qty: TextEditingController(text: "${sz.inventory}"),
+                ))
+            .toList();
+  }
+
+  int get _totalInventory => _sizes.fold(0, (sum, r) => sum + (int.tryParse(r.qty.text.trim()) ?? 0));
+
+  List<ProductSize> _collectSizes() => _sizes
+      .map((r) => ProductSize(
+            label: r.label.text.trim(),
+            inventory: int.tryParse(r.qty.text.trim()) ?? 0,
+          ))
+      .where((sz) => sz.label.isNotEmpty)
+      .toList();
+
+  Future<void> _addPhoto() async {
+    setState(() => _pickingPhoto = true);
+    try {
+      final data = await pickProgressPhotoDataUrl();
+      if (data != null && mounted) setState(() => _photos = [..._photos, data]);
+    } finally {
+      if (mounted) setState(() => _pickingPhoto = false);
+    }
   }
 
   @override
   void dispose() {
     _name.dispose();
     _price.dispose();
+    _description.dispose();
     _newCategory.dispose();
+    for (final r in _sizes) {
+      r.label.dispose();
+      r.qty.dispose();
+    }
     super.dispose();
   }
 
@@ -354,13 +401,45 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
           ),
           const SizedBox(height: 10),
           FieldLabeled(
+            label: "Description",
+            child: AppField(
+              controller: _description,
+              maxLines: 4,
+              minLines: 2,
+              placeholder: "What is it? Fabric, fit, anything a buyer should know.",
+            ),
+          ),
+          const SizedBox(height: 10),
+          FieldLabeled(
             label: "Price (\$)",
             child: AppField(
               controller: _price,
               keyboardType: TextInputType.number,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
+          _PhotoStrip(
+            photos: _photos,
+            busy: _pickingPhoto,
+            onAdd: _addPhoto,
+            onRemove: (i) => setState(() => _photos = [..._photos]..removeAt(i)),
+          ),
+          const SizedBox(height: 14),
+          _SizeInventoryEditor(
+            rows: _sizes,
+            total: _totalInventory,
+            onChanged: () => setState(() {}),
+            onAdd: () => setState(() => _sizes = [
+                  ..._sizes,
+                  (label: TextEditingController(), qty: TextEditingController(text: "0")),
+                ]),
+            onRemove: (i) => setState(() {
+              _sizes[i].label.dispose();
+              _sizes[i].qty.dispose();
+              _sizes = [..._sizes]..removeAt(i);
+            }),
+          ),
+          const SizedBox(height: 14),
           const Text(
             "Category",
             style: TextStyle(
@@ -447,9 +526,12 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
                                 widget.initial?.id ??
                                 "product-${DateTime.now().microsecondsSinceEpoch}",
                             name: _name.text.trim(),
+                            description: _description.text.trim().isEmpty ? null : _description.text.trim(),
                             priceCents: (((double.tryParse(_price.text.trim()) ?? 0) * 100).round()).clamp(0, 1 << 31),
                             category: _category,
                             archived: widget.initial?.archived ?? false,
+                            photos: _photos,
+                            sizes: _collectSizes(),
                           ),
                         ),
                   child: const Text("Save"),
@@ -476,6 +558,181 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
               child: Text(widget.isInUse ? "Archive product (hide from new packages)" : "Delete product"),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Horizontal strip of product photos with add/remove. The first photo is the
+/// cover shown in the client-facing shop, so order matters — hence removal
+/// rather than replacement, letting the owner promote a photo by deleting the
+/// ones before it.
+class _PhotoStrip extends StatelessWidget {
+  const _PhotoStrip({required this.photos, required this.busy, required this.onAdd, required this.onRemove});
+
+  final List<String> photos;
+  final bool busy;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text("Photos", style: TextStyle(color: AppColors.mute, fontSize: 11, fontWeight: FontWeight.w600)),
+            ),
+            TextButton(
+              onPressed: busy ? null : onAdd,
+              style: TextButton.styleFrom(foregroundColor: AppColors.gold, padding: EdgeInsets.zero, minimumSize: Size.zero),
+              child: Text(busy ? "Adding…" : "+ Add photo", style: const TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        if (photos.isEmpty)
+          const HintBox(text: "No photos yet. The first one becomes the cover image in the shop.", bordered: false)
+        else
+          SizedBox(
+            height: 88,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: photos.length,
+              separatorBuilder: (context, i) => const SizedBox(width: 8),
+              itemBuilder: (context, i) => Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: ProductPhoto(dataUrl: photos[i], width: 88, height: 88),
+                  ),
+                  if (i == 0)
+                    Positioned(
+                      left: 4,
+                      bottom: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(color: AppColors.gold, borderRadius: BorderRadius.circular(4)),
+                        child: const Text("COVER", style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800, color: Colors.black)),
+                      ),
+                    ),
+                  Positioned(
+                    right: 2,
+                    top: 2,
+                    child: InkWell(
+                      onTap: () => onRemove(i),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
+                        child: const Icon(LucideIcons.x, size: 11, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Per-size stock rows plus a running total. The total is shown, never typed:
+/// it's the sum of the rows, so there's no way for it to disagree with them.
+class _SizeInventoryEditor extends StatelessWidget {
+  const _SizeInventoryEditor({
+    required this.rows,
+    required this.total,
+    required this.onChanged,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  final List<({TextEditingController label, TextEditingController qty})> rows;
+  final int total;
+  final VoidCallback onChanged;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text("Sizes & inventory", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: total > 0 ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                  border: Border.all(color: total > 0 ? AppColors.goldDim : AppColors.line),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  "$total in stock",
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: total > 0 ? AppColors.gold : AppColors.mute,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "Total is added up from the rows below — a size with 0 left still shows in the shop, marked sold out.",
+            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+          ),
+          const SizedBox(height: 10),
+          for (var i = 0; i < rows.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: AppField(
+                      controller: rows[i].label,
+                      placeholder: "Size (S, M, L…)",
+                      onChanged: (_) => onChanged(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: AppField(
+                      controller: rows[i].qty,
+                      keyboardType: TextInputType.number,
+                      placeholder: "Qty",
+                      onChanged: (_) => onChanged(),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: rows.length == 1 ? null : () => onRemove(i),
+                    icon: Icon(
+                      LucideIcons.trash2,
+                      size: 15,
+                      color: rows.length == 1 ? AppColors.line : AppColors.errorText,
+                    ),
+                    padding: const EdgeInsets.only(left: 6),
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+          TextButton(
+            onPressed: onAdd,
+            style: TextButton.styleFrom(foregroundColor: AppColors.gold, padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
+            child: const Text("+ Add size", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+          ),
         ],
       ),
     );

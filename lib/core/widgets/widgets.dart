@@ -2,6 +2,7 @@
 /// app's src/components/ui/FormPrimitives.jsx and StatusDot.jsx.
 library;
 
+export "product_photo.dart";
 export "animated_screen_switcher.dart";
 export "animated_tab_icon.dart";
 export "app_buttons.dart";

@@ -40,6 +40,31 @@ class PaymentSheetService {
   /// moving between test and live keys needs no app release.
   static String? _configuredKey;
 
+  /// Merchandise checkout. Same sheet and the same PCI posture as [purchase];
+  /// it just resolves against the product catalogue instead of plans, and the
+  /// server checks stock before taking anything.
+  static Future<PaymentResult> purchaseProduct({
+    required String productId,
+    required String size,
+    int quantity = 1,
+    required String businessName,
+  }) async {
+    if (kIsWeb) {
+      return const PaymentResult.failed("In-app payment isn't available on web yet.");
+    }
+    final Map<String, dynamic> intent;
+    try {
+      intent = await SupabaseService.createProductPayment(
+        productId: productId,
+        size: size,
+        quantity: quantity,
+      );
+    } catch (e) {
+      return PaymentResult.failed(e.toString().replaceFirst("Exception: ", ""));
+    }
+    return _present(intent, businessName);
+  }
+
   static Future<PaymentResult> purchase({
     required String planId,
     String? couponCode,
@@ -66,6 +91,13 @@ class PaymentSheetService {
       return PaymentResult.failed(e.toString().replaceFirst("Exception: ", ""));
     }
 
+    return _present(intent, businessName);
+  }
+
+  /// Everything from "we have an intent" to "the sheet closed" — shared by
+  /// the plan and product flows so the two can't drift apart on Apple Pay
+  /// handling, key configuration or cancellation semantics.
+  static Future<PaymentResult> _present(Map<String, dynamic> intent, String businessName) async {
     if (intent["requiresPayment"] == false) return const PaymentResult.nothingDue();
 
     final clientSecret = intent["clientSecret"] as String?;
