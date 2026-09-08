@@ -25,6 +25,7 @@ import "../../data/models/meal_def.dart";
 import "../../data/models/measurement.dart";
 import "../../data/models/membership_plan.dart";
 import "../../data/models/nutrition_plan.dart";
+import "../../data/models/order.dart";
 import "../../data/models/points_ledger_entry.dart";
 import "../../data/models/coupon.dart";
 import "../../data/models/product.dart";
@@ -2113,6 +2114,36 @@ class SupabaseService {
         if (couponCode != null && couponCode.trim().isNotEmpty) "couponCode": couponCode.trim(),
         if (targetClientId != null) "targetClientId": targetClientId,
       });
+
+  /// Merchandise orders. RLS scopes the result by itself — a client gets
+  /// their own, staff get everyone's — so both sides call the same method.
+  static Future<List<Order>> loadOrders() async {
+    final rows = await client.from("orders").select().order("created_at", ascending: false);
+    return _safeMap(rows, (r) {
+      final m = r.cast<String, dynamic>();
+      return Order(
+        id: m["id"] as String,
+        clientId: m["client_id"] as String? ?? "",
+        clientName: m["client_name"] as String? ?? "",
+        productId: m["product_id"] as String? ?? "",
+        productName: m["product_name"] as String? ?? "",
+        size: m["size"] as String?,
+        quantity: _asInt(m["quantity"]) ?? 1,
+        amountCents: _asInt(m["amount_cents"]) ?? 0,
+        status: m["status"] as String? ?? "paid",
+        createdAt: DateTime.tryParse(m["created_at"]?.toString() ?? ""),
+      );
+    });
+  }
+
+  /// Staff-only in practice — the orders_update_staff_only policy rejects
+  /// this from a client, so there's no client-side role check to duplicate.
+  static Future<void> updateOrderStatus(String orderId, String status) async {
+    await client
+        .from("orders")
+        .update({"status": status, "updated_at": DateTime.now().toUtc().toIso8601String()})
+        .eq("id", orderId);
+  }
 
   /// Merchandise purchase. Separate from [createPaymentIntent] because a
   /// product grants no access and has stock to check — the server validates

@@ -9,6 +9,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/product.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "orders_tab.dart";
 
 /// Mirrors ManageProducts.jsx — the fee-item catalog (initiation fees, gear
 /// charges, etc.) used by the package "Fee Item" picker. A product a
@@ -26,6 +27,10 @@ class ManageProductsScreen extends ConsumerStatefulWidget {
 class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
   Product? _editing;
   bool _creating = false;
+  // Orders live here rather than as their own hamburger entry: the owner
+  // menu is a fixed 13-item list, and orders are what the product catalogue
+  // produces, so they belong beside it.
+  bool _showOrders = false;
 
   int _inUseBy(String productId) => ref
       .watch(membershipPlansProvider)
@@ -163,11 +168,28 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
       );
     }
 
+    if (_showOrders) {
+      return Column(
+        children: [
+          _ProductsOrdersToggle(
+            showOrders: true,
+            onSelect: (orders) => setState(() => _showOrders = orders),
+          ),
+          const Expanded(child: OrdersTab()),
+        ],
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _ProductsOrdersToggle(
+            showOrders: false,
+            onSelect: (orders) => setState(() => _showOrders = orders),
+          ),
+          const SizedBox(height: 14),
           const SectionLabel("Products"),
           const SizedBox(height: 8),
           const HintBox(
@@ -734,6 +756,63 @@ class _SizeInventoryEditor extends StatelessWidget {
             child: const Text("+ Add size", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+/// Products / Orders switch. Two closely-related views of the same catalogue
+/// — what's for sale, and what's been sold — kept on one screen so staff
+/// aren't hunting through the menu to check an order.
+class _ProductsOrdersToggle extends StatelessWidget {
+  const _ProductsOrdersToggle({required this.showOrders, required this.onSelect});
+
+  final bool showOrders;
+  final ValueChanged<bool> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(showOrders ? 18 : 0, showOrders ? 14 : 0, showOrders ? 18 : 0, 0),
+      child: Row(
+        children: [
+          Expanded(child: _Seg(label: "Products", selected: !showOrders, onTap: () => onSelect(false))),
+          const SizedBox(width: 8),
+          Expanded(child: _Seg(label: "Orders", selected: showOrders, onTap: () => onSelect(true))),
+        ],
+      ),
+    );
+  }
+}
+
+class _Seg extends StatelessWidget {
+  const _Seg({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+          border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: selected ? AppColors.gold : AppColors.mute,
+          ),
+        ),
       ),
     );
   }

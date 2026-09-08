@@ -13,6 +13,7 @@ import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
+import "../shop/my_orders_section.dart";
 import "client_visits_section.dart";
 import "membership_hub_screen.dart";
 
@@ -66,6 +67,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         child: _NotificationPreferencesSection(
           onBack: () => setState(() => _section = null),
         ),
+      );
+    }
+    if (_section == "orders") {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _section = null),
+        child: MyOrdersSection(onBack: () => setState(() => _section = null)),
       );
     }
     if (_section == "calendar") {
@@ -154,6 +162,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             label: "Your City",
             detail: info.city ?? "Not set",
             onTap: () => setState(() => _section = "profile"),
+          ),
+          _SettingRow(
+            icon: LucideIcons.shoppingBag,
+            label: "My Orders",
+            detail: "Track what you've bought from the Shop",
+            onTap: () => setState(() => _section = "orders"),
           ),
           _SettingRow(
             icon: LucideIcons.calendar,
