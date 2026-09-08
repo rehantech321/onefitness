@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Onefitness</string>
+		<string>ONE Fitness</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -62,5 +62,16 @@
 				</array>
 			</dict>
 		</array>
+		<!-- Lets APNs wake the app for a push while it's backgrounded or
+		     terminated. Without this, iOS delivers only when the app
+		     happens to be running. -->
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>remote-notification</string>
+		</array>
+		<!-- Firebase registers for APNs itself once the token is available;
+		     leaving this false would suppress that automatic registration. -->
+		<key>FirebaseAppDelegateProxyEnabled</key>
+		<true/>
 	</dict>
 </plist>
