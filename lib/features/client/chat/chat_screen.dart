@@ -87,6 +87,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     setState(() {
       _recipientId = recipientId;
       _channel = channel;
+      _view = _ChatView.thread;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }

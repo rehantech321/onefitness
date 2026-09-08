@@ -2484,6 +2484,14 @@ class SupabaseService {
     }
   }
 
+  /// Removes a category from the shared catalogue. Plans already tagged
+  /// with it keep their `category` string — this only stops it being
+  /// offered for new ones, so an in-use category is blocked at the UI layer
+  /// rather than silently orphaning what points at it.
+  static Future<void> deletePackageCategory(String name) async {
+    await client.from("package_categories").delete().eq("name", name);
+  }
+
   static Map<String, dynamic> _waiverDocToJson(WaiverDoc w) => {
     "id": w.id,
     "title": w.title,

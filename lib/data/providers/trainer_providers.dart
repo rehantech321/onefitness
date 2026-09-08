@@ -274,6 +274,8 @@ class PackageCategoriesNotifier extends Notifier<List<String>> {
   void add(String name) {
     if (!state.contains(name)) state = [...state, name];
   }
+
+  void remove(String name) => state = state.where((c) => c != name).toList();
 }
 
 final packageCategoriesProvider = NotifierProvider<PackageCategoriesNotifier, List<String>>(PackageCategoriesNotifier.new);

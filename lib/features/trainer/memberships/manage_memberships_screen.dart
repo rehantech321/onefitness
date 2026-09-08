@@ -24,6 +24,18 @@ const _allowedTypeOptions = ["one-on-one", "semi-private", "large-group"];
 /// same "don't build a second bespoke editor" reasoning as Customize
 /// Platform's signup-waiver field) and two lower-value toggles
 /// (allowBookingBeyondBillingInterval, includeGuestsInVisitCount).
+/// The product lines a gym sells. Offered as a fixed list rather than free
+/// text so categories stay consistent across plans, products and reports —
+/// "Semi-Private Pack" and "semi private pack" would otherwise be two
+/// different things that look identical in a dropdown.
+const _presetCategories = [
+  "One-on-One Pack",
+  "Semi-Private Pack",
+  "Semi-Private Membership",
+  "Personalized Program",
+  "Nutrition Program",
+];
+
 class ManageMembershipsScreen extends ConsumerStatefulWidget {
   const ManageMembershipsScreen({super.key});
 
@@ -36,6 +48,11 @@ class _ManageMembershipsScreenState
     extends ConsumerState<ManageMembershipsScreen> {
   MembershipPlan? _editing;
   bool _creating = false;
+  /// Pre-selects the category when adding a plan from inside a category
+  /// section, so the owner isn't re-picking what they just tapped under.
+  String? _creatingInCategory;
+  String? _pendingCategory;
+  bool _categoryBusy = false;
 
   int _membersOn(String planId) {
     final roster = ref.watch(trainerRosterProvider);
@@ -159,6 +176,67 @@ class _ManageMembershipsScreenState
         expirationDays: p.expirationDays,
       );
 
+  Future<void> _addCategory(String name) async {
+    setState(() => _categoryBusy = true);
+    try {
+      await SupabaseService.insertPackageCategory(name);
+      ref.read(packageCategoriesProvider.notifier).add(name);
+      if (mounted) setState(() => _pendingCategory = null);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't add that category — check your connection and try again.")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _categoryBusy = false);
+    }
+  }
+
+  Future<void> _deleteCategory(String name, int planCount) async {
+    // Deleting a category that plans still point at would leave them
+    // labelled with something no longer in the catalogue, so it's blocked
+    // rather than silently orphaning them.
+    if (planCount > 0) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.card,
+          title: Text('"$name" is still in use'),
+          content: Text(
+            "\$planCount plan(s) are in this category. Move or delete them first, "
+            "then the category can go.",
+          ),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))],
+        ),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text('Delete "$name"?'),
+        content: const Text("It stops being offered when creating plans and products. Nothing else changes."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Yes, delete it")),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await SupabaseService.deletePackageCategory(name);
+      ref.read(packageCategoriesProvider.notifier).remove(name);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't delete that category — check your connection and try again.")),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final plans = ref.watch(membershipPlansProvider);
@@ -171,9 +249,11 @@ class _ManageMembershipsScreenState
         onBack: () => setState(() {
           _editing = null;
           _creating = false;
+          _creatingInCategory = null;
         }),
         child: _PlanEditForm(
           initial: editingPlan,
+          initialCategory: _creatingInCategory,
           products: products,
           onCancel: () => setState(() {
             _editing = null;
@@ -241,6 +321,22 @@ class _ManageMembershipsScreenState
             text:
                 "Plans with active members can be archived (hidden from new sign-ups) but never deleted — existing members keep working.",
           ),
+          const SizedBox(height: 14),
+          _CategoryManager(
+            categories: ref.watch(packageCategoriesProvider),
+            planCountFor: (c) => plans.where((p) => p.category == c).length,
+            pending: _pendingCategory,
+            busy: _categoryBusy,
+            onPick: (c) => setState(() => _pendingCategory = c),
+            onAdd: _addCategory,
+            onDelete: _deleteCategory,
+            onAddPlanIn: (c) => setState(() {
+              _creatingInCategory = c;
+              _creating = true;
+            }),
+          ),
+          const SizedBox(height: 18),
+          const SectionLabel("All Plans"),
           ...plans.asMap().entries.map((entry) {
             final i = entry.key;
             final p = entry.value;
@@ -330,6 +426,7 @@ String _kindLabel(PlanKind k) => planKindLabel(k);
 
 class _PlanEditForm extends ConsumerStatefulWidget {
   const _PlanEditForm({
+    this.initialCategory,
     required this.initial,
     required this.products,
     required this.onCancel,
@@ -338,6 +435,10 @@ class _PlanEditForm extends ConsumerStatefulWidget {
     required this.onRestore,
   });
   final MembershipPlan? initial;
+
+  /// Set when the form was opened from inside a category section, so a new
+  /// plan starts already filed under it.
+  final String? initialCategory;
   final List<Product> products;
   final VoidCallback onCancel;
   final ValueChanged<MembershipPlan> onSave;
@@ -403,7 +504,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
   @override
   void initState() {
     super.initState();
-    _category = widget.initial?.category;
+    _category = widget.initial?.category ?? widget.initialCategory;
     _feeItemProductId = widget.initial?.feeItemProductId;
   }
 
@@ -960,6 +1061,146 @@ class _ToggleRow extends StatelessWidget {
             size: 30,
             color: value ? AppColors.gold : AppColors.mute,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Category catalogue: add one from the preset product lines, see how many
+/// plans sit in each, jump straight to creating a plan inside one, or remove
+/// an empty one.
+class _CategoryManager extends StatelessWidget {
+  const _CategoryManager({
+    required this.categories,
+    required this.planCountFor,
+    required this.pending,
+    required this.busy,
+    required this.onPick,
+    required this.onAdd,
+    required this.onDelete,
+    required this.onAddPlanIn,
+  });
+
+  final List<String> categories;
+  final int Function(String) planCountFor;
+  final String? pending;
+  final bool busy;
+  final ValueChanged<String?> onPick;
+  final ValueChanged<String> onAdd;
+  final void Function(String, int) onDelete;
+  final ValueChanged<String> onAddPlanIn;
+
+  @override
+  Widget build(BuildContext context) {
+    // Only offer what isn't already there — re-adding an existing category
+    // is a no-op that just looks broken.
+    final available = _presetCategories.where((c) => !categories.contains(c)).toList();
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Categories", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          const Text(
+            "Group plans by what they are. Categories are shared with Products, so the same names appear there.",
+            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          if (categories.isEmpty)
+            const HintBox(text: "No categories yet — add one below.", bordered: false)
+          else
+            ...categories.map((c) {
+              final count = planCountFor(c);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    border: Border.all(color: AppColors.line),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(c, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 1),
+                            Text(
+                              "$count plan${count == 1 ? "" : "s"}",
+                              style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => onAddPlanIn(c),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.gold,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: Size.zero,
+                        ),
+                        child: const Text("+ Plan", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                      ),
+                      IconButton(
+                        onPressed: () => onDelete(c, count),
+                        icon: Icon(
+                          LucideIcons.trash2,
+                          size: 15,
+                          // Greyed when in use — the tap still explains why
+                          // rather than doing nothing silently.
+                          color: count > 0 ? AppColors.line : AppColors.errorText,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          if (available.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                "All categories added.",
+                style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
+              ),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.bg,
+                      border: Border.all(color: AppColors.line),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<String>(
+                      value: pending,
+                      isExpanded: true,
+                      underline: const SizedBox(),
+                      dropdownColor: AppColors.card,
+                      hint: const Text("Choose a category…", style: TextStyle(color: AppColors.mute, fontSize: 13)),
+                      style: const TextStyle(color: AppColors.txt, fontSize: 13),
+                      items: available.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                      onChanged: busy ? null : onPick,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                BtnGold(
+                  onPressed: (pending == null || busy) ? null : () => onAdd(pending!),
+                  child: Text(busy ? "Adding…" : "Add"),
+                ),
+              ],
+            ),
         ],
       ),
     );

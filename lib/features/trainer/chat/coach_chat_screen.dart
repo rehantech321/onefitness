@@ -90,6 +90,10 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
     setState(() {
       _recipientId = recipientId;
       _channel = channel;
+      // Without this the picker just re-rendered itself: confirming set the
+      // recipient but left the view on `picker`, so "Start chat" looked
+      // like it did nothing.
+      _view = _ChatView.thread;
     });
     _markThreadRead(recipientId);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
