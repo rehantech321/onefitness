@@ -72,6 +72,7 @@ class TrainerEditForm extends StatefulWidget {
 
 class _TrainerEditFormState extends State<TrainerEditForm> {
   late final _name = TextEditingController(text: widget.initial?.name ?? "");
+  late final _title = TextEditingController(text: widget.initial?.title ?? "Coach");
   late final _email = TextEditingController(text: widget.initial?.email ?? "");
   late final _phone = TextEditingController(text: widget.initial?.phone ?? "");
   late final _bio = TextEditingController(text: widget.initial?.bio ?? "");
@@ -116,6 +117,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
   @override
   void dispose() {
     _name.dispose();
+    _title.dispose();
     _email.dispose();
     _phone.dispose();
     _bio.dispose();
@@ -224,6 +226,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             widget.initial?.id ??
             "trainer-${DateTime.now().microsecondsSinceEpoch}",
         name: name,
+        title: _title.text.trim().isEmpty ? null : _title.text.trim(),
         email: email,
         phone: phone,
         photo: _photoDataUrl ?? widget.initial?.photo,
@@ -367,6 +370,22 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               controller: _name,
               placeholder: "First Last",
               onChanged: (_) => setState(() => _error = null),
+            ),
+          ),
+          const SizedBox(height: 10),
+          FieldLabeled(
+            label: "Title",
+            child: AppField(
+              controller: _title,
+              placeholder: "Coach",
+              onChanged: (_) => setState(() => _error = null),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              "Shown to clients before the first name — e.g. \"Coach Sooraj\".",
+              style: TextStyle(fontSize: 11, color: AppColors.mute),
             ),
           ),
           const SizedBox(height: 10),

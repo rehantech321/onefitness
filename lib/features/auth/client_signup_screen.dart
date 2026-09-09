@@ -28,7 +28,8 @@ class ClientSignupScreen extends ConsumerStatefulWidget {
 }
 
 class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
-  final _name = TextEditingController();
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _password2 = TextEditingController();
@@ -43,7 +44,8 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
 
   @override
   void dispose() {
-    _name.dispose();
+    _firstName.dispose();
+    _lastName.dispose();
     _email.dispose();
     _password.dispose();
     _password2.dispose();
@@ -77,13 +79,17 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
   }
 
   Future<void> _submit() async {
-    final name = _name.text.trim();
+    final firstName = _firstName.text.trim();
+    final lastName = _lastName.text.trim();
+    // Stored combined as well as split: every screen in the app reads the
+    // single `name`, so it stays the display value.
+    final name = [firstName, lastName].where((p) => p.isNotEmpty).join(" ");
     final email = _email.text.trim();
     final password = _password.text;
     final phone = _phone.text.trim();
     final city = _city.text.trim();
-    if (name.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty || city.isEmpty) {
-      setState(() => _error = "Name, email, password, phone number, and city are all required.");
+    if (firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty || city.isEmpty) {
+      setState(() => _error = "First name, last name, email, password, phone number, and city are all required.");
       return;
     }
     if (password.length < 6) {
@@ -103,6 +109,8 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
         email: email,
         password: password,
         name: name,
+        firstName: firstName,
+        lastName: lastName,
         phone: phone,
         city: city,
         birthday: _birthday.text.trim().isEmpty ? null : _birthday.text.trim(),
@@ -176,7 +184,23 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              FieldLabeled(label: "Full name", child: AppField(controller: _name, onChanged: (_) => setState(() => _error = null))),
+              Row(
+                children: [
+                  Expanded(
+                    child: FieldLabeled(
+                      label: "First name",
+                      child: AppField(controller: _firstName, onChanged: (_) => setState(() => _error = null)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FieldLabeled(
+                      label: "Last name",
+                      child: AppField(controller: _lastName, onChanged: (_) => setState(() => _error = null)),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Email",

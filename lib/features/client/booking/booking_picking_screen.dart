@@ -57,7 +57,7 @@ class BookingPickingScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text(t.displayTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
                         Text(
                           "${disciplineLabel(pick.discipline)} · ${sessionTypeLabel(pick.sessionType)}",
                           style: const TextStyle(fontSize: 12, color: AppColors.mute),

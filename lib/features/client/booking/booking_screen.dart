@@ -950,7 +950,7 @@ class _StepThreeState extends State<_StepThree> {
                                           ),
                                           Padding(
                                             padding: const EdgeInsets.only(top: 2),
-                                            child: Text(a.trainer.name, style: const TextStyle(fontSize: 12, color: AppColors.txt)),
+                                            child: Text(a.trainer.displayTitle, style: const TextStyle(fontSize: 12, color: AppColors.txt)),
                                           ),
                                           Padding(
                                             padding: const EdgeInsets.only(top: 3),

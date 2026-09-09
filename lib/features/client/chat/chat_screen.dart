@@ -208,7 +208,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final last = msgs.first;
       out.add(ChatConversation(
         id: coach.id,
-        name: coach.name,
+        name: coach.displayTitle,
         photo: coach.photo,
         preview: last.text,
         at: last.sentAt,
@@ -304,7 +304,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         _Composer(
           controller: _msgController,
-          recipientName: selectedCoach.name,
+          recipientName: selectedCoach.displayTitle,
           onSend: () => _send(selectedCoach: selectedCoach, info: info, settings: settings, channel: channel),
         ),
       ],

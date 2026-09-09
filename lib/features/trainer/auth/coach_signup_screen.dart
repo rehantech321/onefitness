@@ -37,7 +37,11 @@ class CoachSignupScreen extends ConsumerStatefulWidget {
 }
 
 class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
-  final _name = TextEditingController();
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
+  // Defaulted rather than left blank: nearly every coach is a
+  // "Coach", and a blank title would show clients a bare first name.
+  final _title = TextEditingController(text: "Coach");
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _password2 = TextEditingController();
@@ -69,7 +73,9 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
 
   @override
   void dispose() {
-    _name.dispose();
+    _firstName.dispose();
+    _lastName.dispose();
+    _title.dispose();
     _email.dispose();
     _password.dispose();
     _password2.dispose();
@@ -135,13 +141,15 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
   }
 
   Future<void> _submit() async {
-    final name = _name.text.trim();
+    final firstName = _firstName.text.trim();
+    final lastName = _lastName.text.trim();
+    final name = [firstName, lastName].where((p) => p.isNotEmpty).join(" ");
     final email = _email.text.trim();
     final password = _password.text;
     final phone = _phone.text.trim();
-    if (name.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty) {
+    if (firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty) {
       setState(
-        () => _error = "Name, email, password, and phone are all required.",
+        () => _error = "First name, last name, email, password, and phone are all required.",
       );
       return;
     }
@@ -166,6 +174,9 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
         email: email,
         password: password,
         name: name,
+        firstName: firstName,
+        lastName: lastName,
+        title: _title.text.trim(),
         phone: phone,
         approvalCode: _code.text.trim(),
         photo: _photoDataUrl,
@@ -341,12 +352,43 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 ),
               ),
               const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: FieldLabeled(
+                      label: "First name",
+                      child: AppField(
+                        controller: _firstName,
+                        onChanged: (_) => setState(() => _error = null),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FieldLabeled(
+                      label: "Last name",
+                      child: AppField(
+                        controller: _lastName,
+                        onChanged: (_) => setState(() => _error = null),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
               FieldLabeled(
-                label: "Full name",
+                label: "Title",
                 child: AppField(
-                  controller: _name,
-                  placeholder: "First Last",
+                  controller: _title,
+                  placeholder: "Coach",
                   onChanged: (_) => setState(() => _error = null),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  "How clients see you — e.g. \"Coach Sooraj\".",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
                 ),
               ),
               const SizedBox(height: 10),

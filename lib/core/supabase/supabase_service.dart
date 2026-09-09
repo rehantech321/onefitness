@@ -109,6 +109,8 @@ class SupabaseService {
     required String email,
     required String password,
     required String name,
+    String? firstName,
+    String? lastName,
     String? phone,
     String? city,
     String? birthday,
@@ -134,6 +136,12 @@ class SupabaseService {
           .ilike("coach_code", trimmedCode)
           .maybeSingle();
       referringTrainerId = match?["profile_id"] as String?;
+    }
+    if (firstName != null || lastName != null) {
+      await client.from("profiles").update({
+        if (firstName != null) "first_name": firstName,
+        if (lastName != null) "last_name": lastName,
+      }).eq("id", userId);
     }
     await client.from("clients").insert({
       "profile_id": userId,
@@ -195,6 +203,9 @@ class SupabaseService {
     required String email,
     required String password,
     required String name,
+    String? firstName,
+    String? lastName,
+    String? title,
     String? phone,
     required String approvalCode,
     String? photo,
@@ -218,6 +229,7 @@ class SupabaseService {
         "profile_id": userId,
         "reviewed_by_owner": false,
         "signup_at": isoToday(),
+        if (title != null && title.trim().isNotEmpty) "title": title.trim(),
         if (disciplines != null && disciplines.isNotEmpty)
           "disciplines": disciplines,
         if (locationName != null || locationAddress != null)
@@ -240,11 +252,13 @@ class SupabaseService {
         );
       rethrow;
     }
-    if (photo != null) {
-      await client
-          .from("profiles")
-          .update({"photo_url": photo})
-          .eq("id", userId);
+    final profilePatch = <String, dynamic>{
+      if (photo != null) "photo_url": photo,
+      if (firstName != null) "first_name": firstName,
+      if (lastName != null) "last_name": lastName,
+    };
+    if (profilePatch.isNotEmpty) {
+      await client.from("profiles").update(profilePatch).eq("id", userId);
     }
     try {
       await client.rpc(
@@ -1255,6 +1269,8 @@ class SupabaseService {
   static Future<void> updateClientRow(
     String id, {
     String? name,
+    String? firstName,
+    String? lastName,
     String? email,
     String? phone,
     String? photo,
@@ -1268,6 +1284,8 @@ class SupabaseService {
   }) async {
     final profileFields = <String, dynamic>{
       if (name != null) "name": name,
+      if (firstName != null) "first_name": firstName,
+      if (lastName != null) "last_name": lastName,
       if (email != null) "email": email,
       if (phone != null) "phone": phone,
       if (photo != null) "photo_url": photo,
@@ -1344,6 +1362,7 @@ class SupabaseService {
     int? payoutRateCents,
     num? referralCommissionPercent,
     List<TrainerUnavailability>? unavailability,
+      String? title,
   }) async {
     final profileFields = <String, dynamic>{
       if (name != null) "name": name,
@@ -1354,6 +1373,7 @@ class SupabaseService {
     if (profileFields.isNotEmpty)
       await client.from("profiles").update(profileFields).eq("id", id);
     final trainerFields = <String, dynamic>{
+      if (title != null) "title": title,
       if (disciplines != null) "disciplines": disciplines,
       if (sessionTypes != null) "session_types": sessionTypes,
       if (locations != null)
@@ -2170,6 +2190,24 @@ class SupabaseService {
         "paymentMethod": paymentMethod,
         if (couponCode != null && couponCode.trim().isNotEmpty) "couponCode": couponCode.trim(),
         if (targetClientId != null) "targetClientId": targetClientId,
+      });
+
+  /// Coach/owner creates a client account in person. Returns the new
+  /// client's id plus a temporary password to hand over — the server
+  /// re-checks the caller is staff before creating anything.
+  static Future<Map<String, dynamic>> createClientAccount({
+    required String name,
+    required String email,
+    String? phone,
+    String? city,
+    String? primaryTrainerId,
+  }) =>
+      _invokeFunction("create-client-account", {
+        "name": name,
+        "email": email,
+        if (phone != null && phone.trim().isNotEmpty) "phone": phone.trim(),
+        if (city != null && city.trim().isNotEmpty) "city": city.trim(),
+        if (primaryTrainerId != null) "primaryTrainerId": primaryTrainerId,
       });
 
   /// Merchandise orders. RLS scopes the result by itself — a client gets
@@ -3090,6 +3128,7 @@ class SupabaseService {
     return Trainer(
       id: profile["id"] as String,
       name: (profile["name"] as String?) ?? "",
+      title: t["title"] as String?,
       photo: profile["photo_url"] as String?,
       phone: profile["phone"] as String?,
       email: profile["email"] as String?,

@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
+import "add_client_sheet.dart";
 import "../../../core/utils/client_status_utils.dart";
 import "../../../core/utils/flag_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -55,9 +56,6 @@ class _RosterBarState extends ConsumerState<RosterBar> {
         ? scoped
         : scoped.where((c) => c.name.toLowerCase().contains(q) || (c.email ?? "").toLowerCase().contains(q)).toList();
 
-    void showComingSoon(String what) =>
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$what coming in a later pass.")));
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
@@ -76,7 +74,14 @@ class _RosterBarState extends ConsumerState<RosterBar> {
               scrollDirection: Axis.horizontal,
               children: [
                 InkWell(
-                  onTap: () => showComingSoon("Add client"),
+                  onTap: () async {
+                    final added = await showAddClientSheet(context);
+                    if (added == true && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Client added.")),
+                      );
+                    }
+                  },
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

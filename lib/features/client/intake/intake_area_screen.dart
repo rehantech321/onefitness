@@ -230,7 +230,13 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                   final blocked = locked && isClientView;
                   return AppCard(
                     padding: EdgeInsets.zero,
-                    onTap: blocked ? null : () => setState(() => _open = a),
+                    // A locked row sends them where the lock is actually
+                    // lifted, rather than being inert — tapping something
+                    // and getting nothing back reads as a broken screen,
+                    // and the answer ("buy a plan") is one tap away.
+                    onTap: blocked
+                        ? () => ref.read(clientScreenProvider.notifier).go("memberships")
+                        : () => setState(() => _open = a),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Row(
@@ -280,7 +286,10 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                                     padding: const EdgeInsets.only(top: 3),
                                     child: Text(
                                       isClientView
-                                          ? _unlockHint(a.key)
+                                          // Tapping goes to the Membership
+                                          // Hub, so say so — otherwise the
+                                          // row looks like a dead end.
+                                          ? "${_unlockHint(a.key)} Tap to choose a plan."
                                           : "Not unlocked by this client's purchases yet.",
                                       style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.35),
                                     ),

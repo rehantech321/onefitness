@@ -28,6 +28,7 @@ class MyProfileScreen extends ConsumerWidget {
           await SupabaseService.updateTrainerRow(
             t.id,
             name: t.name,
+        title: t.title,
             email: t.email,
             phone: t.phone,
             photo: t.photo,

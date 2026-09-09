@@ -42,6 +42,7 @@ class Trainer {
   const Trainer({
     required this.id,
     required this.name,
+    this.title,
     this.photo,
     this.phone,
     this.email,
@@ -65,10 +66,25 @@ class Trainer {
 
   final String id;
   final String name;
+
+  /// Honorific shown before the name to clients — "Coach", "Head Coach",
+  /// "Trainer". Separate from the name itself so it can be changed without
+  /// rewriting what the coach is called everywhere.
+  final String? title;
   final String? photo;
   final String? phone;
   final String? email;
   final String? locationName;
+
+  /// "Coach Sooraj" — how a coach is introduced to clients. Falls back to
+  /// the plain name when no title is set, and uses the first name only,
+  /// since "Coach Sooraj Patel" reads like a formal record rather than a
+  /// person you train with.
+  String get displayTitle {
+    final t = (title ?? "").trim();
+    final first = name.trim().split(RegExp(r"\s+")).first;
+    return t.isEmpty ? name : "$t $first";
+  }
   final String? locationAddress;
 
   /// Real, directly-stored columns — NOT derived from [availability]'s

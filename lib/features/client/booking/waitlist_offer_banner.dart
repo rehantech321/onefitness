@@ -105,7 +105,7 @@ class _WaitlistOfferBannerState extends ConsumerState<WaitlistOfferBanner> {
               const SizedBox(height: 6),
               Text(
                 "${dayLabel(offer.date)} at ${fmtSlot(offer.slot)}"
-                "${coach != null ? " with ${coach.name}" : ""}.",
+                "${coach != null ? " with ${coach.displayTitle}" : ""}.",
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 2),
