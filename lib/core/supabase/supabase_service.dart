@@ -1854,8 +1854,38 @@ class SupabaseService {
     return _bookingFromRow(data);
   }
 
+  /// Cancels a booking and hands the freed slot to whoever is next on the
+  /// waitlist for it.
+  ///
+  /// The slot details are read BEFORE the delete — afterwards the row is
+  /// gone and there'd be nothing left to identify which slot just freed up.
+  /// Offering is best-effort: a waitlist problem must never leave the client
+  /// still holding a booking they just cancelled.
   static Future<void> deleteBooking(String id) async {
+    Map<String, dynamic>? slot;
+    try {
+      slot = await client
+          .from("bookings")
+          .select("trainer_id, date, slot_min")
+          .eq("id", id)
+          .maybeSingle();
+    } catch (_) {
+      slot = null;
+    }
+
     await client.from("bookings").delete().eq("id", id);
+
+    if (slot != null) {
+      try {
+        await offerWaitlistSlot(
+          trainerId: slot["trainer_id"] as String,
+          date: slot["date"].toString(),
+          slot: _asInt(slot["slot_min"]) ?? 0,
+        );
+      } catch (_) {
+        // Logged server-side; the cancellation itself already succeeded.
+      }
+    }
   }
 
   static WaitlistEntry _waitlistFromRow(Map<String, dynamic> row) =>
@@ -1874,6 +1904,7 @@ class SupabaseService {
         addedAt: row["added_at"] as String?,
         requestedAt: row["requested_at"] as String?,
         seriesId: row["series_id"] as String?,
+        offerExpiresAt: DateTime.tryParse(row["offer_expires_at"]?.toString() ?? ""),
       );
 
   static Future<List<WaitlistEntry>> loadWaitlist() async {
@@ -1899,6 +1930,32 @@ class SupabaseService {
     };
     final data = await client.from("waitlist").insert(row).select().single();
     return _waitlistFromRow(data);
+  }
+
+  /// Offers a freed slot to whoever is next in line for it. Called after a
+  /// cancellation; the server decides who that is.
+  static Future<void> offerWaitlistSlot({
+    required String trainerId,
+    required String date,
+    required int slot,
+  }) =>
+      _invokeFunction("offer-waitlist-slot", {
+        "trainerId": trainerId,
+        "date": date,
+        "slot": slot,
+      });
+
+  /// Answers a "do you want this spot?" offer. Accepting books it; declining
+  /// passes it to the next person waiting.
+  static Future<bool> respondToWaitlistOffer({
+    required String entryId,
+    required bool accept,
+  }) async {
+    final data = await _invokeFunction("respond-waitlist-offer", {
+      "entryId": entryId,
+      "accept": accept,
+    });
+    return data["booked"] == true;
   }
 
   static Future<void> deleteWaitlistEntry(String id) async {

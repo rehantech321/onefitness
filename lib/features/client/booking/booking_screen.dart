@@ -22,6 +22,7 @@ import "booking_cancel_screen.dart";
 import "booking_picking_screen.dart";
 import "date_strip.dart";
 import "upcoming_session_card.dart";
+import "waitlist_offer_banner.dart";
 
 /// Mirrors BookSession.jsx, trimmed to the everyday linear flow: browse
 /// upcoming sessions, pick a session type -> discipline -> time slot,
@@ -368,6 +369,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // First thing on the screen, above even the sessions-remaining
+          // line: an offer is time-limited and passes to someone else if
+          // missed, so nothing on this page is more urgent.
+          const WaitlistOfferBanner(),
           // Above the upcoming-sessions grid, not below it: how many sessions
           // are left is the thing that decides whether booking another one is
           // even possible, so it shouldn't sit under a list the client has to

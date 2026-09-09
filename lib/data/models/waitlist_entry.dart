@@ -18,6 +18,7 @@ class WaitlistEntry {
     this.addedAt,
     this.requestedAt,
     this.seriesId,
+    this.offerExpiresAt,
   });
 
   final String id;
@@ -34,4 +35,14 @@ class WaitlistEntry {
   final String? addedAt;
   final String? requestedAt;
   final String? seriesId;
+
+  /// Set while this entry is the one being held a freed slot. Past it, the
+  /// offer has lapsed and belongs to whoever is next.
+  final DateTime? offerExpiresAt;
+
+  /// A live offer waiting on this client's answer.
+  bool get isLiveOffer =>
+      status == "offered" &&
+      offerExpiresAt != null &&
+      offerExpiresAt!.isAfter(DateTime.now());
 }

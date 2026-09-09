@@ -78,8 +78,31 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final waitlist = ref.watch(waitlistProvider);
+    final trainerAuth = ref.watch(trainerAuthProvider);
+    final isOwner = trainerAuth == "owner";
+    // A coach sees the queue for their own sessions; the owner sees the
+    // whole gym's. Scoped here rather than in the query so both roles share
+    // one screen.
+    final waitlist = ref
+        .watch(waitlistProvider)
+        .where((w) => isOwner || w.trainerId == trainerAuth)
+        .toList();
     final pending = waitlist.where((w) => w.status == "pending-approval").toList();
+
+    // Single-slot waiters: people queued for a session that was full, and
+    // whoever currently holds an offer on a slot that freed up.
+    final queued = waitlist.where((w) => w.status == "waiting" || w.status == "offered").toList()
+      ..sort((a, b) {
+        final byDate = a.date.compareTo(b.date);
+        if (byDate != 0) return byDate;
+        final bySlot = a.slot.compareTo(b.slot);
+        if (bySlot != 0) return bySlot;
+        return (a.position ?? 9999).compareTo(b.position ?? 9999);
+      });
+    final bySlotKey = <String, List<WaitlistEntry>>{};
+    for (final w in queued) {
+      bySlotKey.putIfAbsent("${w.trainerId}|${w.date}|${w.slot}", () => []).add(w);
+    }
     final bySeries = <String, List<WaitlistEntry>>{};
     for (final w in pending) {
       bySeries.putIfAbsent(w.seriesId ?? w.id, () => []).add(w);
@@ -91,7 +114,20 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SectionLabel("Waitlist"),
+          const SectionLabel("Waiting for a spot"),
+          const HintBox(
+            text: "Clients queued for sessions that were full. When a booking is cancelled the top of the queue is "
+                "automatically offered the slot, and it passes down the line if they decline or don't answer.",
+          ),
+          if (bySlotKey.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 10),
+              child: HintBox(text: "Nobody's waiting on a full session right now."),
+            )
+          else
+            ...bySlotKey.entries.map((g) => _QueuedSlotCard(entries: g.value)),
+          const SizedBox(height: 22),
+          const SectionLabel("Advanced Booking requests"),
           const HintBox(text: "Requests from clients' Advanced Booking, waiting on your approval before they become real bookings."),
           if (_err != null)
             Padding(
@@ -201,6 +237,81 @@ class _WaitlistActionBtn extends StatelessWidget {
             Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: disabled ? AppColors.mute : color)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+/// One full slot and everyone queued for it, in order. Grouped by slot
+/// rather than listed flat so it's obvious at a glance which sessions are
+/// in demand and who's next if someone drops out.
+class _QueuedSlotCard extends StatelessWidget {
+  const _QueuedSlotCard({required this.entries});
+
+  final List<WaitlistEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = entries.first;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  "${dayLabel(first.date)} · ${fmtSlot(first.slot)}",
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+                ),
+              ),
+              Text(
+                "${entries.length} waiting",
+                style: const TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          Text(
+            "${first.trainerName} · ${first.sessionType}",
+            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+          ),
+          const SizedBox(height: 8),
+          ...entries.asMap().entries.map((e) {
+            final i = e.key;
+            final w = e.value;
+            final offered = w.isLiveOffer;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    child: Text(
+                      "${i + 1}.",
+                      style: const TextStyle(fontSize: 11.5, color: AppColors.mute, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      w.clientName,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: offered ? FontWeight.w700 : FontWeight.w500,
+                        color: offered ? AppColors.gold : AppColors.txt,
+                      ),
+                    ),
+                  ),
+                  if (offered)
+                    const Text(
+                      "OFFERED",
+                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.gold, letterSpacing: 0.5),
+                    ),
+                ],
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
