@@ -210,6 +210,7 @@ class SupabaseService {
     required String approvalCode,
     String? photo,
     List<String>? disciplines,
+    List<AvailabilityBlock>? availability,
     String? locationName,
     String? locationAddress,
     String? bio,
@@ -230,6 +231,11 @@ class SupabaseService {
         "reviewed_by_owner": false,
         "signup_at": isoToday(),
         if (title != null && title.trim().isNotEmpty) "title": title.trim(),
+        // Set at signup so a new coach is bookable straight away rather
+        // than invisible in the booking flow until they remember to fill
+        // this in from their profile later.
+        if (availability != null && availability.isNotEmpty)
+          "availability": availability.map(_availabilityToJson).toList(),
         if (disciplines != null && disciplines.isNotEmpty)
           "disciplines": disciplines,
         if (locationName != null || locationAddress != null)

@@ -8,6 +8,8 @@ import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/models/availability_block.dart";
+import "../staff/availability_block_editor.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
 
@@ -58,6 +60,16 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
   bool _editingLocation = false;
 
   final Set<String> _disciplines = {};
+
+  /// Optional at signup — a coach can leave it empty and set it later from
+  /// their profile. Collected here because a coach with no availability is
+  /// invisible in the booking flow, which is a confusing first experience
+  /// for someone who just finished signing up.
+  final List<AvailabilityBlock> _availability = [];
+
+  /// Non-null while the block editor is open, holding the session type it
+  /// is editing for.
+  String? _addingForType;
   String? _photoDataUrl;
   bool _pickingPhoto = false;
   String? _error;
@@ -181,6 +193,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
         approvalCode: _code.text.trim(),
         photo: _photoDataUrl,
         disciplines: _disciplines.toList(),
+        availability: _availability,
         locationName: _locationName.text.trim(),
         locationAddress: _locationAddress.text.trim(),
         bio: _bio.text.trim(),
@@ -204,6 +217,27 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // The block editor takes over the screen while open — same pattern the
+    // staff profile editor uses, so a coach sees one consistent way of
+    // setting availability whether they are signing up or editing later.
+    final addingType = _addingForType;
+    if (addingType != null) {
+      return Scaffold(
+        backgroundColor: AppColors.bg,
+        body: SafeArea(
+          child: AvailabilityBlockEditor(
+            sessionType: addingType,
+            disciplineOptions: _disciplines.toList(),
+            onCancel: () => setState(() => _addingForType = null),
+            onSave: (block) => setState(() {
+              _availability.add(block);
+              _addingForType = null;
+            }),
+          ),
+        ),
+      );
+    }
+
     if (!_codeVerified) {
       return PopScope(
         canPop: false,
@@ -455,7 +489,92 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                   }).toList(),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
+              // Optional, and only offered once disciplines are picked —
+              // an availability block has to be for a discipline, so asking
+              // before that would present an empty editor.
+              if (_disciplines.isNotEmpty) ...[
+                FieldLabeled(
+                  label: "Availability (optional)",
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          "When can clients book you? You can skip this and set it later from your profile — "
+                          "but until it is set you will not appear in the booking screen.",
+                          style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                        ),
+                      ),
+                      ..._availability.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final b = entry.value;
+                        final dayCount = b.byDay.values.where((slots) => slots.isNotEmpty).length;
+                        final slotCount = b.byDay.values.fold<int>(0, (sum, slots) => sum + slots.length);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+                            decoration: BoxDecoration(
+                              color: AppColors.bg,
+                              border: Border.all(color: AppColors.line),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "${sessionTypeLabel(b.sessionType)} · ${disciplineLabel(b.discipline)}",
+                                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                                      ),
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        "$slotCount slot${slotCount == 1 ? "" : "s"} across $dayCount day${dayCount == 1 ? "" : "s"}",
+                                        style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => setState(() => _availability.removeAt(i)),
+                                  icon: const Icon(LucideIcons.trash2, size: 15, color: AppColors.errorText),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                      Row(
+                        children: kSessionTypeLabels.entries.map((e) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: OutlinedButton(
+                              onPressed: () => setState(() => _addingForType = e.key),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppColors.goldDim),
+                                foregroundColor: AppColors.gold,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                minimumSize: Size.zero,
+                              ),
+                              child: Text(
+                                "+ ${e.value}",
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
               const Text(
                 "Where you train",
                 style: TextStyle(

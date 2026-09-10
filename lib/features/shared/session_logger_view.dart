@@ -75,10 +75,23 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
   bool _saved = false;
   bool _saving = false;
 
+  /// Which exercise the one-at-a-time view is showing.
+  int _focusIndex = 0;
+
+  /// Clients can switch to seeing the whole day at once. Deliberately NOT
+  /// persisted anywhere: the spec calls for every new session to start in
+  /// the focused view, so this is plain widget state that dies with the
+  /// session rather than a saved preference.
+  bool _fullView = false;
+
   void _startDay(String dayId) => setState(() {
     _dayId = dayId;
     _sessionStarted = true;
     _sessionData.clear();
+    // Both reset per session — a client who switched to full view last time
+    // still starts focused this time.
+    _focusIndex = 0;
+    _fullView = false;
   });
 
   // Mutating _sessionData alone doesn't tell this State to rebuild — the
@@ -396,6 +409,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                                   onTap: () => setState(() {
                                     _dayId = d.id;
                                     _sessionData.clear();
+                                    _focusIndex = 0;
                                   }),
                                 );
                               },
@@ -421,26 +435,150 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  ...activeDay.exercises.map(
-                    (ex) => Padding(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  // One exercise at a time is the default for everyone. A
+                  // client can switch to the whole-day view; a coach cannot —
+                  // they move between clients instead, and each client's
+                  // screen stays focused on a single exercise.
+                  if (widget.loggedBy == "client" && activeDay.exercises.length > 1)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
                         children: [
-                          ExerciseSetGrid(
-                            key: ValueKey(ex.id),
-                            exercise: ex,
-                            client: client,
-                            sessionData: _sessionData,
-                            onSetChange: _onSetChange,
-                            dayId: activeDay.id,
+                          Expanded(
+                            child: _ViewToggleOption(
+                              icon: LucideIcons.square,
+                              label: "One at a time",
+                              selected: !_fullView,
+                              onTap: () => setState(() => _fullView = false),
+                            ),
                           ),
-                          if (widget.exerciseFooterBuilder != null)
-                            widget.exerciseFooterBuilder!(prog, activeDay, ex),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _ViewToggleOption(
+                              icon: LucideIcons.list,
+                              label: "Full view",
+                              selected: _fullView,
+                              onTap: () => setState(() => _fullView = true),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ),
+                  if (_fullView)
+                    ...activeDay.exercises.map(
+                      (ex) => Padding(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ExerciseSetGrid(
+                              key: ValueKey(ex.id),
+                              exercise: ex,
+                              client: client,
+                              sessionData: _sessionData,
+                              onSetChange: _onSetChange,
+                              dayId: activeDay.id,
+                            ),
+                            if (widget.exerciseFooterBuilder != null)
+                              widget.exerciseFooterBuilder!(prog, activeDay, ex),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Builder(
+                      builder: (context) {
+                        // Clamped rather than assumed in range: the day can
+                        // change under this view (day chips, or a coach
+                        // switching clients) and land on a shorter program.
+                        final total = activeDay.exercises.length;
+                        if (total == 0) return const SizedBox.shrink();
+                        final index = _focusIndex.clamp(0, total - 1);
+                        final ex = activeDay.exercises[index];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "EXERCISE ${index + 1} OF $total",
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.mute,
+                                letterSpacing: 1,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            // A segmented bar rather than the count alone —
+                            // "how much is left" is what gets asked
+                            // mid-session, and this answers it at a glance.
+                            Row(
+                              children: List.generate(total, (i) {
+                                return Expanded(
+                                  child: Container(
+                                    height: 3,
+                                    margin: EdgeInsets.only(right: i == total - 1 ? 0 : 3),
+                                    decoration: BoxDecoration(
+                                      color: i <= index ? AppColors.gold : AppColors.line,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                            const SizedBox(height: 14),
+                            ExerciseSetGrid(
+                              key: ValueKey(ex.id),
+                              exercise: ex,
+                              client: client,
+                              sessionData: _sessionData,
+                              onSetChange: _onSetChange,
+                              dayId: activeDay.id,
+                            ),
+                            if (widget.exerciseFooterBuilder != null)
+                              widget.exerciseFooterBuilder!(prog, activeDay, ex),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: BtnGhost(
+                                    onPressed: index == 0
+                                        ? null
+                                        : () => setState(() => _focusIndex = index - 1),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(LucideIcons.chevronLeft, size: 15),
+                                        SizedBox(width: 4),
+                                        Text("Previous"),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: BtnGold(
+                                    onPressed: index >= total - 1
+                                        ? null
+                                        : () => setState(() => _focusIndex = index + 1),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text("Next"),
+                                        SizedBox(width: 4),
+                                        Icon(LucideIcons.chevronRight, size: 15),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        );
+                      },
+                    ),
                   if (_sessionData.isNotEmpty)
                     BtnGold(
                       onPressed: _saving
@@ -543,6 +681,55 @@ class _LegendDot extends StatelessWidget {
           style: const TextStyle(fontSize: 10, color: AppColors.mute),
         ),
       ],
+    );
+  }
+}
+
+
+/// One side of the client's view switch. Only ever shown to a client — a
+/// coach stays in the focused view and moves between clients instead.
+class _ViewToggleOption extends StatelessWidget {
+  const _ViewToggleOption({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+          border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: selected ? AppColors.gold : AppColors.mute),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: selected ? AppColors.gold : AppColors.mute,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

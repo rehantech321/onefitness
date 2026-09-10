@@ -351,13 +351,13 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                                   ? Avatar(
                                       src: info.photo,
                                       name: info.name,
-                                      size: 30,
+                                      size: 40,
                                       active: true,
                                     )
                                   : Container(
-                                      width: 30,
-                                      height: 30,
-                                      padding: const EdgeInsets.all(6),
+                                      width: 40,
+                                      height: 40,
+                                      padding: const EdgeInsets.all(7),
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(color: AppColors.gold, width: 1.5),

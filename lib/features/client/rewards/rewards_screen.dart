@@ -156,7 +156,18 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                       onChanged: _togglingFlag ? null : _toggleRedeemFlag,
                     )
                 else
-                  Text("You need at least $kRewardMinRedeemPoints points to redeem (up to $kRewardMaxRedeemPoints at once).", style: const TextStyle(fontSize: 13, color: AppColors.mute)),
+                  // Shown even below the threshold, switched off and
+                  // explained. Hiding it entirely meant the setting only
+                  // appeared at the moment it became usable, so a client
+                  // couldn't decide up front what should happen to points
+                  // they are still earning.
+                  _ToggleRow(
+                    label: "Use my points on my next purchase",
+                    hint: "You need at least $kRewardMinRedeemPoints points to redeem (up to $kRewardMaxRedeemPoints at once). "
+                        "Once you reach that, turn this on and the discount applies automatically at checkout.",
+                    value: info.redeemPointsNextRenewal,
+                    onChanged: _togglingFlag ? null : _toggleRedeemFlag,
+                  ),
               ],
             ),
           ),

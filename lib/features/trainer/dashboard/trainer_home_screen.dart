@@ -220,12 +220,64 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
               child: BackBar(
-                onBack: loggable.length > 1
-                    ? () => setState(() => _sessionClientId = null)
-                    : closeSession,
+                onBack: closeSession,
                 title: attendee.name,
               ),
             ),
+            // Semi-private: flip between everyone in the slot without
+            // leaving the session. Previously the coach picked one client
+            // once and had to back out to reach another, which is the wrong
+            // shape for a session where all four are training at the same
+            // time in front of them.
+            if (loggable.length > 1)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+                child: SizedBox(
+                  height: 62,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: loggable.length,
+                    separatorBuilder: (context, i) => const SizedBox(width: 8),
+                    itemBuilder: (context, i) {
+                      final b = loggable[i];
+                      final person = resolveAttendee(b.clientId, roster, trainers);
+                      final active = b.clientId == activeClientId;
+                      return InkWell(
+                        onTap: active
+                            ? null
+                            : () => setState(() => _sessionClientId = b.clientId),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          width: 76,
+                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: active ? AppColors.gold.withValues(alpha: 0.14) : AppColors.card,
+                            border: Border.all(color: active ? AppColors.gold : AppColors.line),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Avatar(name: person.name, size: 26, active: active),
+                              const SizedBox(height: 3),
+                              Text(
+                                person.name.split(" ").first,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                                  color: active ? AppColors.gold : AppColors.mute,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
             Expanded(
               child: record == null
                   ? const Padding(
@@ -235,6 +287,12 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                       ),
                     )
                   : SessionLoggerView(
+                      // Keyed by client so flipping between them builds a
+                      // fresh logger. Without this Flutter reuses the same
+                      // State, and the in-progress sets typed for one client
+                      // would follow the coach onto the next one — silently
+                      // logging the wrong person's workout.
+                      key: ValueKey(activeClientId),
                       client: record,
                       loggedBy: "coach",
                       emptyProgramText:

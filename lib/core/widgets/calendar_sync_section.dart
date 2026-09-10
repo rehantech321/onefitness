@@ -1,4 +1,7 @@
+import "dart:io" show Platform;
+
 import "package:flutter/material.dart";
+import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
@@ -49,18 +52,85 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
     }
   }
 
+  /// True on an iPhone/iPad, where Apple Calendar is a real second option.
+  /// Elsewhere Google is the only calendar worth offering directly, so
+  /// there is nothing to choose between and the sheet is skipped.
+  bool get _offersAppleCalendar => !kIsWeb && Platform.isIOS;
+
   Future<void> _sync() async {
     setState(() {
       _busy = true;
       _error = null;
     });
     final url = await _ensureUrl();
-    if (url != null) {
-      final target = Uri.parse("https://calendar.google.com/calendar/r?cid=${Uri.encodeComponent(url)}");
-      try {
-        await launchUrl(target, mode: LaunchMode.externalApplication);
-      } catch (e) {
-        if (mounted) setState(() => _error = "Couldn't open Google Calendar — try \"Set it up manually\" below.");
+    if (url == null) {
+      if (mounted) setState(() => _busy = false);
+      return;
+    }
+
+    var useApple = false;
+    if (_offersAppleCalendar && mounted) {
+      final choice = await showModalBottomSheet<String>(
+        context: context,
+        backgroundColor: AppColors.card,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Which calendar?",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.txt),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  "Your sessions will keep themselves up to date either way.",
+                  style: TextStyle(fontSize: 12, color: AppColors.mute),
+                ),
+                const SizedBox(height: 14),
+                _CalendarChoice(
+                  icon: LucideIcons.calendar,
+                  label: "Google Calendar",
+                  hint: "Opens Google Calendar to confirm.",
+                  onTap: () => Navigator.pop(ctx, "google"),
+                ),
+                const SizedBox(height: 8),
+                _CalendarChoice(
+                  icon: LucideIcons.apple,
+                  label: "Apple Calendar",
+                  hint: "Subscribes on this iPhone.",
+                  onTap: () => Navigator.pop(ctx, "apple"),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (choice == null) {
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+      useApple = choice == "apple";
+    }
+
+    try {
+      // webcal:// is what iOS hands to Apple Calendar as a *subscription*
+      // rather than a one-off download — an https link would just open the
+      // raw feed in Safari.
+      final target = useApple
+          ? Uri.parse(url.replaceFirst(RegExp(r"^https?://"), "webcal://"))
+          : Uri.parse("https://calendar.google.com/calendar/r?cid=${Uri.encodeComponent(url)}");
+      await launchUrl(target, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = useApple
+            ? "Couldn't open Apple Calendar — try \"Set it up manually\" below."
+            : "Couldn't open Google Calendar — try \"Set it up manually\" below.");
       }
     }
     if (mounted) setState(() => _busy = false);
@@ -124,7 +194,7 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
               const Icon(LucideIcons.calendar, size: 17, color: AppColors.gold),
               const SizedBox(width: 10),
               const Expanded(
-                child: Text("Sync to Google Calendar", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                child: Text("Sync to your calendar", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -207,6 +277,55 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+
+/// One calendar option on the iOS chooser sheet.
+class _CalendarChoice extends StatelessWidget {
+  const _CalendarChoice({
+    required this.icon,
+    required this.label,
+    required this.hint,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String hint;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.bg,
+          border: Border.all(color: AppColors.line),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: AppColors.gold),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 1),
+                  Text(hint, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                ],
+              ),
+            ),
+            const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+          ],
+        ),
       ),
     );
   }
