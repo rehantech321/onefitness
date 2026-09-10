@@ -18,9 +18,8 @@ import "../../../data/providers/trainer_providers.dart";
 /// and nothing leaves the app. Card details never reach us: the sheet talks
 /// to Stripe directly, which is what keeps this out of PCI scope.
 ///
-/// Tender options follow the product type (memberships: card/debit/ACH;
-/// packages also Apple Pay and cash), and a cash sale recorded by staff is
-/// granted immediately since they're the ones collecting it.
+/// Tender options follow the product type: memberships take card/debit/ACH,
+/// packages additionally take Apple Pay.
 class PurchaseForClientSection extends ConsumerStatefulWidget {
   const PurchaseForClientSection({super.key, required this.info, required this.onBack, required this.onPlanAssigned});
 
@@ -160,20 +159,6 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
       final tender = await showPaymentMethodPicker(context, plan);
       if (tender == null) {
         if (mounted) setState(() => _busy = false);
-        return;
-      }
-
-      if (tender == PayTender.cash) {
-        // Staff recording cash ARE the confirmation — unlike a client
-        // choosing "I'll pay cash", this grants immediately.
-        await SupabaseService.recordCashPurchase(planId: plan.id, targetClientId: widget.info.id);
-        if (!isProgramKind(plan.kind)) widget.onPlanAssigned(plan.id);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Cash recorded — ${plan.name} activated for ${widget.info.name}.")),
-          );
-          widget.onBack();
-        }
         return;
       }
 

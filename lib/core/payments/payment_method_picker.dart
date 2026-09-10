@@ -7,16 +7,15 @@ import "../../data/models/membership_plan.dart";
 
 /// How a purchase is being paid for. Card and ACH both run through Stripe's
 /// Payment Sheet (they only differ in which processing-fee profile applies);
-/// Apple Pay is a wallet the sheet layers on top of card; cash never reaches
-/// Stripe at all.
-enum PayTender { card, ach, applePay, cash }
+/// Apple Pay is a wallet the sheet layers on top of card.
+enum PayTender { card, ach, applePay }
 
 /// Which tenders a given product type accepts. Deliberately derived from the
 /// plan, not from a global setting:
-///   membership → card, debit, ACH.               No Apple Pay, no cash.
-///   package    → card, debit, ACH, Apple Pay, cash.
-/// The server enforces the same rule in create-payment-intent /
-/// record-cash-purchase — this list only decides what's offered.
+///   membership → card, debit, ACH.  No Apple Pay.
+///   package    → card, debit, ACH, Apple Pay.
+/// The server enforces the same rule in create-payment-intent — this list
+/// only decides what's offered.
 List<PayTender> tendersFor(MembershipPlan plan) {
   final isPackage = plan.kind == PlanKind.package;
   return [
@@ -25,7 +24,6 @@ List<PayTender> tendersFor(MembershipPlan plan) {
     // Apple Pay is iOS-only hardware; offering it anywhere else is a dead
     // button, so it's filtered by platform as well as by product type.
     if (isPackage && !kIsWeb && Platform.isIOS) PayTender.applePay,
-    if (isPackage) PayTender.cash,
   ];
 }
 
@@ -33,21 +31,18 @@ String tenderLabel(PayTender t) => switch (t) {
   PayTender.card => "Credit or debit card",
   PayTender.ach => "Bank transfer (ACH)",
   PayTender.applePay => "Apple Pay",
-  PayTender.cash => "Cash",
 };
 
 String tenderHint(PayTender t) => switch (t) {
   PayTender.card => "Pay securely in the app.",
   PayTender.ach => "Straight from your bank account.",
   PayTender.applePay => "Confirm with Face ID or Touch ID.",
-  PayTender.cash => "Pay at the gym — your coach confirms it before access starts.",
 };
 
 IconData tenderIcon(PayTender t) => switch (t) {
   PayTender.card => LucideIcons.creditCard,
   PayTender.ach => LucideIcons.building2,
   PayTender.applePay => LucideIcons.smartphone,
-  PayTender.cash => LucideIcons.banknote,
 };
 
 /// Sheet asking how to pay, shown before the Stripe sheet so the fee profile

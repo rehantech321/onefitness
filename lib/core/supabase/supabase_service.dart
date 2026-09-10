@@ -2260,22 +2260,6 @@ class SupabaseService {
         "quantity": quantity,
       });
 
-  /// Cash purchase of a package — the one tender that never reaches Stripe.
-  /// A client choosing it books an unpaid charge and gets nothing until staff
-  /// confirm the money arrived; staff recording it for a client in person are
-  /// the confirmation, so that grants immediately. Returns whether the plan
-  /// was granted.
-  static Future<bool> recordCashPurchase({
-    required String planId,
-    String? targetClientId,
-  }) async {
-    final data = await _invokeFunction("record-cash-purchase", {
-      "planId": planId,
-      if (targetClientId != null) "targetClientId": targetClientId,
-    });
-    return data["granted"] == true;
-  }
-
   /// The caller's private calendar-feed URL, for subscribing to their own
   /// schedule in Google Calendar (or Apple Calendar / Outlook — it's a plain
   /// iCalendar feed, not a Google-specific integration). Minted on first

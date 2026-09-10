@@ -87,25 +87,11 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       } else {
         // Which tenders are offered depends on the product type, not a
         // global setting: a membership takes card/debit/ACH, a package also
-        // takes Apple Pay and cash.
+        // takes Apple Pay.
         if (!mounted) return;
         final tender = await showPaymentMethodPicker(context, plan);
         if (tender == null) {
           if (mounted) setState(() => _busyPlanId = null);
-          return;
-        }
-
-        if (tender == PayTender.cash) {
-          // Cash never reaches Stripe, so nothing can confirm it was handed
-          // over — the purchase is recorded unpaid and a coach grants it on
-          // collection.
-          await SupabaseService.recordCashPurchase(planId: plan.id);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Recorded — pay at the gym and your coach will activate it.")),
-            );
-            setState(() => _browsing = false);
-          }
           return;
         }
 
