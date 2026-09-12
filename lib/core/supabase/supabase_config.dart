@@ -12,6 +12,6 @@
 class SupabaseConfig {
   SupabaseConfig._();
 
-  static const url = "https://joxgcmvufnpokralrwbe.supabase.co";
-  static const publishableKey = "sb_publishable_mI6SXPwy-GfAVkmNNMrkyA_rayC6tIK";
+  static const url = "https://rivhgutksyddeckieknc.supabase.co";
+  static const publishableKey = "sb_publishable_csuTIe9FRmkrMdDeXNza5w_p_YDazdr";
 }
