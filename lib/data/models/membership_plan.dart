@@ -27,6 +27,8 @@ class MembershipPlan {
     required this.id,
     required this.name,
     required this.kind,
+    this.description,
+    this.startDate,
     this.maxSessions,
     this.termMonths,
     this.allowedTypes = const [],
@@ -74,6 +76,16 @@ class MembershipPlan {
   /// package_categories entry this plan is grouped under (Products/plan
   /// pickers share the same catalog — see packageCategoriesProvider).
   final String? category;
+
+  /// What the client is actually buying, in their words rather than a
+  /// feature list — shown on the plan card and the detail view.
+  final String? description;
+
+  /// ISO yyyy-MM-dd. When this plan starts or becomes available; null means
+  /// it simply runs from whenever it is bought, which is the normal case for
+  /// an ongoing membership. Mainly for dated offerings — a program that runs
+  /// from a fixed start, or a seasonal package.
+  final String? startDate;
 
   // ── PackageSetupModal's Advanced Settings — highest-value subset ──
   // (contract attachment and a couple of lower-value toggles —

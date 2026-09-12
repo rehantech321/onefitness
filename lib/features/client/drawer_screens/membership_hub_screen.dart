@@ -531,6 +531,10 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _DetailRow(label: "Plan", value: plan.name),
+                  if ((plan.category ?? "").isNotEmpty)
+                    _DetailRow(label: "Category", value: plan.category!),
+                  if ((plan.startDate ?? "").isNotEmpty)
+                    _DetailRow(label: "Starts", value: plan.startDate!),
                   _DetailRow(label: "Type", value: plan.kind == PlanKind.membership ? "Membership" : (plan.kind == PlanKind.package ? "Package" : "Program")),
                   if (plan.maxSessions != null && plan.maxSessions! > 0)
                     _DetailRow(
@@ -540,6 +544,14 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                   if (plan.allowedTypes.isNotEmpty)
                     _DetailRow(label: "Covers", value: plan.allowedTypes.map((t) => t == "semi-private" ? "Semi-Private" : "One-on-One").join(", ")),
                   if (plan.termMonths != null) _DetailRow(label: "Term", value: "${plan.termMonths} months, auto-renews"),
+                  if ((plan.description ?? "").isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        plan.description!,
+                        style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.45),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -671,12 +683,27 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                               ),
                             ],
                           ),
-                          if (p.maxSessions != null && p.maxSessions! > 0)
+                          if ((p.category ?? "").isNotEmpty ||
+                              (p.maxSessions ?? 0) > 0 ||
+                              (p.startDate ?? "").isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
-                                "${p.maxSessions} sessions ${p.kind == PlanKind.membership ? "per month" : "total"}",
+                                [
+                                  if ((p.category ?? "").isNotEmpty) p.category!,
+                                  if (p.maxSessions != null && p.maxSessions! > 0)
+                                    "${p.maxSessions} sessions ${p.kind == PlanKind.membership ? "per month" : "total"}",
+                                  if ((p.startDate ?? "").isNotEmpty) "Starts ${p.startDate}",
+                                ].join(" · "),
                                 style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                              ),
+                            ),
+                          if ((p.description ?? "").isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                p.description!,
+                                style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
                               ),
                             ),
                           const SizedBox(height: 10),
@@ -763,13 +790,23 @@ class _CatalogCard extends StatelessWidget {
           Text(
             [
               kindLabel,
+              if ((plan.category ?? "").isNotEmpty) plan.category!,
               if ((plan.maxSessions ?? 0) > 0)
                 "${plan.maxSessions} sessions ${plan.kind == PlanKind.membership ? "per month" : "total"}",
               if (plan.allowedTypes.isNotEmpty)
                 plan.allowedTypes.map((t) => t == "semi-private" ? "Semi-Private" : "One-on-One").join(", "),
+              if ((plan.startDate ?? "").isNotEmpty) "Starts ${plan.startDate}",
             ].join(" · "),
             style: const TextStyle(fontSize: 11, color: AppColors.mute),
           ),
+          if ((plan.description ?? "").isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                plan.description!,
+                style: const TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4),
+              ),
+            ),
           const SizedBox(height: 10),
           if (isCurrent || held)
             Container(

@@ -451,6 +451,8 @@ class _PlanEditForm extends ConsumerStatefulWidget {
 
 class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
   late final _name = TextEditingController(text: widget.initial?.name ?? "");
+  late final _description = TextEditingController(text: widget.initial?.description ?? "");
+  late final _startDate = TextEditingController(text: widget.initial?.startDate ?? "");
   late PlanKind _kind = widget.initial?.kind ?? PlanKind.membership;
   late final _price = TextEditingController(
     text: widget.initial != null
@@ -508,9 +510,25 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
     _feeItemProductId = widget.initial?.feeItemProductId;
   }
 
+  Future<void> _pickStartDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.tryParse(_startDate.text.trim()) ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) {
+      setState(() => _startDate.text =
+          "${picked.year.toString().padLeft(4, "0")}-${picked.month.toString().padLeft(2, "0")}-${picked.day.toString().padLeft(2, "0")}");
+    }
+  }
+
   @override
   void dispose() {
     _name.dispose();
+    _description.dispose();
+    _startDate.dispose();
     _price.dispose();
     _maxSessions.dispose();
     _termMonths.dispose();
@@ -570,6 +588,63 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
             child: AppField(
               controller: _name,
               onChanged: (_) => setState(() {}),
+            ),
+          ),
+          const SizedBox(height: 10),
+          FieldLabeled(
+            label: "Description",
+            child: AppField(
+              controller: _description,
+              maxLines: 4,
+              minLines: 2,
+              placeholder: "What the client gets, in plain terms.",
+            ),
+          ),
+          const SizedBox(height: 10),
+          FieldLabeled(
+            label: "Start date (optional)",
+            child: InkWell(
+              onTap: _pickStartDate,
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: AppColors.bg,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppColors.line),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppColors.line),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _startDate.text.isEmpty ? "Select date" : _startDate.text,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _startDate.text.isEmpty ? AppColors.mute : AppColors.txt,
+                        ),
+                      ),
+                    ),
+                    if (_startDate.text.isNotEmpty)
+                      InkWell(
+                        onTap: () => setState(() => _startDate.clear()),
+                        child: const Icon(LucideIcons.x, size: 14, color: AppColors.mute),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              "Only for something that starts on a fixed date. Leave blank for an ongoing membership — it then simply runs from whenever it is bought.",
+              style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
             ),
           ),
           const SizedBox(height: 10),
@@ -957,6 +1032,8 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                           widget.initial?.id ??
                           "plan-${DateTime.now().microsecondsSinceEpoch}",
                       name: _name.text.trim(),
+                      description: _description.text.trim().isEmpty ? null : _description.text.trim(),
+                      startDate: _startDate.text.trim().isEmpty ? null : _startDate.text.trim(),
                       kind: _kind,
                       maxSessions: int.tryParse(_maxSessions.text.trim()) ?? 0,
                       termMonths: isProgram

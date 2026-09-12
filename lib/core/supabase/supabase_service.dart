@@ -2656,6 +2656,8 @@ class SupabaseService {
     "id": p.id,
     "name": p.name,
     "kind": p.kind.name,
+    "description": p.description,
+    "startDate": p.startDate,
     "maxSessions": p.maxSessions,
     "termMonths": p.termMonths,
     "allowedTypes": p.allowedTypes,
@@ -3635,6 +3637,8 @@ class SupabaseService {
       id: j["id"] as String,
       name: j["name"] as String? ?? "",
       kind: kindByName[j["kind"] as String?] ?? PlanKind.package,
+      description: j["description"] as String?,
+      startDate: j["startDate"] as String?,
       maxSessions: _asInt(j["maxSessions"]),
       termMonths: _asInt(j["termMonths"]),
       allowedTypes: ((j["allowedTypes"] as List?) ?? const [])
