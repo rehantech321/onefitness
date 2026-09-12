@@ -47,6 +47,29 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
   bool _catalog = false;
   final _couponController = TextEditingController();
 
+  /// Anchors for the category tiles to scroll to, keyed `view::category`
+  /// because the browse list and the full catalogue are separate views that
+  /// can both show a section of the same name. Only one is ever mounted at a
+  /// time, but keeping them distinct means a GlobalKey is never claimed twice
+  /// if that stops being true.
+  final Map<String, GlobalKey> _sectionKeys = {};
+
+  GlobalKey _sectionKey(String view, String category) =>
+      _sectionKeys.putIfAbsent("$view::$category", () => GlobalKey());
+
+  void _jumpToSection(String view, String category) {
+    final ctx = _sectionKey(view, category).currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      // Leaves the heading just below the top edge rather than flush against
+      // it, so it doesn't read as cut off.
+      alignment: 0.02,
+    );
+  }
+
   @override
   void dispose() {
     _couponController.dispose();
@@ -293,6 +316,9 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     // no membership at all is sent to get started.
     final buyable = plans.where((p) => !p.archived && !isProgramKind(p.kind)).toList();
     final filteredBuyable = _typeFilter == "all" ? buyable : buyable.where((p) => p.kind.name == _typeFilter).toList();
+    // Regrouped from the *filtered* list, so the tiles only ever offer
+    // categories that survive the current Memberships/Packages filter.
+    final browseGroups = _groupByCategory(filteredBuyable, ref.watch(packageCategoriesProvider));
     final cancelPending = info.membershipCancelsAt != null;
 
     if (_prorateChoicePlanId != null) {
@@ -367,6 +393,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       // silently filtered down to what the checkout happens to support.
       final visible = plans.where((p) => !p.archived && p.public).toList()
         ..sort((a, b) => a.kind.index.compareTo(b.kind.index));
+      final catalogGroups = _groupByCategory(visible, ref.watch(packageCategoriesProvider));
       return LocalBackScope(
         isOpen: true,
         onBack: () => setState(() => _catalog = false),
@@ -383,28 +410,41 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               const SizedBox(height: 12),
               if (visible.isEmpty)
                 const HintBox(text: "No plans are published yet — ask your coach what's available.")
-              else
-                for (final p in visible) ...[
-                  _CatalogCard(
-                    plan: p,
-                    isCurrent: current != null && p.id == current.id,
-                    held: info.plans.any((e) => e.planId == p.id && e.status == "active"),
-                    busy: _busyPlanId != null,
-                    onSelect: () {
-                      setState(() => _catalog = false);
-                      // A program is an addition, never a switch — buying one
-                      // must not disturb the membership that drives sessions
-                      // and billing. Only access plans go through the
-                      // switch/proration flow.
-                      if (isProgramKind(p.kind) || current == null) {
-                        _buy(info.id, p);
-                      } else {
-                        _selectPlanForSwitch(info, p);
-                      }
-                    },
+              else ...[
+                _CategoryTiles(
+                  groups: catalogGroups,
+                  onTap: (c) => _jumpToSection("catalog", c),
+                ),
+                if (catalogGroups.length > 1) const SizedBox(height: 14),
+                for (final g in catalogGroups) ...[
+                  Padding(
+                    key: _sectionKey("catalog", g.key),
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: SectionLabel(g.key),
                   ),
-                  const SizedBox(height: 10),
+                  for (final p in g.value) ...[
+                    _CatalogCard(
+                      plan: p,
+                      isCurrent: current != null && p.id == current.id,
+                      held: info.plans.any((e) => e.planId == p.id && e.status == "active"),
+                      busy: _busyPlanId != null,
+                      onSelect: () {
+                        setState(() => _catalog = false);
+                        // A program is an addition, never a switch — buying one
+                        // must not disturb the membership that drives sessions
+                        // and billing. Only access plans go through the
+                        // switch/proration flow.
+                        if (isProgramKind(p.kind) || current == null) {
+                          _buy(info.id, p);
+                        } else {
+                          _selectPlanForSwitch(info, p);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                 ],
+              ],
               if (_error != null)
                 Text("⚠ $_error", style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12, fontWeight: FontWeight.w700)),
             ],
@@ -662,8 +702,21 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
                   child: HintBox(text: "No plans match this filter."),
+                )
+              else ...[
+                _CategoryTiles(
+                  groups: browseGroups,
+                  onTap: (c) => _jumpToSection("browse", c),
                 ),
-              ...filteredBuyable.map((p) {
+                if (browseGroups.length > 1) const SizedBox(height: 14),
+              ],
+              for (final g in browseGroups) ...[
+                Padding(
+                  key: _sectionKey("browse", g.key),
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: SectionLabel(g.key),
+                ),
+                ...g.value.map((p) {
                 final isCurrent = plan != null && p.id == plan.id;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -683,14 +736,17 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                               ),
                             ],
                           ),
-                          if ((p.category ?? "").isNotEmpty ||
+                          // The category itself is the section heading above,
+                          // so the card spends its line on what the plan
+                          // grants instead of repeating where it sits.
+                          if (p.allowedTypes.isNotEmpty ||
                               (p.maxSessions ?? 0) > 0 ||
                               (p.startDate ?? "").isNotEmpty)
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
                                 [
-                                  if ((p.category ?? "").isNotEmpty) p.category!,
+                                  if (p.allowedTypes.isNotEmpty) "Covers ${_coversLabel(p)}",
                                   if (p.maxSessions != null && p.maxSessions! > 0)
                                     "${p.maxSessions} sessions ${p.kind == PlanKind.membership ? "per month" : "total"}",
                                   if ((p.startDate ?? "").isNotEmpty) "Starts ${p.startDate}",
@@ -733,10 +789,113 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                   ),
                 );
               }),
+              ],
             ],
           ],
         ],
       ),
+      ),
+    );
+  }
+}
+
+/// Plans with no category set. Named rather than hidden so nothing silently
+/// disappears from a list the client is meant to be choosing from.
+const _uncategorised = "Other";
+
+/// The session types a plan actually lets you book — the "access granted"
+/// half of a plan card, and the thing `canBookOffering` checks at the moment
+/// a client taps a slot (see its "wrong-type" refusal). Empty when a plan
+/// grants no session access at all, which is normal for a program.
+String _coversLabel(MembershipPlan p) => p.allowedTypes
+    .map((t) => t == "semi-private" ? "Semi-Private" : "One-on-One")
+    .join(", ");
+
+/// Buckets [plans] by category for the section headings and the tiles above
+/// them.
+///
+/// Section order follows [order] — the gym's own category list, as the admin
+/// arranged it — so the app never presents a different running order than the
+/// one they set up. Anything a plan points at that isn't in that list still
+/// gets a section (a category can be deleted while plans reference it), and
+/// uncategorised plans always come last.
+///
+/// Only categories that actually have a plan in them appear, so a tile can
+/// never scroll to an empty section.
+List<MapEntry<String, List<MembershipPlan>>> _groupByCategory(
+  List<MembershipPlan> plans,
+  List<String> order,
+) {
+  final buckets = <String, List<MembershipPlan>>{};
+  for (final p in plans) {
+    final c = (p.category ?? "").trim();
+    buckets.putIfAbsent(c.isEmpty ? _uncategorised : c, () => []).add(p);
+  }
+  final names = <String>[
+    for (final c in order)
+      if (buckets.containsKey(c)) c,
+    for (final c in buckets.keys)
+      if (c != _uncategorised && !order.contains(c)) c,
+    if (buckets.containsKey(_uncategorised)) _uncategorised,
+  ];
+  return [for (final n in names) MapEntry(n, buckets[n]!)];
+}
+
+/// The quick-navigation strip above a grouped plan list: one small tile per
+/// category, tapping one scrolls its section into view.
+///
+/// Hidden when there's only one group, where it would be a control that
+/// scrolls to what's already on screen.
+class _CategoryTiles extends StatelessWidget {
+  const _CategoryTiles({required this.groups, required this.onTap});
+
+  final List<MapEntry<String, List<MembershipPlan>>> groups;
+  final ValueChanged<String> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (groups.length < 2) return const SizedBox.shrink();
+    return SizedBox(
+      height: 58,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        itemCount: groups.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final g = groups[i];
+          final count = g.value.length;
+          return InkWell(
+            onTap: () => onTap(g.key),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 132,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                border: Border.all(color: AppColors.line),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    g.key,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, height: 1.25),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "$count plan${count == 1 ? "" : "s"}",
+                    style: const TextStyle(fontSize: 10.5, color: AppColors.mute),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -790,11 +949,9 @@ class _CatalogCard extends StatelessWidget {
           Text(
             [
               kindLabel,
-              if ((plan.category ?? "").isNotEmpty) plan.category!,
               if ((plan.maxSessions ?? 0) > 0)
                 "${plan.maxSessions} sessions ${plan.kind == PlanKind.membership ? "per month" : "total"}",
-              if (plan.allowedTypes.isNotEmpty)
-                plan.allowedTypes.map((t) => t == "semi-private" ? "Semi-Private" : "One-on-One").join(", "),
+              if (plan.allowedTypes.isNotEmpty) "Covers ${_coversLabel(plan)}",
               if ((plan.startDate ?? "").isNotEmpty) "Starts ${plan.startDate}",
             ].join(" · "),
             style: const TextStyle(fontSize: 11, color: AppColors.mute),

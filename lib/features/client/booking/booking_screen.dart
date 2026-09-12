@@ -481,7 +481,13 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               }
             }),
             child: _chosenType == null
-                ? _StepOne(plan: plan, isStaff: info.isStaff, trainers: trainers, onPick: _pickType)
+                ? _StepOne(
+                    plan: plan,
+                    isStaff: info.isStaff,
+                    trainers: trainers,
+                    onPick: _pickType,
+                    onGoMemberships: widget.onGoMemberships,
+                  )
                 : _chosenDisc == null
                     ? _StepTwo(
                         chosenType: _chosenType!,
@@ -565,10 +571,22 @@ class _MembershipBanner extends StatelessWidget {
 }
 
 class _StepOne extends StatelessWidget {
-  const _StepOne({required this.plan, required this.onPick, required this.trainers, this.isStaff = false});
+  const _StepOne({
+    required this.plan,
+    required this.onPick,
+    required this.trainers,
+    required this.onGoMemberships,
+    this.isStaff = false,
+  });
   final MembershipPlan? plan;
   final ValueChanged<String> onPick;
   final List<Trainer> trainers;
+
+  /// Opens the Access Hub. Offered up-front to a client with no plan rather
+  /// than only after they pick a slot and get refused — they can look through
+  /// the whole schedule either way, but this saves walking into the denial to
+  /// find out where to go.
+  final VoidCallback onGoMemberships;
   final bool isStaff;
 
   @override
@@ -632,7 +650,7 @@ class _StepOne extends StatelessWidget {
               ],
             ),
           ),
-        if (plan == null && !isStaff)
+        if (plan == null && !isStaff) ...[
           const Padding(
             padding: EdgeInsets.only(top: 10),
             child: Text(
@@ -641,6 +659,25 @@ class _StepOne extends StatelessWidget {
               style: TextStyle(fontSize: 11, color: AppColors.mute),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: onGoMemberships,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.goldDim),
+                  foregroundColor: AppColors.gold,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+                child: const Text(
+                  "See plans and what each covers",
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

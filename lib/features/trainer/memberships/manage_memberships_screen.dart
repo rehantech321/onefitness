@@ -176,18 +176,23 @@ class _ManageMembershipsScreenState
         expirationDays: p.expirationDays,
       );
 
-  Future<void> _addCategory(String name) async {
+  /// Returns whether it actually saved, so a caller with its own input to
+  /// clear (the custom-name field) doesn't throw away what the user typed
+  /// when the write failed and they'd have to retype it.
+  Future<bool> _addCategory(String name) async {
     setState(() => _categoryBusy = true);
     try {
       await SupabaseService.insertPackageCategory(name);
       ref.read(packageCategoriesProvider.notifier).add(name);
       if (mounted) setState(() => _pendingCategory = null);
+      return true;
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Couldn't add that category — check your connection and try again.")),
         );
       }
+      return false;
     } finally {
       if (mounted) setState(() => _categoryBusy = false);
     }
@@ -1147,7 +1152,7 @@ class _ToggleRow extends StatelessWidget {
 /// Category catalogue: add one from the preset product lines, see how many
 /// plans sit in each, jump straight to creating a plan inside one, or remove
 /// an empty one.
-class _CategoryManager extends StatelessWidget {
+class _CategoryManager extends StatefulWidget {
   const _CategoryManager({
     required this.categories,
     required this.planCountFor,
@@ -1164,12 +1169,54 @@ class _CategoryManager extends StatelessWidget {
   final String? pending;
   final bool busy;
   final ValueChanged<String?> onPick;
-  final ValueChanged<String> onAdd;
+  final Future<bool> Function(String) onAdd;
   final void Function(String, int) onDelete;
   final ValueChanged<String> onAddPlanIn;
 
   @override
+  State<_CategoryManager> createState() => _CategoryManagerState();
+}
+
+class _CategoryManagerState extends State<_CategoryManager> {
+  final _custom = TextEditingController();
+  String? _customError;
+
+  @override
+  void dispose() {
+    _custom.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createCustom() async {
+    final name = _custom.text.trim();
+    if (name.isEmpty) return;
+    // Case-insensitive, because "Semi-Private Pack" and "semi-private pack"
+    // would be two rows that look like one — the same reason the presets
+    // exist at all.
+    final clash = widget.categories.firstWhere(
+      (c) => c.toLowerCase() == name.toLowerCase(),
+      orElse: () => "",
+    );
+    if (clash.isNotEmpty) {
+      setState(() => _customError = '"$clash" already exists.');
+      return;
+    }
+    setState(() => _customError = null);
+    final saved = await widget.onAdd(name);
+    if (saved && mounted) _custom.clear();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final categories = widget.categories;
+    final planCountFor = widget.planCountFor;
+    final pending = widget.pending;
+    final busy = widget.busy;
+    final onPick = widget.onPick;
+    final onAdd = widget.onAdd;
+    final onDelete = widget.onDelete;
+    final onAddPlanIn = widget.onAddPlanIn;
+
     // Only offer what isn't already there — re-adding an existing category
     // is a no-op that just looks broken.
     final available = _presetCategories.where((c) => !categories.contains(c)).toList();
@@ -1242,9 +1289,9 @@ class _CategoryManager extends StatelessWidget {
             }),
           if (available.isEmpty)
             const Padding(
-              padding: EdgeInsets.only(top: 4),
+              padding: EdgeInsets.only(top: 4, bottom: 4),
               child: Text(
-                "All categories added.",
+                "All the standard categories are already added — make your own below.",
                 style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
               ),
             )
@@ -1273,10 +1320,48 @@ class _CategoryManager extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 BtnGold(
-                  onPressed: (pending == null || busy) ? null : () => onAdd(pending!),
+                  onPressed: (pending == null || busy) ? null : () => onAdd(pending),
                   child: Text(busy ? "Adding…" : "Add"),
                 ),
               ],
+            ),
+          // Anything the gym sells that the preset list never anticipated —
+          // the dropdown above stays the fast path for the usual five.
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                Expanded(child: Divider(color: AppColors.line, height: 1)),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10),
+                  child: Text("OR CREATE YOUR OWN", style: TextStyle(color: AppColors.mute, fontSize: 10, letterSpacing: 1.2)),
+                ),
+                Expanded(child: Divider(color: AppColors.line, height: 1)),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: AppField(
+                  controller: _custom,
+                  placeholder: "New category name",
+                  onChanged: (_) {
+                    if (_customError != null) setState(() => _customError = null);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              BtnGold(
+                onPressed: busy ? null : _createCustom,
+                child: Text(busy ? "Adding…" : "Create"),
+              ),
+            ],
+          ),
+          if (_customError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(_customError!, style: const TextStyle(fontSize: 11, color: AppColors.errorText)),
             ),
         ],
       ),
