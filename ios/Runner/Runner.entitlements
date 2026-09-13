@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Push Notifications capability. Without this entitlement iOS never
+	     issues an APNs token, so FirebaseMessaging.getAPNSToken() stays null
+	     and push_service.dart skips registration silently — the app appears
+	     to work but no iPhone ever receives a notification.
+	     "development" is correct here: Xcode rewrites it to "production"
+	     from the distribution provisioning profile at archive/export time. -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>
