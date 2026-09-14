@@ -458,7 +458,11 @@ class _ClientShellState extends ConsumerState<ClientShell> {
               // Advanced Booking — pinned above the bottom bar, Booking tab only.
               // Scaffold already sizes `body` to exclude bottomNavigationBar, so
               // bottom: 8 here lands just above it, no extra offset needed.
-              if (screen == "booking")
+              // Hidden without a plan for the same reason the booking steps
+              // are: the Booking tab shows a "get a plan" panel instead, and
+              // a button that leads to its own "you need a membership"
+              // refusal would undercut that.
+              if (screen == "booking" && (plan != null || info.isStaff))
                 Positioned(
                   left: 16,
                   right: 16,

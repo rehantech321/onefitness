@@ -1,56 +1,52 @@
+import "dart:convert";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/widgets/widgets.dart";
-import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
-import "../../../data/providers/trainer_providers.dart";
 
 /// Coach/owner adding a client in person — the desk-signup path for someone
 /// who isn't going to download the app and register themselves first.
 ///
-/// Two states: the form, then the handover screen showing the temporary
-/// password. The second is the point of the whole flow — a created account
-/// nobody can sign into is worse than no account, so the credentials are
-/// shown once, prominently, with a copy button.
-Future<bool?> showAddClientSheet(BuildContext context) => showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: const _AddClientForm(),
-      ),
+/// Deliberately the same page, field for field, as the client's own signup
+/// (client_signup_screen.dart): photo, split name, email, password with
+/// confirmation, phone, city, birthday, coach code. A coach filling this in
+/// on a client's behalf shouldn't have to learn a second form, and the
+/// client ends up with an account indistinguishable from one they made
+/// themselves. The one difference is what happens after: instead of signing
+/// the new account in (that would sign the coach out), a handover screen
+/// shows the credentials once so they can be passed on.
+///
+/// Returns true if an account was created.
+Future<bool?> showAddClientSheet(BuildContext context) => Navigator.of(context).push<bool>(
+      MaterialPageRoute(fullscreenDialog: true, builder: (_) => const _AddClientPage()),
     );
 
-class _AddClientForm extends ConsumerStatefulWidget {
-  const _AddClientForm();
+class _AddClientPage extends ConsumerStatefulWidget {
+  const _AddClientPage();
 
   @override
-  ConsumerState<_AddClientForm> createState() => _AddClientFormState();
+  ConsumerState<_AddClientPage> createState() => _AddClientPageState();
 }
 
-class _AddClientFormState extends ConsumerState<_AddClientForm> {
-  // Same fields the client fills in when they sign themselves up
-  // (client_signup_screen.dart), minus password — that's generated — and
-  // coach code, which is replaced by the owner picking a coach directly.
+class _AddClientPageState extends ConsumerState<_AddClientPage> {
   final _firstName = TextEditingController();
   final _lastName = TextEditingController();
   final _email = TextEditingController();
+  final _password = TextEditingController();
+  final _password2 = TextEditingController();
   final _phone = TextEditingController();
   final _city = TextEditingController();
   final _birthday = TextEditingController();
-
-  /// Owner only — which coach takes this client on. A coach adding a client
-  /// always takes them on themselves (the server enforces that), so they
-  /// never see this picker.
-  String? _trainerId;
-  bool _busy = false;
+  final _coachCode = TextEditingController();
+  String? _photoDataUrl;
   String? _error;
+  bool _busy = false;
+  bool _pickingPhoto = false;
 
   /// Set once the account exists — swaps the form for the handover screen.
   Map<String, dynamic>? _created;
@@ -63,10 +59,23 @@ class _AddClientFormState extends ConsumerState<_AddClientForm> {
     _firstName.dispose();
     _lastName.dispose();
     _email.dispose();
+    _password.dispose();
+    _password2.dispose();
     _phone.dispose();
     _city.dispose();
     _birthday.dispose();
+    _coachCode.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    setState(() => _pickingPhoto = true);
+    final dataUrl = await pickProfilePhotoDataUrl(context);
+    if (!mounted) return;
+    setState(() {
+      _pickingPhoto = false;
+      if (dataUrl != null) _photoDataUrl = dataUrl;
+    });
   }
 
   Future<void> _pickBirthday() async {
@@ -85,20 +94,42 @@ class _AddClientFormState extends ConsumerState<_AddClientForm> {
   }
 
   Future<void> _submit() async {
+    final firstName = _firstName.text.trim();
+    final lastName = _lastName.text.trim();
+    final email = _email.text.trim();
+    final password = _password.text;
+    final phone = _phone.text.trim();
+    final city = _city.text.trim();
+    // Same rules as the client's own signup, so an account made here is
+    // never one that would have been rejected there.
+    if (firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty || city.isEmpty) {
+      setState(() => _error = "First name, last name, email, password, phone number, and city are all required.");
+      return;
+    }
+    if (password.length < 6) {
+      setState(() => _error = "Password must be at least 6 characters.");
+      return;
+    }
+    if (password != _password2.text) {
+      setState(() => _error = "Passwords don't match.");
+      return;
+    }
     setState(() {
-      _busy = true;
       _error = null;
+      _busy = true;
     });
     try {
       final result = await SupabaseService.createClientAccount(
         name: _fullName,
-        firstName: _firstName.text,
-        lastName: _lastName.text,
-        email: _email.text.trim(),
-        phone: _phone.text,
-        city: _city.text,
-        birthday: _birthday.text,
-        primaryTrainerId: _trainerId,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        password: password,
+        phone: phone,
+        city: city,
+        birthday: _birthday.text.trim().isEmpty ? null : _birthday.text.trim(),
+        coachCode: _coachCode.text.trim().isEmpty ? null : _coachCode.text.trim(),
+        photo: _photoDataUrl,
       );
       // Re-seed so the new client shows up in the roster straight away
       // rather than after a restart.
@@ -114,44 +145,86 @@ class _AddClientFormState extends ConsumerState<_AddClientForm> {
   @override
   Widget build(BuildContext context) {
     final created = _created;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-        child: SingleChildScrollView(
-          child: created == null ? _buildForm() : _buildHandover(created),
+    return PopScope(
+      // Once the account exists, back means "done" — the caller needs the
+      // true so it can refresh, and the handover has already been shown.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        Navigator.pop(context, created != null);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+            child: created == null ? _buildForm() : _buildHandover(created),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildForm() {
-    final canSubmit = _firstName.text.trim().isNotEmpty && _email.text.trim().contains("@");
-    final isOwner = ref.watch(trainerAuthProvider) == "owner";
-    final trainers = ref.watch(trainersProvider);
     return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text("Add a client", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
+        BackBar(onBack: () => Navigator.pop(context, false), title: "Add a client"),
+        const SizedBox(height: 10),
         const Text(
-          "Creates their account so they can sign in on their own device. You'll get a temporary password to give them.",
-          style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
+          "Set up their account so they can sign in and start booking sessions. You'll hand them the details at the end.",
+          style: TextStyle(color: AppColors.mute, fontSize: 12, height: 1.5),
         ),
         const SizedBox(height: 16),
+        Center(
+          child: Column(
+            children: [
+              GestureDetector(
+                onTap: _pickingPhoto ? null : _pickPhoto,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.line, width: 2),
+                    image: _photoDataUrl != null
+                        ? DecorationImage(
+                            image: MemoryImage(base64Decode(_photoDataUrl!.substring(_photoDataUrl!.indexOf(",") + 1))),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: _photoDataUrl == null ? const Icon(LucideIcons.user, size: 30, color: AppColors.mute) : null,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextButton.icon(
+                onPressed: _pickingPhoto ? null : _pickPhoto,
+                style: TextButton.styleFrom(foregroundColor: AppColors.gold),
+                icon: const Icon(LucideIcons.image, size: 14),
+                label: Text(
+                  _pickingPhoto ? "Opening…" : (_photoDataUrl != null ? "Change photo" : "Add photo"),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
         Row(
           children: [
             Expanded(
               child: FieldLabeled(
                 label: "First name",
-                child: AppField(controller: _firstName, onChanged: (_) => setState(() {})),
+                child: AppField(controller: _firstName, onChanged: (_) => setState(() => _error = null)),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: FieldLabeled(
                 label: "Last name",
-                child: AppField(controller: _lastName, onChanged: (_) => setState(() {})),
+                child: AppField(controller: _lastName, onChanged: (_) => setState(() => _error = null)),
               ),
             ),
           ],
@@ -163,18 +236,42 @@ class _AddClientFormState extends ConsumerState<_AddClientForm> {
             controller: _email,
             keyboardType: TextInputType.emailAddress,
             placeholder: "name@email.com",
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(() => _error = null),
+          ),
+        ),
+        const SizedBox(height: 10),
+        FieldLabeled(
+          label: "Password",
+          child: AppField(
+            controller: _password,
+            obscureText: true,
+            placeholder: "At least 6 characters",
+            onChanged: (_) => setState(() => _error = null),
+          ),
+        ),
+        const SizedBox(height: 10),
+        FieldLabeled(
+          label: "Confirm password",
+          child: AppField(
+            controller: _password2,
+            obscureText: true,
+            placeholder: "••••••",
+            onChanged: (_) => setState(() => _error = null),
           ),
         ),
         const SizedBox(height: 10),
         FieldLabeled(
           label: "Phone number",
-          child: AppField(controller: _phone, keyboardType: TextInputType.phone),
+          child: AppField(controller: _phone, keyboardType: TextInputType.phone, onChanged: (_) => setState(() => _error = null)),
         ),
         const SizedBox(height: 10),
         FieldLabeled(
           label: "City",
-          child: AppField(controller: _city),
+          child: AppField(controller: _city, onChanged: (_) => setState(() => _error = null)),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(top: 4),
+          child: Text("Personalized training near you", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
         ),
         const SizedBox(height: 10),
         FieldLabeled(
@@ -196,52 +293,41 @@ class _AddClientFormState extends ConsumerState<_AddClientForm> {
             ),
           ),
         ),
-        if (isOwner && trainers.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          FieldLabeled(
-            label: "Coach (optional)",
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: AppColors.bg,
-                border: Border.all(color: AppColors.line),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: DropdownButton<String?>(
-                value: _trainerId,
-                isExpanded: true,
-                underline: const SizedBox(),
-                dropdownColor: AppColors.card,
-                hint: const Text("Unassigned", style: TextStyle(color: AppColors.mute, fontSize: 14)),
-                style: const TextStyle(color: AppColors.txt, fontSize: 14),
-                items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text("Unassigned")),
-                  for (final t in trainers) DropdownMenuItem<String?>(value: t.id, child: Text(t.name)),
-                ],
-                onChanged: _busy ? null : (v) => setState(() => _trainerId = v),
-              ),
-            ),
+        const SizedBox(height: 10),
+        FieldLabeled(
+          label: "Coach Code (optional)",
+          child: AppField(controller: _coachCode, placeholder: "e.g. JESS10"),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(top: 4),
+          child: Text(
+            "If a coach gave them a code, enter it here to link their account to that coach.",
+            style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic, height: 1.4),
           ),
-        ],
+        ),
         if (_error != null) ...[
           const SizedBox(height: 12),
           Text("⚠ $_error", style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
         ],
         const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: BtnGold(
-                onPressed: (!canSubmit || _busy) ? null : _submit,
-                child: Text(_busy ? "Creating…" : "Create account"),
-              ),
-            ),
-            const SizedBox(width: 8),
-            BtnGhost(
-              onPressed: _busy ? null : () => Navigator.pop(context, false),
-              child: const Text("Cancel"),
-            ),
-          ],
+        BtnGold(
+          full: true,
+          onPressed: _busy ? null : _submit,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(LucideIcons.userPlus, size: 15),
+              const SizedBox(width: 6),
+              Text(_busy ? "Creating…" : "Create their profile"),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        BtnGhost(
+          full: true,
+          onPressed: _busy ? null : () => Navigator.pop(context, false),
+          child: const Text("Cancel"),
         ),
       ],
     );
@@ -251,16 +337,19 @@ class _AddClientFormState extends ConsumerState<_AddClientForm> {
     final email = created["email"] as String? ?? "";
     final password = created["tempPassword"] as String? ?? "";
     return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        BackBar(onBack: () => Navigator.pop(context, true), title: "Client added"),
+        const SizedBox(height: 14),
         Row(
           children: [
             const Icon(LucideIcons.checkCircle2, size: 18, color: AppColors.success),
             const SizedBox(width: 8),
-            Text(
-              "$_fullName is set up",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            Expanded(
+              child: Text(
+                "$_fullName is set up",
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
             ),
           ],
         ),
@@ -274,7 +363,7 @@ class _AddClientFormState extends ConsumerState<_AddClientForm> {
           width: double.infinity,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.bg,
+            color: AppColors.card,
             border: Border.all(color: AppColors.goldDim),
             borderRadius: BorderRadius.circular(10),
           ),
@@ -285,7 +374,7 @@ class _AddClientFormState extends ConsumerState<_AddClientForm> {
               const SizedBox(height: 2),
               SelectableText(email, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 10),
-              const Text("TEMPORARY PASSWORD", style: TextStyle(fontSize: 9.5, color: AppColors.mute, letterSpacing: 1)),
+              const Text("PASSWORD", style: TextStyle(fontSize: 9.5, color: AppColors.mute, letterSpacing: 1)),
               const SizedBox(height: 2),
               SelectableText(
                 password,
@@ -308,7 +397,7 @@ class _AddClientFormState extends ConsumerState<_AddClientForm> {
               child: BtnGhost(
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: "Email: $email\nPassword: $password"));
-                  if (context.mounted) {
+                  if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Sign-in details copied.")),
                     );

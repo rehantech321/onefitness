@@ -2216,11 +2216,17 @@ class SupabaseService {
     String? phone,
     String? city,
     String? birthday,
+    String? password,
+    String? photo,
+    String? coachCode,
     String? primaryTrainerId,
   }) =>
       _invokeFunction("create-client-account", {
         "name": name,
         "email": email,
+        if (password != null && password.isNotEmpty) "password": password,
+        if (photo != null && photo.isNotEmpty) "photo": photo,
+        if (coachCode != null && coachCode.trim().isNotEmpty) "coachCode": coachCode.trim(),
         if (firstName != null && firstName.trim().isNotEmpty) "firstName": firstName.trim(),
         if (lastName != null && lastName.trim().isNotEmpty) "lastName": lastName.trim(),
         if (phone != null && phone.trim().isNotEmpty) "phone": phone.trim(),

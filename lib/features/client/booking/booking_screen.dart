@@ -471,6 +471,15 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               ),
             ),
 
+          // No plan means nothing here can be booked, so the schedule isn't
+          // offered at all — showing every open slot to someone who can't
+          // take any of them just reads as broken. Their upcoming sessions
+          // (from a plan that has since ended) still list above; only the
+          // pick-and-book steps are replaced. Staff booking themselves are
+          // exempt, same as every membership check.
+          if (plan == null && !info.isStaff)
+            _NoPlanGate(onGoMemberships: widget.onGoMemberships)
+          else
           LocalBackScope(
             isOpen: _chosenType != null,
             onBack: () => setState(() {
@@ -486,7 +495,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                     isStaff: info.isStaff,
                     trainers: trainers,
                     onPick: _pickType,
-                    onGoMemberships: widget.onGoMemberships,
                   )
                 : _chosenDisc == null
                     ? _StepTwo(
@@ -575,18 +583,11 @@ class _StepOne extends StatelessWidget {
     required this.plan,
     required this.onPick,
     required this.trainers,
-    required this.onGoMemberships,
     this.isStaff = false,
   });
   final MembershipPlan? plan;
   final ValueChanged<String> onPick;
   final List<Trainer> trainers;
-
-  /// Opens the Access Hub. Offered up-front to a client with no plan rather
-  /// than only after they pick a slot and get refused — they can look through
-  /// the whole schedule either way, but this saves walking into the denial to
-  /// find out where to go.
-  final VoidCallback onGoMemberships;
   final bool isStaff;
 
   @override
@@ -650,35 +651,60 @@ class _StepOne extends StatelessWidget {
               ],
             ),
           ),
-        if (plan == null && !isStaff) ...[
-          const Padding(
-            padding: EdgeInsets.only(top: 10),
-            child: Text(
-              "You can browse the full schedule, but you'll need a membership to actually book a session.",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11, color: AppColors.mute),
-            ),
+      ],
+    );
+  }
+}
+
+/// What a client with no active plan sees instead of the booking steps.
+/// Nothing on the schedule is bookable for them, so rather than list slots
+/// they'd be refused on, this says why and sends them to the one place that
+/// changes it.
+class _NoPlanGate extends StatelessWidget {
+  const _NoPlanGate({required this.onGoMemberships});
+  final VoidCallback onGoMemberships;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        border: Border.all(color: AppColors.goldDim),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(LucideIcons.lock, size: 16, color: AppColors.gold),
+              SizedBox(width: 8),
+              Text("Booking needs a plan", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: onGoMemberships,
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.goldDim),
-                  foregroundColor: AppColors.gold,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                ),
-                child: const Text(
-                  "See plans and what each covers",
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                ),
-              ),
+          const SizedBox(height: 8),
+          const Text(
+            "Sessions are booked against a membership or package. Pick one in the Membership Hub and the full schedule opens up here.",
+            style: TextStyle(fontSize: 12.5, color: AppColors.mute, height: 1.5),
+          ),
+          const SizedBox(height: 14),
+          BtnGold(
+            full: true,
+            onPressed: onGoMemberships,
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.creditCard, size: 15, color: Colors.white),
+                SizedBox(width: 6),
+                Text("See plans and what each covers"),
+              ],
             ),
           ),
         ],
-      ],
+      ),
     );
   }
 }
