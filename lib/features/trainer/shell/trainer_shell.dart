@@ -235,7 +235,12 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                       "builderWorkout" => const ProgramBuilderScreen(),
                       "builderNutrition" => const NutritionBuilderScreen(),
                       "staff" when isOwner => const StaffScreen(),
-                      "coaches" => const CoachesOverviewScreen(),
+                      // Owner-only like the rest below — this is where the
+                      // coach approval code is generated. It was the one
+                      // owner page without the guard, which is how a stale
+                      // mode could put it in front of a freshly signed-up
+                      // coach.
+                      "coaches" when isOwner => const CoachesOverviewScreen(),
                       "myprofile" => const MyProfileScreen(),
                       "calendarsync" when !isOwner => const SingleChildScrollView(
                         padding: EdgeInsets.all(18),

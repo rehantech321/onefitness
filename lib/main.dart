@@ -16,6 +16,7 @@ import "features/client/shell/client_shell.dart";
 import "features/shell/app_header.dart";
 import "features/trainer/auth/trainer_auth_screen.dart";
 import "features/trainer/shell/trainer_shell.dart";
+import "features/trainer/shell/trainer_shell_state.dart";
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -159,6 +160,18 @@ class _RootContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // The staff shell has no Navigator: which screen shows is a string in
+    // trainerModeProvider, and nothing used to reset it between sessions.
+    // An owner who signed out from the Coaches page left "coaches" behind,
+    // and the next staff session — a brand-new coach signing up — opened
+    // straight onto it. Every change of staff identity (sign-in, sign-out,
+    // owner → coach) therefore lands on Dashboard. This listener fires
+    // synchronously inside the signIn/signOut call, before the next build,
+    // so the stale screen never renders even for a frame.
+    ref.listen<String?>(trainerAuthProvider, (prev, next) {
+      if (prev != next) ref.read(trainerModeProvider.notifier).go("dashboard");
+    });
+
     final role = ref.watch(roleProvider);
     final clientSignedIn = ref.watch(clientSignedInProvider);
     final clientSigningUp = ref.watch(clientSigningUpProvider);

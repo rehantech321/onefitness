@@ -143,7 +143,12 @@ class SupabaseService {
         if (lastName != null) "last_name": lastName,
       }).eq("id", userId);
     }
-    await client.from("clients").insert({
+    // Upsert, not insert: trg_ensure_client_row already created this row
+    // the moment the profile appeared, so a plain insert collides on
+    // clients_pkey and the whole signup fails after the auth user exists.
+    // The row it made is bare, so this write still supplies everything
+    // the form collected.
+    await client.from("clients").upsert({
       "profile_id": userId,
       if (city != null) "city": city,
       if (birthday != null) "birthday": birthday,
@@ -153,11 +158,13 @@ class SupabaseService {
       if (referringTrainerId != null)
         "referred_by_trainer_id": referringTrainerId,
       if (referringTrainerId != null) "primary_trainer_id": referringTrainerId,
-    });
-    await client.from("client_records").insert({
+    }, onConflict: "profile_id");
+    // Same shape for the same reason — a retry after a failure part-way
+    // through must not trip over its own earlier half-success.
+    await client.from("client_records").upsert({
       "profile_id": userId,
       "data": {"program": [], "logs": [], "comms": []},
-    });
+    }, onConflict: "profile_id");
     return userId;
   }
 
@@ -2204,15 +2211,21 @@ class SupabaseService {
   static Future<Map<String, dynamic>> createClientAccount({
     required String name,
     required String email,
+    String? firstName,
+    String? lastName,
     String? phone,
     String? city,
+    String? birthday,
     String? primaryTrainerId,
   }) =>
       _invokeFunction("create-client-account", {
         "name": name,
         "email": email,
+        if (firstName != null && firstName.trim().isNotEmpty) "firstName": firstName.trim(),
+        if (lastName != null && lastName.trim().isNotEmpty) "lastName": lastName.trim(),
         if (phone != null && phone.trim().isNotEmpty) "phone": phone.trim(),
         if (city != null && city.trim().isNotEmpty) "city": city.trim(),
+        if (birthday != null && birthday.trim().isNotEmpty) "birthday": birthday.trim(),
         if (primaryTrainerId != null) "primaryTrainerId": primaryTrainerId,
       });
 
