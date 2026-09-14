@@ -20,8 +20,14 @@ class SessionsRemainingBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
+    // The slot plan leads; every other held package follows as a compact
+    // row so a client with a membership and a package sees both balances.
+    // If the membership was cancelled but packages remain, the first
+    // package takes the lead spot rather than the card vanishing.
+    final held = heldAccessPlans(info, ref.watch(membershipPlansProvider));
+    final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId) ?? (held.isEmpty ? null : held.first);
     if (plan == null) return const SizedBox.shrink();
+    final others = held.where((p) => p.id != plan.id).toList();
 
     if (info.membershipPaused) {
       return AppCard(
@@ -101,7 +107,7 @@ class SessionsRemainingBadge extends ConsumerWidget {
     final pct = max > 0 ? remaining / max : 0.0;
     final color = pct > 0.5 ? AppColors.grn : (pct > 0.2 ? AppColors.gold : AppColors.danger);
 
-    return AppCard(
+    final mainCard = AppCard(
       borderColor: color,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,6 +169,41 @@ class SessionsRemainingBadge extends ConsumerWidget {
           ),
         ],
       ),
+    );
+    if (others.isEmpty) return mainCard;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        mainCard,
+        for (final p in others)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Builder(builder: (context) {
+              final m = effectiveMaxSessions(info, p);
+              final left = (m - sessionsUsedThisPeriod(info, p, bookings)).clamp(0, m);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  border: Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    ),
+                    Text(
+                      "$left of $m ${p.kind == PlanKind.membership ? "this month" : "left"}",
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: left > 0 ? AppColors.gold : AppColors.danger),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+      ],
     );
   }
 }

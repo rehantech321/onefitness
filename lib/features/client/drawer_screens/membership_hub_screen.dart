@@ -6,7 +6,9 @@ import "../../../core/payments/payment_sheet_service.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/membership_utils.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/client_plan.dart";
 import "../../../data/models/membership_plan.dart";
@@ -101,9 +103,12 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
         );
         ref.read(clientInfoProvider.notifier).update(
               (i) => i.copyWith(
-                // A program sits alongside the membership rather than
-                // replacing it — mirrors what the server just did.
-                membershipPlanId: isProgramKind(plan.kind) ? i.membershipPlanId : plan.id,
+                // Mirrors the server's rule: a program never touches the
+                // slot; a package only takes it when nothing holds it; a
+                // membership always does.
+                membershipPlanId: isProgramKind(plan.kind)
+                    ? i.membershipPlanId
+                    : (plan.kind == PlanKind.membership || i.membershipPlanId == null ? plan.id : i.membershipPlanId),
                 plans: [...i.plans.where((e) => e.planId != plan.id), enrollment],
               ),
             );
@@ -147,6 +152,25 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
     } finally {
       if (mounted) setState(() => _busyPlanId = null);
+    }
+  }
+
+  /// Whether buying [p] replaces something or sits alongside what's held.
+  ///
+  /// A client holds one recurring membership plus any number of one-time
+  /// packages. So a package is always an addition; a membership is a switch
+  /// only when the client already has a membership (the single Stripe
+  /// subscription slot) — bought on top of packages alone, it's an addition
+  /// too, and the packages keep their balance.
+  bool _isSwitch(ClientInfo info, MembershipPlan current, MembershipPlan p) =>
+      p.kind == PlanKind.membership && current.kind == PlanKind.membership;
+
+  /// Routes a tap on a plan card: switch the membership, or simply buy.
+  void _choosePlan(ClientInfo info, MembershipPlan? current, MembershipPlan p) {
+    if (current != null && _isSwitch(info, current, p)) {
+      _selectPlanForSwitch(info, p);
+    } else {
+      _buy(info.id, p);
     }
   }
 
@@ -309,6 +333,10 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     final plansNotifier = ref.watch(membershipPlansProvider.notifier);
     final plan = plansNotifier.byId(info.membershipPlanId);
     final pendingPlan = info.pendingPlanId != null ? plansNotifier.byId(info.pendingPlanId) : null;
+    // Everything held that grants sessions — the membership slot plus every
+    // package bought alongside it. `plan` above is just the slot.
+    final held = heldAccessPlans(info, plans);
+    final heldIds = held.map((p) => p.id).toSet();
     // "Change Access" is about swapping the plan that grants gym access, so
     // it lists memberships and packages only. Programs are bought alongside
     // access rather than instead of it — they live in the Membership Hub
@@ -426,18 +454,16 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                     _CatalogCard(
                       plan: p,
                       isCurrent: current != null && p.id == current.id,
-                      held: info.plans.any((e) => e.planId == p.id && e.status == "active"),
+                      held: heldIds.contains(p.id) || info.plans.any((e) => e.planId == p.id && e.status == "active"),
                       busy: _busyPlanId != null,
                       onSelect: () {
                         setState(() => _catalog = false);
-                        // A program is an addition, never a switch — buying one
-                        // must not disturb the membership that drives sessions
-                        // and billing. Only access plans go through the
-                        // switch/proration flow.
+                        // Programs and packages are additions; only a
+                        // membership bought over a membership is a switch.
                         if (isProgramKind(p.kind) || current == null) {
                           _buy(info.id, p);
                         } else {
-                          _selectPlanForSwitch(info, p);
+                          _choosePlan(info, current, p);
                         }
                       },
                     ),
@@ -596,6 +622,11 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               ),
             ),
             const SizedBox(height: 10),
+            _HeldPackages(
+              info: info,
+              bookings: bookings,
+              plans: held.where((p) => p.id != plan.id).toList(),
+            ),
             if (!cancelPending) ...[
               SizedBox(
                 width: double.infinity,
@@ -643,7 +674,10 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               ),
             ],
           ] else ...[
-            if (plan == null)
+            if (plan == null && held.isNotEmpty) ...[
+              _HeldPackages(info: info, bookings: bookings, plans: held),
+              const HintBox(text: "No recurring membership right now — your packages above still work. Add a membership below whenever you like."),
+            ] else if (plan == null)
               const HintBox(text: "You don't have a membership yet. Choose a plan below to get started.")
             else
               Row(
@@ -717,7 +751,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                   child: SectionLabel(g.key),
                 ),
                 ...g.value.map((p) {
-                final isCurrent = plan != null && p.id == plan.id;
+                final isCurrent = heldIds.contains(p.id);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: AppCard(
@@ -769,18 +803,23 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 9),
                               alignment: Alignment.center,
                               decoration: BoxDecoration(border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
-                              child: const Text("Current plan", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.mute)),
+                              child: Text(
+                                p.kind == PlanKind.membership ? "Current plan" : "You have this package",
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.mute),
+                              ),
                             )
                           else
                             BtnGold(
                               full: true,
-                              onPressed: _busyPlanId != null ? null : () => plan != null ? _selectPlanForSwitch(info, p) : _buy(info.id, p),
+                              onPressed: _busyPlanId != null ? null : () => _choosePlan(info, plan, p),
                               child: Text(
                                 _busyPlanId == p.id
                                     ? "Working…"
-                                    : plan != null
+                                    : plan != null && _isSwitch(info, plan, p)
                                         ? (p.priceCents > 0 ? "Switch to this plan" : "Switch — no charge")
-                                        : (p.priceCents > 0 ? "Subscribe — redirects to secure checkout" : "Start free plan"),
+                                        : p.kind == PlanKind.package
+                                            ? (p.priceCents > 0 ? "Buy package" : "Add free package")
+                                            : (p.priceCents > 0 ? "Subscribe" : "Start free plan"),
                               ),
                             ),
                         ],
@@ -795,6 +834,68 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
         ],
       ),
       ),
+    );
+  }
+}
+
+/// The packages (and any second access plan) a client holds besides the
+/// membership slot, each with its own balance — the slot alone can't show
+/// a membership and a package together, and both are what booking draws on.
+class _HeldPackages extends StatelessWidget {
+  const _HeldPackages({required this.info, required this.bookings, required this.plans});
+  final ClientInfo info;
+  final List<Booking> bookings;
+  final List<MembershipPlan> plans;
+
+  @override
+  Widget build(BuildContext context) {
+    if (plans.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionLabel("Your Packages"),
+        for (final p in plans)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: AppCard(
+              child: Builder(builder: (context) {
+                final max = effectiveMaxSessions(info, p);
+                final used = sessionsUsedThisPeriod(info, p, bookings);
+                final left = (max - used).clamp(0, max);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+                        Text(
+                          "$left of $max left",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: left > 0 ? AppColors.gold : const Color(0xFFC97F7F),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (p.allowedTypes.isNotEmpty || p.kind == PlanKind.membership)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          [
+                            if (p.allowedTypes.isNotEmpty) "Covers ${_coversLabel(p)}",
+                            p.kind == PlanKind.membership ? "resets monthly" : "sessions never expire on their own",
+                          ].join(" · "),
+                          style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                        ),
+                      ),
+                  ],
+                );
+              }),
+            ),
+          ),
+        const SizedBox(height: 4),
+      ],
     );
   }
 }

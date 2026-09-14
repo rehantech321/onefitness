@@ -7,6 +7,7 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/membership_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
@@ -462,7 +463,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
               // are: the Booking tab shows a "get a plan" panel instead, and
               // a button that leads to its own "you need a membership"
               // refusal would undercut that.
-              if (screen == "booking" && (plan != null || info.isStaff))
+              if (screen == "booking" && (heldAccessPlans(info, ref.watch(membershipPlansProvider)).isNotEmpty || info.isStaff))
                 Positioned(
                   left: 16,
                   right: 16,

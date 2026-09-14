@@ -206,11 +206,16 @@ Charge? attendanceChargeFor(
 }
 
 class BookingCheck {
-  const BookingCheck({required this.ok, this.reason, this.msg, this.noMembership = false});
+  const BookingCheck({required this.ok, this.reason, this.msg, this.noMembership = false, this.planId});
   final bool ok;
   final String? reason;
   final String? msg;
   final bool noMembership;
+
+  /// When [ok], the held plan this booking should be charged to — stored on
+  /// the booking so usage is attributed to exactly one plan even when
+  /// several cover the same session type.
+  final String? planId;
 }
 
 /// Mirrors lib/helpers.js `canBookOffering`, trimmed to the checks that
@@ -218,13 +223,17 @@ class BookingCheck {
 /// access + plan type coverage, session budget, lead-time/horizon window,
 /// and same-slot self-conflict. Trainer-conflict/capacity are checked
 /// separately at confirm time (see findTrainerConflict / bookedCount).
+///
+/// [plans] is everything the client holds (see heldAccessPlans), in the
+/// order to draw on them. The first plan that covers this session type and
+/// still has budget wins; the result names it so the booking can record it.
 BookingCheck canBookOffering(
   ClientInfo info,
   String sessionType,
   List<Booking> bookings,
   String date,
   int slot,
-  MembershipPlan? plan, {
+  List<MembershipPlan> plans, {
   int minBookingLeadHours = kMinBookingLeadHours,
   int maxBookingHorizonDays = kMaxBookingHorizonDays,
 }) {
@@ -251,30 +260,50 @@ BookingCheck canBookOffering(
   // both short-circuiting to ok:true for clientInfo.isStaff on the web.
   if (info.isStaff) return const BookingCheck(ok: true);
 
-  if (plan == null) {
+  if (plans.isEmpty) {
     return const BookingCheck(ok: false, reason: "no-membership", msg: "You need a membership to book this. Visit the Membership Hub to get started.", noMembership: true);
   }
   if (info.membershipPaused) {
     return const BookingCheck(ok: false, reason: "paused", msg: "Your membership is currently paused — ask your gym to resume it before booking.");
   }
-  if (info.membershipCancelsAt != null && date.compareTo(info.membershipCancelsAt!) > 0) {
-    return BookingCheck(ok: false, reason: "membership-ending", msg: "Your membership ends on ${info.membershipCancelsAt} — you can't book sessions after that date.");
-  }
+  // A pending cancellation ends the recurring membership, not the packages
+  // bought alongside it — those are paid up and keep their balance. So the
+  // cut-off only applies to the membership; packages are still drawn on
+  // past that date below.
+  final membershipEnded = info.membershipCancelsAt != null && date.compareTo(info.membershipCancelsAt!) > 0;
+
   // Large Group classes (Hike, Outdoor HIIT) are included with any active
   // membership — not gated to whichever specific Semi-Private/One-on-One
   // tier the client's plan covers, unlike every other session type. Still
   // subject to the session-budget check below, same as every other type.
-  if (sessionType != "large-group" && !plan.allowedTypes.contains(sessionType)) {
-    return BookingCheck(ok: false, reason: "wrong-type", msg: "Your ${plan.name} doesn't cover this session type.");
+  final covering = plans.where((p) => sessionType == "large-group" || p.allowedTypes.contains(sessionType)).toList();
+  if (covering.isEmpty) {
+    final names = plans.map((p) => p.name).join(" or ");
+    return BookingCheck(ok: false, reason: "wrong-type", msg: "Your $names doesn't cover this session type.");
   }
 
-  final used = sessionsUsedThisPeriod(info, plan, bookings);
-  final max = effectiveMaxSessions(info, plan);
-  if (used >= max) {
-    final period = plan.kind == PlanKind.membership ? "this month" : "on your package";
-    return BookingCheck(ok: false, reason: "budget", msg: "You've used all $max sessions $period.");
+  // First plan with budget left wins — memberships before packages, per
+  // heldAccessPlans, so monthly sessions are spent before a lifetime balance.
+  var exhaustedMax = 0;
+  MembershipPlan? exhausted;
+  for (final plan in covering) {
+    if (plan.kind == PlanKind.membership && membershipEnded) continue;
+    final used = sessionsUsedThisPeriod(info, plan, bookings);
+    final max = effectiveMaxSessions(info, plan);
+    if (used < max) return BookingCheck(ok: true, planId: plan.id);
+    exhausted ??= plan;
+    exhaustedMax = exhausted == plan ? max : exhaustedMax;
   }
-  return const BookingCheck(ok: true);
+
+  if (exhausted == null) {
+    // Only reachable when every covering plan was the ended membership.
+    return BookingCheck(ok: false, reason: "membership-ending", msg: "Your membership ends on ${info.membershipCancelsAt} — you can't book sessions after that date.");
+  }
+  if (covering.length > 1) {
+    return const BookingCheck(ok: false, reason: "budget", msg: "You've used all the sessions on your plans that cover this session type.");
+  }
+  final period = exhausted.kind == PlanKind.membership ? "this month" : "on your package";
+  return BookingCheck(ok: false, reason: "budget", msg: "You've used all $exhaustedMax sessions $period.");
 }
 
 /// Variable & Signature Capture spec §5: "Block session booking until

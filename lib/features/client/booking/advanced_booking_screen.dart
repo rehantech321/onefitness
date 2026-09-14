@@ -46,6 +46,7 @@ class _Occurrence {
     this.reason,
     this.decision,
     this.trainerId,
+    this.planId,
   });
   final String date;
   final int weekday;
@@ -55,6 +56,10 @@ class _Occurrence {
   String? decision; // "waitlist" | "skip" — "full" only
   String?
   trainerId; // set once resolved (auto-matched coach), null while "full"/"skipped"
+
+  /// The held plan this occurrence was charged to when it was found
+  /// bookable — written onto the real booking at confirm time.
+  String? planId;
 }
 
 class _Summary {
@@ -142,16 +147,27 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
     return inCity.isNotEmpty ? inCity : offering;
   }
 
+  /// Sessions left across every held plan that covers the chosen type —
+  /// the pool a pattern can draw on. Each occurrence is charged to a
+  /// specific plan by canBookOffering; this is just the total for sizing
+  /// the run and the "how far out" copy.
+  int _remainingFor(ClientInfo info, List<MembershipPlan> plans, List<Booking> bookings) {
+    final type = _sessionType;
+    var total = 0;
+    for (final plan in plans) {
+      if (type != null && type != "large-group" && !plan.allowedTypes.contains(type)) continue;
+      total += (effectiveMaxSessions(info, plan) - sessionsUsedThisPeriod(info, plan, bookings)).clamp(0, 1 << 30);
+    }
+    return total;
+  }
+
   void _computeOccurrences({
     required ClientInfo info,
-    required MembershipPlan plan,
+    required List<MembershipPlan> plans,
     required List<Booking> bookings,
   }) {
     final settings = ref.read(platformSettingsProvider);
-    final remaining =
-        (effectiveMaxSessions(info, plan) -
-                sessionsUsedThisPeriod(info, plan, bookings))
-            .clamp(0, 1 << 30);
+    final remaining = _remainingFor(info, plans, bookings);
     final noBudgetCap = isAssessmentType(_sessionType!);
     final totalWeeklySlots = _brackets.fold<int>(
       0,
@@ -253,11 +269,14 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
         provisional,
         date,
         slot,
-        plan,
+        plans,
         minBookingLeadHours: settings.minBookingLeadHours,
         maxBookingHorizonDays: settings.maxBookingHorizonDays,
       );
       if (check.ok && budgetLeft) {
+        // Carries the plan it was charged to, so the next occurrence's
+        // check sees this one against the right balance — and so the real
+        // insert records it.
         provisional.add(
           Booking(
             id: "",
@@ -267,6 +286,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
             slot: slot,
             sessionType: _sessionType!,
             discipline: _discipline!,
+            planId: check.planId,
           ),
         );
         if (!noBudgetCap) usedBudget++;
@@ -276,6 +296,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
           slot: slot,
           status: "bookable",
           trainerId: match.id,
+          planId: check.planId,
         );
       }
       return _Occurrence(
@@ -308,6 +329,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
           slot: o.slot,
           sessionType: _sessionType!,
           discipline: _discipline!,
+          planId: o.planId,
         );
         try {
           final saved = await SupabaseService.insertBooking(draft);
@@ -381,11 +403,9 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
     final info = ref.watch(clientInfoProvider);
     final trainers = ref.watch(trainersProvider);
     final bookings = ref.watch(clientBookingsProvider);
-    final plan = ref
-        .watch(membershipPlansProvider.notifier)
-        .byId(info.membershipPlanId);
+    final plans = heldAccessPlans(info, ref.watch(membershipPlansProvider));
 
-    if (plan == null) {
+    if (plans.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -421,8 +441,9 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
 
     switch (_step) {
       case "type":
-        final allowed = plan.allowedTypes.isNotEmpty
-            ? plan.allowedTypes
+        final allowedSet = plans.expand((p) => p.allowedTypes).toSet();
+        final allowed = allowedSet.isNotEmpty
+            ? allowedSet.toList()
             : const ["semi-private", "one-on-one"];
         final options = kSessionTypeLabels.entries
             .where((e) => allowed.contains(e.key))
@@ -579,15 +600,14 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
         );
 
       case "range":
-        final remaining =
-            (effectiveMaxSessions(info, plan) -
-                    sessionsUsedThisPeriod(info, plan, bookings))
-                .clamp(0, 1 << 30);
+        final remaining = _remainingFor(info, plans, bookings);
+        final covering = plans.where((p) => _sessionType == "large-group" || p.allowedTypes.contains(_sessionType)).toList();
+        final planLabel = covering.map((p) => p.name).join(" + ");
         void chooseRange(String choice) {
           setState(() {
             _rangeChoice = choice;
             _occurrences = [];
-            _computeOccurrences(info: info, plan: plan, bookings: bookings);
+            _computeOccurrences(info: info, plans: plans, bookings: bookings);
             _step = "review";
           });
         }
@@ -600,7 +620,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
             breadcrumb: _breadcrumb(backToPattern),
             title: "How far out?",
             hint:
-                "You have $remaining session${remaining != 1 ? "s" : ""} remaining on ${plan.name}.",
+                "You have $remaining session${remaining != 1 ? "s" : ""} remaining on $planLabel.",
             children: [
               _OptionCard(label: "2 weeks", onTap: () => chooseRange("2w")),
               _OptionCard(label: "4 weeks", onTap: () => chooseRange("4w")),

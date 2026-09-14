@@ -1882,6 +1882,7 @@ class SupabaseService {
       "overridden_by": b.overriddenBy,
       "overridden_at": b.overriddenAt,
       "override_reason": b.overrideReason,
+      "plan_id": b.planId,
     };
     final data = await client.from("bookings").insert(row).select().single();
     return _bookingFromRow(data);
@@ -3277,6 +3278,7 @@ class SupabaseService {
       overriddenBy: row["overridden_by"] as String?,
       overriddenAt: row["overridden_at"] as String?,
       overrideReason: row["override_reason"] as String?,
+      planId: row["plan_id"] as String?,
     );
   }
 

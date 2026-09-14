@@ -57,6 +57,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   Booking? _cancelTarget;
   Booking? _rescheduling;
   dynamic _denied; // BookingCheck?
+
+  /// Which held plan the pending pick will be charged to — decided by
+  /// canBookOffering when the slot was tapped, written onto the booking.
+  String? _pickPlanId;
   bool _showAllUpcoming = false;
   bool _busy = false;
   String? _bookingError;
@@ -135,8 +139,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     if (mine || isFull) return;
     final info = ref.read(clientInfoProvider);
     final bookings = ref.read(clientBookingsProvider);
+    String? chargePlanId;
     if (_rescheduling == null) {
-      final plan = ref.read(membershipPlansProvider.notifier).byId(info.membershipPlanId);
+      final held = heldAccessPlans(info, ref.read(membershipPlansProvider));
       final settings = ref.read(platformSettingsProvider);
       final waiverCheck = waiverGateCheck(info: info, record: ref.read(clientRecordProvider), waiverDocs: ref.read(waiversProvider));
       if (waiverCheck != null) {
@@ -149,7 +154,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         bookings,
         _date,
         slot,
-        plan,
+        held,
         minBookingLeadHours: settings.minBookingLeadHours,
         maxBookingHorizonDays: settings.maxBookingHorizonDays,
       );
@@ -157,9 +162,15 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         setState(() => _denied = check);
         return;
       }
+      chargePlanId = check.planId;
+    } else {
+      // A reschedule moves an existing booking; it keeps whichever plan the
+      // original was charged to.
+      chargePlanId = _rescheduling!.planId;
     }
     setState(() {
       _picking = PendingPick(trainer: t, sessionType: sessionType, discipline: discipline, slot: slot);
+      _pickPlanId = chargePlanId;
       _bookingError = null;
     });
   }
@@ -173,7 +184,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     if (_waitlistBusyKeys.contains(key)) return;
     final info = ref.read(clientInfoProvider);
     final bookings = ref.read(clientBookingsProvider);
-    final plan = ref.read(membershipPlansProvider.notifier).byId(info.membershipPlanId);
+    final held = heldAccessPlans(info, ref.read(membershipPlansProvider));
     final settings = ref.read(platformSettingsProvider);
     final waiverCheck = waiverGateCheck(info: info, record: ref.read(clientRecordProvider), waiverDocs: ref.read(waiversProvider));
     if (waiverCheck != null) {
@@ -186,7 +197,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       bookings,
       _date,
       slot,
-      plan,
+      held,
       minBookingLeadHours: settings.minBookingLeadHours,
       maxBookingHorizonDays: settings.maxBookingHorizonDays,
     );
@@ -249,6 +260,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       sessionType: pick.sessionType,
       discipline: pick.discipline,
       locationName: pick.trainer.locationName,
+      planId: _pickPlanId,
     );
     setState(() {
       _busy = true;
@@ -277,7 +289,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       // the exact booking that brings a client down to their last 1 or 2
       // remaining sessions this period — never on every booking after, so
       // it can't spam.
-      final plan = ref.read(membershipPlansProvider.notifier).byId(info.membershipPlanId);
+      final plan = ref.read(membershipPlansProvider.notifier).byId(_pickPlanId);
       if (plan != null) {
         final remaining = effectiveMaxSessions(info, plan) - sessionsUsedThisPeriod(info, plan, ref.read(clientBookingsProvider));
         if (remaining == 1 || remaining == 2) {
@@ -291,6 +303,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       setState(() {
         _busy = false;
         _picking = null;
+        _pickPlanId = null;
         _rescheduling = null;
       });
     } catch (e) {
@@ -360,7 +373,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       );
     }
 
-    final plan = ref.watch(membershipPlansProvider.notifier).byId(info.membershipPlanId);
+    final held = heldAccessPlans(info, ref.watch(membershipPlansProvider));
     final myUpcoming = bookings.where((b) => b.clientId == info.id && b.date.compareTo(isoToday()) >= 0).toList()
       ..sort((a, b) => (a.date + a.slot.toString().padLeft(4, '0')).compareTo(b.date + b.slot.toString().padLeft(4, '0')));
 
@@ -377,10 +390,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           // are left is the thing that decides whether booking another one is
           // even possible, so it shouldn't sit under a list the client has to
           // scroll past (or expand) to reach.
-          if (plan != null && _rescheduling == null)
+          if (held.isNotEmpty && _rescheduling == null)
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
-              child: _MembershipBanner(info: info, plan: plan, bookings: bookings),
+              child: _MembershipBanner(info: info, plans: held, bookings: bookings),
             ),
 
           if (myUpcoming.isNotEmpty) ...[
@@ -477,7 +490,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           // (from a plan that has since ended) still list above; only the
           // pick-and-book steps are replaced. Staff booking themselves are
           // exempt, same as every membership check.
-          if (plan == null && !info.isStaff)
+          if (held.isEmpty && !info.isStaff)
             _NoPlanGate(onGoMemberships: widget.onGoMemberships)
           else
           LocalBackScope(
@@ -491,7 +504,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             }),
             child: _chosenType == null
                 ? _StepOne(
-                    plan: plan,
+                    plans: held,
                     isStaff: info.isStaff,
                     trainers: trainers,
                     onPick: _pickType,
@@ -536,18 +549,27 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   }
 }
 
+/// One line per held plan — a client with a membership and a package needs
+/// to see both balances, since each session type may draw on a different
+/// one. The banner takes the colour of the lowest balance.
 class _MembershipBanner extends StatelessWidget {
-  const _MembershipBanner({required this.info, required this.plan, required this.bookings});
+  const _MembershipBanner({required this.info, required this.plans, required this.bookings});
   final dynamic info;
-  final MembershipPlan plan;
+  final List<MembershipPlan> plans;
   final List<Booking> bookings;
 
   @override
   Widget build(BuildContext context) {
-    final used = sessionsUsedThisPeriod(info, plan, bookings);
-    final max = effectiveMaxSessions(info, plan);
-    final remaining = (max - used).clamp(0, max);
-    final color = remaining > 3 ? AppColors.grn : (remaining > 0 ? const Color(0xFFD68A4F) : const Color(0xFFC97F7F));
+    final lines = [
+      for (final plan in plans)
+        (
+          plan: plan,
+          remaining: (effectiveMaxSessions(info, plan) - sessionsUsedThisPeriod(info, plan, bookings))
+              .clamp(0, effectiveMaxSessions(info, plan)),
+        ),
+    ];
+    final lowest = lines.map((l) => l.remaining).reduce((a, b) => a < b ? a : b);
+    final color = lowest > 3 ? AppColors.grn : (lowest > 0 ? const Color(0xFFD68A4F) : const Color(0xFFC97F7F));
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -557,21 +579,27 @@ class _MembershipBanner extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.35)),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: "$remaining session${remaining != 1 ? 's' : ''} remaining  ",
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: remaining > 0 ? AppColors.txt : const Color(0xFFC97F7F)),
-                  ),
-                  TextSpan(text: "— ${plan.name}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
-                ],
+          for (final l in lines)
+            Padding(
+              padding: EdgeInsets.only(top: l == lines.first ? 0 : 4),
+              child: RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: "${l.remaining} session${l.remaining != 1 ? 's' : ''} remaining  ",
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: l.remaining > 0 ? AppColors.txt : const Color(0xFFC97F7F)),
+                    ),
+                    TextSpan(
+                      text: "— ${l.plan.name}${l.plan.kind == PlanKind.membership ? " this month" : ""}",
+                      style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -580,19 +608,24 @@ class _MembershipBanner extends StatelessWidget {
 
 class _StepOne extends StatelessWidget {
   const _StepOne({
-    required this.plan,
+    required this.plans,
     required this.onPick,
     required this.trainers,
     this.isStaff = false,
   });
-  final MembershipPlan? plan;
+
+  /// Everything the client holds — a type is offered if any of them covers
+  /// it. Empty only for staff booking themselves, who see every type.
+  final List<MembershipPlan> plans;
   final ValueChanged<String> onPick;
   final List<Trainer> trainers;
   final bool isStaff;
 
   @override
   Widget build(BuildContext context) {
-    final allowedTypes = plan?.allowedTypes ?? const ["semi-private", "one-on-one"];
+    final allowedTypes = plans.isEmpty
+        ? const ["semi-private", "one-on-one"]
+        : plans.expand((p) => p.allowedTypes).toSet().toList();
     // Large Group is included with ANY active membership — not gated to a
     // specific plan tier like allowedTypes — and visible for browsing even
     // with no membership at all. Only hidden if literally no coach offers it.

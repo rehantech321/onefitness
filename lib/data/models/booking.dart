@@ -15,6 +15,7 @@ class Booking {
     this.overriddenBy,
     this.overriddenAt,
     this.overrideReason,
+    this.planId,
   });
 
   final String id;
@@ -36,6 +37,12 @@ class Booking {
   final String? overriddenAt;
   final String? overrideReason;
 
+  /// The held plan whose session this booking used — chosen by
+  /// canBookOffering at booking time. A client can hold a membership and
+  /// several packages together, so usage is attributed per plan rather than
+  /// inferred from the session type. Null for rows made before this existed.
+  final String? planId;
+
   Booking copyWith({String? attendanceStatus}) => Booking(
         id: id,
         clientId: clientId,
@@ -51,5 +58,6 @@ class Booking {
         overriddenBy: overriddenBy,
         overriddenAt: overriddenAt,
         overrideReason: overrideReason,
+        planId: planId,
       );
 }

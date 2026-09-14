@@ -15,13 +15,52 @@ import "date_utils.dart";
 /// cancellation, early or late, gives the session back.
 const kGiveBackAttendanceStatuses = {"early-cancel", "late-cancel"};
 
+/// Every membership or package the client currently holds, in the order
+/// booking should draw on them: the recurring membership first (its sessions
+/// reset monthly, so unused ones are lost), then packages oldest-first (a
+/// lifetime balance keeps).
+///
+/// A client can hold one recurring membership plus any number of one-time
+/// packages at the same time. `membershipPlanId` is only the subscription
+/// slot — the one that cancel/freeze/change operate on — so reading it alone
+/// misses every package bought alongside. Programs are deliberately not
+/// here: they grant programming, not sessions (see isProgramKind).
+List<MembershipPlan> heldAccessPlans(ClientInfo info, List<MembershipPlan> allPlans) {
+  final byId = {for (final p in allPlans) p.id: p};
+  final seen = <String>{};
+  final held = <MembershipPlan>[];
+  void add(String? id) {
+    final p = id == null ? null : byId[id];
+    if (p == null || isProgramKind(p.kind) || !seen.add(p.id)) return;
+    held.add(p);
+  }
+
+  add(info.membershipPlanId);
+  final enrolled = [...info.plans.where((e) => e.status == "active")]
+    ..sort((a, b) => a.startDate.compareTo(b.startDate));
+  for (final e in enrolled) {
+    add(e.planId);
+  }
+  // Memberships ahead of packages, keeping start-date order within each —
+  // a partition rather than a sort, because List.sort isn't stable.
+  return [
+    ...held.where((p) => p.kind == PlanKind.membership),
+    ...held.where((p) => p.kind != PlanKind.membership),
+  ];
+}
+
 /// Takes the client's full booking list (not pre-filtered to checked-in —
 /// an upcoming booking counts against the plan the moment it's made, only
 /// a give-back attendance status or a physical assessment excuses it).
+///
+/// A booking is charged to the plan it recorded at booking time (`planId`).
+/// Rows from before that existed carry none, and fall back to being charged
+/// to any plan covering their session type — the only attribution possible
+/// for them, and exactly what the app did when they were made.
 int sessionsUsedThisPeriod(ClientInfo info, MembershipPlan plan, List<Booking> bookings) {
   final mine = bookings.where((b) =>
       b.clientId == info.id &&
-      plan.allowedTypes.contains(b.sessionType) &&
+      (b.planId == null ? plan.allowedTypes.contains(b.sessionType) : b.planId == plan.id) &&
       !b.isPhysicalAssessment &&
       !kGiveBackAttendanceStatuses.contains(b.attendanceStatus));
   if (plan.kind == PlanKind.membership) {
