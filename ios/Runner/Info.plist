@@ -49,6 +49,16 @@
 		<string>ONE Fitness uses your photo library so you can upload progress photos to track your fitness journey.</string>
 		<key>NSPhotoLibraryAddUsageDescription</key>
 		<string>ONE Fitness saves progress photos you choose to your photo library.</string>
+		<!-- image_picker links the camera API even when only the gallery is
+		     offered, and App Store Connect rejects the upload (ITMS-90683)
+		     if any linked API lacks its purpose string. -->
+		<key>NSCameraUsageDescription</key>
+		<string>ONE Fitness uses your camera to take profile and progress photos.</string>
+		<!-- The Stripe SDK references location APIs internally. The app never
+		     asks for location, but the string has to exist for the same
+		     reason as the camera one above. -->
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>ONE Fitness does not track your location. This permission is only requested by the payment provider if needed for fraud prevention.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 		<key>CFBundleURLTypes</key>
