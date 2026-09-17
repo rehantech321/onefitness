@@ -84,10 +84,6 @@ class TrainerShell extends ConsumerStatefulWidget {
   ConsumerState<TrainerShell> createState() => _TrainerShellState();
 }
 
-// Bottom-tab-bar destinations — back/swipe from any of these jumps
-// straight to Dashboard instead of walking tab-visit history.
-const _tabRootKeys = {"dashboard", "clients", "chat", "schedule", "staff"};
-
 class _TrainerShellState extends ConsumerState<TrainerShell> {
   // Closes the drawer directly (bypassing Navigator.pop) so it doesn't get
   // swallowed by the PopScope below, which intercepts pop attempts whenever
@@ -111,13 +107,13 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
       local();
       return;
     }
+    // Back retraces the screens actually visited — Dashboard → Clients →
+    // Chat → Schedule unwinds Schedule → Chat → Clients → Dashboard — for
+    // bottom tabs and drawer screens alike. It used to jump any tab
+    // straight to Dashboard, which threw away the path the user had taken.
     final mode = ref.read(trainerModeProvider);
     if (mode == "dashboard") return;
-    if (_tabRootKeys.contains(mode)) {
-      ref.read(trainerModeProvider.notifier).go("dashboard");
-    } else {
-      ref.read(trainerModeProvider.notifier).goBack();
-    }
+    ref.read(trainerModeProvider.notifier).goBack();
   }
 
   void _onPointerDown(PointerDownEvent e) {

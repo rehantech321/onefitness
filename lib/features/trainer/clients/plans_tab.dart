@@ -21,16 +21,23 @@ import "../schedule/client_search_picker.dart";
 /// generating, approving, or assigning a workout/nutrition program is a
 /// hard owner-exclusive capability, same as Reports/Memberships/Waivers.
 class PlansTab extends ConsumerStatefulWidget {
-  const PlansTab({super.key, required this.clientId});
+  const PlansTab({super.key, required this.clientId, required this.sub, required this.onSubChanged});
 
   final String clientId;
+
+  /// Which of training / nutrition / programs is showing. Owned by
+  /// TrainerView rather than here, so the sub-tab is part of the same back
+  /// history as the client's main tabs — back from Nutrition goes to
+  /// Training, not straight out of the client.
+  final String sub;
+  final ValueChanged<String> onSubChanged;
 
   @override
   ConsumerState<PlansTab> createState() => _PlansTabState();
 }
 
 class _PlansTabState extends ConsumerState<PlansTab> {
-  String _sub = "training";
+  String get _sub => widget.sub;
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +68,7 @@ class _PlansTabState extends ConsumerState<PlansTab> {
               children: [("training", "Training"), ("nutrition", "Nutrition"), ("programs", "Programs")]
                   .map((t) => Expanded(
                         child: InkWell(
-                          onTap: () => setState(() => _sub = t.$1),
+                          onTap: () => widget.onSubChanged(t.$1),
                           borderRadius: BorderRadius.circular(7),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -84,8 +91,8 @@ class _PlansTabState extends ConsumerState<PlansTab> {
                 child: _ProgramsPanel(
                   clientId: widget.clientId,
                   record: record,
-                  onEditWorkout: () => setState(() => _sub = "training"),
-                  onEditNutrition: () => setState(() => _sub = "nutrition"),
+                  onEditWorkout: () => widget.onSubChanged("training"),
+                  onEditNutrition: () => widget.onSubChanged("nutrition"),
                 ),
               ),
           },

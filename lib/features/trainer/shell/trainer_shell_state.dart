@@ -24,7 +24,17 @@ class TrainerModeNotifier extends Notifier<String> {
       _history.clear();
       return;
     }
-    _history.add(state);
+    // Going to a screen that's already on the path unwinds to it instead of
+    // stacking a second copy — otherwise bouncing Clients ↔ Chat a few times
+    // would take as many backs to get out of. So Dashboard → Clients → Chat
+    // → Clients leaves the path as Dashboard → Clients, and one back goes
+    // home.
+    final seen = _history.indexOf(mode);
+    if (seen >= 0) {
+      _history.removeRange(seen, _history.length);
+    } else {
+      _history.add(state);
+    }
     state = mode;
   }
 

@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../data/providers/trainer_providers.dart";
@@ -53,6 +54,40 @@ class TrainerView extends ConsumerStatefulWidget {
 class _TrainerViewState extends ConsumerState<TrainerView> {
   String _tab = "profile";
 
+  /// Plans' own sub-tab. Kept here so it's part of [_history] below.
+  String _plansSub = "training";
+
+  /// Every (tab, sub-tab) position visited on this client, oldest first,
+  /// so back retraces them: Profile → Plans/Training → Nutrition →
+  /// Programs unwinds Programs → Nutrition → Training → Profile. Once it's
+  /// empty, back falls through to the shell (Clients → Dashboard).
+  final List<(String, String)> _history = [];
+
+  void _visit(String tab, String sub) {
+    if (tab == _tab && sub == _plansSub) return;
+    // Returning to a position already on the path unwinds to it rather
+    // than stacking a copy, same rule as the shell's own history.
+    final seen = _history.indexOf((tab, sub));
+    if (seen >= 0) {
+      _history.removeRange(seen, _history.length);
+    } else {
+      _history.add((_tab, _plansSub));
+    }
+    setState(() {
+      _tab = tab;
+      _plansSub = sub;
+    });
+  }
+
+  void _back() {
+    if (_history.isEmpty) return;
+    final (tab, sub) = _history.removeLast();
+    setState(() {
+      _tab = tab;
+      _plansSub = sub;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -88,11 +123,16 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
   void didUpdateWidget(covariant TrainerView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.clientId != widget.clientId) {
-      setState(() => _tab = "profile");
+      _history.clear();
+      setState(() {
+        _tab = "profile";
+        _plansSub = "training";
+      });
     }
   }
 
-  void _goTab(String k) => setState(() => _tab = k);
+  // Opening Plans always lands on Training, whatever was showing last time.
+  void _goTab(String k) => _visit(k, k == "plans" ? "training" : _plansSub);
 
   // Uses showMenu (the root Overlay) rather than a Positioned-in-Stack
   // dropdown: a Positioned that overflows its Stack's own box paints
@@ -136,7 +176,10 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
   Widget build(BuildContext context) {
     final activeInMore = _moreTabs.any((t) => t.key == _tab);
 
-    return Column(
+    return LocalBackScope(
+      isOpen: _history.isNotEmpty,
+      onBack: _back,
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
@@ -158,6 +201,7 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
         ),
         Expanded(child: _body()),
       ],
+      ),
     );
   }
 
@@ -170,7 +214,7 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
       case "logs":
         return LoggedTab(clientId: widget.clientId);
       case "plans":
-        return PlansTab(clientId: widget.clientId);
+        return PlansTab(clientId: widget.clientId, sub: _plansSub, onSubChanged: (s) => _visit("plans", s));
       case "habits":
         return HabitsTab(clientId: widget.clientId);
       case "notes":
