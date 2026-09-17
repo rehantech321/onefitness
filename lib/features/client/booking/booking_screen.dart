@@ -904,13 +904,15 @@ class _StepThreeState extends State<_StepThree> {
     final onChangeDisc = widget.onChangeDisc;
     final onSlotTap = widget.onSlotTap;
     final sunday = isSunday(date);
-    final wd = weekdayOf(date);
 
     final bySlot = <int, List<_SlotAvailability>>{};
-    if (!sunday) {
+    {
       for (final t in trainers) {
         if (fallsInUnavailability(t, date)) continue;
-        for (final o in trainerOfferings(t, wd)) {
+        for (final o in trainerOfferingsOn(t, date)) {
+          // The weekly pattern never runs on Sunday; a session the owner
+          // created on a Sunday date deliberately does.
+          if (sunday && !o.oneOff) continue;
           if (o.sessionType != chosenType || o.discipline != chosenDisc) continue;
           if (fallsInBlockedTime(widget.blockedTimes, t.id, date, o.slot)) continue;
           final used = bookedCount(bookings, t.id, date, o.slot);

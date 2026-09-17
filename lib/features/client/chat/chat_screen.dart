@@ -15,12 +15,14 @@ import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 
-enum _Channel { email, inapp, both }
+// Every message is stored in the app thread regardless; the channel says
+// what else happens to it. "Both" sends it by email and by SMS.
+enum _Channel { inapp, email, sms, both }
 
 /// The three things the Chat tab can be showing.
 enum _ChatView { list, thread, picker }
 
-const _channelLabels = {_Channel.email: "Email", _Channel.inapp: "In App", _Channel.both: "Both"};
+const _channelLabels = {_Channel.inapp: "In App", _Channel.email: "Email", _Channel.sms: "SMS", _Channel.both: "Both"};
 
 const _prefRecipientKey = "chat_recipient_id";
 const _prefChannelKey = "chat_channel";
@@ -188,6 +190,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           );
         }
       });
+    }
+    if (channel == _Channel.sms || channel == _Channel.both) {
+      final phone = (selectedCoach.phone ?? "").trim();
+      if (phone.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("${selectedCoach.name} has no phone number on file — sent in-app only.")),
+          );
+        }
+      } else {
+        SupabaseService.sendSms(to: phone, text: "${info.name}: $text").catchError((Object e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Couldn't send the SMS: ${e.toString().replaceFirst("Exception: ", "")}")),
+            );
+          }
+        });
+      }
     }
   }
 
@@ -441,7 +461,7 @@ class _RecipientSetupState extends State<_RecipientSetup> {
           Row(
             children: [
               for (final ch in _Channel.values) ...[
-                if (ch != _Channel.email) const SizedBox(width: 8),
+                if (ch != _Channel.inapp) const SizedBox(width: 8),
                 _SegOption(
                   label: _channelLabels[ch]!,
                   selected: _channel == ch,

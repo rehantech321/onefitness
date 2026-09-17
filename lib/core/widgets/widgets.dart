@@ -4,6 +4,7 @@ library;
 
 export "conversation_list.dart";
 export "product_photo.dart";
+export "time_field.dart";
 export "animated_screen_switcher.dart";
 export "animated_tab_icon.dart";
 export "app_buttons.dart";

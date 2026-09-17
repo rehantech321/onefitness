@@ -49,6 +49,31 @@ List<MembershipPlan> heldAccessPlans(ClientInfo info, List<MembershipPlan> allPl
   ];
 }
 
+/// The held plan a staff-made booking should be charged to, or null when
+/// the client holds nothing that covers [sessionType].
+///
+/// Same preference as canBookOffering — membership before packages, first
+/// with budget wins — but with one difference: staff can knowingly book a
+/// client past their balance, so if every covering plan is spent, the first
+/// covering plan is still returned and simply goes over. What must never
+/// happen is the booking landing with no plan at all while the client does
+/// hold one; that's a session silently not deducted.
+String? planToChargeFor(
+  ClientInfo info,
+  String sessionType,
+  List<Booking> bookings,
+  List<MembershipPlan> allPlans,
+) {
+  final covering = heldAccessPlans(info, allPlans)
+      .where((p) => sessionType == "large-group" || p.allowedTypes.contains(sessionType))
+      .toList();
+  if (covering.isEmpty) return null;
+  for (final p in covering) {
+    if (sessionsUsedThisPeriod(info, p, bookings) < effectiveMaxSessions(info, p)) return p.id;
+  }
+  return covering.first.id;
+}
+
 /// Takes the client's full booking list (not pre-filtered to checked-in —
 /// an upcoming booking counts against the plan the moment it's made, only
 /// a give-back attendance status or a physical assessment excuses it).

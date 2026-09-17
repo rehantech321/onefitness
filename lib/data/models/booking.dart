@@ -16,6 +16,7 @@ class Booking {
     this.overriddenAt,
     this.overrideReason,
     this.planId,
+    this.durationMin = 60,
   });
 
   final String id;
@@ -43,6 +44,11 @@ class Booking {
   /// inferred from the session type. Null for rows made before this existed.
   final String? planId;
 
+  /// Minutes the session runs. 60 unless staff set an end time when booking.
+  final int durationMin;
+
+  int get endSlot => slot + durationMin;
+
   Booking copyWith({String? attendanceStatus}) => Booking(
         id: id,
         clientId: clientId,
@@ -59,5 +65,6 @@ class Booking {
         overriddenAt: overriddenAt,
         overrideReason: overrideReason,
         planId: planId,
+        durationMin: durationMin,
       );
 }

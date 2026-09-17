@@ -153,6 +153,9 @@ class _ManageMembershipsScreenState
         id: p.id,
         name: p.name,
         kind: p.kind,
+        description: p.description,
+        startDate: p.startDate,
+        renewalDay: p.renewalDay,
         maxSessions: p.maxSessions,
         termMonths: p.termMonths,
         allowedTypes: p.allowedTypes,
@@ -458,6 +461,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
   late final _name = TextEditingController(text: widget.initial?.name ?? "");
   late final _description = TextEditingController(text: widget.initial?.description ?? "");
   late final _startDate = TextEditingController(text: widget.initial?.startDate ?? "");
+  late int? _renewalDay = widget.initial?.renewalDay;
   late PlanKind _kind = widget.initial?.kind ?? PlanKind.membership;
   late final _price = TextEditingController(
     text: widget.initial != null
@@ -606,6 +610,40 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
             ),
           ),
           const SizedBox(height: 10),
+          // A membership renews on a fixed day of the month for everyone on
+          // it; a package or program instead has an optional start date.
+          if (isSub) ...[
+            FieldLabeled(
+              label: "Renewal day (optional)",
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  border: Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButton<int?>(
+                  value: _renewalDay,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  dropdownColor: AppColors.card,
+                  style: const TextStyle(color: AppColors.txt, fontSize: 14),
+                  items: [
+                    const DropdownMenuItem<int?>(value: null, child: Text("Each client's own signup day")),
+                    for (var d = 1; d <= 28; d++) DropdownMenuItem<int?>(value: d, child: Text("${_ordinal(d)} of every month")),
+                  ],
+                  onChanged: (v) => setState(() => _renewalDay = v),
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                "Every client on this membership is billed on that day. Someone joining mid-month pays a prorated amount up to it, then the full price from then on. Days after the 28th aren't offered because not every month has them.",
+                style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+              ),
+            ),
+          ] else
           FieldLabeled(
             label: "Start date (optional)",
             child: InkWell(
@@ -645,13 +683,14 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
               ),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.only(top: 4),
-            child: Text(
-              "Only for something that starts on a fixed date. Leave blank for an ongoing membership — it then simply runs from whenever it is bought.",
-              style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+          if (!isSub)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                "Only for something that starts on a fixed date. Leave blank and it simply runs from whenever it is bought.",
+                style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+              ),
             ),
-          ),
           const SizedBox(height: 10),
           const Text(
             "KIND",
@@ -1038,7 +1077,8 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                           "plan-${DateTime.now().microsecondsSinceEpoch}",
                       name: _name.text.trim(),
                       description: _description.text.trim().isEmpty ? null : _description.text.trim(),
-                      startDate: _startDate.text.trim().isEmpty ? null : _startDate.text.trim(),
+                      startDate: isSub || _startDate.text.trim().isEmpty ? null : _startDate.text.trim(),
+                      renewalDay: isSub ? _renewalDay : null,
                       kind: _kind,
                       maxSessions: int.tryParse(_maxSessions.text.trim()) ?? 0,
                       termMonths: isProgram
@@ -1367,4 +1407,10 @@ class _CategoryManagerState extends State<_CategoryManager> {
       ),
     );
   }
+}
+
+/// 1 → "1st", 2 → "2nd", 21 → "21st".
+String _ordinal(int d) {
+  if (d >= 11 && d <= 13) return "${d}th";
+  return switch (d % 10) { 1 => "${d}st", 2 => "${d}nd", 3 => "${d}rd", _ => "${d}th" };
 }

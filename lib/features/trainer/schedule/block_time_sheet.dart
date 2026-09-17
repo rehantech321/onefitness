@@ -35,28 +35,18 @@ class _BlockTimeBody extends ConsumerStatefulWidget {
 class _BlockTimeBodyState extends ConsumerState<_BlockTimeBody> {
   late String _trainerId = widget.trainerId;
   bool _allDay = true;
-  final _start = TextEditingController(text: "09:00");
-  final _end = TextEditingController(text: "17:00");
+  int _startMin = 9 * 60;
+  int _endMin = 17 * 60;
   final _reason = TextEditingController();
   bool _saving = false;
   String? _error;
 
   @override
   void dispose() {
-    _start.dispose();
-    _end.dispose();
     _reason.dispose();
     super.dispose();
   }
 
-  int? _toMin(String hhmm) {
-    final parts = hhmm.split(":");
-    if (parts.length != 2) return null;
-    final h = int.tryParse(parts[0]);
-    final m = int.tryParse(parts[1]);
-    if (h == null || m == null) return null;
-    return h * 60 + m;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,8 +55,8 @@ class _BlockTimeBodyState extends ConsumerState<_BlockTimeBody> {
     final trainers = ref.watch(trainersProvider);
     final bookings = ref.watch(allBookingsProvider);
 
-    final startMin = _allDay ? null : _toMin(_start.text);
-    final endMin = _allDay ? null : _toMin(_end.text);
+    final startMin = _allDay ? null : _startMin;
+    final endMin = _allDay ? null : _endMin;
     final overlapping = bookings.where((b) {
       if (b.trainerId != _trainerId || b.date != widget.date || b.status == "cancelled") return false;
       if (_allDay) return true;
@@ -118,9 +108,9 @@ class _BlockTimeBodyState extends ConsumerState<_BlockTimeBody> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(child: FieldLabeled(label: "Start (HH:MM)", child: AppField(controller: _start))),
+                Expanded(child: FieldLabeled(label: "Start", child: TimeField(minutes: _startMin, onChanged: (v) => setState(() => _startMin = v)))),
                 const SizedBox(width: 8),
-                Expanded(child: FieldLabeled(label: "End (HH:MM)", child: AppField(controller: _end))),
+                Expanded(child: FieldLabeled(label: "End", child: TimeField(minutes: _endMin, onChanged: (v) => setState(() => _endMin = v)))),
               ],
             ),
           ],

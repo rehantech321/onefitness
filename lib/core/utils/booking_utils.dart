@@ -32,22 +32,47 @@ int weekdayOf(String iso) => DateTime.parse(iso).weekday % 7;
 bool isSunday(String iso) => weekdayOf(iso) == 0;
 
 class Offering {
-  const Offering({required this.sessionType, required this.discipline, required this.slot});
+  const Offering({required this.sessionType, required this.discipline, required this.slot, this.durationMin = 60, this.oneOff = false});
   final String sessionType;
   final String discipline;
   final int slot;
+  final int durationMin;
+
+  /// True for a session the owner created on this specific date rather
+  /// than one produced by the coach's weekly pattern.
+  final bool oneOff;
 }
 
-/// Mirrors schedulingHelpers.js `trainerOfferings`.
+/// Mirrors schedulingHelpers.js `trainerOfferings` — the coach's weekly
+/// pattern only. Use [trainerOfferingsOn] when the actual date is known.
 List<Offering> trainerOfferings(Trainer t, int weekday) {
   final out = <Offering>[];
   for (final block in t.availability) {
     final slots = block.byDay[weekday] ?? const [];
     for (final slot in slots) {
-      out.add(Offering(sessionType: block.sessionType, discipline: block.discipline, slot: slot));
+      out.add(Offering(sessionType: block.sessionType, discipline: block.discipline, slot: slot, durationMin: block.durationMin));
     }
   }
   return out;
+}
+
+/// Everything this coach offers on one calendar date: the weekly pattern
+/// for that weekday plus any one-off sessions created for the date itself.
+/// A one-off at the same time as a pattern slot wins, so creating a session
+/// where one already recurs doesn't list it twice.
+List<Offering> trainerOfferingsOn(Trainer t, String dateIso) {
+  final weekly = trainerOfferings(t, weekdayOf(dateIso));
+  final oneOffs = <Offering>[];
+  for (final block in t.availability) {
+    for (final slot in block.dates[dateIso] ?? const <int>[]) {
+      oneOffs.add(Offering(sessionType: block.sessionType, discipline: block.discipline, slot: slot, durationMin: block.durationMin, oneOff: true));
+    }
+  }
+  final taken = {for (final o in oneOffs) "${o.slot}|${o.sessionType}|${o.discipline}"};
+  return [
+    ...oneOffs,
+    ...weekly.where((o) => !taken.contains("${o.slot}|${o.sessionType}|${o.discipline}")),
+  ];
 }
 
 /// Coach Availability Tab spec's Unavailability check — true when [date]
@@ -190,6 +215,9 @@ Charge? attendanceChargeFor(
   } else {
     return null;
   }
+  // A fee the owner has set to zero is "no fee", not a $0.00 line on the
+  // client's statement.
+  if (cents <= 0) return null;
   return Charge(
     id: "",
     clientId: b.clientId,

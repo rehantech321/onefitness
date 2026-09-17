@@ -14,6 +14,7 @@ import "../chat/coach_chat_screen.dart";
 import "../clients/clients_screen.dart";
 import "../dashboard/self_book_screen.dart";
 import "../dashboard/trainer_home_screen.dart";
+import "../exercises/equipment_library_screen.dart";
 import "../exercises/exercises_screen.dart";
 import "../memberships/manage_memberships_screen.dart";
 import "../memberships/manage_products_screen.dart";
@@ -39,7 +40,7 @@ class _NavItem {
 }
 
 const _bottomItemsBase = [
-  _NavItem("dashboard", "Home", LucideIcons.dumbbell),
+  _NavItem("dashboard", "Dashboard", LucideIcons.dumbbell),
   _NavItem("clients", "Clients", LucideIcons.users),
   _NavItem("chat", "Chat", LucideIcons.messageSquare),
   _NavItem("schedule", "Schedule", LucideIcons.calendar),
@@ -66,6 +67,7 @@ const _titles = {
   "coachbadges": "Merit Badges",
   "mypay": "My Pay",
   "exercises": "Exercises",
+  "equipment": "Equipment Library",
   "builderWorkout": "Build Workout Program",
   "builderNutrition": "Build Nutrition Program",
 };
@@ -232,6 +234,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                       "schedule" => const ScheduleScreen(),
                       "waitlist" => const WaitlistScreen(),
                       "exercises" => const ExercisesScreen(),
+                      "equipment" => const EquipmentLibraryScreen(),
                       "builderWorkout" => const ProgramBuilderScreen(),
                       "builderNutrition" => const NutritionBuilderScreen(),
                       "staff" when isOwner => const StaffScreen(),
@@ -416,6 +419,7 @@ class _TrainerDrawer extends ConsumerWidget {
               true,
             ),
             _DrawerEntry(LucideIcons.dumbbell, "Exercises", "exercises", true),
+            _DrawerEntry(LucideIcons.wrench, "Equipment Library", "equipment", true),
             _DrawerEntry(LucideIcons.trophy, "Challenges", "challenges", true),
             _DrawerEntry(LucideIcons.clock, "Waitlist", "waitlist", true),
             _DrawerEntry(
@@ -437,7 +441,6 @@ class _TrainerDrawer extends ConsumerWidget {
               "coaches",
               true,
             ),
-            _DrawerEntry(LucideIcons.user, "Staff Settings", "staff", true),
             _DrawerEntry(
               LucideIcons.slidersHorizontal,
               "Customize Platform",
@@ -457,6 +460,7 @@ class _TrainerDrawer extends ConsumerWidget {
             _DrawerEntry(LucideIcons.calendar, "Scheduling", "schedule", true),
             _DrawerEntry(LucideIcons.clock, "Waitlist", "waitlist", true),
             _DrawerEntry(LucideIcons.dumbbell, "Exercises", "exercises", true),
+            _DrawerEntry(LucideIcons.wrench, "Equipment Library", "equipment", true),
             _DrawerEntry(LucideIcons.trophy, "Challenges", "challenges", true),
             _DrawerEntry(LucideIcons.messageSquare, "Chat", "chat", true),
             _DrawerEntry(LucideIcons.user, "My Profile", "myprofile", true),

@@ -959,6 +959,9 @@ class SupabaseService {
         .toList(),
     winnerClientId: row["winner"] as String?,
     winnerMode: row["winner_mode"] as String? ?? "auto",
+    rewardPoints: _asInt(row["reward_points"]),
+    rewardProductId: _emptyToNull(row["reward_product_id"]),
+    trainerId: row["trainer_id"] as String?,
   );
 
   static Future<List<Squad>> loadSquads() async {
@@ -1466,6 +1469,8 @@ class SupabaseService {
     "byDay": b.byDay.map(
       (weekday, slots) => MapEntry(weekday.toString(), slots),
     ),
+    if (b.dates.isNotEmpty) "dates": b.dates,
+    if (b.durationMin != 60) "durationMin": b.durationMin,
   };
 
   /// `client_records.data` is a single JSONB column holding many features'
@@ -1883,6 +1888,7 @@ class SupabaseService {
       "overridden_at": b.overriddenAt,
       "override_reason": b.overrideReason,
       "plan_id": b.planId,
+      "duration_min": b.durationMin,
     };
     final data = await client.from("bookings").insert(row).select().single();
     return _bookingFromRow(data);
@@ -2172,6 +2178,12 @@ class SupabaseService {
     "subject": subject,
     "text": text,
   });
+
+  /// Real SMS via the send-sms Edge Function (Twilio) — the "SMS" chat
+  /// channel. Throws with a readable message when Twilio isn't configured,
+  /// so the sender learns the text didn't go rather than assuming it did.
+  static Future<void> sendSms({required String to, required String text}) =>
+      _invokeFunction("send-sms", {"to": to, "text": text});
 
   /// Enrolls in a FREE plan (paid ones go through createCheckoutSession and
   /// are granted by stripe-webhook once payment confirms). Server-side
@@ -2597,6 +2609,25 @@ class SupabaseService {
     await client.from("package_categories").delete().eq("name", name);
   }
 
+  /// Equipment Library — same shape as the category catalog: a table of
+  /// names, readable by everyone signed in, added to by staff.
+  static Future<List<String>> loadEquipment() async {
+    final rows = await client.from("equipment").select("name").order("created_at");
+    return rows.map((r) => r["name"] as String).toList();
+  }
+
+  static Future<void> insertEquipment(String name) async {
+    try {
+      await client.from("equipment").insert({"name": name});
+    } on PostgrestException catch (e) {
+      if (e.code != "23505") rethrow;
+    }
+  }
+
+  static Future<void> deleteEquipment(String name) async {
+    await client.from("equipment").delete().eq("name", name);
+  }
+
   static Map<String, dynamic> _waiverDocToJson(WaiverDoc w) => {
     "id": w.id,
     "title": w.title,
@@ -2678,6 +2709,7 @@ class SupabaseService {
     "kind": p.kind.name,
     "description": p.description,
     "startDate": p.startDate,
+    "renewalDay": p.renewalDay,
     "maxSessions": p.maxSessions,
     "termMonths": p.termMonths,
     "allowedTypes": p.allowedTypes,
@@ -2888,6 +2920,9 @@ class SupabaseService {
       "end_date": c.endDate,
       "created_by": createdBy,
       "participants": c.participantIds,
+      "reward_points": c.rewardPoints,
+      "reward_product_id": c.rewardProductId,
+      "trainer_id": c.trainerId,
     };
     await client.from("challenges").insert(row);
   }
@@ -3246,11 +3281,18 @@ class SupabaseService {
               dayNameToIndex[k.substring(0, k.length < 3 ? k.length : 3)];
           if (weekday != null) byDay[weekday] = slots;
         });
+        final dates = <String, List<int>>{};
+        ((block["dates"] as Map?) ?? const {}).forEach((key, value) {
+          final slots = (value as List?)?.whereType<num>().map((n) => n.toInt()).toList() ?? const <int>[];
+          if (slots.isNotEmpty) dates[key.toString()] = slots;
+        });
         out.add(
           AvailabilityBlock(
             sessionType: block["sessionType"] as String? ?? "",
             discipline: block["discipline"] as String? ?? "",
             byDay: byDay,
+            dates: dates,
+            durationMin: _asInt(block["durationMin"]) ?? 60,
           ),
         );
       } catch (e) {
@@ -3279,6 +3321,7 @@ class SupabaseService {
       overriddenAt: row["overridden_at"] as String?,
       overrideReason: row["override_reason"] as String?,
       planId: row["plan_id"] as String?,
+      durationMin: _asInt(row["duration_min"]) ?? 60,
     );
   }
 
@@ -3660,6 +3703,7 @@ class SupabaseService {
       kind: kindByName[j["kind"] as String?] ?? PlanKind.package,
       description: j["description"] as String?,
       startDate: j["startDate"] as String?,
+      renewalDay: _asInt(j["renewalDay"]),
       maxSessions: _asInt(j["maxSessions"]),
       termMonths: _asInt(j["termMonths"]),
       allowedTypes: ((j["allowedTypes"] as List?) ?? const [])

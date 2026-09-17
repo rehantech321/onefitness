@@ -29,6 +29,7 @@ class MembershipPlan {
     required this.kind,
     this.description,
     this.startDate,
+    this.renewalDay,
     this.maxSessions,
     this.termMonths,
     this.allowedTypes = const [],
@@ -86,6 +87,13 @@ class MembershipPlan {
   /// an ongoing membership. Mainly for dated offerings — a program that runs
   /// from a fixed start, or a seasonal package.
   final String? startDate;
+
+  /// Memberships only: the day of the month (1–28) every client on this
+  /// plan is billed. "Renews on the 21st" — a client who joins on the 10th
+  /// pays a prorated amount for the 10th–21st, then the full price on the
+  /// 21st each month. Null bills each client on their own signup day.
+  /// Capped at 28 so it exists in every month.
+  final int? renewalDay;
 
   // ── PackageSetupModal's Advanced Settings — highest-value subset ──
   // (contract attachment and a couple of lower-value toggles —

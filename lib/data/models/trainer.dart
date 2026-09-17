@@ -67,6 +67,34 @@ class Trainer {
   final String id;
   final String name;
 
+  /// Only availability is routinely replaced in place (the owner creating
+  /// a one-off session, a coach editing their week); everything else goes
+  /// through the full edit form, which rebuilds the whole object.
+  Trainer copyWith({List<AvailabilityBlock>? availability}) => Trainer(
+        id: id,
+        name: name,
+        title: title,
+        photo: photo,
+        phone: phone,
+        email: email,
+        locationName: locationName,
+        locationAddress: locationAddress,
+        locations: locations,
+        bio: bio,
+        beforeAfters: beforeAfters,
+        availability: availability ?? this.availability,
+        commissionRate: commissionRate,
+        disciplines: disciplines,
+        sessionTypes: sessionTypes,
+        reviewedByOwner: reviewedByOwner,
+        signupAt: signupAt,
+        payoutMode: payoutMode,
+        payoutRateCents: payoutRateCents,
+        referralCommissionPercent: referralCommissionPercent,
+        coachCode: coachCode,
+        unavailability: unavailability,
+      );
+
   /// Honorific shown before the name to clients — "Coach", "Head Coach",
   /// "Trainer". Separate from the name itself so it can be changed without
   /// rewriting what the coach is called everywhere.

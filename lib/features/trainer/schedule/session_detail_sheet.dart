@@ -6,6 +6,7 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
+import "../../../core/utils/membership_utils.dart";
 import "../../../core/utils/notification_triggers.dart";
 import "../../../core/utils/scheduling_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -92,7 +93,32 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
               roster: roster,
               exclude: active.map((b) => b.clientId).toList(),
               onSelect: (c) async {
+                // Adding past the class limit is allowed — staff know the
+                // room — but never silently. The count is what it will be
+                // once this client is in.
+                if (cap.atCap) {
+                  final go = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: AppColors.card,
+                      title: const Text("Over the class limit"),
+                      content: Text(
+                        "This ${sessionTypeLabel(first.sessionType)} session is limited to ${cap.cap}. "
+                        "Adding ${c.name} makes it ${cap.count + 1} of ${cap.cap} — you're adding more than the limit for this class.",
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+                        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Add anyway")),
+                      ],
+                    ),
+                  );
+                  if (go != true || !mounted) return;
+                }
                 setState(() => _adding = false);
+                // Deduct from the client's own plan, exactly as if they had
+                // booked it themselves — otherwise a staff-added session is
+                // free, and their balance quietly drifts from reality.
+                final planId = planToChargeFor(c, first.sessionType, allBookings, ref.read(membershipPlansProvider));
                 try {
                   final saved = await SupabaseService.insertBooking(Booking(
                         id: "",
@@ -102,8 +128,20 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                         slot: widget.slot,
                         sessionType: first.sessionType,
                         discipline: first.discipline,
+                        planId: planId,
+                        durationMin: first.durationMin,
                       ));
                   ref.read(allBookingsProvider.notifier).addBooking(saved);
+                  notifyPush(
+                    profileId: c.id,
+                    title: "Session booked",
+                    body: "You're booked for ${niceDate(widget.date)} at ${fmtSlot(widget.slot)} with $trainerName.",
+                  );
+                  if (planId == null && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text("${c.name} has no active plan covering ${sessionTypeLabel(first.sessionType)} — booked, but no session was deducted."),
+                    ));
+                  }
                 } catch (e) {
                   _showError();
                 }
@@ -121,10 +159,18 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(fmtSlot(widget.slot), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          Text("${dayLabel(widget.date)} · $trainerName · ${sessionTypeLabel(first.sessionType)} · ${disciplineLabel(first.discipline)}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
-          const SizedBox(height: 6),
-          Tag(text: "${cap.count}/${cap.cap}", gold: !cap.atCap),
+          // Reads top-down the way staff think about a session: what it
+          // is, who's running it, then when.
+          Row(
+            children: [
+              Expanded(child: Text(sessionTypeLabel(first.sessionType), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+              Tag(text: "${cap.count}/${cap.cap}", gold: !cap.atCap),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text("${disciplineLabel(first.discipline)} · $trainerName", style: const TextStyle(fontSize: 13, color: AppColors.txt)),
+          const SizedBox(height: 2),
+          Text("${dayLabel(widget.date)} · ${fmtSlot(widget.slot)} – ${fmtSlot(widget.slot + first.durationMin)}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
           const SizedBox(height: 14),
           ...active.map((b) {
             final matches = roster.where((c) => c.id == b.clientId);

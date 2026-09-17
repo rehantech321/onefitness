@@ -128,6 +128,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final List<WaitlistEntry> waitlist;
   final PlatformSettings? platformSettings;
   final List<String> packageCategories;
+  final List<String> equipment;
   final List<CoachMeritBadge> coachMeritBadges;
   final List<CoachPrEvent> coachPrEvents;
   try {
@@ -157,6 +158,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     final waitlistF = SupabaseService.loadWaitlist();
     final platformSettingsF = SupabaseService.loadPlatformSettings();
     final packageCategoriesF = SupabaseService.loadPackageCategories();
+    final equipmentF = SupabaseService.loadEquipment();
     final coachMeritBadgesF = SupabaseService.loadCoachMeritBadges();
     final coachPrEventsF = SupabaseService.loadCoachPrEvents();
 
@@ -179,6 +181,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     waitlist = await waitlistF;
     platformSettings = await platformSettingsF;
     packageCategories = await packageCategoriesF;
+    equipment = await equipmentF;
     coachMeritBadges = await coachMeritBadgesF;
     coachPrEvents = await coachPrEventsF;
   } catch (e, st) {
@@ -217,6 +220,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   ref.read(chargesProvider.notifier).setAll(charges);
   ref.read(waitlistProvider.notifier).setAll(waitlist);
   ref.read(packageCategoriesProvider.notifier).setAll(packageCategories);
+  ref.read(equipmentProvider.notifier).setAll(equipment);
   ref.read(coachMeritBadgesProvider.notifier).setAll(coachMeritBadges);
   ref.read(coachPrEventsProvider.notifier).setAll(coachPrEvents);
   // `platformSettings` is declared-then-assigned-in-a-try-block above, not

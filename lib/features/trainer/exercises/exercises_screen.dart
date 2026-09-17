@@ -204,9 +204,12 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
   late String _movement =
       widget.initial?.movementPattern ?? kMovementPatterns.first;
   late String _muscle = widget.initial?.primaryMuscle ?? kMuscleGroups.first;
-  late final _equipment = TextEditingController(
-    text: widget.initial?.equipment.join(", ") ?? "",
-  );
+  // Picked from the Equipment Library rather than typed as a comma list,
+  // so every exercise spells "Kettlebell" the same way and search on the
+  // exercise list matches. Anything new typed here goes into the library.
+  late final Set<String> _equipment = {...?widget.initial?.equipment};
+  final _newEquipment = TextEditingController();
+  bool _addingEquipment = false;
   late final _setup = TextEditingController(text: widget.initial?.setup ?? "");
   late final _cues = TextEditingController(text: widget.initial?.cues ?? "");
   late final _coachNotes = TextEditingController(
@@ -216,7 +219,7 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
   @override
   void dispose() {
     _name.dispose();
-    _equipment.dispose();
+    _newEquipment.dispose();
     _setup.dispose();
     _cues.dispose();
     _coachNotes.dispose();
@@ -271,8 +274,82 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
           ),
           const SizedBox(height: 10),
           FieldLabeled(
-            label: "Equipment (comma-separated)",
-            child: AppField(controller: _equipment),
+            label: "Equipment",
+            child: Consumer(builder: (context, ref, _) {
+              final library = [...ref.watch(equipmentProvider)]..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+              // Anything this exercise already lists that isn't in the
+              // library (older free-typed entries) still shows, selected.
+              final extras = _equipment.where((e) => !library.any((l) => l.toLowerCase() == e.toLowerCase())).toList();
+              Future<void> addNew() async {
+                final name = _newEquipment.text.trim();
+                if (name.isEmpty) return;
+                final existing = library.where((l) => l.toLowerCase() == name.toLowerCase());
+                final canonical = existing.isNotEmpty ? existing.first : name;
+                setState(() {
+                  _addingEquipment = true;
+                });
+                try {
+                  if (existing.isEmpty) {
+                    await SupabaseService.insertEquipment(canonical);
+                    ref.read(equipmentProvider.notifier).add(canonical);
+                  }
+                  setState(() {
+                    _equipment.add(canonical);
+                    _newEquipment.clear();
+                  });
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't add that equipment — check your connection and try again.")));
+                  }
+                } finally {
+                  if (mounted) setState(() => _addingEquipment = false);
+                }
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (library.isEmpty && extras.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 6),
+                      child: Text("The Equipment Library is empty — add the first item below.", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+                    ),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final name in [...library, ...extras])
+                        InkWell(
+                          onTap: () => setState(() {
+                            if (!_equipment.remove(name)) _equipment.add(name);
+                          }),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: _equipment.contains(name) ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                              border: Border.all(color: _equipment.contains(name) ? AppColors.gold : AppColors.line),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _equipment.contains(name) ? AppColors.gold : AppColors.txt)),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(child: AppField(controller: _newEquipment, placeholder: "Add new equipment…")),
+                      const SizedBox(width: 8),
+                      BtnGhost(onPressed: _addingEquipment ? null : addNew, child: Text(_addingEquipment ? "Adding…" : "+ Add")),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text("New equipment is saved to the Equipment Library for every coach.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
+                  ),
+                ],
+              );
+            }),
           ),
           const SizedBox(height: 10),
           FieldLabeled(
@@ -307,11 +384,7 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
                             name: _name.text.trim(),
                             movementPattern: _movement,
                             primaryMuscle: _muscle,
-                            equipment: _equipment.text
-                                .split(",")
-                                .map((e) => e.trim())
-                                .where((e) => e.isNotEmpty)
-                                .toList(),
+                            equipment: _equipment.toList(),
                             setup: _setup.text.trim().isEmpty
                                 ? null
                                 : _setup.text.trim(),

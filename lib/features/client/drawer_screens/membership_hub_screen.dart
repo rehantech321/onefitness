@@ -601,6 +601,8 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                     _DetailRow(label: "Category", value: plan.category!),
                   if ((plan.startDate ?? "").isNotEmpty)
                     _DetailRow(label: "Starts", value: plan.startDate!),
+                  if (plan.renewalDay != null)
+                    _DetailRow(label: "Renews", value: "${_ordinalDay(plan.renewalDay!)} of every month"),
                   _DetailRow(label: "Type", value: plan.kind == PlanKind.membership ? "Membership" : (plan.kind == PlanKind.package ? "Package" : "Program")),
                   if (plan.maxSessions != null && plan.maxSessions! > 0)
                     _DetailRow(
@@ -784,6 +786,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                                   if (p.maxSessions != null && p.maxSessions! > 0)
                                     "${p.maxSessions} sessions ${p.kind == PlanKind.membership ? "per month" : "total"}",
                                   if ((p.startDate ?? "").isNotEmpty) "Starts ${p.startDate}",
+                                  if (p.renewalDay != null) "Renews ${_ordinalDay(p.renewalDay!)} monthly",
                                 ].join(" · "),
                                 style: const TextStyle(fontSize: 12, color: AppColors.mute),
                               ),
@@ -898,6 +901,12 @@ class _HeldPackages extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 1 → "1st", 21 → "21st".
+String _ordinalDay(int d) {
+  if (d >= 11 && d <= 13) return "${d}th";
+  return switch (d % 10) { 1 => "${d}st", 2 => "${d}nd", 3 => "${d}rd", _ => "${d}th" };
 }
 
 /// Plans with no category set. Named rather than hidden so nothing silently
@@ -1054,6 +1063,7 @@ class _CatalogCard extends StatelessWidget {
                 "${plan.maxSessions} sessions ${plan.kind == PlanKind.membership ? "per month" : "total"}",
               if (plan.allowedTypes.isNotEmpty) "Covers ${_coversLabel(plan)}",
               if ((plan.startDate ?? "").isNotEmpty) "Starts ${plan.startDate}",
+              if (plan.renewalDay != null) "Renews ${_ordinalDay(plan.renewalDay!)} monthly",
             ].join(" · "),
             style: const TextStyle(fontSize: 11, color: AppColors.mute),
           ),

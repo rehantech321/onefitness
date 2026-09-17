@@ -280,6 +280,25 @@ class PackageCategoriesNotifier extends Notifier<List<String>> {
 
 final packageCategoriesProvider = NotifierProvider<PackageCategoriesNotifier, List<String>>(PackageCategoriesNotifier.new);
 
+/// Equipment Library — the gym's shared list of equipment names, offered
+/// as a picker when an exercise is added and managed from the staff menu.
+/// A name typed while adding an exercise lands here too, so it's offered
+/// next time.
+class EquipmentNotifier extends Notifier<List<String>> {
+  @override
+  List<String> build() => [];
+
+  void setAll(List<String> names) => state = names;
+
+  void add(String name) {
+    if (!state.contains(name)) state = [...state, name];
+  }
+
+  void remove(String name) => state = state.where((c) => c != name).toList();
+}
+
+final equipmentProvider = NotifierProvider<EquipmentNotifier, List<String>>(EquipmentNotifier.new);
+
 /// Waiver/contract documents (ManageWaivers.jsx).
 class WaiversNotifier extends Notifier<List<WaiverDoc>> {
   @override

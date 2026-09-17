@@ -6,12 +6,14 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
+import "../../../data/models/trainer.dart";
+import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../shell/trainer_shell_state.dart";
 import "add_manual_booking_sheet.dart";
+import "create_session_sheet.dart";
 import "day_view.dart";
 import "month_calendar.dart";
-import "session_detail_sheet.dart";
 
 /// Mirrors ScheduleTab.jsx — a single screen switching between a month grid
 /// and a drilled-in day view.
@@ -31,18 +33,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     ref.read(trainerModeProvider.notifier).go("clients");
   }
 
-  // A date with exactly one trainer+slot session group opens straight to
-  // its detail sheet — nothing to disambiguate. Anything else (multiple
-  // sessions, or none at all — e.g. to book on an empty day) still drills
-  // into the day view, same as before.
+  // Tapping a date always opens the day view listing every session on it,
+  // each as a tappable tile into its detail sheet. It used to jump straight
+  // to the detail sheet when the day held a single session, which skipped
+  // the day's overview and left no way to see the day as a whole.
   void _handleSelectDay(String date, Map<String, List<Booking>> bookingsByDate) {
-    final dayBookings = bookingsByDate[date] ?? const <Booking>[];
-    final groups = dayBookings.map((b) => "${b.trainerId}|${b.slot}").toSet();
-    if (groups.length == 1) {
-      final b = dayBookings.first;
-      showSessionDetailSheet(context, ref, trainerId: b.trainerId, date: date, slot: b.slot, onOpenClient: _openClient);
-      return;
-    }
     setState(() => _selectedDate = date);
   }
 
@@ -51,6 +46,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final trainerAuth = ref.watch(trainerAuthProvider);
     final isOwner = trainerAuth == "owner";
     final bookings = ref.watch(allBookingsProvider).where((b) => isOwner || b.trainerId == trainerAuth).toList();
+    final relevantTrainers = ref.watch(trainersProvider).where((t) => isOwner || t.id == trainerAuth).toList();
     final blocked = ref.watch(blockedTimesProvider).where((b) => isOwner || b.trainerId == trainerAuth).toList();
 
     return Column(
@@ -58,14 +54,36 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-          child: BtnGold(
-            full: true,
-            onPressed: () => showAddManualBookingSheet(context, ref, initialDate: _selectedDate ?? isoToday()),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [Icon(LucideIcons.plus, size: 15, color: Colors.white), SizedBox(width: 6), Text("Book session")],
-            ),
+          child: Row(
+            children: [
+              // Create = publish a bookable session for a coach (no client
+              // yet). Book = put a specific client into a session.
+              if (isOwner) ...[
+                Expanded(
+                  child: BtnGhost(
+                    full: true,
+                    onPressed: () => showCreateSessionSheet(context, ref, initialDate: _selectedDate ?? isoToday()),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [Icon(LucideIcons.plus, size: 15), SizedBox(width: 6), Text("Create session")],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: BtnGold(
+                  full: true,
+                  onPressed: () => showAddManualBookingSheet(context, ref, initialDate: _selectedDate ?? isoToday()),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [Icon(LucideIcons.plus, size: 15, color: Colors.white), SizedBox(width: 6), Text("Book session")],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -77,7 +95,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     padding: const EdgeInsets.all(18),
                     child: MonthCalendar(
                       month: _month,
-                      slotsByDate: _slotsByDate(bookings),
+                      slotsByDate: _slotsByDate(bookings, relevantTrainers),
                       blockedDates: blocked.map((b) => b.date).toSet(),
                       onSelectDay: (d) => _handleSelectDay(d, _bookingsByDate(bookings)),
                       onChangeMonth: (dir) => setState(() => _month = DateTime(_month.year, _month.month + dir, 1)),
@@ -112,10 +130,19 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return map;
   }
 
-  Map<String, List<int>> _slotsByDate(List<Booking> bookings) {
+  /// Times to print under each calendar date: booked sessions plus any
+  /// created-but-unbooked ones, so a session the owner just published shows
+  /// on the month view before anyone books it.
+  Map<String, List<int>> _slotsByDate(List<Booking> bookings, List<Trainer> trainers) {
     final byDate = _bookingsByDate(bookings);
-    return {
-      for (final entry in byDate.entries) entry.key: (entry.value.map((b) => b.slot).toSet().toList()..sort()),
+    final out = <String, Set<int>>{
+      for (final entry in byDate.entries) entry.key: entry.value.map((b) => b.slot).toSet(),
     };
+    for (final t in trainers) {
+      for (final block in t.availability) {
+        block.dates.forEach((date, slots) => out.putIfAbsent(date, () => {}).addAll(slots));
+      }
+    }
+    return {for (final e in out.entries) e.key: (e.value.toList()..sort())};
   }
 }

@@ -1,8 +1,10 @@
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/program_utils.dart";
 import "../../../data/models/client_record.dart";
 import "../../../data/models/exercise_prescription.dart";
+import "../../../data/providers/trainer_providers.dart";
 
 /// One set's live (unsaved) input while a session is in progress.
 class SetDraft {
@@ -127,6 +129,38 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(exercise.notes!, style: const TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
           ),
+        // The catalogue's coaching cues are for the client — how to do the
+        // movement. Its coachNotes are deliberately not read here: those are
+        // the coach's private notes about the exercise and never reach the
+        // client's screen.
+        Consumer(builder: (context, ref, _) {
+          final catalog = ref.watch(exerciseCatalogProvider);
+          final matches = catalog.where((d) =>
+              (exercise.exerciseId != null && d.id == exercise.exerciseId) ||
+              (exercise.exerciseId == null && d.name.toLowerCase() == exercise.name.toLowerCase()));
+          final cues = matches.isEmpty ? null : matches.first.cues;
+          if (cues == null || cues.trim().isEmpty) return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.08),
+                border: Border.all(color: AppColors.goldDim),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("CUES", style: TextStyle(fontSize: 9.5, color: AppColors.gold, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                  const SizedBox(height: 2),
+                  Text(cues, style: const TextStyle(fontSize: 12, color: AppColors.txt, height: 1.4)),
+                ],
+              ),
+            ),
+          );
+        }),
         const SizedBox(height: 6),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,

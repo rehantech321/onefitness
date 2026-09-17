@@ -1,16 +1,20 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
+import "../../../core/utils/membership_utils.dart";
 import "../../../core/utils/scheduling_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "../shell/trainer_shell_state.dart";
 import "client_search_picker.dart";
+import "coach_search_picker.dart";
 
 const _sessionTypes = ["semi-private", "one-on-one", "large-group", "assessment-call", "assessment-in-person"];
 const _disciplines = ["personal-training", "boxing", "hike", "outdoor-hiit", "stretch", "stick-mobility", "yoga"];
@@ -19,7 +23,18 @@ const _disciplines = ["personal-training", "boxing", "hike", "outdoor-hiit", "st
 /// Bypasses client-facing availability/membership gating on purpose, but
 /// still enforces the trainer double-booking and capacity checks; the
 /// owner may push past those with a confirmation, a coach cannot.
-Future<void> showAddManualBookingSheet(BuildContext context, WidgetRef ref, {required String initialDate}) {
+Future<void> showAddManualBookingSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required String initialDate,
+  // Set when opened from an existing or created session on the day view,
+  // so the coach/time/type arrive filled in and only the client is chosen.
+  String? initialTrainerId,
+  int? initialSlot,
+  int? initialDurationMin,
+  String? initialSessionType,
+  String? initialDiscipline,
+}) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -27,14 +42,26 @@ Future<void> showAddManualBookingSheet(BuildContext context, WidgetRef ref, {req
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
     builder: (ctx) => Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-      child: _AddManualBookingBody(initialDate: initialDate),
+      child: _AddManualBookingBody(initialDate: initialDate, initialTrainerId: initialTrainerId, initialSlot: initialSlot, initialDurationMin: initialDurationMin, initialSessionType: initialSessionType, initialDiscipline: initialDiscipline),
     ),
   );
 }
 
 class _AddManualBookingBody extends ConsumerStatefulWidget {
-  const _AddManualBookingBody({required this.initialDate});
+  const _AddManualBookingBody({
+    required this.initialDate,
+    this.initialTrainerId,
+    this.initialSlot,
+    this.initialDurationMin,
+    this.initialSessionType,
+    this.initialDiscipline,
+  });
   final String initialDate;
+  final String? initialTrainerId;
+  final int? initialSlot;
+  final int? initialDurationMin;
+  final String? initialSessionType;
+  final String? initialDiscipline;
 
   @override
   ConsumerState<_AddManualBookingBody> createState() => _AddManualBookingBodyState();
@@ -43,9 +70,16 @@ class _AddManualBookingBody extends ConsumerStatefulWidget {
 class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
   ClientInfo? _client;
   bool _picking = true;
-  String? _trainerId;
-  String _sessionType = "semi-private";
-  String _discipline = "personal-training";
+  bool _pickingCoach = false;
+  late String? _trainerId = widget.initialTrainerId;
+  late String _sessionType = widget.initialSessionType ?? "semi-private";
+  late String _discipline = widget.initialDiscipline ?? "personal-training";
+  late int _start = widget.initialSlot ?? 9 * 60;
+
+  /// Null means one hour — the default for every session, and what the
+  /// end-time field shows as a hint until an end is picked.
+  late int? _end = widget.initialDurationMin != null && widget.initialSlot != null ? widget.initialSlot! + widget.initialDurationMin! : null;
+  int get _durationMin => (_end ?? _start + 60) - _start;
 
   // A session can never be booked into the past — clamp whatever initial
   // date came in (e.g. a previously-tapped past calendar day) up to today,
@@ -57,15 +91,8 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
     final parsedMidnight = DateTime(parsed.year, parsed.month, parsed.day);
     return parsedMidnight.isBefore(todayMidnight) ? todayMidnight : parsedMidnight;
   }();
-  final _time = TextEditingController(text: "09:00");
   String? _error;
   bool _saving = false;
-
-  @override
-  void dispose() {
-    _time.dispose();
-    super.dispose();
-  }
 
   /// Mirrors OverridePrompt.jsx — an owner pushing a manual booking past a
   /// real conflict/capacity block sees exactly what's being overridden
@@ -98,15 +125,6 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
     if (picked != null) setState(() => _date = picked);
   }
 
-  int? get _slotMinutes {
-    final parts = _time.text.split(":");
-    if (parts.length != 2) return null;
-    final h = int.tryParse(parts[0]);
-    final m = int.tryParse(parts[1]);
-    if (h == null || m == null) return null;
-    return h * 60 + m;
-  }
-
   @override
   Widget build(BuildContext context) {
     final roster = ref.watch(trainerRosterProvider);
@@ -135,6 +153,43 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
 
     final bookings = ref.watch(allBookingsProvider);
 
+    if (_pickingCoach) {
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) setState(() => _pickingCoach = false);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              BackBar(onBack: () => setState(() => _pickingCoach = false), title: "Choose a coach"),
+              const SizedBox(height: 10),
+              CoachSearchPicker(
+                trainers: trainers,
+                selectedId: _trainerId,
+                onSelect: (t) => setState(() {
+                  _trainerId = t.id;
+                  _pickingCoach = false;
+                }),
+                onCreateCoach: isOwner
+                    ? () {
+                        Navigator.of(context).pop();
+                        ref.read(trainerModeProvider.notifier).go("staff");
+                      }
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final trainerMatches = trainers.where((t) => t.id == _trainerId);
+    final trainerName = trainerMatches.isNotEmpty ? trainerMatches.first.displayTitle : null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -153,7 +208,26 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
           if (isOwner) ...[
             const Text("COACH", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 6),
-            _ChoiceRow<String>(value: _trainerId, options: trainers.map((t) => (t.id, t.name)).toList(), onChanged: (v) => setState(() => _trainerId = v)),
+            InkWell(
+              onTap: () => setState(() => _pickingCoach = true),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  children: [
+                    if (trainerName != null) ...[Avatar(name: trainerName, size: 26), const SizedBox(width: 8)],
+                    Expanded(
+                      child: Text(
+                        trainerName ?? "Search for a coach…",
+                        style: TextStyle(fontSize: 14, color: trainerName == null ? AppColors.mute : AppColors.txt),
+                      ),
+                    ),
+                    const Icon(LucideIcons.search, size: 15, color: AppColors.mute),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
           ],
           const Text("SESSION TYPE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
@@ -181,8 +255,30 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
                   ),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: FieldLabeled(
+                  label: "Start time",
+                  child: TimeField(minutes: _start, onChanged: (v) => setState(() => _start = v)),
+                ),
+              ),
               const SizedBox(width: 8),
-              Expanded(child: FieldLabeled(label: "Time (HH:MM, 24h)", child: AppField(controller: _time))),
+              Expanded(
+                child: FieldLabeled(
+                  label: "End time (optional)",
+                  child: TimeField(
+                    minutes: _end,
+                    placeholder: "${fmtSlot(_start + 60)} (1 hr)",
+                    initialWhenEmpty: _start + 60,
+                    onChanged: (v) => setState(() => _end = v),
+                    onClear: () => setState(() => _end = null),
+                  ),
+                ),
+              ),
             ],
           ),
           if (_error != null)
@@ -193,10 +289,14 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
             onPressed: _saving
                 ? null
                 : () async {
-                    final slot = _slotMinutes;
+                    final slot = _start;
                     final trainerId = _trainerId;
-                    if (slot == null || trainerId == null) {
+                    if (trainerId == null) {
                       setState(() => _error = "Coach, date, and time are all required.");
+                      return;
+                    }
+                    if (_durationMin <= 0) {
+                      setState(() => _error = "End time must be after the start time.");
                       return;
                     }
                     final dateIso = isoDate(_date);
@@ -242,6 +342,11 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
                             sessionType: _sessionType,
                             discipline: effectiveDiscipline,
                             isPhysicalAssessment: isAssessment,
+                            durationMin: _durationMin,
+                            // Charged to the client's own plan, same as a
+                            // self-booking. An assessment never costs a
+                            // session, so it's left unattributed.
+                            planId: isAssessment ? null : planToChargeFor(_client!, _sessionType, bookings, ref.read(membershipPlansProvider)),
                             overriddenBy: overrideReason != null ? "owner" : null,
                             overriddenAt: overrideReason != null ? DateTime.now().toUtc().toIso8601String() : null,
                             overrideReason: overrideReason,

@@ -44,7 +44,22 @@ class Challenge {
     this.otherLeaderboard = const [],
     this.winnerClientId,
     this.winnerMode = "auto",
+    this.rewardPoints,
+    this.rewardProductId,
+    this.trainerId,
   });
+
+  /// Rewards points offered to the winner (1, 2, 3 or 5), on top of any
+  /// free-text [prize]. Granted through the points ledger when the winner
+  /// is set.
+  final int? rewardPoints;
+
+  /// A shop product offered to the winner. Recorded on the challenge and
+  /// shown to clients; handing it over is the gym's job.
+  final String? rewardProductId;
+
+  /// Scopes the challenge to one coach's clients. Null means everyone.
+  final String? trainerId;
 
   final String id;
   final String name;
@@ -72,5 +87,8 @@ class Challenge {
         otherLeaderboard: otherLeaderboard,
         winnerClientId: winnerClientId ?? this.winnerClientId,
         winnerMode: winnerMode,
+        rewardPoints: rewardPoints,
+        rewardProductId: rewardProductId,
+        trainerId: trainerId,
       );
 }

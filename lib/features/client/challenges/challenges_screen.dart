@@ -8,6 +8,7 @@ import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/challenge.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/trainer_providers.dart";
 import "challenge_detail_screen.dart";
 
 /// Mirrors ClientChallengesPage.jsx: joined/available challenge lists that
@@ -42,13 +43,17 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
     }
 
     final now = isoToday();
+    // A challenge scoped to a coach is only for that coach's clients. One
+    // this client already joined stays visible regardless — being moved
+    // to another coach shouldn't hide a leaderboard they're on.
+    bool forMe(Challenge c) => c.trainerId == null || c.trainerId == info.primaryTrainerId || isClientRegistered(c, info.id);
     final joined = challenges
         .where((c) => isClientRegistered(c, info.id))
         .toList();
     final available = challenges
         .where(
           (c) =>
-              !isClientRegistered(c, info.id) && c.endDate.compareTo(now) >= 0,
+              forMe(c) && !isClientRegistered(c, info.id) && c.endDate.compareTo(now) >= 0,
         )
         .toList();
 
@@ -136,7 +141,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
   }
 }
 
-class _ChallengeCard extends StatelessWidget {
+class _ChallengeCard extends ConsumerWidget {
   const _ChallengeCard({
     required this.challenge,
     required this.showJoin,
@@ -149,7 +154,7 @@ class _ChallengeCard extends StatelessWidget {
   final VoidCallback? onJoin;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tpl = templateMeta(challenge.template);
     final now = isoToday();
     final daysLeft =
@@ -211,6 +216,18 @@ class _ChallengeCard extends StatelessWidget {
                             fontSize: 11,
                             color: AppColors.gold,
                           ),
+                        ),
+                      ),
+                    if (challenge.rewardPoints != null || challenge.rewardProductId != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: Text(
+                          "\u{1F3C6} Reward: ${[
+                            if (challenge.rewardPoints != null) "${challenge.rewardPoints} rewards point${challenge.rewardPoints == 1 ? '' : 's'}",
+                            if (challenge.rewardProductId != null)
+                              ref.watch(productsProvider).where((p) => p.id == challenge.rewardProductId).map((p) => p.name).firstOrNull ?? "a product",
+                          ].join(" + ")}",
+                          style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
                         ),
                       ),
                   ],

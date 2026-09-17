@@ -212,7 +212,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
       var anyOffered = false;
       var anyAvailableToday = false;
       for (final t in _eligibleTrainers) {
-        final offers = trainerOfferings(t, weekday).any(
+        final offers = trainerOfferingsOn(t, date).any(
           (o) =>
               o.sessionType == _sessionType &&
               o.discipline == _discipline &&

@@ -4,12 +4,14 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
+import "../../../core/utils/booking_utils.dart" show Offering, trainerOfferingsOn;
 import "../../../core/utils/scheduling_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/blocked_time.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "add_manual_booking_sheet.dart";
 import "block_time_sheet.dart";
 import "session_detail_sheet.dart";
 
@@ -84,7 +86,16 @@ class DayView extends ConsumerWidget {
             ],
             _TrainerDaySessions(
               trainerId: trainer.id,
+              trainerName: trainer.name,
               date: date,
+              // Sessions the owner created for this date that nobody has
+              // booked yet — they exist only as availability, so the
+              // booking-driven list below would never show them.
+              openSessions: isPast
+                  ? const []
+                  : trainerOfferingsOn(trainer, date)
+                      .where((o) => o.oneOff && !bookings.any((b) => b.trainerId == trainer.id && b.slot == o.slot))
+                      .toList(),
               bookings: bookings.where((b) => b.trainerId == trainer.id).toList(),
               blocked: blocked.where((b) => b.trainerId == trainer.id).toList(),
               roster: roster,
@@ -93,7 +104,8 @@ class DayView extends ConsumerWidget {
               onOpenClient: onOpenClient,
             ),
           ],
-          if (bookings.isEmpty && blocked.isEmpty) const HintBox(text: "Nothing scheduled this day."),
+          if (bookings.isEmpty && blocked.isEmpty && !relevantTrainers.any((t) => !isPast && trainerOfferingsOn(t, date).any((o) => o.oneOff)))
+            const HintBox(text: "Nothing scheduled this day."),
         ],
       ),
     );
@@ -103,7 +115,9 @@ class DayView extends ConsumerWidget {
 class _TrainerDaySessions extends ConsumerWidget {
   const _TrainerDaySessions({
     required this.trainerId,
+    required this.trainerName,
     required this.date,
+    required this.openSessions,
     required this.bookings,
     required this.blocked,
     required this.roster,
@@ -113,7 +127,9 @@ class _TrainerDaySessions extends ConsumerWidget {
   });
 
   final String trainerId;
+  final String trainerName;
   final String date;
+  final List<Offering> openSessions;
   final List<Booking> bookings;
   final List<BlockedTime> blocked;
   final List roster;
@@ -142,14 +158,25 @@ class _TrainerDaySessions extends ConsumerWidget {
                 slot: slot,
                 onOpenClient: onOpenClient,
               ),
+              // Three lines, in the order staff read a session: what it is,
+              // who's running it, then when. Tapping opens the detail sheet
+              // where the roster and attendance can be changed.
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 70,
-                    child: Text(fmtSlot(slot), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: cap.atCap ? AppColors.gold : AppColors.txt)),
-                  ),
                   Expanded(
-                    child: Text("${sessionTypeLabel(first.sessionType)} · ${disciplineLabel(first.discipline)}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(sessionTypeLabel(first.sessionType), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 2),
+                        Text("${disciplineLabel(first.discipline)} · $trainerName", style: const TextStyle(fontSize: 12, color: AppColors.txt)),
+                        const SizedBox(height: 2),
+                        Text(
+                          "${dayLabel(date)} · ${fmtSlot(slot)} – ${fmtSlot(slot + first.durationMin)}",
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: cap.atCap ? AppColors.gold : AppColors.mute),
+                        ),
+                      ],
+                    ),
                   ),
                   Tag(text: "${cap.count}/${cap.cap}", gold: cap.atCap),
                   const SizedBox(width: 6),
@@ -158,6 +185,45 @@ class _TrainerDaySessions extends ConsumerWidget {
               ),
             );
           }),
+        // Created sessions with no client yet. Tapping one opens Book
+        // Session with the coach, time and type already filled, so the only
+        // thing left to choose is who's going.
+        for (final o in openSessions)
+          AppCard(
+            borderColor: AppColors.goldDim,
+            onTap: () => showAddManualBookingSheet(
+              context,
+              ref,
+              initialDate: date,
+              initialTrainerId: trainerId,
+              initialSlot: o.slot,
+              initialDurationMin: o.durationMin,
+              initialSessionType: o.sessionType,
+              initialDiscipline: o.discipline,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(sessionTypeLabel(o.sessionType), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 2),
+                      Text("${disciplineLabel(o.discipline)} · $trainerName", style: const TextStyle(fontSize: 12, color: AppColors.txt)),
+                      const SizedBox(height: 2),
+                      Text(
+                        "${dayLabel(date)} · ${fmtSlot(o.slot)} – ${fmtSlot(o.slot + o.durationMin)}",
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.mute),
+                      ),
+                    ],
+                  ),
+                ),
+                const Tag(text: "Open", gold: true),
+                const SizedBox(width: 6),
+                const Icon(LucideIcons.userPlus, size: 15, color: AppColors.gold),
+              ],
+            ),
+          ),
         for (final b in blocked)
           AppCard(
             child: Row(

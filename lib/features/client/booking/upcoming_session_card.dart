@@ -75,7 +75,7 @@ class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
                   ),
                   const SizedBox(height: 1),
                   Text(
-                    trainer?.name ?? "Removed",
+                    trainer?.displayTitle ?? "Removed",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 10.5, color: AppColors.mute),

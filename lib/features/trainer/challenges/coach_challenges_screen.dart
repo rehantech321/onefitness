@@ -28,8 +28,10 @@ class _CoachChallengesScreenState extends ConsumerState<CoachChallengesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final challenges = ref.watch(challengesProvider);
     final trainerAuth = ref.watch(trainerAuthProvider);
+    // The owner sees every challenge. A coach sees the gym-wide ones and
+    // their own — not another coach's client-scoped ones.
+    final challenges = ref.watch(challengesProvider).where((c) => trainerAuth == "owner" || c.trainerId == null || c.trainerId == trainerAuth).toList();
 
     if (_creating) {
       return LocalBackScope(
@@ -209,6 +211,28 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
       return;
     }
     ref.read(challengesProvider.notifier).update(widget.challengeId, (c) => c.copyWith(winnerClientId: clientId));
+    await _grantRewardPoints(clientId);
+  }
+
+  /// Rewards points promised on the challenge go through the ledger the
+  /// moment a winner is set. Best-effort: a failure here is reported, not
+  /// allowed to undo the winner.
+  Future<void> _grantRewardPoints(String clientId) async {
+    final challenge = ref.read(challengesProvider).where((c) => c.id == widget.challengeId).firstOrNull;
+    final pts = challenge?.rewardPoints;
+    if (challenge == null || pts == null || pts <= 0) return;
+    try {
+      await SupabaseService.grantPoints(clientId, pts, "Won challenge: ${challenge.name}");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$pts rewards point${pts == 1 ? '' : 's'} granted to the winner.")));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Winner saved, but the points couldn't be granted: ${e.toString().replaceFirst("Exception: ", "")}")),
+        );
+      }
+    }
   }
 
   Future<bool> _patchBadge(String clientId, String badgeId, String name, String awardedAt) async {
@@ -334,6 +358,21 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
                 ),
                 if (challenge.prize != null)
                   _InfoLine(label: "Prize:", value: challenge.prize!, labelColor: AppColors.gold),
+                if (challenge.rewardPoints != null || challenge.rewardProductId != null)
+                  _InfoLine(
+                    label: "Reward:",
+                    value: [
+                      if (challenge.rewardPoints != null) "${challenge.rewardPoints} rewards point${challenge.rewardPoints == 1 ? '' : 's'}",
+                      if (challenge.rewardProductId != null)
+                        ref.watch(productsProvider).where((p) => p.id == challenge.rewardProductId).map((p) => p.name).firstOrNull ?? "a product",
+                    ].join(" + "),
+                    labelColor: AppColors.gold,
+                  ),
+                if (challenge.trainerId != null)
+                  _InfoLine(
+                    label: "For:",
+                    value: "${ref.watch(trainersProvider).where((t) => t.id == challenge.trainerId).map((t) => t.displayTitle).firstOrNull ?? "a coach"}'s clients",
+                  ),
                 if (challenge.description != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
@@ -501,16 +540,16 @@ class _InfoLine extends StatelessWidget {
 
 /// Mirrors CreateChallengeForm — a two-step wizard: choose a template (all
 /// 8, matching CHALLENGE_TEMPLATES exactly), then fill in its details.
-class _CreateChallengeForm extends StatefulWidget {
+class _CreateChallengeForm extends ConsumerStatefulWidget {
   const _CreateChallengeForm({required this.onCancel, required this.onSave});
   final VoidCallback onCancel;
   final ValueChanged<Challenge> onSave;
 
   @override
-  State<_CreateChallengeForm> createState() => _CreateChallengeFormState();
+  ConsumerState<_CreateChallengeForm> createState() => _CreateChallengeFormState();
 }
 
-class _CreateChallengeFormState extends State<_CreateChallengeForm> {
+class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
   String? _templateKey;
   final _name = TextEditingController();
   final _description = TextEditingController();
@@ -518,6 +557,12 @@ class _CreateChallengeFormState extends State<_CreateChallengeForm> {
   DateTime? _startDate;
   DateTime? _endDate;
   String _winnerMode = "auto";
+  int? _rewardPoints;
+  String? _rewardProductId;
+
+  /// Which coach's clients this is for. Null = every client. A coach
+  /// creating one is always its coach; the owner picks.
+  String? _trainerId;
   String? _error;
 
   @override
@@ -590,9 +635,14 @@ class _CreateChallengeFormState extends State<_CreateChallengeForm> {
         description: _description.text.trim().isEmpty ? null : _description.text.trim(),
         prize: _prize.text.trim().isEmpty ? null : _prize.text.trim(),
         metric: templateMeta(tplKey).metric,
-        winnerMode: _winnerMode,
+        // Only Transformation is judged — every other template has a
+        // measurable score, so the winner is always the top of the board.
+        winnerMode: tplKey == "transformation" ? _winnerMode : "auto",
         startDate: startIso,
         endDate: endIso,
+        rewardPoints: _rewardPoints,
+        rewardProductId: _rewardProductId,
+        trainerId: ref.read(trainerAuthProvider) == "owner" ? _trainerId : ref.read(trainerAuthProvider),
       ),
     );
   }
@@ -693,6 +743,82 @@ class _CreateChallengeFormState extends State<_CreateChallengeForm> {
             child: AppField(controller: _prize, placeholder: "e.g. Free month of training, ONE Fitness gear, Gift card…"),
           ),
           const SizedBox(height: 10),
+          // Reward, all on one line: points chips then a product. Either,
+          // both, or neither — the free-text prize above still stands.
+          FieldLabeled(
+            label: "Reward",
+            child: Builder(builder: (context) {
+              final products = ref.watch(productsProvider).where((p) => !p.archived).toList();
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final pts in const [1, 2, 3, 5]) ...[
+                      InkWell(
+                        onTap: () => setState(() => _rewardPoints = _rewardPoints == pts ? null : pts),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _rewardPoints == pts ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                            border: Border.all(color: _rewardPoints == pts ? AppColors.gold : AppColors.line),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text("$pts pt${pts == 1 ? '' : 's'}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _rewardPoints == pts ? AppColors.gold : AppColors.txt)),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: _rewardProductId != null ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(8)),
+                      child: DropdownButton<String?>(
+                        value: _rewardProductId,
+                        underline: const SizedBox(),
+                        dropdownColor: AppColors.card,
+                        hint: const Text("Product", style: TextStyle(color: AppColors.mute, fontSize: 12)),
+                        style: const TextStyle(color: AppColors.txt, fontSize: 12),
+                        items: [
+                          const DropdownMenuItem<String?>(value: null, child: Text("No product")),
+                          for (final p in products) DropdownMenuItem<String?>(value: p.id, child: Text(p.name)),
+                        ],
+                        onChanged: (v) => setState(() => _rewardProductId = v),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 10),
+          Builder(builder: (context) {
+            final isOwner = ref.watch(trainerAuthProvider) == "owner";
+            final trainers = ref.watch(trainersProvider);
+            if (!isOwner) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: FieldLabeled(
+                label: "Coach (whose clients can see this)",
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
+                  child: DropdownButton<String?>(
+                    value: _trainerId,
+                    isExpanded: true,
+                    underline: const SizedBox(),
+                    dropdownColor: AppColors.card,
+                    style: const TextStyle(color: AppColors.txt, fontSize: 14),
+                    items: [
+                      const DropdownMenuItem<String?>(value: null, child: Text("All clients")),
+                      for (final t in trainers) DropdownMenuItem<String?>(value: t.id, child: Text("${t.displayTitle} — their clients only")),
+                    ],
+                    onChanged: (v) => setState(() => _trainerId = v),
+                  ),
+                ),
+              ),
+            );
+          }),
           Row(
             children: [
               Expanded(
@@ -719,37 +845,49 @@ class _CreateChallengeFormState extends State<_CreateChallengeForm> {
               ),
             ),
           const SizedBox(height: 10),
-          FieldLabeled(
-            label: "Winner determination",
-            child: Row(
-              children: [
-                Expanded(
-                  child: _WinnerModeOption(
-                    label: "Auto (highest score wins)",
-                    selected: _winnerMode == "auto",
-                    onTap: () => setState(() => _winnerMode = "auto"),
+          // Transformation is the one challenge with nothing to measure —
+          // it's judged from photos, so the coach picks. Every other
+          // template has a score, and the highest score wins, full stop.
+          if (_templateKey == "transformation") ...[
+            FieldLabeled(
+              label: "Winner determination",
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _WinnerModeOption(
+                      label: "Auto (highest score wins)",
+                      selected: _winnerMode == "auto",
+                      onTap: () => setState(() => _winnerMode = "auto"),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _WinnerModeOption(
-                    label: "Coach picks winner",
-                    selected: _winnerMode == "coach",
-                    onTap: () => setState(() => _winnerMode = "coach"),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _WinnerModeOption(
+                      label: "Coach picks winner",
+                      selected: _winnerMode == "coach",
+                      onTap: () => setState(() => _winnerMode = "coach"),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              _winnerMode == "auto"
-                  ? 'Auto: highest "${tpl.metric}" at end date wins.'
-                  : "Coach picks winner manually after the challenge ends.",
-              style: const TextStyle(fontSize: 11, color: AppColors.mute),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                _winnerMode == "auto"
+                    ? 'Auto: highest "${tpl.metric}" at end date wins.'
+                    : "Coach picks winner manually after the challenge ends.",
+                style: const TextStyle(fontSize: 11, color: AppColors.mute),
+              ),
             ),
-          ),
+          ] else
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Winner: highest "${tpl.metric}" at the end date. Only Transformation challenges are judged by the coach.',
+                style: const TextStyle(fontSize: 11, color: AppColors.mute),
+              ),
+            ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),

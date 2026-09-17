@@ -28,6 +28,14 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
   String? _busyId;
   String? _err;
 
+  /// Which session type is showing. Null shows everything; the two main
+  /// categories are Semi-Private and One-on-One, with anything else (large
+  /// group, assessments) under Other.
+  String? _category;
+
+  static String _categoryOf(String sessionType) =>
+      sessionType == "semi-private" || sessionType == "one-on-one" ? sessionType : "other";
+
   Future<void> _approve(WaitlistEntry w) async {
     setState(() {
       _busyId = w.id;
@@ -87,11 +95,18 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
         .watch(waitlistProvider)
         .where((w) => isOwner || w.trainerId == trainerAuth)
         .toList();
-    final pending = waitlist.where((w) => w.status == "pending-approval").toList();
+    // Counts per category are from the whole list so the tiles always
+    // show what's there, even while a different one is selected.
+    final allLive = waitlist.where((w) => w.status == "pending-approval" || w.status == "waiting" || w.status == "offered").toList();
+    int countFor(String cat) => allLive.where((w) => _categoryOf(w.sessionType) == cat).length;
+    final hasOther = allLive.any((w) => _categoryOf(w.sessionType) == "other");
+
+    final inCategory = _category == null ? waitlist : waitlist.where((w) => _categoryOf(w.sessionType) == _category).toList();
+    final pending = inCategory.where((w) => w.status == "pending-approval").toList();
 
     // Single-slot waiters: people queued for a session that was full, and
     // whoever currently holds an offer on a slot that freed up.
-    final queued = waitlist.where((w) => w.status == "waiting" || w.status == "offered").toList()
+    final queued = inCategory.where((w) => w.status == "waiting" || w.status == "offered").toList()
       ..sort((a, b) {
         final byDate = a.date.compareTo(b.date);
         if (byDate != 0) return byDate;
@@ -114,10 +129,50 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Category tiles: every request is in the one list below; these
+          // narrow it to a session type.
+          Row(
+            children: [
+              for (final c in [
+                ("semi-private", "Semi-Private"),
+                ("one-on-one", "One-on-One"),
+                if (hasOther) ("other", "Other"),
+              ]) ...[
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _category = _category == c.$1 ? null : c.$1),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: _category == c.$1 ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+                        border: Border.all(color: _category == c.$1 ? AppColors.gold : AppColors.line),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Column(
+                        children: [
+                          Text("${countFor(c.$1)}", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _category == c.$1 ? AppColors.gold : AppColors.txt)),
+                          const SizedBox(height: 2),
+                          Text(c.$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _category == c.$1 ? AppColors.gold : AppColors.mute)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _category == null ? "Showing all requests — tap a category to narrow." : "Showing ${_category == "semi-private" ? "Semi-Private" : _category == "one-on-one" ? "One-on-One" : "Other"} only — tap again for all.",
+            style: const TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
+          ),
+          const SizedBox(height: 14),
           const SectionLabel("Waiting for a spot"),
           const HintBox(
-            text: "Clients queued for sessions that were full. When a booking is cancelled the top of the queue is "
-                "automatically offered the slot, and it passes down the line if they decline or don't answer.",
+            text: "Clients queued for sessions that were full. When a booking is cancelled the first person is offered the slot "
+                "by push, SMS and email and has 4 hours to claim it; every 2 hours the next person is offered it too, until someone takes it.",
           ),
           if (bySlotKey.isEmpty)
             const Padding(

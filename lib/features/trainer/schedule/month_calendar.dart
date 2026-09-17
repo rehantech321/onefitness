@@ -48,7 +48,9 @@ class MonthCalendar extends StatelessWidget {
       final slots = slotsByDate[date] ?? const <int>[];
       final blocked = blockedDates.contains(date);
       final isToday = date == today;
-      final shown = slots.take(2).toList();
+      // Four times fit the cell at this aspect ratio; beyond that a "+N"
+      // says there's more without the cell growing into the next row.
+      final shown = slots.take(4).toList();
       final overflow = slots.length - shown.length;
       cells.add(InkWell(
         onTap: () => onSelectDay(date),
@@ -97,7 +99,9 @@ class MonthCalendar extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 4,
           crossAxisSpacing: 4,
-          childAspectRatio: 0.72,
+          // Taller cells than the two-line original so four time lines
+          // sit under the date number without clipping.
+          childAspectRatio: 0.55,
           children: cells,
         ),
       ],
