@@ -73,7 +73,7 @@ class DayView extends ConsumerWidget {
                   children: [
                     Avatar(name: trainer.name, size: 28),
                     const SizedBox(width: 10),
-                    Expanded(child: Text(trainer.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
+                    Expanded(child: Text(trainer.displayTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
                     if (!isPast)
                       TextButton.icon(
                         onPressed: () => showBlockTimeSheet(context, ref, date: date, trainerId: trainer.id),
@@ -86,7 +86,7 @@ class DayView extends ConsumerWidget {
             ],
             _TrainerDaySessions(
               trainerId: trainer.id,
-              trainerName: trainer.name,
+              trainerName: trainer.displayTitle,
               date: date,
               // Sessions the owner created for this date that nobody has
               // booked yet — they exist only as availability, so the

@@ -67,7 +67,9 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
     if (active.isEmpty) return const SizedBox.shrink();
     final first = active.first;
     final cap = capacityInfo(allBookings, widget.trainerId, widget.date, widget.slot, first.sessionType);
-    final trainerName = trainers.where((t) => t.id == widget.trainerId).isNotEmpty ? trainers.firstWhere((t) => t.id == widget.trainerId).name : "Coach";
+    final trainerMatch = trainers.where((t) => t.id == widget.trainerId);
+    final trainerName = trainerMatch.isNotEmpty ? trainerMatch.first.displayTitle : "Coach";
+    final isOwner = ref.watch(trainerAuthProvider) == "owner";
     final isPast = widget.date.compareTo(isoToday()) < 0;
 
     if (_adding) {
@@ -96,7 +98,17 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                 // Adding past the class limit is allowed — staff know the
                 // room — but never silently. The count is what it will be
                 // once this client is in.
+                var override = false;
                 if (cap.atCap) {
+                  if (!isOwner) {
+                    // The database only accepts an over-limit booking from
+                    // the owner, so asking a coach to confirm would just
+                    // lead to a failed save.
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text("This ${sessionTypeLabel(first.sessionType)} session is at its limit of ${cap.cap} — only the owner can add past it."),
+                    ));
+                    return;
+                  }
                   final go = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
@@ -113,6 +125,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                     ),
                   );
                   if (go != true || !mounted) return;
+                  override = true;
                 }
                 setState(() => _adding = false);
                 // Deduct from the client's own plan, exactly as if they had
@@ -130,6 +143,13 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                         discipline: first.discipline,
                         planId: planId,
                         durationMin: first.durationMin,
+                        // Stamped only after the owner confirmed above. The
+                        // booking trigger checks the caller really is the
+                        // owner, and without the stamp it refuses the insert
+                        // as over capacity.
+                        overriddenBy: override ? "owner" : null,
+                        overriddenAt: override ? DateTime.now().toUtc().toIso8601String() : null,
+                        overrideReason: override ? "capacity" : null,
                       ));
                   ref.read(allBookingsProvider.notifier).addBooking(saved);
                   notifyPush(
