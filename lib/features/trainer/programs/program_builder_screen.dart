@@ -26,9 +26,17 @@ String _exerciseNumber(int i) => (i + 1).toString().padLeft(2, "0");
 /// "Build Workout Program") it's a template-only builder that only writes
 /// anywhere once "Save program" is used.
 class ProgramBuilderScreen extends ConsumerStatefulWidget {
-  const ProgramBuilderScreen({super.key, this.clientId});
+  const ProgramBuilderScreen({super.key, this.clientId, this.libraryEntry, this.onSaved});
 
   final String? clientId;
+
+  /// Template mode only: the library program being edited. Its days seed the
+  /// builder and saving updates it in place rather than adding another.
+  final SavedProgram? libraryEntry;
+
+  /// Template mode only: called after a library save so the page that
+  /// opened this builder can return to its list.
+  final VoidCallback? onSaved;
 
   @override
   ConsumerState<ProgramBuilderScreen> createState() =>
@@ -42,7 +50,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                 ?.programDays
                 .toList() ??
             [])
-      : [];
+      : (widget.libraryEntry?.programDays.toList() ?? []);
   String? _activeDayId;
   bool _renaming = false;
   bool _saving = false;
@@ -439,8 +447,15 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
             _SaveProgramSheet(
               clientId: widget.clientId,
               days: _days,
+              libraryEntry: widget.libraryEntry,
               onDone: () => setState(() => _saving = false),
               onSaveComplete: () {
+                if (widget.onSaved != null) {
+                  // A library page opened this builder — hand control back
+                  // to its list rather than wiping the canvas for another.
+                  widget.onSaved!();
+                  return;
+                }
                 _saveDays([]);
                 setState(() {
                   _activeDayId = null;
@@ -987,10 +1002,12 @@ class _SaveProgramSheet extends ConsumerStatefulWidget {
     required this.days,
     required this.onDone,
     required this.onSaveComplete,
+    this.libraryEntry,
   });
 
   final String? clientId;
   final List<ProgramDay> days;
+  final SavedProgram? libraryEntry;
   final VoidCallback onDone;
   final VoidCallback onSaveComplete;
 
@@ -999,7 +1016,7 @@ class _SaveProgramSheet extends ConsumerStatefulWidget {
 }
 
 class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
-  final _name = TextEditingController();
+  late final _name = TextEditingController(text: widget.libraryEntry?.name ?? "");
   String? _err;
   bool _saved = false;
   bool _busy = false;
@@ -1036,12 +1053,14 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
               .firstOrElse(null)
         : null;
 
+    final editing = widget.libraryEntry;
     final entry = SavedProgram(
-      id: _uid(),
+      // Same id when editing a library program, so the upsert replaces it.
+      id: editing?.id ?? _uid(),
       name: name,
       status: "active",
-      coachName: coachName,
-      createdAt: stamp(),
+      coachName: editing?.coachName ?? coachName,
+      createdAt: editing?.createdAt ?? stamp(),
       modifiedAt: stamp(),
       assignedClientId: clientId,
       assignedClientName: clientName,
@@ -1061,7 +1080,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
             .update(clientId, (r) => r.copyWith(savedPrograms: nextSaved));
       }
       await SupabaseService.upsertProgramLibraryEntry(entry);
-      ref.read(programsLibraryProvider.notifier).add(entry);
+      ref.read(programsLibraryProvider.notifier).upsert(entry);
     } catch (e) {
       if (mounted)
         setState(

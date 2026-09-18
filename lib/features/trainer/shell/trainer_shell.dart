@@ -19,8 +19,7 @@ import "../exercises/exercises_screen.dart";
 import "../memberships/manage_memberships_screen.dart";
 import "../memberships/manage_products_screen.dart";
 import "../memberships/manage_waivers_screen.dart";
-import "../programs/nutrition_builder_screen.dart";
-import "../programs/program_builder_screen.dart";
+import "../programs/program_library_page.dart";
 import "../reports/reports_hub_screen.dart";
 import "../schedule/schedule_screen.dart";
 import "../schedule/waitlist_screen.dart";
@@ -235,8 +234,8 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                       "waitlist" => const WaitlistScreen(),
                       "exercises" => const ExercisesScreen(),
                       "equipment" => const EquipmentLibraryScreen(),
-                      "builderWorkout" => const ProgramBuilderScreen(),
-                      "builderNutrition" => const NutritionBuilderScreen(),
+                      "builderWorkout" => const ProgramLibraryPage(kind: LibraryKind.workout),
+                      "builderNutrition" => const ProgramLibraryPage(kind: LibraryKind.nutrition),
                       "staff" when isOwner => const StaffScreen(),
                       // Owner-only like the rest below — this is where the
                       // coach approval code is generated. It was the one

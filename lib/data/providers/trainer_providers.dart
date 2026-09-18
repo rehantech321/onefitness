@@ -201,6 +201,8 @@ class ProgramsLibraryNotifier extends Notifier<List<SavedProgram>> {
   List<SavedProgram> build() => [];
 
   void add(SavedProgram p) => state = [...state, p];
+  void upsert(SavedProgram p) =>
+      state = state.any((x) => x.id == p.id) ? state.map((x) => x.id == p.id ? p : x).toList() : [...state, p];
   void update(String id, SavedProgram Function(SavedProgram) updater) => state = state.map((p) => p.id == id ? updater(p) : p).toList();
   void remove(String id) => state = state.where((p) => p.id != id).toList();
   void setAll(List<SavedProgram> next) => state = next;
@@ -214,7 +216,10 @@ class NutritionLibraryNotifier extends Notifier<List<NutritionLibraryEntry>> {
   List<NutritionLibraryEntry> build() => [];
 
   void add(NutritionLibraryEntry e) => state = [...state, e];
+  void upsert(NutritionLibraryEntry e) =>
+      state = state.any((x) => x.id == e.id) ? state.map((x) => x.id == e.id ? e : x).toList() : [...state, e];
   void remove(String id) => state = state.where((e) => e.id != id).toList();
+  void setAll(List<NutritionLibraryEntry> next) => state = next;
 }
 
 final nutritionLibraryProvider = NotifierProvider<NutritionLibraryNotifier, List<NutritionLibraryEntry>>(NutritionLibraryNotifier.new);

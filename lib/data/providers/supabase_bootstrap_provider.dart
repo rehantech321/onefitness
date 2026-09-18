@@ -15,6 +15,7 @@ import "../models/earned_badge.dart";
 import "../models/exercise_def.dart";
 import "../models/meal_def.dart";
 import "../models/membership_plan.dart";
+import "../models/nutrition_library_entry.dart";
 import "../models/points_ledger_entry.dart";
 import "../models/product.dart";
 import "../models/saved_program.dart";
@@ -120,6 +121,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final List<Coupon> coupons;
   final List<WaiverDoc> waivers;
   final List<SavedProgram> programsLibrary;
+  final List<NutritionLibraryEntry> nutritionLibrary;
   final List<MealDef> customMeals;
   final List<ExerciseDef> exercises;
   final List<Challenge> challenges;
@@ -150,6 +152,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     final couponsF = SupabaseService.loadCoupons();
     final waiversF = SupabaseService.loadWaiverDocs();
     final programsLibraryF = SupabaseService.loadProgramsLibrary();
+    final nutritionLibraryF = SupabaseService.loadNutritionLibrary();
     final customMealsF = SupabaseService.loadCustomMeals();
     final exercisesF = SupabaseService.loadExercises();
     final challengesF = SupabaseService.loadChallenges();
@@ -173,6 +176,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     coupons = await couponsF;
     waivers = await waiversF;
     programsLibrary = await programsLibraryF;
+    nutritionLibrary = await nutritionLibraryF;
     customMeals = await customMealsF;
     exercises = await exercisesF;
     challenges = await challengesF;
@@ -210,6 +214,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   // session had; keep that default until a gym actually defines their own.
   if (waivers.isNotEmpty) ref.read(waiversProvider.notifier).setAll(waivers);
   ref.read(programsLibraryProvider.notifier).setAll(programsLibrary);
+  ref.read(nutritionLibraryProvider.notifier).setAll(nutritionLibrary);
   ref.read(customMealsProvider.notifier).setAll(customMeals);
   // Same reasoning as membership plans: don't blank out the curated mock
   // catalog (dozens of exercises) in favor of whatever handful a real gym

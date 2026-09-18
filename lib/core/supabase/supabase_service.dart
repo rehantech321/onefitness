@@ -24,6 +24,7 @@ import "../../data/models/intake_schema.dart";
 import "../../data/models/meal_def.dart";
 import "../../data/models/measurement.dart";
 import "../../data/models/membership_plan.dart";
+import "../../data/models/nutrition_library_entry.dart";
 import "../../data/models/nutrition_plan.dart";
 import "../../data/models/order.dart";
 import "../../data/models/points_ledger_entry.dart";
@@ -2881,6 +2882,36 @@ class SupabaseService {
   static Future<void> deleteProgramLibraryEntry(String id) async {
     await client.from("programs_library").delete().eq("id", id);
   }
+
+  /// Nutrition templates share programs_library with workouts, tagged
+  /// `type: "nutrition"` (which loadProgramsLibrary skips). Until this
+  /// existed the nutrition library lived only in memory and vanished on
+  /// every restart.
+  static Future<List<NutritionLibraryEntry>> loadNutritionLibrary() async {
+    final rows = await client.from("programs_library").select();
+    final out = <NutritionLibraryEntry>[];
+    for (final row in rows) {
+      try {
+        final data = ((row as Map)["data"] as Map).cast<String, dynamic>();
+        if ((data["type"] as String?) != "nutrition") continue;
+        final plan = _nutritionPlanFromJson(data["plan"]);
+        if (plan == null) continue;
+        out.add(NutritionLibraryEntry(id: data["id"] as String? ?? row["id"] as String, name: data["name"] as String? ?? "", plan: plan));
+      } catch (e) {
+        // ignore: avoid_print
+        print("[SupabaseService] skipped malformed nutrition library row: $e");
+      }
+    }
+    return out;
+  }
+
+  static Future<void> upsertNutritionLibraryEntry(NutritionLibraryEntry e) =>
+      _mergeJsonbUpsert("programs_library", e.id, {
+        "id": e.id,
+        "name": e.name,
+        "type": "nutrition",
+        "plan": _nutritionPlanToJson(e.plan),
+      });
 
   static Map<String, dynamic> _mealDefToJson(MealDef m) => {
     "id": m.id,

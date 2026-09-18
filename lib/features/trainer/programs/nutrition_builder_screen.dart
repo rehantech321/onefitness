@@ -32,10 +32,18 @@ String _uid() => DateTime.now().microsecondsSinceEpoch.toString();
 /// "Build Nutrition Program") it's a template-only builder that writes
 /// into the shared library on "Save nutrition program".
 class NutritionBuilderScreen extends ConsumerStatefulWidget {
-  const NutritionBuilderScreen({super.key, this.clientId, this.existing});
+  const NutritionBuilderScreen({super.key, this.clientId, this.existing, this.libraryEntry, this.onSaved});
 
   final String? clientId;
   final NutritionPlan? existing;
+
+  /// Template mode only: the library entry being edited. Saving updates it
+  /// in place rather than adding another.
+  final NutritionLibraryEntry? libraryEntry;
+
+  /// Template mode only: called once a library save has gone through, so
+  /// the page that opened this builder can return to its list.
+  final VoidCallback? onSaved;
 
   @override
   ConsumerState<NutritionBuilderScreen> createState() => _NutritionBuilderScreenState();
@@ -272,10 +280,30 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
       if (mounted) setState(() => _saving = false);
       return;
     }
-    final name = await _promptName(context);
+    final name = await _promptName(context, initial: widget.libraryEntry?.name);
     if (name == null || name.trim().isEmpty) return;
-    ref.read(nutritionLibraryProvider.notifier).add(NutritionLibraryEntry(id: _uid(), name: name.trim(), plan: plan));
-    if (mounted) Navigator.of(context).maybePop();
+    final entry = NutritionLibraryEntry(id: widget.libraryEntry?.id ?? _uid(), name: name.trim(), plan: plan);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      // Written to programs_library — this used to go into a provider
+      // only, so every template was gone after a restart.
+      await SupabaseService.upsertNutritionLibraryEntry(entry);
+      ref.read(nutritionLibraryProvider.notifier).upsert(entry);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('"${entry.name}" saved to the nutrition library.')));
+      if (widget.onSaved != null) {
+        widget.onSaved!();
+      } else {
+        Navigator.of(context).maybePop();
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = "Couldn't save — check your connection and try again.");
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _copyGroceryList(List<GroceryCategory> categories) async {
@@ -675,8 +703,8 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
   }
 }
 
-Future<String?> _promptName(BuildContext context) {
-  final controller = TextEditingController();
+Future<String?> _promptName(BuildContext context, {String? initial}) {
+  final controller = TextEditingController(text: initial ?? "");
   return showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(

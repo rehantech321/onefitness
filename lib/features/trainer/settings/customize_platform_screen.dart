@@ -438,7 +438,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                 ],
                 if (_tab == "workouts") ...[
                   _ToggleRow(
-                    label: "Auto carry-over of last logged weight",
+                    label: "Auto carry-over last logged weight",
                     hint: "On (default): a client's next session starts pre-filled with the weight they logged last time for each set — they can still edit or clear it. Off: sets start blank.",
                     value: s.autoCarryOverLastWeight,
                     onChange: (v) => _set((d) => d.copyWith(autoCarryOverLastWeight: v)),
