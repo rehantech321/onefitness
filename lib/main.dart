@@ -169,7 +169,7 @@ class _RootContent extends ConsumerWidget {
     // synchronously inside the signIn/signOut call, before the next build,
     // so the stale screen never renders even for a frame.
     ref.listen<String?>(trainerAuthProvider, (prev, next) {
-      if (prev != next) ref.read(trainerModeProvider.notifier).go("dashboard");
+      if (prev != next) ref.read(trainerModeProvider.notifier).reset();
     });
 
     final role = ref.watch(roleProvider);

@@ -11,6 +11,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../shell/trainer_shell_state.dart";
 import "client_search_picker.dart";
@@ -152,6 +153,11 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
     }
 
     final bookings = ref.watch(allBookingsProvider);
+    // Customize Platform → Services narrows the menu. Assessments are staff
+    // tools rather than a sold service, so they're never hidden.
+    final settings = ref.watch(platformSettingsProvider);
+    final types = _sessionTypes.where((t) => t.startsWith("assessment") || settings.offeredSessionTypes.contains(t)).toList();
+    final disciplines = _disciplines.where(settings.offeredDisciplines.contains).toList();
 
     if (_pickingCoach) {
       return PopScope(
@@ -232,12 +238,12 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
           ],
           const Text("SESSION TYPE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 6),
-          _ChoiceRow<String>(value: _sessionType, options: _sessionTypes.map((t) => (t, sessionTypeLabel(t))).toList(), onChanged: (v) => setState(() => _sessionType = v ?? _sessionType)),
+          _ChoiceRow<String>(value: _sessionType, options: types.map((t) => (t, sessionTypeLabel(t))).toList(), onChanged: (v) => setState(() => _sessionType = v ?? _sessionType)),
           if (!isAssessment) ...[
             const SizedBox(height: 12),
             const Text("DISCIPLINE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 6),
-            _ChoiceRow<String>(value: _discipline, options: _disciplines.map((d) => (d, disciplineLabel(d))).toList(), onChanged: (v) => setState(() => _discipline = v ?? _discipline)),
+            _ChoiceRow<String>(value: _discipline, options: disciplines.map((d) => (d, disciplineLabel(d))).toList(), onChanged: (v) => setState(() => _discipline = v ?? _discipline)),
           ],
           const SizedBox(height: 12),
           Row(

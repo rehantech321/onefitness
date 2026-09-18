@@ -15,13 +15,14 @@ import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
 // Every message is stored in the app thread regardless; the channel says
-// what else happens to it. "Both" sends it by email and by SMS.
-enum _Channel { inapp, email, sms, both }
+// what else happens to it. Email = also emailed. In App / SMS = also texted.
+// Both = emailed and texted.
+enum _Channel { email, inappSms, both }
 
 /// The three things the Chat tab can be showing.
 enum _ChatView { list, thread, picker }
 
-const _channelLabels = {_Channel.inapp: "In App", _Channel.email: "Email", _Channel.sms: "SMS", _Channel.both: "Both"};
+const _channelLabels = {_Channel.email: "Email", _Channel.inappSms: "In App / SMS", _Channel.both: "Both"};
 
 const _prefRecipientKey = "coach_chat_client_id";
 const _prefChannelKey = "coach_chat_channel";
@@ -204,7 +205,7 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
         }
       });
     }
-    if (channel == _Channel.sms || channel == _Channel.both) {
+    if (channel == _Channel.inappSms || channel == _Channel.both) {
       final phone = (client.phone ?? "").trim();
       if (phone.isEmpty) {
         if (mounted) {
@@ -305,7 +306,7 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
             // Keep whatever channel they last used; only the picker changes
             // it, so reopening a thread doesn't silently switch how a
             // message goes out.
-            _channel ??= _Channel.inapp;
+            _channel ??= _Channel.inappSms;
             _view = _ChatView.thread;
           });
           _markThreadRead(clientId);
@@ -527,7 +528,7 @@ class _RecipientSetupState extends State<_RecipientSetup> {
           Row(
             children: [
               for (final ch in _Channel.values) ...[
-                if (ch != _Channel.inapp) const SizedBox(width: 8),
+                if (ch != _Channel.email) const SizedBox(width: 8),
                 _SegOption(
                   label: _channelLabels[ch]!,
                   selected: _channel == ch,

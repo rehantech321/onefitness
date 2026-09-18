@@ -66,6 +66,11 @@ class PlatformSettings {
     this.clientsCanSwapExercises = false,
     this.businessTimeZone = "America/Los_Angeles",
     this.businessName = "ONE Fitness",
+    this.offeredSessionTypes = const ["semi-private", "one-on-one", "large-group"],
+    this.offeredDisciplines = const ["personal-training", "boxing", "hike", "outdoor-hiit", "stretch", "stick-mobility", "yoga"],
+    this.locationName = "",
+    this.locationAddress = "",
+    this.locationHint = "",
     this.meritBadgeProgressWeeks = 3,
     this.meritBadgeHabitPercent = 80,
     this.meritBadgeHabitWeeks = 3,
@@ -129,6 +134,22 @@ class PlatformSettings {
   final bool clientsCanSwapExercises;
   final String businessTimeZone;
   final String businessName;
+
+  // ── Services tab ──
+  /// Which session types and disciplines the gym offers. Everything not
+  /// listed disappears from the pickers staff and clients see when creating
+  /// or booking a session — the catalogue itself is fixed, this narrows it.
+  final List<String> offeredSessionTypes;
+  final List<String> offeredDisciplines;
+
+  // ── Location tab ──
+  /// The gym's physical location. Shown to clients on sessions whose coach
+  /// hasn't set their own, and in the calendar feed.
+  final String locationName;
+  final String locationAddress;
+
+  /// Parking / arrival notes, e.g. "Side entrance, buzz 4".
+  final String locationHint;
   final int meritBadgeProgressWeeks;
   final int meritBadgeHabitPercent;
   final int meritBadgeHabitWeeks;
@@ -177,6 +198,11 @@ class PlatformSettings {
     bool? clientsCanSwapExercises,
     String? businessTimeZone,
     String? businessName,
+    List<String>? offeredSessionTypes,
+    List<String>? offeredDisciplines,
+    String? locationName,
+    String? locationAddress,
+    String? locationHint,
     int? meritBadgeProgressWeeks,
     int? meritBadgeHabitPercent,
     int? meritBadgeHabitWeeks,
@@ -218,6 +244,11 @@ class PlatformSettings {
         clientsCanSwapExercises: clientsCanSwapExercises ?? this.clientsCanSwapExercises,
         businessTimeZone: businessTimeZone ?? this.businessTimeZone,
         businessName: businessName ?? this.businessName,
+        offeredSessionTypes: offeredSessionTypes ?? this.offeredSessionTypes,
+        offeredDisciplines: offeredDisciplines ?? this.offeredDisciplines,
+        locationName: locationName ?? this.locationName,
+        locationAddress: locationAddress ?? this.locationAddress,
+        locationHint: locationHint ?? this.locationHint,
         meritBadgeProgressWeeks: meritBadgeProgressWeeks ?? this.meritBadgeProgressWeeks,
         meritBadgeHabitPercent: meritBadgeHabitPercent ?? this.meritBadgeHabitPercent,
         meritBadgeHabitWeeks: meritBadgeHabitWeeks ?? this.meritBadgeHabitWeeks,

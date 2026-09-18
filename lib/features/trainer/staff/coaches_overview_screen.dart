@@ -11,6 +11,7 @@ import "../../../core/utils/attention_utils.dart";
 import "../../../core/utils/booking_utils.dart" show addDaysIso;
 import "../../../core/utils/coach_merit_badge_utils.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/report_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/trainer.dart";
@@ -323,6 +324,11 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                                 ],
                               ],
                             ),
+                            // The coach's title, set in the same weight and
+                            // colour as the name so the two read as one
+                            // identity — "Muhammad afnan / Coach".
+                            if ((t.title ?? "").trim().isNotEmpty)
+                              Text(t.title!.trim(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), overflow: TextOverflow.ellipsis),
                             Text("${myRoster.length} client${myRoster.length == 1 ? '' : 's'}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
                           ],
                         ),
@@ -359,6 +365,29 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                       const SizedBox(height: 4),
                       Text("Signed up: ${niceDate(t.signupAt!)}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
                     ],
+                    // What this coach offers — from their profile, falling
+                    // back to whatever their availability blocks contain so
+                    // a coach who only set up availability still reads right.
+                    Builder(builder: (context) {
+                      final types = (t.sessionTypes.isNotEmpty ? t.sessionTypes : t.availability.map((b) => b.sessionType)).toSet().toList();
+                      final discs = (t.disciplines.isNotEmpty ? t.disciplines : t.availability.map((b) => b.discipline)).toSet().toList();
+                      if (types.isEmpty && discs.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text(
+                            "Session types: ${types.isEmpty ? '—' : types.map(sessionTypeLabel).join(', ')}",
+                            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Disciplines: ${discs.isEmpty ? '—' : discs.map(disciplineLabel).join(', ')}",
+                            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                          ),
+                        ],
+                      );
+                    }),
                     const SizedBox(height: 10),
                     const Text("Coach Merit Badges — this month:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 6),

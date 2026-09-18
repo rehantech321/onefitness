@@ -65,14 +65,10 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
 
   void _visit(String tab, String sub) {
     if (tab == _tab && sub == _plansSub) return;
-    // Returning to a position already on the path unwinds to it rather
-    // than stacking a copy, same rule as the shell's own history.
-    final seen = _history.indexOf((tab, sub));
-    if (seen >= 0) {
-      _history.removeRange(seen, _history.length);
-    } else {
-      _history.add((_tab, _plansSub));
-    }
+    // A plain stack, same as the shell: Profile → Plans → Profile unwinds
+    // to Plans, then Profile.
+    _history.add((_tab, _plansSub));
+    if (_history.length > 50) _history.removeAt(0);
     setState(() {
       _tab = tab;
       _plansSub = sub;

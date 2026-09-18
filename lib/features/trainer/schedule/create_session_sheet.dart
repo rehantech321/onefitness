@@ -9,6 +9,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/availability_block.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../shell/trainer_shell_state.dart";
 import "coach_search_picker.dart";
@@ -153,6 +154,11 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
   Widget build(BuildContext context) {
     final trainers = ref.watch(trainersProvider);
     final isOwner = ref.watch(trainerAuthProvider) == "owner";
+    // Customize Platform → Services decides what's offered; a type or
+    // discipline switched off there isn't on the menu here.
+    final settings = ref.watch(platformSettingsProvider);
+    final types = _sessionTypes.where(settings.offeredSessionTypes.contains).toList();
+    final disciplines = _disciplines.where(settings.offeredDisciplines.contains).toList();
 
     if (_pickingCoach) {
       return PopScope(
@@ -206,11 +212,11 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
           const SizedBox(height: 14),
           const Text("SESSION TYPE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 6),
-          _Chips(value: _sessionType, options: _sessionTypes.map((t) => (t, sessionTypeLabel(t))).toList(), onChanged: (v) => setState(() => _sessionType = v)),
+          _Chips(value: _sessionType, options: types.map((t) => (t, sessionTypeLabel(t))).toList(), onChanged: (v) => setState(() => _sessionType = v)),
           const SizedBox(height: 12),
           const Text("DISCIPLINE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 6),
-          _Chips(value: _discipline, options: _disciplines.map((d) => (d, disciplineLabel(d))).toList(), onChanged: (v) => setState(() => _discipline = v)),
+          _Chips(value: _discipline, options: disciplines.map((d) => (d, disciplineLabel(d))).toList(), onChanged: (v) => setState(() => _discipline = v)),
           const SizedBox(height: 12),
           const Text("COACH", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 6),

@@ -45,14 +45,14 @@ const _bottomItemsBase = [
   _NavItem("chat", "Chat", LucideIcons.messageSquare),
   _NavItem("schedule", "Schedule", LucideIcons.calendar),
 ];
-const _staffBottomItem = _NavItem("staff", "Staff", LucideIcons.user);
+const _staffBottomItem = _NavItem("staff", "Staff settings", LucideIcons.user);
 
 const _titles = {
   "dashboard": "Dashboard",
   "clients": "Clients",
   "schedule": "Scheduling",
   "chat": "Chat",
-  "staff": "Staff",
+  "staff": "Staff settings",
   "selfbook": "Book Session",
   "challenges": "Challenges",
   "myprofile": "My Profile",
@@ -107,12 +107,9 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
       local();
       return;
     }
-    // Back retraces the screens actually visited — Dashboard → Clients →
-    // Chat → Schedule unwinds Schedule → Chat → Clients → Dashboard — for
-    // bottom tabs and drawer screens alike. It used to jump any tab
-    // straight to Dashboard, which threw away the path the user had taken.
-    final mode = ref.read(trainerModeProvider);
-    if (mode == "dashboard") return;
+    // Back retraces the screens actually visited, one at a time, for bottom
+    // tabs and drawer screens alike. With nothing left to retrace, the
+    // PopScope below lets the system back exit the app.
     ref.read(trainerModeProvider.notifier).goBack();
   }
 
@@ -151,8 +148,15 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
 
     final bottomItems = [..._bottomItemsBase, if (isOwner) _staffBottomItem];
 
+    final canGoBack = ref.read(trainerModeProvider.notifier).canGoBack;
+    // Watched, not read: a sub-view opening or closing must re-evaluate
+    // whether system back should exit the app.
+    final hasLocalBack = ref.watch(localBackStackProvider).isNotEmpty;
+
     return PopScope(
-      canPop: mode == "dashboard",
+      // Exits only when there's genuinely nothing to go back to — no screen
+      // history and no open sub-view.
+      canPop: !canGoBack && !hasLocalBack,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         _handleBack();
@@ -193,7 +197,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                             constraints: const BoxConstraints(),
                           ),
                         ),
-                        if (mode != "dashboard") ...[
+                        if (canGoBack || hasLocalBack) ...[
                           const SizedBox(width: 6),
                           IconButton(
                             onPressed: _handleBack,

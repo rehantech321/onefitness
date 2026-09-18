@@ -1127,6 +1127,8 @@ class SupabaseService {
         .cast<String, dynamic>();
     final workouts = ((j["workouts"] as Map?) ?? const {})
         .cast<String, dynamic>();
+    final services = ((j["services"] as Map?) ?? const {}).cast<String, dynamic>();
+    final location = ((j["location"] as Map?) ?? const {}).cast<String, dynamic>();
     final scheduling = ((j["scheduling"] as Map?) ?? const {})
         .cast<String, dynamic>();
     const defaults = PlatformSettings();
@@ -1205,6 +1207,13 @@ class SupabaseService {
           workouts["businessTimeZone"] as String? ?? defaults.businessTimeZone,
       businessName:
           workouts["businessName"] as String? ?? defaults.businessName,
+      offeredSessionTypes:
+          (services["offeredSessionTypes"] as List?)?.whereType<String>().toList() ?? defaults.offeredSessionTypes,
+      offeredDisciplines:
+          (services["offeredDisciplines"] as List?)?.whereType<String>().toList() ?? defaults.offeredDisciplines,
+      locationName: location["locationName"] as String? ?? defaults.locationName,
+      locationAddress: location["locationAddress"] as String? ?? defaults.locationAddress,
+      locationHint: location["locationHint"] as String? ?? defaults.locationHint,
       meritBadgeProgressWeeks:
           _asInt(workouts["meritBadgeProgressWeeks"]) ??
           defaults.meritBadgeProgressWeeks,
@@ -2411,6 +2420,15 @@ class SupabaseService {
       "checkoutDisclosureText": s.checkoutDisclosureText,
       "defaultBillingAnchorDay": s.defaultBillingAnchorDay,
       "refundFeeOnRefund": s.refundFeeOnRefund,
+    },
+    "services": {
+      "offeredSessionTypes": s.offeredSessionTypes,
+      "offeredDisciplines": s.offeredDisciplines,
+    },
+    "location": {
+      "locationName": s.locationName,
+      "locationAddress": s.locationAddress,
+      "locationHint": s.locationHint,
     },
     "workouts": {
       "businessName": s.businessName,

@@ -15,15 +15,34 @@ import "manage_coupons_screen.dart";
 /// text; each tab's own in-page [_sectionTitle] can be longer.
 const _tabs = [
   ("scheduling", "Scheduling"),
+  ("services", "Services"),
   ("access", "Coaches & Security"),
   ("clients", "Clients"),
   ("payments", "Payments"),
   ("workouts", "Workouts & General"),
   ("coupons", "Coupons"),
+  ("location", "Location"),
+];
+
+const _sessionTypeOptions = [
+  ("semi-private", "Semi-Private"),
+  ("one-on-one", "One-on-One"),
+  ("large-group", "Large Group"),
+];
+const _disciplineOptions = [
+  ("personal-training", "Personal Training"),
+  ("boxing", "Boxing"),
+  ("hike", "Hike"),
+  ("outdoor-hiit", "Outdoor HIIT"),
+  ("stretch", "Stretch"),
+  ("stick-mobility", "Stick Mobility"),
+  ("yoga", "Yoga"),
 ];
 
 String _sectionTitle(String tab) => switch (tab) {
   "scheduling" => "Scheduling",
+  "services" => "Services",
+  "location" => "Location",
   "access" => "Coaches, Access & Security",
   "clients" => "Clients",
   "payments" => "Payments",
@@ -37,6 +56,10 @@ String _sectionHint(String tab) => switch (tab) {
   "access" =>
     "These policies apply gym-wide the moment you save. Two-factor changes take effect on each person's next sign-in — nobody already signed in gets kicked out.",
   "clients" => "These policies apply gym-wide the moment you save.",
+  "services" =>
+    "What the gym offers. Anything switched off here stops appearing in the session type and discipline pickers — for staff creating or booking sessions and for clients booking. Existing bookings aren't affected.",
+  "location" =>
+    "Where the gym is. Shown to clients on any session whose coach hasn't set a location of their own, and used in the calendar feed.",
   "payments" =>
     "Applies to real Stripe Checkout payments (paid membership plans). Free plans are never affected. Card and bank transfer have their own fee below since they can charge different amounts — whenever both are offered, the client picks how to pay before checkout so the right one applies.",
   "workouts" => "These apply gym-wide the moment you save.",
@@ -281,6 +304,47 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     hint: "Off gives coaches read-only Plans — only the owner can build or edit workout/nutrition programs.",
                     value: s.coachCanEditClientWorkouts,
                     onChange: (v) => _set((d) => d.copyWith(coachCanEditClientWorkouts: v)),
+                  ),
+                ],
+                if (_tab == "services") ...[
+                  _MultiChoiceRow(
+                    label: "Session types offered",
+                    value: s.offeredSessionTypes,
+                    options: _sessionTypeOptions,
+                    onChange: (v) => _set((d) => d.copyWith(offeredSessionTypes: v)),
+                  ),
+                  const SizedBox(height: 10),
+                  _MultiChoiceRow(
+                    label: "Disciplines offered",
+                    value: s.offeredDisciplines,
+                    options: _disciplineOptions,
+                    onChange: (v) => _set((d) => d.copyWith(offeredDisciplines: v)),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Assessments are always available to staff regardless of these settings.",
+                    style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                  ),
+                ],
+                if (_tab == "location") ...[
+                  FieldLabeled(
+                    label: "Location name",
+                    child: _StableTextField(value: s.locationName, placeholder: "e.g. ONE Fitness Studio", onChanged: (v) => _set((d) => d.copyWith(locationName: v))),
+                  ),
+                  const SizedBox(height: 10),
+                  FieldLabeled(
+                    label: "Address",
+                    child: _StableTextField(value: s.locationAddress, placeholder: "Street, city, state, ZIP", onChanged: (v) => _set((d) => d.copyWith(locationAddress: v))),
+                  ),
+                  const SizedBox(height: 10),
+                  FieldLabeled(
+                    label: "Parking / arrival notes",
+                    child: _StableTextField(value: s.locationHint, placeholder: "e.g. Park in the rear lot, side entrance", onChanged: (v) => _set((d) => d.copyWith(locationHint: v))),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "A coach can still set their own location on their profile; that wins for their sessions. This is the gym-wide default.",
+                    style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
                 ],
                 if (_tab == "clients") ...[

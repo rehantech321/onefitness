@@ -507,6 +507,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                     plans: held,
                     isStaff: info.isStaff,
                     trainers: trainers,
+                    offeredTypes: ref.watch(platformSettingsProvider).offeredSessionTypes,
                     onPick: _pickType,
                   )
                 : _chosenDisc == null
@@ -530,6 +531,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         bookings: ref.watch(allBookingsProvider),
                         blockedTimes: ref.watch(blockedTimesProvider),
                         waitlist: ref.watch(waitlistProvider),
+                        gymLocationName: ref.watch(platformSettingsProvider).locationName,
                         onDateChange: (d) => setState(() => _date = d),
                         onChangeType: () => setState(() {
                           _chosenType = null;
@@ -611,8 +613,13 @@ class _StepOne extends StatelessWidget {
     required this.plans,
     required this.onPick,
     required this.trainers,
+    required this.offeredTypes,
     this.isStaff = false,
   });
+
+  /// Customize Platform → Services. A type the gym has switched off is not
+  /// offered even if a plan technically covers it.
+  final List<String> offeredTypes;
 
   /// Everything the client holds — a type is offered if any of them covers
   /// it. Empty only for staff booking themselves, who see every type.
@@ -623,13 +630,15 @@ class _StepOne extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allowedTypes = plans.isEmpty
-        ? const ["semi-private", "one-on-one"]
-        : plans.expand((p) => p.allowedTypes).toSet().toList();
+    final allowedTypes = (plans.isEmpty
+            ? const ["semi-private", "one-on-one"]
+            : plans.expand((p) => p.allowedTypes).toSet().toList())
+        .where(offeredTypes.contains)
+        .toList();
     // Large Group is included with ANY active membership — not gated to a
     // specific plan tier like allowedTypes — and visible for browsing even
     // with no membership at all. Only hidden if literally no coach offers it.
-    final anyLargeGroupOffered = trainers.any(
+    final anyLargeGroupOffered = offeredTypes.contains("large-group") && trainers.any(
       (t) => t.availability.any((b) => b.sessionType == "large-group" && b.byDay.values.any((s) => s.isNotEmpty)),
     );
     return Column(
@@ -846,8 +855,12 @@ class _StepThree extends StatefulWidget {
     required this.onLeaveWaitlist,
     required this.waitlistBusyKeys,
     required this.semiPrivateCap,
+    required this.gymLocationName,
   });
 
+  /// Customize Platform → Location, shown on a slot whose coach has no
+  /// location of their own.
+  final String gymLocationName;
   final String date;
   final String chosenType;
   final String chosenDisc;
@@ -1064,14 +1077,16 @@ class _StepThreeState extends State<_StepThree> {
                                               ),
                                             ),
                                           ),
-                                          if (a.trainer.locationName != null)
+                                          // The coach's own location, else the gym's
+                                          // (Customize Platform → Location).
+                                          if ((a.trainer.locationName ?? widget.gymLocationName).isNotEmpty)
                                             Padding(
                                               padding: const EdgeInsets.only(top: 3),
                                               child: Row(
                                                 children: [
                                                   const Icon(LucideIcons.mapPin, size: 11, color: AppColors.mute),
                                                   const SizedBox(width: 3),
-                                                  Text(a.trainer.locationName!, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                                                  Text(a.trainer.locationName ?? widget.gymLocationName, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
                                                 ],
                                               ),
                                             ),
