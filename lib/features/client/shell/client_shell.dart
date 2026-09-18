@@ -387,6 +387,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                           onGoHabits: () => go("habits"),
                           earnedBadges: earnedBadges,
                           onGoBadges: () => go("badges"),
+                          onGoMemberships: () => go("memberships"),
                           onGoToForm: (formKey) {
                             ref
                                 .read(pendingIntakeFormKeyProvider.notifier)

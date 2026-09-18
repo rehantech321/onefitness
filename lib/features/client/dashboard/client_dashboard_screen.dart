@@ -31,6 +31,7 @@ class ClientDashboardScreen extends ConsumerStatefulWidget {
     required this.earnedBadges,
     required this.onGoBadges,
     required this.onGoToForm,
+    required this.onGoMemberships,
   });
 
   final ClientRecord client;
@@ -43,6 +44,10 @@ class ClientDashboardScreen extends ConsumerStatefulWidget {
   final VoidCallback onGoHabits;
   final List<EarnedBadge> earnedBadges;
   final VoidCallback onGoBadges;
+
+  /// Opens the Access Hub. Where every intake button leads for a client
+  /// who hasn't bought anything yet.
+  final VoidCallback onGoMemberships;
 
   /// Opens the Assessments screen straight into one form — takes the
   /// assessment key ("personalTraining" | "nutritional").
@@ -81,12 +86,12 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
     final entitlements = computeIntakeEntitlements(info: info, allPlans: ref.watch(membershipPlansProvider));
     final onboardingAlerts = getOnboardingAlerts(client, bookings, info.id, widget.plan, entitlements: entitlements);
     final assessmentBooked = onboardingStepDone(client, bookings, info.id, "physicalAssessmentBooked");
-    // With nothing purchased there's no onboarding to do yet — every form is
-    // locked — so the whole block stays hidden rather than prompting for
-    // steps that can't be started. Membership Hub is where they go first.
-    final showOnboarding = entitlements.hasAnyPurchase &&
-        (onboardingAlerts.isNotEmpty || !assessmentBooked) &&
-        !_skipOnboarding;
+    // A client with nothing purchased still sees the intake buttons and
+    // forms — so they know what's waiting for them — but every one of them
+    // leads to the Access Hub, since none can be started without a plan.
+    final hasPurchase = entitlements.hasAnyPurchase;
+    final showOnboarding = !_skipOnboarding &&
+        (!hasPurchase || onboardingAlerts.isNotEmpty || !assessmentBooked);
 
     // Staggers each top-level section's entrance by 45ms, played once when
     // the Dashboard first mounts.
@@ -126,14 +131,26 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
           )),
 
           if (showOnboarding)
-            stag(_OnboardingSection(
-              alerts: onboardingAlerts,
-              showIntakeButtons: !assessmentBooked,
-              onBookIntake: widget.onGoBooking,
-              onGoToForm: widget.onGoToForm,
-              onGoBookAssessment: widget.onGoBooking,
-              onSkip: () => setState(() => _skipOnboarding = true),
-            )),
+            stag(hasPurchase
+                ? _OnboardingSection(
+                    alerts: onboardingAlerts,
+                    showIntakeButtons: !assessmentBooked,
+                    onBookIntake: widget.onGoBooking,
+                    onGoToForm: widget.onGoToForm,
+                    onGoBookAssessment: widget.onGoBooking,
+                    onSkip: () => setState(() => _skipOnboarding = true),
+                  )
+                : _OnboardingSection(
+                    // Every step shown — none has been done, and none can
+                    // be — with each one routed to the Access Hub.
+                    alerts: kOnboardingSteps.where((s) => s.key != "physicalAssessmentBooked").toList(),
+                    showIntakeButtons: true,
+                    locked: true,
+                    onBookIntake: widget.onGoMemberships,
+                    onGoToForm: (_) => widget.onGoMemberships(),
+                    onGoBookAssessment: widget.onGoMemberships,
+                    onSkip: () => setState(() => _skipOnboarding = true),
+                  )),
 
           stag(SessionsRemainingBadge(info: info, bookings: bookings)),
 
@@ -253,6 +270,7 @@ class _OnboardingSection extends StatelessWidget {
     required this.alerts,
     required this.showIntakeButtons,
     required this.onBookIntake,
+    this.locked = false,
     required this.onGoToForm,
     required this.onGoBookAssessment,
     required this.onSkip,
@@ -261,6 +279,10 @@ class _OnboardingSection extends StatelessWidget {
   final List<OnboardingStep> alerts;
   final bool showIntakeButtons;
   final VoidCallback onBookIntake;
+
+  /// No plan yet: everything is shown but leads to the Access Hub, with a
+  /// line saying why.
+  final bool locked;
   final ValueChanged<String> onGoToForm;
   final VoidCallback onGoBookAssessment;
   final VoidCallback onSkip;
@@ -281,6 +303,22 @@ class _OnboardingSection extends StatelessWidget {
             "COMPLETE YOUR ONBOARDING",
             style: TextStyle(fontSize: 12, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5),
           ),
+          if (locked)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  Icon(LucideIcons.lock, size: 12, color: AppColors.gold),
+                  SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      "Choose a membership or package to unlock these.",
+                      style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 8),
           if (showIntakeButtons) ...[
             Row(
