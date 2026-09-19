@@ -418,7 +418,7 @@ class _ClauseCard extends StatelessWidget {
                 child: Text("or draw new initials:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
               ),
             ],
-            _PadWithConfirm(height: 80, confirmLabel: "Use these initials", onConfirm: (img) => onAdopt?.call(img, "draw")),
+            _PadWithConfirm(height: 170, confirmLabel: "Use these initials", onConfirm: (img) => onAdopt?.call(img, "draw")),
           ] else if (initials == null)
             const Text("Initial the first section to continue.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic))
           else
@@ -483,7 +483,7 @@ class _SignatureCardState extends State<_SignatureCard> {
                 child: Text("or draw a new signature:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
               ),
             ],
-            _PadWithConfirm(height: 130, confirmLabel: "Use this signature", onConfirm: (img) => widget.onCaptured(img, "draw")),
+            _PadWithConfirm(height: 230, confirmLabel: "Use this signature", onConfirm: (img) => widget.onCaptured(img, "draw")),
           ],
         ],
       ),

@@ -139,6 +139,11 @@ class _ClientShellState extends ConsumerState<ClientShell> {
   }
 
   void _onPointerDown(PointerDownEvent e) {
+    // A touch drawing a signature is never a swipe-back.
+    if (SignaturePad.drawingPointers.contains(e.pointer)) {
+      _dragStart = null;
+      return;
+    }
     if (e.buttons == kPrimaryButton || e.kind != PointerDeviceKind.mouse) {
       _dragStart = e.position;
     }

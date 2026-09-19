@@ -1,6 +1,7 @@
 import "dart:convert";
 import "dart:typed_data";
 import "dart:ui" as ui;
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter/rendering.dart";
 import "../theme/app_colors.dart";
@@ -28,6 +29,12 @@ class SignaturePad extends StatefulWidget {
   final double height;
   final String? initialTypedText;
 
+  /// Pointers currently drawing on a pad. The shells' swipe-right-to-go-back
+  /// gesture ignores these, so a rightward signature stroke never navigates
+  /// away mid-signature. (The pad's own listener sees a touch before the
+  /// shell's, which sits further up the tree.)
+  static final Set<int> drawingPointers = {};
+
   @override
   State<SignaturePad> createState() => _SignaturePadState();
 }
@@ -35,6 +42,9 @@ class SignaturePad extends StatefulWidget {
 class _SignaturePadState extends State<SignaturePad> {
   final _repaintKey = GlobalKey();
   final _strokes = <_Stroke>[];
+
+  /// The stroke each finger currently on the pad is drawing, by pointer id.
+  final _active = <int, _Stroke>{};
   bool _typedMode = false;
   late final TextEditingController _typedController = TextEditingController(text: widget.initialTypedText ?? "");
 
@@ -102,13 +112,51 @@ class _SignaturePadState extends State<SignaturePad> {
                       ),
                     ),
                   )
-                : GestureDetector(
-                    onPanStart: (d) => setState(() => _strokes.add(_Stroke([d.localPosition]))),
-                    onPanUpdate: (d) => setState(() => _strokes.last.points.add(d.localPosition)),
-                    onPanEnd: (_) => _capture(),
-                    child: CustomPaint(
-                      size: Size.infinite,
-                      painter: _SignaturePainter(_strokes),
+                // Raw pointer events plus an eager recognizer: the pad claims
+                // every touch that starts inside it, so the page never scrolls
+                // away mid-stroke, and the client can lift and draw again as
+                // many times as it takes — each touch is its own stroke (two
+                // fingers at once draw two strokes).
+                : RawGestureDetector(
+                    gestures: {
+                      EagerGestureRecognizer: GestureRecognizerFactoryWithHandlers<EagerGestureRecognizer>(
+                        () => EagerGestureRecognizer(),
+                        (_) {},
+                      ),
+                    },
+                    child: Listener(
+                      behavior: HitTestBehavior.opaque,
+                      onPointerDown: (e) => setState(() {
+                        SignaturePad.drawingPointers.add(e.pointer);
+                        final stroke = _Stroke([e.localPosition]);
+                        _active[e.pointer] = stroke;
+                        _strokes.add(stroke);
+                      }),
+                      onPointerMove: (e) {
+                        final stroke = _active[e.pointer];
+                        if (stroke == null) return;
+                        // Skip sub-pixel jitter; it only roughens the line.
+                        if ((e.localPosition - stroke.points.last).distance < 1.2) return;
+                        setState(() => stroke.points.add(e.localPosition));
+                      },
+                      onPointerUp: (e) {
+                        _active.remove(e.pointer);
+                        // After the shell has seen this pointer's up event too.
+                        Future.microtask(() => SignaturePad.drawingPointers.remove(e.pointer));
+                        _capture();
+                      },
+                      onPointerCancel: (e) {
+                        _active.remove(e.pointer);
+                        Future.microtask(() => SignaturePad.drawingPointers.remove(e.pointer));
+                        _capture();
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: CustomPaint(
+                          size: Size.infinite,
+                          painter: _SignaturePainter(_strokes),
+                        ),
+                      ),
                     ),
                   ),
           ),
@@ -146,13 +194,28 @@ class _SignaturePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = Colors.black
-      ..strokeWidth = 2.4
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true
       ..style = PaintingStyle.stroke;
     for (final stroke in strokes) {
-      for (var i = 0; i < stroke.points.length - 1; i++) {
-        canvas.drawLine(stroke.points[i], stroke.points[i + 1], paint);
+      final pts = stroke.points;
+      if (pts.length == 1) {
+        // A tap is a dot.
+        canvas.drawCircle(pts.first, 1.6, paint..style = PaintingStyle.fill);
+        paint.style = PaintingStyle.stroke;
+        continue;
       }
+      // Smooth curve: a quadratic segment through the midpoint of each pair
+      // of points, instead of straight lines joining raw touch samples.
+      final path = Path()..moveTo(pts.first.dx, pts.first.dy);
+      for (var i = 1; i < pts.length - 1; i++) {
+        final mid = Offset((pts[i].dx + pts[i + 1].dx) / 2, (pts[i].dy + pts[i + 1].dy) / 2);
+        path.quadraticBezierTo(pts[i].dx, pts[i].dy, mid.dx, mid.dy);
+      }
+      path.lineTo(pts.last.dx, pts.last.dy);
+      canvas.drawPath(path, paint);
     }
   }
 
