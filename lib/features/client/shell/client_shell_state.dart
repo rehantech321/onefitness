@@ -15,23 +15,30 @@ class ClientScreenNotifier extends Notifier<String> {
   @override
   String build() => "dashboard";
 
+  /// True while there's somewhere to go back to. The shell lets the system
+  /// back exit the app only when this is false.
+  bool get canGoBack => _history.isNotEmpty;
+
   void go(String screen) {
     if (screen == state) return;
-    // Dashboard is the universal root — landing there always clears
-    // history rather than pushing, so nothing stale (an old tab visit, a
-    // half-finished drill-down) can resurface on a later back, and a
-    // second back on Dashboard correctly exits instead of "un-clearing".
-    if (screen == "dashboard") {
-      state = "dashboard";
-      _history.clear();
-      return;
-    }
+    // A plain stack, like a browser: every page visited is pushed in order
+    // and back pops one at a time — Dashboard → Plans → Booking → Chat
+    // unwinds Chat → Booking → Plans → Dashboard. Dashboard is a page like
+    // any other here, not a reset point. Capped so a long session can't
+    // grow it without bound.
     _history.add(state);
+    if (_history.length > 50) _history.removeAt(0);
     state = screen;
   }
 
   void goBack() {
     state = _history.isNotEmpty ? _history.removeLast() : "dashboard";
+  }
+
+  /// A fresh client session starts on Dashboard with no trail behind it.
+  void reset() {
+    _history.clear();
+    state = "dashboard";
   }
 }
 

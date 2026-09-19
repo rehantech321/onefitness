@@ -137,7 +137,11 @@ class _ClientVisitsSectionState extends ConsumerState<ClientVisitsSection> {
           lateCancellationHours: settings.lateCancellationHours,
         );
 
-    return SingleChildScrollView(
+    // Back from Past Visits returns to Future Visits before leaving the page.
+    return LocalBackScope(
+      isOpen: _tab == "past",
+      onBack: () => setState(() => _tab = "future"),
+      child: SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,6 +188,7 @@ class _ClientVisitsSectionState extends ConsumerState<ClientVisitsSection> {
           else
             ...past.map((b) => _PastVisitCard(booking: b, trainer: trainerFor(b))),
         ],
+      ),
       ),
     );
   }

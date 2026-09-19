@@ -1,5 +1,6 @@
 import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
+import "../navigation/local_back_stack.dart";
 import "../theme/app_colors.dart";
 
 /// Flutter's default ScrollBehavior only accepts touch/stylus drags — mouse
@@ -43,13 +44,43 @@ class _SwipeableTabViewState extends State<SwipeableTabView> {
   late final PageController _controller = PageController();
   int _index = 0;
 
-  void _goTo(int i) {
-    if (i == _index) return;
+  /// Tabs visited before this one, in order — back steps through them one
+  /// at a time (Workout → Nutrition → back → Workout) before leaving the
+  /// screen, registered with the shell via [LocalBackScope] below.
+  final List<int> _history = [];
+
+  /// Set while a tap / back animates to a tab, so the pages it passes over on
+  /// the way (0 → 2 goes through 1) aren't recorded as visits.
+  int? _animatingTo;
+
+  void _animate(int i) {
+    _animatingTo = i;
     _controller.animateToPage(i, duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
   }
 
+  void _goTo(int i) {
+    if (i == _index) return;
+    setState(() => _history.add(_index));
+    _animate(i);
+  }
+
+  void _back() {
+    if (_history.isEmpty) return;
+    final previous = _history.last;
+    setState(() => _history.removeLast());
+    _animate(previous);
+  }
+
   void _onPageChanged(int i) {
-    setState(() => _index = i);
+    setState(() {
+      if (_animatingTo == null) {
+        // A swipe by the user — a visit like any tap.
+        _history.add(_index);
+      } else if (_animatingTo == i) {
+        _animatingTo = null;
+      }
+      _index = i;
+    });
     widget.onIndexChanged?.call(i);
   }
 
@@ -61,6 +92,14 @@ class _SwipeableTabViewState extends State<SwipeableTabView> {
 
   @override
   Widget build(BuildContext context) {
+    return LocalBackScope(
+      isOpen: _history.isNotEmpty,
+      onBack: _back,
+      child: _buildTabs(),
+    );
+  }
+
+  Widget _buildTabs() {
     return Column(
       children: [
         Container(

@@ -103,6 +103,7 @@ class SquadDashboardScreen extends ConsumerStatefulWidget {
 
 class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
   String _sub = "members";
+  final List<String> _subHistory = [];
   bool _searching = false;
   bool _creating = false;
   final _newSquadNameController = TextEditingController();
@@ -325,7 +326,12 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
       });
     }
 
-    return Column(
+    // Back steps through the sub-tabs visited (Members → Chat → Activity →
+    // back → Chat → back → Members) before leaving the Squad page.
+    return LocalBackScope(
+      isOpen: _subHistory.isNotEmpty,
+      onBack: () => setState(() => _sub = _subHistory.removeLast()),
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
@@ -404,7 +410,11 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                   .map(
                     (t) => Expanded(
                       child: InkWell(
-                        onTap: () => setState(() => _sub = t.$1),
+                        onTap: () => setState(() {
+                          if (_sub == t.$1) return;
+                          _subHistory.add(_sub);
+                          _sub = t.$1;
+                        }),
                         borderRadius: BorderRadius.circular(7),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -462,6 +472,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                 ),
         ),
       ],
+      ),
     );
   }
 }

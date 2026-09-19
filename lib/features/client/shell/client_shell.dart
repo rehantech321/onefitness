@@ -98,10 +98,6 @@ class ClientShell extends ConsumerStatefulWidget {
   ConsumerState<ClientShell> createState() => _ClientShellState();
 }
 
-// Bottom-tab-bar destinations — back/swipe from any of these jumps
-// straight to Dashboard instead of walking tab-visit history.
-const _tabRootKeys = {"dashboard", "plans", "booking", "chat", "memberships"};
-
 class _ClientShellState extends ConsumerState<ClientShell> {
   OverlayEntry? _dashboardTourEntry;
   // Closes the drawer directly (bypassing Navigator.pop) so it doesn't get
@@ -126,13 +122,20 @@ class _ClientShellState extends ConsumerState<ClientShell> {
       local();
       return;
     }
-    final screen = ref.read(clientScreenProvider);
-    if (screen == "dashboard") return;
-    if (_tabRootKeys.contains(screen)) {
-      ref.read(clientScreenProvider.notifier).go("dashboard");
-    } else {
-      ref.read(clientScreenProvider.notifier).goBack();
-    }
+    // Then the page history itself — always the page before this one,
+    // whether that was a bottom tab, a menu page or Dashboard.
+    final nav = ref.read(clientScreenProvider.notifier);
+    if (nav.canGoBack) nav.goBack();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Each time the client area opens (a sign-in), start on Dashboard with
+    // an empty history — the previous session's trail must not resurface.
+    Future.microtask(() {
+      if (mounted) ref.read(clientScreenProvider.notifier).reset();
+    });
   }
 
   void _onPointerDown(PointerDownEvent e) {
@@ -260,7 +263,8 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     }
 
     return PopScope(
-      canPop: screen == "dashboard",
+      // Exit the app only from the very first page, with nothing to go back to.
+      canPop: screen == "dashboard" && !ref.read(clientScreenProvider.notifier).canGoBack,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         _handleBack();
