@@ -2380,7 +2380,8 @@ class SupabaseService {
   /// A real (non-preview) call returns {ok:true, feeCents}.
   static Future<Map<String, dynamic>> cancelMembership({
     bool preview = false,
-  }) => _invokeFunction("cancel-membership", {"preview": preview});
+    bool resume = false,
+  }) => _invokeFunction("cancel-membership", {"preview": preview, "resume": resume});
 
   /// Client's own upgrade/downgrade of an EXISTING paid subscription —
   /// mirrors changeMembershipPlan in supabaseData.js. timing: "immediate"

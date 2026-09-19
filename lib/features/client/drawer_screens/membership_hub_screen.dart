@@ -143,7 +143,17 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
         }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Payment received — your plan is being activated.")),
+            const SnackBar(content: Text("Payment received — activating your plan…")),
+          );
+        }
+        final activated = await _waitForActivation(clientId, plan.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(activated
+                  ? "${plan.name} is active."
+                  : "Payment received. Your plan will appear in a moment — pull down or reopen this page if it doesn't."),
+            ),
           );
         }
       }
@@ -152,6 +162,51 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
     } finally {
       if (mounted) setState(() => _busyPlanId = null);
+    }
+  }
+
+  /// The plan is granted by stripe-webhook once Stripe confirms the payment,
+  /// a few seconds after the sheet closes — so re-read the client row until
+  /// it shows up (up to ~30s) and put it on screen straight away, instead of
+  /// only after the app is reopened.
+  Future<bool> _waitForActivation(String clientId, String planId) async {
+    for (var attempt = 0; attempt < 15; attempt++) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      if (!mounted) return false;
+      try {
+        final fresh = await SupabaseService.loadClientById(clientId);
+        if (fresh == null) continue;
+        final active = fresh.membershipPlanId == planId || fresh.plans.any((e) => e.planId == planId && e.status == "active");
+        if (active) {
+          ref.read(clientInfoProvider.notifier).update((_) => fresh);
+          return true;
+        }
+      } catch (_) {
+        // A dropped request just means try again on the next tick.
+      }
+    }
+    return false;
+  }
+
+  /// "Keep my membership" — undoes a cancellation scheduled for the end of
+  /// the paid period, so it renews as normal again.
+  Future<void> _keepMembership() async {
+    setState(() {
+      _cancelBusy = true;
+      _error = null;
+    });
+    try {
+      await SupabaseService.cancelMembership(resume: true);
+      ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(clearMembershipCancelsAt: true));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Your membership will keep renewing as normal.")),
+        );
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
+    } finally {
+      if (mounted) setState(() => _cancelBusy = false);
     }
   }
 
@@ -576,11 +631,31 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             if (cancelPending)
               Container(
                 margin: const EdgeInsets.only(top: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
                 decoration: BoxDecoration(color: const Color(0x1AC97F7F), border: Border.all(color: const Color(0xFFA8632F)), borderRadius: BorderRadius.circular(8)),
-                child: Text(
-                  "Membership ends on ${info.membershipCancelsAt}. You'll keep access until then.",
-                  style: const TextStyle(fontSize: 12, color: Color(0xFFC97F7F), fontWeight: FontWeight.w600),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Cancelled — it won't renew",
+                      style: TextStyle(fontSize: 13, color: Color(0xFFC97F7F), fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      // A paid membership is cancelled at the end of the
+                      // period already paid for (cancel-membership), so the
+                      // client keeps what they paid for rather than losing it.
+                      "You won't be charged again. You've already paid through ${niceDate(info.membershipCancelsAt!)}, "
+                      "so you can keep booking until then — after that the membership ends.",
+                      style: const TextStyle(fontSize: 12, color: Color(0xFFC97F7F), height: 1.4),
+                    ),
+                    TextButton(
+                      onPressed: _cancelBusy ? null : _keepMembership,
+                      style: TextButton.styleFrom(foregroundColor: AppColors.gold, padding: EdgeInsets.zero),
+                      child: Text(_cancelBusy ? "Working…" : "Changed your mind? Keep my membership",
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, decoration: TextDecoration.underline)),
+                    ),
+                  ],
                 ),
               )
             else if (info.membershipPaused)
@@ -810,6 +885,23 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                               child: Text(
                                 p.description!,
                                 style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
+                              ),
+                            ),
+                          // A membership with a fixed renewal day bills the
+                          // first time only for the days up to that day
+                          // (Stripe proration), so the first charge is smaller
+                          // than the monthly price — said up front so it isn't
+                          // a surprise at checkout.
+                          if (!isCurrent &&
+                              p.renewalDay != null &&
+                              p.priceCents > 0 &&
+                              effectivePaymentType(p) == "subscription")
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                "First payment covers only today until the ${_ordinalDay(p.renewalDay!)}, so it's less than the full price. "
+                                "From then on it's \$${(p.priceCents / 100).toStringAsFixed(2)} on the ${_ordinalDay(p.renewalDay!)} of every month.",
+                                style: const TextStyle(fontSize: 11.5, color: AppColors.gold, height: 1.4),
                               ),
                             ),
                           const SizedBox(height: 10),
