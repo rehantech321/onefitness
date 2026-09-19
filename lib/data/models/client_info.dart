@@ -28,7 +28,8 @@ class ClientInfo {
     this.isStaff = false,
     this.referredByTrainerId,
     this.coachCodeAlertSeen = false,
-    this.smsOptIn = false,
+    this.smsOptIn = true,
+    this.pushOptIn = true,
     this.billingAnchorDay,
   });
 
@@ -101,11 +102,13 @@ class ClientInfo {
   /// disappears from their dashboard) once they open this client's profile.
   final bool coachCodeAlertSeen;
 
-  /// Notifications spec — explicit SMS opt-in (Twilio). Defaults to false
-  /// (opt-out) since sending SMS without consent is a real TCPA exposure,
-  /// not just a UX nicety — the only SMS trigger wired so far (failed
-  /// payment) checks this before sending anything.
+  /// SMS alerts (Twilio) — on by default for new clients, switchable in
+  /// Profile Settings → Notification Preferences. Every SMS send checks it.
   final bool smsOptIn;
+
+  /// App (push) notifications — on by default; sendPush skips anyone who
+  /// turns it off (profiles.push_opt_in).
+  final bool pushOptIn;
 
   /// Billing Cycle Anchor Date spec — the day-of-month (1-28) this
   /// client's recurring charge runs on. Null means "never explicitly
@@ -143,6 +146,7 @@ class ClientInfo {
     bool? redeemPointsNextRenewal,
     bool? coachCodeAlertSeen,
     bool? smsOptIn,
+    bool? pushOptIn,
     int? billingAnchorDay,
     List<ClientPlanEnrollment>? plans,
   }) =>
@@ -172,6 +176,7 @@ class ClientInfo {
         referredByTrainerId: referredByTrainerId,
         coachCodeAlertSeen: coachCodeAlertSeen ?? this.coachCodeAlertSeen,
         smsOptIn: smsOptIn ?? this.smsOptIn,
+        pushOptIn: pushOptIn ?? this.pushOptIn,
         billingAnchorDay: billingAnchorDay ?? this.billingAnchorDay,
       );
 }

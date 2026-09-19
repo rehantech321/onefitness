@@ -9,12 +9,15 @@ import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/membership_utils.dart";
+import "../../../core/utils/merge_token_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/models/waitlist_entry.dart";
+import "../../../data/models/waiver_doc.dart";
+import "../drawer_screens/waiver_signing_screen.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
@@ -106,6 +109,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
   List<_Occurrence> _occurrences = [];
   bool _busy = false;
   _Summary? _summary;
+  WaiverDoc? _signingDoc;
 
   void _back() => widget.onDone();
 
@@ -422,8 +426,26 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
       );
     }
 
-    final waiverCheck = waiverGateCheck(info: info, record: ref.watch(clientRecordProvider), waiverDocs: ref.watch(waiversProvider));
+    // Signing happens right here — once it's done the gate below clears on
+    // its own and the client carries on with Advanced Booking.
+    final signing = _signingDoc;
+    if (signing != null) {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _signingDoc = null),
+        child: WaiverSigningScreen(
+          doc: signing,
+          onBack: () => setState(() => _signingDoc = null),
+          onDone: () => setState(() => _signingDoc = null),
+          doneLabel: "Continue booking",
+        ),
+      );
+    }
+
+    final record = ref.watch(clientRecordProvider);
+    final waiverCheck = waiverGateCheck(info: info, record: record, waiverDocs: ref.watch(waiversProvider));
     if (waiverCheck != null) {
+      final outstanding = outstandingWaivers(allDocs: ref.watch(waiversProvider), signatures: record.signatures, clientPlanId: info.membershipPlanId);
       return Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -433,7 +455,10 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
             const SizedBox(height: 10),
             HintBox(text: waiverCheck.msg ?? "You need to sign a document before you can book."),
             const SizedBox(height: 10),
-            BtnGold(onPressed: widget.onGoSignatures, child: const Text("Go to Signatures")),
+            BtnGold(
+              onPressed: outstanding.isEmpty ? widget.onGoSignatures : () => setState(() => _signingDoc = outstanding.first),
+              child: const Text("Sign now"),
+            ),
           ],
         ),
       );

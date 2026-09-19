@@ -1,6 +1,7 @@
 import "dart:convert";
 import "package:flutter/material.dart";
 import "package:image_picker/image_picker.dart";
+import "photo_cropper_screen.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../theme/app_colors.dart";
 import "../../data/models/trainer.dart";
@@ -75,12 +76,17 @@ class _BeforeAfterEditorState extends State<BeforeAfterEditor> {
       );
       if (picked != null) {
         final bytes = await picked.readAsBytes();
-        final ext = picked.path.toLowerCase().endsWith(".png") ? "png" : "jpeg";
-        _setHalf(
-          frameId,
-          left,
-          "data:image/$ext;base64,${base64Encode(bytes)}",
+        if (!mounted) return;
+        // Same drag-and-zoom step as the profile photo, in the 2:3 shape
+        // each half is shown in — so the coach decides what's in frame
+        // rather than getting whatever a centre-crop leaves.
+        final positioned = await Navigator.of(context).push<String>(
+          MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (_) => PhotoCropperScreen(bytes: bytes, frameAspect: 2 / 3, outWidth: 600),
+          ),
         );
+        if (positioned != null) _setHalf(frameId, left, positioned);
       }
     } catch (_) {
       // no-op — same "nothing to surface" precedent as pickProfilePhotoDataUrl

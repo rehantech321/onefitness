@@ -8,6 +8,7 @@ import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/membership_utils.dart";
+import "../../../core/utils/merge_token_utils.dart";
 import "../../../core/utils/notification_triggers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/blocked_time.dart";
@@ -15,9 +16,11 @@ import "../../../data/models/booking.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/models/waitlist_entry.dart";
+import "../../../data/models/waiver_doc.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "../drawer_screens/waiver_signing_screen.dart";
 import "booking_cancel_screen.dart";
 import "booking_picking_screen.dart";
 import "date_strip.dart";
@@ -65,6 +68,61 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   bool _busy = false;
   String? _bookingError;
   final Set<String> _waitlistBusyKeys = {};
+
+  /// The waiver being signed inside the booking flow, and what to pick back
+  /// up once it's signed (the slot the client tapped, or their waitlist join).
+  WaiverDoc? _signingDoc;
+  VoidCallback? _afterSigning;
+
+  List<WaiverDoc> _outstandingDocs() {
+    final info = ref.read(clientInfoProvider);
+    return outstandingWaivers(
+      allDocs: ref.read(waiversProvider),
+      signatures: ref.read(clientRecordProvider).signatures,
+      clientPlanId: info.membershipPlanId,
+    );
+  }
+
+  /// Shows the "Signature needed" screen; its button opens the waiver right
+  /// here, and [resume] runs once everything is signed.
+  void _needsSignature(BookingCheck check, VoidCallback resume) => setState(() {
+        _denied = check;
+        _afterSigning = resume;
+      });
+
+  void _startSigning() {
+    final docs = _outstandingDocs();
+    if (docs.isEmpty) {
+      widget.onGoSignatures();
+      return;
+    }
+    setState(() {
+      _denied = null;
+      _signingDoc = docs.first;
+    });
+  }
+
+  /// After a signature: sign the next outstanding document if there is one,
+  /// otherwise go straight back to the session the client was booking.
+  void _signingFinished() {
+    final next = _outstandingDocs();
+    if (next.isNotEmpty) {
+      setState(() => _signingDoc = next.first);
+      return;
+    }
+    final resume = _afterSigning;
+    setState(() {
+      _signingDoc = null;
+      _afterSigning = null;
+      _bookingError = null;
+    });
+    resume?.call();
+  }
+
+  void _cancelSigning() => setState(() {
+        _signingDoc = null;
+        _afterSigning = null;
+      });
 
   String _waitlistKey(String trainerId, String date, int slot) => "$trainerId|$date|$slot";
 
@@ -145,7 +203,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       final settings = ref.read(platformSettingsProvider);
       final waiverCheck = waiverGateCheck(info: info, record: ref.read(clientRecordProvider), waiverDocs: ref.read(waiversProvider));
       if (waiverCheck != null) {
-        setState(() => _denied = waiverCheck);
+        _needsSignature(waiverCheck, () => _onSlotTap(t, sessionType, discipline, slot, mine, isFull));
         return;
       }
       final check = canBookOffering(
@@ -188,7 +246,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     final settings = ref.read(platformSettingsProvider);
     final waiverCheck = waiverGateCheck(info: info, record: ref.read(clientRecordProvider), waiverDocs: ref.read(waiversProvider));
     if (waiverCheck != null) {
-      setState(() => _denied = waiverCheck);
+      _needsSignature(waiverCheck, () => _joinWaitlist(t, sessionType, discipline, slot));
       return;
     }
     final check = canBookOffering(
@@ -310,12 +368,26 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       // ignore: avoid_print
       print("[booking confirm] failed: $e");
       if (!mounted) return;
+      // The server found a waiver this device didn't know about yet — open
+      // it right here, then come back to this same confirm screen.
+      if (e.toString().contains("waiver-required") && _outstandingDocs().isNotEmpty) {
+        setState(() {
+          _busy = false;
+          _signingDoc = _outstandingDocs().first;
+          _afterSigning = null;
+        });
+        return;
+      }
       setState(() {
         _busy = false;
         // Stays visible on the picking screen (not a transient SnackBar) so
         // a real failure — this device has hit genuine network drops before
         // — can't get missed and silently look like nothing happened.
-        _bookingError = "Couldn't book that session — check your connection and try again.";
+        // The database itself refuses a booking without a current waiver
+        // signature (enforce_waiver_before_booking) — say so plainly.
+        _bookingError = e.toString().contains("waiver-required")
+            ? "Please sign the waiver under Signatures (in the menu) before booking."
+            : "Couldn't book that session — check your connection and try again.";
       });
     }
   }
@@ -339,15 +411,36 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       );
     }
 
+    final signing = _signingDoc;
+    if (signing != null) {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: _cancelSigning,
+        child: WaiverSigningScreen(
+          key: ValueKey(signing.id),
+          doc: signing,
+          onBack: _cancelSigning,
+          onDone: _signingFinished,
+          doneLabel: "Continue booking",
+        ),
+      );
+    }
+
     if (_denied != null) {
       return LocalBackScope(
         isOpen: true,
-        onBack: () => setState(() => _denied = null),
+        onBack: () => setState(() {
+          _denied = null;
+          _afterSigning = null;
+        }),
         child: BookingDeniedScreen(
           check: _denied,
-          onBack: () => setState(() => _denied = null),
+          onBack: () => setState(() {
+            _denied = null;
+            _afterSigning = null;
+          }),
           onGoMemberships: widget.onGoMemberships,
-          onGoSignatures: widget.onGoSignatures,
+          onGoSignatures: _startSigning,
         ),
       );
     }

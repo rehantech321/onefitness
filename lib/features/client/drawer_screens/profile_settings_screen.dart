@@ -16,6 +16,7 @@ import "../../../data/providers/client_providers.dart";
 import "../shop/my_orders_section.dart";
 import "client_visits_section.dart";
 import "membership_hub_screen.dart";
+import "payment_details_section.dart";
 
 /// Mirrors ProfileSettingsScreen.jsx, trimmed to the rows that don't need
 /// Stripe/2FA/the full intake questionnaire: Edit Profile (name/email/
@@ -67,6 +68,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         child: _NotificationPreferencesSection(
           onBack: () => setState(() => _section = null),
         ),
+      );
+    }
+    if (_section == "payment") {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _section = null),
+        child: PaymentDetailsSection(onBack: () => setState(() => _section = null)),
       );
     }
     if (_section == "orders") {
@@ -145,11 +153,11 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             badge: plan == null ? "None" : null,
             onTap: () => setState(() => _section = "membership"),
           ),
-          const _SettingRow(
-            icon: LucideIcons.creditCard,
+          _SettingRow(
+            icon: LucideIcons.wallet,
             label: "Payment Details",
-            detail: "Managed by your coach",
-            disabled: true,
+            detail: "Cards saved from your purchases",
+            onTap: () => setState(() => _section = "payment"),
           ),
           _SettingRow(
             icon: LucideIcons.calendarClock,
@@ -185,7 +193,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
               child: _SettingRow(
                 icon: LucideIcons.bell,
                 label: "Notification Preferences",
-                detail: info.smsOptIn ? "SMS alerts on" : "SMS alerts off",
+                detail: "App notifications ${info.pushOptIn ? "on" : "off"} · SMS ${info.smsOptIn ? "on" : "off"}",
                 onTap: () => setState(() => _section = "notifications"),
               ),
             ),
@@ -212,7 +220,6 @@ class _SettingRow extends StatelessWidget {
     required this.label,
     required this.detail,
     this.badge,
-    this.disabled = false,
     this.onTap,
   });
 
@@ -220,15 +227,14 @@ class _SettingRow extends StatelessWidget {
   final String label;
   final String detail;
   final String? badge;
-  final bool disabled;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Opacity(
-      opacity: disabled ? 0.6 : 1,
+      opacity: 1,
       child: AppCard(
-        onTap: disabled ? null : onTap,
+        onTap: onTap,
         child: Row(
           children: [
             Icon(icon, size: 18, color: AppColors.gold),
@@ -273,8 +279,7 @@ class _SettingRow extends StatelessWidget {
                   ),
                 ),
               ),
-            if (!disabled)
-              const Icon(
+            const Icon(
                 LucideIcons.chevronRight,
                 size: 15,
                 color: AppColors.mute,
@@ -286,12 +291,10 @@ class _SettingRow extends StatelessWidget {
   }
 }
 
-/// Notifications spec — the only channel this app currently lets a client
-/// control directly: SMS. Email notifications (plan assigned, milestones,
-/// payment receipts) are transactional, not marketing, so they aren't
-/// gated behind a toggle here; SMS defaults to off (see ClientInfo.smsOptIn)
-/// since sending it without consent is a real compliance issue, not just a
-/// preference.
+/// Notifications spec — the channels a client controls directly: app (push)
+/// notifications and SMS, both on by default. Email notifications (plan
+/// assigned, milestones, payment receipts) are transactional, not marketing,
+/// so they aren't gated behind a toggle here.
 class _NotificationPreferencesSection extends ConsumerStatefulWidget {
   const _NotificationPreferencesSection({required this.onBack});
   final VoidCallback onBack;
@@ -303,12 +306,22 @@ class _NotificationPreferencesSection extends ConsumerStatefulWidget {
 class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPreferencesSection> {
   bool _saving = false;
 
-  Future<void> _toggle(bool value) async {
+  Future<void> _toggle(bool value) => _save(() async {
+        final info = ref.read(clientInfoProvider);
+        await SupabaseService.updateSmsOptIn(info.id, value);
+        ref.read(clientInfoProvider.notifier).update((c) => c.copyWith(smsOptIn: value));
+      });
+
+  Future<void> _togglePush(bool value) => _save(() async {
+        final info = ref.read(clientInfoProvider);
+        await SupabaseService.updatePushOptIn(info.id, value);
+        ref.read(clientInfoProvider.notifier).update((c) => c.copyWith(pushOptIn: value));
+      });
+
+  Future<void> _save(Future<void> Function() write) async {
     setState(() => _saving = true);
-    final info = ref.read(clientInfoProvider);
     try {
-      await SupabaseService.updateSmsOptIn(info.id, value);
-      ref.read(clientInfoProvider.notifier).update((c) => c.copyWith(smsOptIn: value));
+      await write();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -329,6 +342,31 @@ class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPr
         children: [
           BackBar(onBack: widget.onBack, title: "Notification Preferences"),
           const SizedBox(height: 14),
+          AppCard(
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("App notifications", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      SizedBox(height: 2),
+                      Text(
+                        "Booking confirmations, reminders, messages from your coach and other updates on this phone.",
+                        style: TextStyle(fontSize: 12, color: AppColors.mute),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: info.pushOptIn,
+                  onChanged: _saving ? null : _togglePush,
+                  activeThumbColor: AppColors.gold,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
           AppCard(
             child: Row(
               children: [

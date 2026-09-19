@@ -172,3 +172,37 @@ List<WaiverDoc> outstandingWaivers({
       final signed = signatures.where((s) => s.docId == d.id);
       return signed.isEmpty || !isCurrentSignature(signed.first, d);
     }).toList();
+
+/// One clause the client initials. Order and keys must match CLAUSES in
+/// supabase/functions/sign-waiver — the server rejects a submission that
+/// doesn't initial every one of them.
+class WaiverClause {
+  const WaiverClause(this.key, this.title, this.text);
+  final String key;
+  final String title;
+  final String text;
+}
+
+const kWaiverClauses = [
+  WaiverClause("assumption_of_risk", "Assumption of Risk",
+      "I understand that physical training carries an inherent risk of injury, and I voluntarily accept those risks."),
+  WaiverClause("release_of_liability", "Release of Liability",
+      "I release ONE Fitness, its owners, coaches and staff from liability for injury or loss arising from my participation, except where caused by gross negligence."),
+  WaiverClause("medical_disclosure", "Medical Disclosure",
+      "I have disclosed any medical condition that may affect my training, and I will tell my coach promptly if my health changes."),
+  WaiverClause("no_refund", "No Refund Policy",
+      "I understand that memberships, packages and sessions are non-refundable once purchased."),
+  WaiverClause("late_cancellation", "Late Cancellation / No-Show Policy",
+      "I understand that late cancellations and no-shows may be charged a fee and that a no-show forfeits the session."),
+];
+
+/// The waiver text as the client reads it: merge tokens filled in, and the
+/// old inline `{{initial}}`/`{{signature}}` markers removed — the clauses
+/// and signature are now captured in their own section below the text.
+String readableWaiverText(String body, Map<String, String> values) => resolveMergeTokens(
+      body
+          .replaceAll(RegExp(r"\{\{\s*(initial|signature|guardian_signature|photo_opt_out)\s*\}\}"), "")
+          // Numbered markers ({{initial_1}}…) point at the clause boxes below.
+          .replaceAllMapped(RegExp(r"\{\{\s*initial_(\d+)\s*\}\}"), (m) => "(initial box ${m.group(1)} below)"),
+      values,
+    ).trim();

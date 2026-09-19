@@ -66,17 +66,15 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
     if (widget.steps.isEmpty) return const SizedBox.shrink();
     final step = widget.steps[_i];
     final last = _i == widget.steps.length - 1;
-    final screen = MediaQuery.of(context).size;
+    final media = MediaQuery.of(context);
+    final screen = media.size;
     final rect = _rect;
-
-    const bubbleW = 250.0;
-    double top = 0, left = 0;
-    if (rect != null) {
-      final spaceBelow = screen.height - rect.bottom;
-      top = spaceBelow > 150 ? rect.bottom + 12 : rect.top - 132;
-      top = top.clamp(10, screen.height - 142);
-      left = rect.left.clamp(12, screen.width - bubbleW - 12);
-    }
+    // Width follows the screen (narrow phones get nearly full width, big ones
+    // stop at 320) instead of a fixed 250 that cramped the text.
+    final bubbleW = (screen.width - 24).clamp(220.0, 320.0);
+    // The box must stay inside what's actually visible — clear of the
+    // notch/status bar and the iPhone home bar — or its border gets cut.
+    final safe = media.padding;
 
     return GestureDetector(
       onTap: _advance,
@@ -89,15 +87,18 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
             ),
           ),
           if (rect != null)
-            Positioned(
-              top: top,
-              left: left,
-              width: bubbleW,
-              child: IgnorePointer(
+            Positioned.fill(
+              child: CustomSingleChildLayout(
+                // Positioned from the box's real measured height, not a
+                // guessed one — a longer description made the old fixed
+                // estimate place it partly off the bottom of the screen.
+                delegate: _BubbleLayout(target: rect, width: bubbleW, safe: safe),
+                child: IgnorePointer(
                 ignoring: false,
                 child: GestureDetector(
                   onTap: () {}, // absorb taps so tapping the bubble itself doesn't also advance via the backdrop
                   child: Container(
+                    constraints: BoxConstraints(maxHeight: screen.height - safe.top - safe.bottom - 24),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: AppColors.card,
@@ -105,12 +106,25 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: const [BoxShadow(color: Color(0x80000000), blurRadius: 24, offset: Offset(0, 8))],
                     ),
-                    child: Column(
+                    child: SingleChildScrollView(
+                      child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text("${_i + 1} of ${widget.steps.length}", style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
+                        // Grows with each step — short on the first, full on
+                        // the last — so it's clear how far through the tour is.
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: (_i + 1) / widget.steps.length,
+                            minHeight: 4,
+                            backgroundColor: AppColors.line,
+                            valueColor: const AlwaysStoppedAnimation(AppColors.gold),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         Text(step.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white, decoration: TextDecoration.none)),
                         const SizedBox(height: 4),
                         Text(step.desc, style: const TextStyle(fontSize: 12, color: Colors.white, height: 1.4, decoration: TextDecoration.none)),
@@ -138,14 +152,49 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
                         ),
                       ],
                     ),
+                    ),
                   ),
                 ),
+              ),
               ),
             ),
         ],
       ),
     );
   }
+}
+
+/// Places the bubble below the spotlighted widget when it fits, otherwise
+/// above it, using the bubble's real laid-out size, and always keeps all
+/// four edges inside the safe area.
+class _BubbleLayout extends SingleChildLayoutDelegate {
+  _BubbleLayout({required this.target, required this.width, required this.safe});
+  final Rect target;
+  final double width;
+  final EdgeInsets safe;
+
+  static const _gap = 12.0;
+  static const _margin = 12.0;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
+      BoxConstraints(minWidth: width, maxWidth: width, maxHeight: constraints.maxHeight);
+
+  @override
+  Offset getPositionForChild(Size size, Size child) {
+    final minTop = safe.top + _margin;
+    final maxTop = size.height - safe.bottom - _margin - child.height;
+    final below = target.bottom + _gap;
+    final above = target.top - _gap - child.height;
+    final fitsBelow = below + child.height <= size.height - safe.bottom - _margin;
+    var top = fitsBelow ? below : above;
+    top = top.clamp(minTop, maxTop < minTop ? minTop : maxTop);
+    final left = target.left.clamp(_margin, size.width - width - _margin);
+    return Offset(left, top);
+  }
+
+  @override
+  bool shouldRelayout(covariant _BubbleLayout old) => old.target != target || old.width != width || old.safe != safe;
 }
 
 /// Punches a rounded-rect hole out of a full-screen dark scrim at [rect],

@@ -4,6 +4,7 @@ import "package:supabase_flutter/supabase_flutter.dart";
 import "../utils/coach_merit_badge_utils.dart";
 import "../utils/date_utils.dart";
 import "../../data/models/availability_block.dart";
+import "../../data/models/saved_payment_method.dart";
 import "../../data/models/blocked_time.dart";
 import "../../data/models/billing_anchor_history_entry.dart";
 import "../../data/models/booking.dart";
@@ -41,6 +42,7 @@ import "../../data/models/trainer.dart";
 import "../../data/models/trainer_note.dart";
 import "../../data/models/waitlist_entry.dart";
 import "../../data/models/waiver_doc.dart";
+import "../../data/models/waiver_signature_record.dart";
 import "../../data/models/workout_log.dart";
 import "../../data/providers/platform_settings_provider.dart";
 import "supabase_config.dart";
@@ -2673,53 +2675,75 @@ class SupabaseService {
   /// the completion-certificate PDF, and merges the result into
   /// `client_records.data.signatures`. [initialsImages]/[signatureImage]/
   /// [guardianSignatureImage] are data URLs from [SignaturePad].
-  static Future<SignedDocument> signWaiver({
-    required String clientId,
+  /// Submits a completed waiver to sign-waiver, which validates it,
+  /// builds and emails the signed PDF, and stores the immutable record.
+  /// Returns the lightweight summary the Signatures list shows.
+  static Future<({SignedDocument summary, String? emailedTo})> signWaiver({
     required String waiverId,
-    required List<String> initialsImages,
-    required String signatureImage,
+    required List<Map<String, dynamic>> sections,
+    String? signatureImage,
+    required String signatureMethod,
+    String? signatureAt,
     String? guardianName,
     String? guardianSignatureImage,
-    bool? photoOptOut,
-    required bool consentAcknowledged,
+    String? guardianSignedAt,
+    required bool photoVideoRelease,
+    required String consentAt,
     required String deviceInfo,
-    bool adoptSignature = false,
-    bool adoptInitials = false,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+    bool adoptInitials = true,
+    bool adoptSignature = true,
   }) async {
     final res = await _invokeFunction("sign-waiver", {
-      "clientId": clientId,
       "waiverId": waiverId,
-      "initialsImages": initialsImages,
+      "sections": sections,
       "signatureImage": signatureImage,
+      "signatureMethod": signatureMethod,
+      "signatureAt": signatureAt,
       "guardianName": guardianName,
       "guardianSignatureImage": guardianSignatureImage,
-      "photoOptOut": photoOptOut,
-      "consentAcknowledged": consentAcknowledged,
+      "guardianSignedAt": guardianSignedAt,
+      "photoVideoRelease": photoVideoRelease,
+      "consentAcknowledged": true,
+      "consentAt": consentAt,
       "deviceInfo": deviceInfo,
-      "adoptSignature": adoptSignature,
+      "emergencyContactName": emergencyContactName,
+      "emergencyContactPhone": emergencyContactPhone,
       "adoptInitials": adoptInitials,
+      "adoptSignature": adoptSignature,
     });
     final s = (res["signature"] as Map).cast<String, dynamic>();
-    return SignedDocument(
-      id: s["id"]?.toString() ?? "",
-      docId: s["docId"] as String?,
-      title: s["title"] as String? ?? "",
-      signedAt: s["signedAt"] as String? ?? "",
-      summary: s["summary"] as String?,
-      signedBodyText: s["signedBodyText"] as String?,
-      documentVersionHash: s["documentVersionHash"] as String?,
-      initialsImages: ((s["initialsImages"] as List?) ?? const []).whereType<String>().toList(),
-      initialsTimestamps: ((s["initialsTimestamps"] as List?) ?? const []).whereType<String>().toList(),
-      signatureImage: s["signatureImage"] as String?,
-      guardianName: s["guardianName"] as String?,
-      guardianSignatureImage: s["guardianSignatureImage"] as String?,
-      photoVideoOptOut: s["photoVideoOptOut"] as bool?,
-      consentCheckboxAt: s["consentCheckboxAt"] as String?,
-      ipAddress: s["ipAddress"] as String?,
-      userAgent: s["userAgent"] as String?,
-      sessionId: s["sessionId"] as String?,
-      pdfDataUrl: s["pdfDataUrl"] as String?,
+    return (
+      summary: SignedDocument(
+        id: s["id"]?.toString() ?? "",
+        docId: s["docId"] as String?,
+        title: s["title"] as String? ?? "",
+        signedAt: s["signedAt"] as String? ?? "",
+        documentVersionHash: s["documentVersionHash"] as String?,
+        photoVideoOptOut: s["photoVideoOptOut"] as bool?,
+      ),
+      emailedTo: res["emailedTo"] as String?,
     );
+  }
+
+  /// Signed waivers — the client's own, or (for staff) any client's. RLS
+  /// decides what's visible. The PDF column is left out; see
+  /// [loadWaiverSignaturePdf].
+  static Future<List<WaiverSignatureRecord>> loadWaiverSignatures({String? clientId}) async {
+    var q = client.from("waiver_signatures").select(
+          "id, client_id, doc_id, doc_title, signed_at, signer_role, document_version_hash, guardian_name, photo_video_release, emailed_to, signer_ip",
+        );
+    if (clientId != null) q = q.eq("client_id", clientId);
+    final rows = await q.order("signed_at", ascending: false);
+    return rows.map((r) => WaiverSignatureRecord.fromRow(r.cast<String, dynamic>())).toList();
+  }
+
+  /// The signed PDF for one signature, as a data URL for DownloadPdfButton.
+  static Future<String?> loadWaiverSignaturePdf(String signatureId) async {
+    final row = await client.from("waiver_signatures").select("pdf_base64").eq("id", signatureId).maybeSingle();
+    final b64 = row?["pdf_base64"] as String?;
+    return b64 == null ? null : "data:application/pdf;base64,$b64";
   }
 
   static Map<String, dynamic> _membershipPlanToJson(MembershipPlan p) => {
@@ -3158,7 +3182,8 @@ class SupabaseService {
           c["redeem_points_next_renewal"] as bool? ?? false,
       referredByTrainerId: c["referred_by_trainer_id"] as String?,
       coachCodeAlertSeen: c["coach_code_alert_seen"] as bool? ?? false,
-      smsOptIn: c["sms_opt_in"] as bool? ?? false,
+      smsOptIn: c["sms_opt_in"] as bool? ?? true,
+      pushOptIn: profile["push_opt_in"] as bool? ?? true,
       billingAnchorDay: _asInt(c["billing_anchor_day"]),
     );
   }
@@ -3167,6 +3192,24 @@ class SupabaseService {
   /// Settings → Notification Preferences).
   static Future<void> updateSmsOptIn(String clientId, bool optIn) =>
       client.from("clients").update({"sms_opt_in": optIn}).eq("profile_id", clientId);
+
+  /// App (push) notifications on/off — sendPush skips anyone with this off.
+  static Future<void> updatePushOptIn(String profileId, bool optIn) =>
+      client.from("profiles").update({"push_opt_in": optIn}).eq("id", profileId);
+
+  /// Cards / bank accounts saved on the client's Stripe Customer — saved
+  /// automatically when they pay for a membership or package. Pass
+  /// [removeId] to remove one first; the updated list comes back either way.
+  static Future<List<SavedPaymentMethod>> loadPaymentMethods({String? removeId}) async {
+    final res = await client.functions.invoke(
+      "list-payment-methods",
+      body: removeId == null ? const {} : {"action": "remove", "id": removeId},
+    );
+    final data = res.data;
+    if (data is Map && data["error"] != null) throw Exception(data["error"]);
+    final list = (data is Map ? data["methods"] as List? : null) ?? const [];
+    return list.whereType<Map>().map((m) => SavedPaymentMethod.fromJson(Map<String, dynamic>.from(m))).toList();
+  }
 
   /// Billing Cycle Anchor Date spec §3 — read-only preview, owner-only.
   /// Never writes anything; safe to call repeatedly while the owner picks a

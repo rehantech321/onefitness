@@ -9,6 +9,10 @@ const _monthNames = [
 ];
 const _dowLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
+/// Days the coach is available. Yellow rather than the app's gold/green so
+/// it can't be confused with "today" or a booked session.
+const _availableYellow = Color(0xFFF2C94C);
+
 /// Mirrors MonthCalendar.jsx's month grid, extended with a per-day session
 /// time readout — a coach can see when their day's sessions start without
 /// having to tap in, and tapping still opens (see ScheduleScreen) straight
@@ -19,6 +23,7 @@ class MonthCalendar extends StatelessWidget {
     required this.month,
     required this.slotsByDate,
     required this.blockedDates,
+    this.availableDates = const {},
     required this.onSelectDay,
     required this.onChangeMonth,
   });
@@ -31,6 +36,10 @@ class MonthCalendar extends StatelessWidget {
   /// ScheduleScreen, which has the real Booking objects.
   final Map<String, List<int>> slotsByDate;
   final Set<String> blockedDates;
+
+  /// Future days the coach is working — tinted yellow. Computed by
+  /// ScheduleScreen; empty for the owner, whose calendar covers every coach.
+  final Set<String> availableDates;
   final ValueChanged<String> onSelectDay;
   final void Function(int direction) onChangeMonth;
 
@@ -48,6 +57,7 @@ class MonthCalendar extends StatelessWidget {
       final slots = slotsByDate[date] ?? const <int>[];
       final blocked = blockedDates.contains(date);
       final isToday = date == today;
+      final available = availableDates.contains(date);
       // Four times fit the cell at this aspect ratio; beyond that a "+N"
       // says there's more without the cell growing into the next row.
       final shown = slots.take(4).toList();
@@ -58,7 +68,12 @@ class MonthCalendar extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(9),
-            border: isToday ? Border.all(color: AppColors.gold) : null,
+            color: available ? _availableYellow.withValues(alpha: 0.16) : null,
+            border: isToday
+                ? Border.all(color: AppColors.gold)
+                : available
+                    ? Border.all(color: _availableYellow.withValues(alpha: 0.55))
+                    : null,
           ),
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Stack(
@@ -67,7 +82,7 @@ class MonthCalendar extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text("$d", style: TextStyle(fontSize: 13, fontWeight: isToday ? FontWeight.w800 : FontWeight.w500, color: isToday ? AppColors.gold : AppColors.txt)),
+                  Text("$d", style: TextStyle(fontSize: 13, fontWeight: isToday || available ? FontWeight.w800 : FontWeight.w500, color: isToday ? AppColors.gold : available ? _availableYellow : AppColors.txt)),
                   const SizedBox(height: 2),
                   for (final s in shown)
                     Text(fmtSlotCompactAmPm(s), style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.gold), maxLines: 1, overflow: TextOverflow.ellipsis),

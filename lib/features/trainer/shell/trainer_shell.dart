@@ -371,7 +371,11 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
 }
 
 class _DrawerEntry {
-  const _DrawerEntry(this.icon, this.label, this.key, this.visible);
+  const _DrawerEntry(this.icon, this.label, this.key, this.visible, {this.children = const []});
+
+  /// Shown as a dropdown under this entry — Reports groups the owner's
+  /// admin pages beneath it.
+  final List<_DrawerEntry> children;
   final IconData icon;
   final String label;
   final String key;
@@ -433,24 +437,26 @@ class _TrainerDrawer extends ConsumerWidget {
               "Reports",
               "reports",
               true,
-            ),
-            _DrawerEntry(
-              LucideIcons.users,
-              newCoachCount > 0 ? "Coaches ($newCoachCount new)" : "Coaches",
-              "coaches",
-              true,
-            ),
-            _DrawerEntry(
-              LucideIcons.slidersHorizontal,
-              "Customize Platform",
-              "platformSettings",
-              true,
-            ),
-            _DrawerEntry(
-              LucideIcons.fileSignature,
-              "Waivers & Contracts",
-              "waivers",
-              true,
+              children: [
+                _DrawerEntry(
+                  LucideIcons.users,
+                  newCoachCount > 0 ? "Coaches ($newCoachCount new)" : "Coaches",
+                  "coaches",
+                  true,
+                ),
+                const _DrawerEntry(
+                  LucideIcons.slidersHorizontal,
+                  "Customize Platform",
+                  "platformSettings",
+                  true,
+                ),
+                const _DrawerEntry(
+                  LucideIcons.fileSignature,
+                  "Waivers & Contracts",
+                  "waivers",
+                  true,
+                ),
+              ],
             ),
           ]
         : [
@@ -520,7 +526,9 @@ class _TrainerDrawer extends ConsumerWidget {
                 padding: EdgeInsets.zero,
                 children: entries
                     .map(
-                      (e) => InkWell(
+                      (e) => e.children.isNotEmpty
+                          ? _DrawerGroup(entry: e, current: mode, onGo: onGo)
+                          : InkWell(
                         onTap: () => onGo(e.key),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -584,6 +592,85 @@ class _TrainerDrawer extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A drawer entry with a dropdown. Tapping the label opens its own page;
+/// the chevron shows or hides the pages beneath it. Starts open when the
+/// current screen is one of them, so the owner can see where they are.
+class _DrawerGroup extends StatefulWidget {
+  const _DrawerGroup({required this.entry, required this.current, required this.onGo});
+  final _DrawerEntry entry;
+  final String current;
+  final void Function(String) onGo;
+
+  @override
+  State<_DrawerGroup> createState() => _DrawerGroupState();
+}
+
+class _DrawerGroupState extends State<_DrawerGroup> {
+  late bool _open = widget.entry.children.any((c) => c.key == widget.current);
+
+  @override
+  Widget build(BuildContext context) {
+    final e = widget.entry;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => widget.onGo(e.key),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 15, 8, 15),
+                    child: Row(
+                      children: [
+                        Icon(e.icon, size: 17, color: AppColors.gold),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(e.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.txt)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: () => setState(() => _open = !_open),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+                  child: Icon(_open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 17, color: AppColors.mute),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_open)
+          for (final c in e.children)
+            InkWell(
+              onTap: () => widget.onGo(c.key),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(44, 13, 20, 13),
+                decoration: const BoxDecoration(
+                  color: Color(0x08FFFFFF),
+                  border: Border(bottom: BorderSide(color: AppColors.line)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(c.icon, size: 15, color: AppColors.gold),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(c.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.txt)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      ],
     );
   }
 }

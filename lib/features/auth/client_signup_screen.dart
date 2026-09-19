@@ -119,8 +119,21 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
       if (_photoDataUrl != null) {
         await SupabaseService.updateClientRow(userId, photo: _photoDataUrl);
       }
-      ref.read(clientSigningUpProvider.notifier).set(false);
+      // Load the new account while this page is still showing. It used to
+      // close itself first, so the login screen appeared while loading —
+      // and stayed there if anything about the load was slow or failed.
       await loadAndSeedCoreData(ref);
+      if (!ref.read(clientSignedInProvider)) {
+        // Signup didn't leave a session behind (or it hadn't settled yet):
+        // sign in with the details just entered, then load again.
+        await SupabaseService.signIn(email, password);
+        await loadAndSeedCoreData(ref);
+      }
+      if (!ref.read(clientSignedInProvider)) {
+        throw Exception("Your account was created, but we couldn't open it just now. Please sign in with the email and password you chose.");
+      }
+      // Only now leave the signup page — straight into the app.
+      ref.read(clientSigningUpProvider.notifier).set(false);
     } catch (e) {
       if (!mounted) return;
       setState(() {

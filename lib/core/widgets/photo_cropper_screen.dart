@@ -17,17 +17,40 @@ import "../theme/app_colors.dart";
 /// Returns the cropped photo as a `data:image/jpeg;base64,...` string, or
 /// null if the user cancelled.
 class PhotoCropperScreen extends StatefulWidget {
-  const PhotoCropperScreen({super.key, required this.bytes});
+  const PhotoCropperScreen({super.key, required this.bytes, this.frameAspect, this.outWidth = 400});
 
   final Uint8List bytes;
+
+  /// Null crops to a circle (profile photos). Otherwise a rectangle of this
+  /// width ÷ height — 2/3 for a before/after half — shown and saved at that
+  /// exact shape, so what the coach frames is what clients see.
+  final double? frameAspect;
+
+  /// Width of the saved image in px; height follows [frameAspect].
+  final int outWidth;
 
   @override
   State<PhotoCropperScreen> createState() => _PhotoCropperScreenState();
 }
 
 class _PhotoCropperScreenState extends State<PhotoCropperScreen> {
-  static const double _circle = 260; // visible crop circle, logical px
-  static const double _out = 400; // output image size, px
+  static const double _base = 260; // longest side of the visible frame, logical px
+
+  bool get _isCircle => widget.frameAspect == null;
+
+  /// Visible frame size. A portrait frame keeps its height at [_base];
+  /// a landscape one keeps its width.
+  double get _frameW {
+    final a = widget.frameAspect;
+    if (a == null) return _base;
+    return a >= 1 ? _base : _base * a;
+  }
+
+  double get _frameH {
+    final a = widget.frameAspect;
+    if (a == null) return _base;
+    return a >= 1 ? _base / a : _base;
+  }
 
   double _natW = 0;
   double _natH = 0;
@@ -50,7 +73,7 @@ class _PhotoCropperScreenState extends State<PhotoCropperScreen> {
     final h = frame.image.height.toDouble();
     frame.image.dispose();
     if (!mounted) return;
-    final fit = math.max(_circle / w, _circle / h);
+    final fit = math.max(_frameW / w, _frameH / h);
     setState(() {
       _natW = w;
       _natH = h;
@@ -63,8 +86,8 @@ class _PhotoCropperScreenState extends State<PhotoCropperScreen> {
   Offset _clampOffset(Offset o, double scale) {
     final iw = _natW * scale;
     final ih = _natH * scale;
-    final maxX = math.max(0.0, (iw - _circle) / 2);
-    final maxY = math.max(0.0, (ih - _circle) / 2);
+    final maxX = math.max(0.0, (iw - _frameW) / 2);
+    final maxY = math.max(0.0, (ih - _frameH) / 2);
     return Offset(o.dx.clamp(-maxX, maxX), o.dy.clamp(-maxY, maxY));
   }
 
@@ -102,10 +125,13 @@ class _PhotoCropperScreenState extends State<PhotoCropperScreen> {
     // Same math as PhotoCropper.save(): the visible circle covers a
     // (CIRCLE / scale)-wide square of the *original* image, centered on
     // the image's own center and shifted opposite the pan offset.
-    final cropSize = _circle / _scale;
-    final left = _natW / 2 - (_circle / 2 + _offset.dx) / _scale;
-    final top = _natH / 2 - (_circle / 2 + _offset.dy) / _scale;
-    final result = await compute(_cropAndEncode, _CropJob(bytes: widget.bytes, left: left, top: top, size: cropSize, out: _out.round()));
+    final cropW = _frameW / _scale;
+    final cropH = _frameH / _scale;
+    final left = _natW / 2 - (_frameW / 2 + _offset.dx) / _scale;
+    final top = _natH / 2 - (_frameH / 2 + _offset.dy) / _scale;
+    final outW = widget.outWidth;
+    final outH = (outW * _frameH / _frameW).round();
+    final result = await compute(_cropAndEncode, _CropJob(bytes: widget.bytes, left: left, top: top, width: cropW, height: cropH, outW: outW, outH: outH));
     if (!mounted) return;
     Navigator.of(context).pop(result);
   }
@@ -131,17 +157,22 @@ class _PhotoCropperScreenState extends State<PhotoCropperScreen> {
                     onScaleStart: _onScaleStart,
                     onScaleUpdate: _onScaleUpdate,
                     child: Container(
-                      width: _circle,
-                      height: _circle,
-                      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppColors.gold, width: 3), color: Colors.black),
+                      width: _frameW,
+                      height: _frameH,
+                      decoration: BoxDecoration(
+                        shape: _isCircle ? BoxShape.circle : BoxShape.rectangle,
+                        borderRadius: _isCircle ? null : BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.gold, width: 3),
+                        color: Colors.black,
+                      ),
                       clipBehavior: Clip.antiAlias,
                       child: !_loaded
                           ? const Center(child: Text("Loading…", style: TextStyle(color: AppColors.mute, fontSize: 12)))
                           : Stack(
                               children: [
                                 Positioned(
-                                  left: _circle / 2 - (_natW * _scale) / 2 + _offset.dx,
-                                  top: _circle / 2 - (_natH * _scale) / 2 + _offset.dy,
+                                  left: _frameW / 2 - (_natW * _scale) / 2 + _offset.dx,
+                                  top: _frameH / 2 - (_natH * _scale) / 2 + _offset.dy,
                                   width: _natW * _scale,
                                   height: _natH * _scale,
                                   child: Image.memory(widget.bytes, fit: BoxFit.fill, gaplessPlayback: true),
@@ -226,12 +257,14 @@ class _ZoomButton extends StatelessWidget {
 }
 
 class _CropJob {
-  const _CropJob({required this.bytes, required this.left, required this.top, required this.size, required this.out});
+  const _CropJob({required this.bytes, required this.left, required this.top, required this.width, required this.height, required this.outW, required this.outH});
   final Uint8List bytes;
   final double left;
   final double top;
-  final double size;
-  final int out;
+  final double width;
+  final double height;
+  final int outW;
+  final int outH;
 }
 
 /// Runs off the UI isolate (via `compute`) since decoding a full-resolution
@@ -239,12 +272,12 @@ class _CropJob {
 String? _cropAndEncode(_CropJob job) {
   final decoded = img.decodeImage(job.bytes);
   if (decoded == null) return null;
-  final cw = job.size.round().clamp(1, decoded.width);
-  final ch = job.size.round().clamp(1, decoded.height);
+  final cw = job.width.round().clamp(1, decoded.width);
+  final ch = job.height.round().clamp(1, decoded.height);
   final lx = job.left.round().clamp(0, decoded.width - cw);
   final ty = job.top.round().clamp(0, decoded.height - ch);
   final cropped = img.copyCrop(decoded, x: lx, y: ty, width: cw, height: ch);
-  final resized = img.copyResize(cropped, width: job.out, height: job.out);
+  final resized = img.copyResize(cropped, width: job.outW, height: job.outH);
   final jpg = img.encodeJpg(resized, quality: 85);
   return "data:image/jpeg;base64,${base64Encode(jpg)}";
 }

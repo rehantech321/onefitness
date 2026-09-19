@@ -4,6 +4,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/merge_token_utils.dart";
+import "../../../core/widgets/signed_waiver_tile.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/waiver_doc.dart";
 import "../../../data/providers/client_providers.dart";
@@ -66,35 +67,13 @@ class _SignaturesScreenState extends ConsumerState<SignaturesScreen> {
               text: "Waivers and contracts you've signed will appear here once ONE Fitness adds them — nothing's required of you yet.",
             )
           else
-            ...client.signatures.map((s) => AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(LucideIcons.fileSignature, size: 17, color: AppColors.gold),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(s.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Text("Signed ${s.signedAt}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(LucideIcons.check, size: 16, color: AppColors.grn),
-                        ],
-                      ),
-                      if (s.summary != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(s.summary!, style: const TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
-                        ),
-                    ],
+            ...client.signatures.map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: SignedWaiverTile(
+                    signatureId: s.id,
+                    title: s.title,
+                    subtitle: "Signed ${s.signedAt}",
+                    detail: s.summary,
                   ),
                 )),
         ],

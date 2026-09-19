@@ -163,7 +163,7 @@ class BookingDeniedScreen extends StatelessWidget {
                 children: [
                   Icon(LucideIcons.fileSignature, size: 15, color: Colors.white),
                   SizedBox(width: 6),
-                  Text("Go to Signatures"),
+                  Text("Sign now"),
                 ],
               ),
             )

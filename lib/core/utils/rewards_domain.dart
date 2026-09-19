@@ -21,7 +21,7 @@ const kWaysToEarn = <WayToEarn>[
   WayToEarn(key: "discretionary_grant", points: "1–5", label: "Coach recognition", desc: "Your coach or the owner can award bonus points for extra effort."),
 ];
 
-const kRewardMinRedeemPoints = 10;
+const kRewardMinRedeemPoints = 40;
 const kRewardMaxRedeemPoints = 40;
 const kRewardExpiringSoonDays = 60;
 

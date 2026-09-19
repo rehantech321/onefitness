@@ -197,9 +197,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       });
       try {
         await SupabaseService.cancelMembership();
-        ref.read(clientInfoProvider.notifier).update(
-              (i) => i.copyWith(clearMembershipPlanId: true, clearStripeSubscriptionId: true, clearPendingPlan: true),
-            );
+        ref.read(clientInfoProvider.notifier).update(_withMembershipEnded);
       } catch (e) {
         if (mounted) {
           setState(() {
@@ -240,6 +238,21 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       if (mounted) setState(() => _busyPlanId = null);
     }
   }
+
+  /// Mirrors what cancel-membership just did on the server: the membership
+  /// slot is cleared AND that plan's enrollment is marked cancelled, so it
+  /// stops counting as held ("Current plan") straight away.
+  static ClientInfo _withMembershipEnded(ClientInfo i) => i.copyWith(
+        clearMembershipPlanId: true,
+        clearStripeSubscriptionId: true,
+        clearPendingPlan: true,
+        plans: [
+          for (final e in i.plans)
+            e.planId == i.membershipPlanId && e.status == "active"
+                ? ClientPlanEnrollment(planId: e.planId, status: "cancelled", startDate: e.startDate, termMonths: e.termMonths)
+                : e,
+        ],
+      );
 
   Future<void> _startCancel() async {
     setState(() {
@@ -316,7 +329,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 ? i.copyWith(membershipCancelsAt: cancelsAt)
                 // Cancelled outright — drop the plan locally too, so the
                 // screen doesn't keep showing a plan the server just removed.
-                : i.copyWith(clearMembershipPlanId: true, clearStripeSubscriptionId: true, clearPendingPlan: true),
+                : _withMembershipEnded(i),
           );
     } catch (e) {
       if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));

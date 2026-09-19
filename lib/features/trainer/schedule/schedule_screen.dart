@@ -4,6 +4,8 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../data/models/blocked_time.dart";
+import "../../../core/utils/booking_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/trainer.dart";
@@ -97,6 +99,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                       month: _month,
                       slotsByDate: _slotsByDate(bookings, relevantTrainers),
                       blockedDates: blocked.map((b) => b.date).toSet(),
+                      availableDates: isOwner ? const {} : _availableDates(relevantTrainers, blocked),
                       onSelectDay: (d) => _handleSelectDay(d, _bookingsByDate(bookings)),
                       onChangeMonth: (dir) => setState(() => _month = DateTime(_month.year, _month.month + dir, 1)),
                     ),
@@ -128,6 +131,42 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       (map[b.date] ??= []).add(b);
     }
     return map;
+  }
+
+  /// Future days in the visible month the signed-in coach is working: any
+  /// weekday their availability covers, plus one-off sessions created for a
+  /// specific date. A day they've cancelled is left out — blocked for the
+  /// whole day, or inside a time-off range — so cancelling removes the
+  /// yellow straight away.
+  Set<String> _availableDates(List<Trainer> trainers, List<BlockedTime> blocked) {
+    final out = <String>{};
+    final today = isoToday();
+    final daysInMonth = DateTime(_month.year, _month.month + 1, 0).day;
+    for (final t in trainers) {
+      final weekdays = <int>{
+        for (final b in t.availability)
+          for (final e in b.byDay.entries)
+            if (e.value.isNotEmpty) e.key,
+      };
+      final oneOffDates = <String>{
+        for (final b in t.availability)
+          for (final e in b.dates.entries)
+            if (e.value.isNotEmpty) e.key,
+      };
+      for (var d = 1; d <= daysInMonth; d++) {
+        final date = isoDate(DateTime(_month.year, _month.month, d));
+        if (date.compareTo(today) < 0) continue;
+        final wd = DateTime(_month.year, _month.month, d).weekday % 7;
+        // Sunday never runs the weekly pattern (same as booking); a one-off
+        // session on a Sunday still counts.
+        final working = (wd != 0 && weekdays.contains(wd)) || oneOffDates.contains(date);
+        if (!working) continue;
+        final cancelled = fallsInUnavailability(t, date) ||
+            blocked.any((b) => b.trainerId == t.id && b.date == date && b.allDay);
+        if (!cancelled) out.add(date);
+      }
+    }
+    return out;
   }
 
   /// Times to print under each calendar date: booked sessions plus any

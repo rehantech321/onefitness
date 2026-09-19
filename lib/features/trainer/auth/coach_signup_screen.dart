@@ -550,10 +550,14 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                           ),
                         );
                       }),
-                      Row(
+                      // Wraps onto as many lines as the screen needs — as a
+                      // single Row the third button ran off narrow phones.
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: kSessionTypeLabels.entries.map((e) {
                           return Padding(
-                            padding: const EdgeInsets.only(right: 8),
+                            padding: EdgeInsets.zero,
                             child: OutlinedButton(
                               onPressed: () => setState(() => _addingForType = e.key),
                               style: OutlinedButton.styleFrom(

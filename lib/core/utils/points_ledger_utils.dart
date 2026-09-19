@@ -82,7 +82,7 @@ class RedemptionPlan {
 
 /// Mirrors `planRedemption` — FIFO redemption plan, or null under the
 /// minimum.
-RedemptionPlan? planRedemption(List<PointsLot> lots, {DateTime? now, int capPoints = 40, int minPoints = 10}) {
+RedemptionPlan? planRedemption(List<PointsLot> lots, {DateTime? now, int capPoints = 40, int minPoints = 40}) {
   final nowDt = now ?? _parse(isoToday());
   final active = lots.where((lot) => lot.remaining > 0 && (lot.expiresAt == null || _parse(lot.expiresAt!).isAfter(nowDt)));
   final balance = active.fold<int>(0, (s, l) => s + l.remaining);

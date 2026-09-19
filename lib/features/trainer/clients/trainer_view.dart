@@ -6,6 +6,7 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "coach_measurements_tab.dart";
+import "documents_tab.dart";
 import "habits_tab.dart";
 import "intake_tab.dart";
 import "logged_tab.dart";
@@ -31,6 +32,7 @@ const _primary = [
 ];
 
 const _moreTabs = [
+  _TabDef("documents", "Documents", LucideIcons.fileSignature),
   _TabDef("habits", "Habits", LucideIcons.flame),
   _TabDef("notes", "Notes", LucideIcons.flag),
   _TabDef("squad", "Squad", LucideIcons.users2),
@@ -211,6 +213,8 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
         return LoggedTab(clientId: widget.clientId);
       case "plans":
         return PlansTab(clientId: widget.clientId, sub: _plansSub, onSubChanged: (s) => _visit("plans", s));
+      case "documents":
+        return DocumentsTab(clientId: widget.clientId);
       case "habits":
         return HabitsTab(clientId: widget.clientId);
       case "notes":
