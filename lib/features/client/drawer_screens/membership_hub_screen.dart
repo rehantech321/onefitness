@@ -47,6 +47,9 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
   String? _prorateChoicePlanId;
   bool _cancelBusy = false;
   bool _catalog = false;
+
+  /// The held plan (other than the primary one) being cancelled / kept.
+  String? _heldBusyPlanId;
   final _couponController = TextEditingController();
 
   /// Anchors for the category tiles to scroll to, keyed `view::category`
@@ -188,6 +191,90 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     return false;
   }
 
+  /// Cancel one of several plans the client holds, leaving the rest alone.
+  /// A paid one runs to its paid-through date; a free one ends now.
+  Future<void> _cancelHeld(MembershipPlan p) async {
+    setState(() {
+      _heldBusyPlanId = p.id;
+      _error = null;
+    });
+    Map<String, dynamic> preview;
+    try {
+      preview = await SupabaseService.cancelMembership(preview: true, planId: p.id);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceFirst("Exception: ", "");
+          _heldBusyPlanId = null;
+        });
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _heldBusyPlanId = null);
+    final endsAt = preview["periodEndsAt"] as String?;
+    final fee = (preview["feeCents"] as num?)?.toInt() ?? 0;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text("Cancel ${p.name}?", style: const TextStyle(color: AppColors.txt, fontSize: 16, fontWeight: FontWeight.w800)),
+        content: Text(
+          [
+            endsAt != null
+                ? "It won't renew and you won't be charged for it again. You can keep using it until ${niceDate(endsAt)}."
+                : "This ends it now.",
+            "Your other plans aren't affected.",
+            if (fee > 0) "An early termination fee of \$${(fee / 100).toStringAsFixed(2)} applies.",
+          ].join(" "),
+          style: const TextStyle(color: AppColors.mute, fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Never mind")),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)),
+            child: const Text("Cancel plan", style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _heldBusyPlanId = p.id);
+    try {
+      final result = await SupabaseService.cancelMembership(planId: p.id);
+      final cancelsAt = result["cancelsAt"] as String?;
+      ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(plans: [
+            for (final e in i.plans)
+              e.planId == p.id && e.status == "active"
+                  ? (cancelsAt != null ? e.copyWith(cancelsAt: cancelsAt) : e.copyWith(status: "cancelled"))
+                  : e,
+          ]));
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
+    } finally {
+      if (mounted) setState(() => _heldBusyPlanId = null);
+    }
+  }
+
+  /// Undo a scheduled cancellation of one held plan.
+  Future<void> _keepHeld(MembershipPlan p) async {
+    setState(() {
+      _heldBusyPlanId = p.id;
+      _error = null;
+    });
+    try {
+      await SupabaseService.cancelMembership(resume: true, planId: p.id);
+      ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(plans: [
+            for (final e in i.plans) e.planId == p.id && e.status == "active" ? e.copyWith(clearCancelsAt: true) : e,
+          ]));
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
+    } finally {
+      if (mounted) setState(() => _heldBusyPlanId = null);
+    }
+  }
+
   /// "Keep my membership" — undoes a cancellation scheduled for the end of
   /// the paid period, so it renews as normal again.
   Future<void> _keepMembership() async {
@@ -304,7 +391,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
         plans: [
           for (final e in i.plans)
             e.planId == i.membershipPlanId && e.status == "active"
-                ? ClientPlanEnrollment(planId: e.planId, status: "cancelled", startDate: e.startDate, termMonths: e.termMonths)
+                ? e.copyWith(status: "cancelled")
                 : e,
         ],
       );
@@ -386,6 +473,12 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 // screen doesn't keep showing a plan the server just removed.
                 : _withMembershipEnded(i),
           );
+      // An immediate cancel can hand the primary spot to another plan the
+      // client holds (server-side) — pick that up from the real row.
+      if (cancelsAt == null) {
+        final fresh = await SupabaseService.loadClientById(ref.read(clientInfoProvider).id);
+        if (fresh != null) ref.read(clientInfoProvider.notifier).update((_) => fresh);
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
     } finally {
@@ -502,7 +595,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               const SizedBox(height: 10),
               const SectionLabel("All Access Options"),
               const SizedBox(height: 8),
-              const HintBox(text: "Everything ONE Fitness offers. Your current plan is highlighted."),
+              const HintBox(text: "Everything ONE Fitness offers. You can hold more than one plan at a time — anything you add sits alongside what you already have."),
               const SizedBox(height: 12),
               if (visible.isEmpty)
                 const HintBox(text: "No plans are published yet — ask your coach what's available.")
@@ -524,15 +617,15 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                       isCurrent: current != null && p.id == current.id,
                       held: heldIds.contains(p.id) || info.plans.any((e) => e.planId == p.id && e.status == "active"),
                       busy: _busyPlanId != null,
+                      // A client can hold several plans at once, so anything
+                      // picked here is added alongside what they already
+                      // have — nothing is cancelled or replaced. Swapping one
+                      // membership for another is the separate, explicit
+                      // "Change Access" action.
+                      addsToExisting: held.isNotEmpty,
                       onSelect: () {
                         setState(() => _catalog = false);
-                        // Programs and packages are additions; only a
-                        // membership bought over a membership is a switch.
-                        if (isProgramKind(p.kind) || current == null) {
-                          _buy(info.id, p);
-                        } else {
-                          _choosePlan(info, current, p);
-                        }
+                        _buy(info.id, p);
                       },
                     ),
                     const SizedBox(height: 10),
@@ -716,6 +809,9 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               info: info,
               bookings: bookings,
               plans: held.where((p) => p.id != plan.id).toList(),
+              onCancel: _cancelHeld,
+              onKeep: _keepHeld,
+              busyPlanId: _heldBusyPlanId,
             ),
             if (!cancelPending) ...[
               SizedBox(
@@ -765,7 +861,14 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             ],
           ] else ...[
             if (plan == null && held.isNotEmpty) ...[
-              _HeldPackages(info: info, bookings: bookings, plans: held),
+              _HeldPackages(
+                info: info,
+                bookings: bookings,
+                plans: held,
+                onCancel: _cancelHeld,
+                onKeep: _keepHeld,
+                busyPlanId: _heldBusyPlanId,
+              ),
               const HintBox(text: "No recurring membership right now — your packages above still work. Add a membership below whenever you like."),
             ] else if (plan == null)
               const HintBox(text: "You don't have a membership yet. Choose a plan below to get started.")
@@ -887,11 +990,10 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                                 style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
                               ),
                             ),
-                          // A membership with a fixed renewal day bills the
-                          // first time only for the days up to that day
-                          // (Stripe proration), so the first charge is smaller
-                          // than the monthly price — said up front so it isn't
-                          // a surprise at checkout.
+                          // A membership with a fixed renewal day charges the
+                          // full price today and next on that day of next
+                          // month (create-payment-intent) — said up front so
+                          // the billing date isn't a surprise.
                           if (!isCurrent &&
                               p.renewalDay != null &&
                               p.priceCents > 0 &&
@@ -899,8 +1001,8 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                             Padding(
                               padding: const EdgeInsets.only(top: 6),
                               child: Text(
-                                "First payment covers only today until the ${_ordinalDay(p.renewalDay!)}, so it's less than the full price. "
-                                "From then on it's \$${(p.priceCents / 100).toStringAsFixed(2)} on the ${_ordinalDay(p.renewalDay!)} of every month.",
+                                "You pay \$${(p.priceCents / 100).toStringAsFixed(2)} today, then \$${(p.priceCents / 100).toStringAsFixed(2)} "
+                                "on the ${_ordinalDay(p.renewalDay!)} of every month, starting next month.",
                                 style: const TextStyle(fontSize: 11.5, color: AppColors.gold, height: 1.4),
                               ),
                             ),
@@ -950,10 +1052,24 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
 /// membership slot, each with its own balance — the slot alone can't show
 /// a membership and a package together, and both are what booking draws on.
 class _HeldPackages extends StatelessWidget {
-  const _HeldPackages({required this.info, required this.bookings, required this.plans});
+  const _HeldPackages({
+    required this.info,
+    required this.bookings,
+    required this.plans,
+    this.onCancel,
+    this.onKeep,
+    this.busyPlanId,
+  });
   final ClientInfo info;
   final List<Booking> bookings;
   final List<MembershipPlan> plans;
+
+  /// Cancel one held membership on its own (the others are untouched).
+  final ValueChanged<MembershipPlan>? onCancel;
+
+  /// Undo a scheduled cancellation of one held membership.
+  final ValueChanged<MembershipPlan>? onKeep;
+  final String? busyPlanId;
 
   @override
   Widget build(BuildContext context) {
@@ -961,7 +1077,7 @@ class _HeldPackages extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionLabel("Your Packages"),
+        SectionLabel(plans.any((p) => p.kind == PlanKind.membership) ? "Your Other Plans" : "Your Packages"),
         for (final p in plans)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -970,6 +1086,9 @@ class _HeldPackages extends StatelessWidget {
                 final max = effectiveMaxSessions(info, p);
                 final used = sessionsUsedThisPeriod(info, p, bookings);
                 final left = (max - used).clamp(0, max);
+                final enrollment = info.plans.where((e) => e.planId == p.id && e.status == "active").firstOrNull;
+                final endsAt = enrollment?.cancelsAt;
+                final busy = busyPlanId == p.id;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -995,6 +1114,32 @@ class _HeldPackages extends StatelessWidget {
                             p.kind == PlanKind.membership ? "resets monthly" : "sessions never expire on their own",
                           ].join(" · "),
                           style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                        ),
+                      ),
+                    if (endsAt != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          "Cancelled — won't renew. You can keep using it until ${niceDate(endsAt)}.",
+                          style: const TextStyle(fontSize: 12, color: Color(0xFFC97F7F), fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    // Only a membership is cancelled from here — a package
+                    // is already paid in full and simply runs out.
+                    if (p.kind == PlanKind.membership && (endsAt != null ? onKeep != null : onCancel != null))
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: busyPlanId != null ? null : () => (endsAt != null ? onKeep : onCancel)!(p),
+                          style: TextButton.styleFrom(
+                            foregroundColor: endsAt != null ? AppColors.gold : const Color(0xFFC97F7F),
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 32),
+                          ),
+                          child: Text(
+                            busy ? "Working…" : (endsAt != null ? "Keep this plan" : "Cancel this plan"),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+                          ),
                         ),
                       ),
                   ],
@@ -1126,9 +1271,13 @@ class _CatalogCard extends StatelessWidget {
     required this.held,
     required this.busy,
     required this.onSelect,
+    this.addsToExisting = false,
   });
 
   final MembershipPlan plan;
+
+  /// The client already holds a plan — this one would be added alongside.
+  final bool addsToExisting;
 
   /// This is the client's current access plan (their membership/package).
   final bool isCurrent;
@@ -1197,13 +1346,14 @@ class _CatalogCard extends StatelessWidget {
               full: true,
               onPressed: busy ? null : onSelect,
               child: Text(
-                plan.priceCents > 0
-                    // A program is bought in addition to whatever access the
-                    // client already has, so "Add" rather than "Choose" —
-                    // "Choose this plan" would imply giving up their
-                    // membership, which is exactly what it doesn't do.
-                    ? (isProgram ? "Add this program" : "Choose this plan")
-                    : (isProgram ? "Add this program" : "Start free plan"),
+                // Everything is bought in addition to what the client already
+                // holds, so "Add" once they hold something — "Choose" would
+                // imply giving up their current plan, which it doesn't.
+                isProgram
+                    ? "Add this program"
+                    : addsToExisting
+                        ? (plan.priceCents > 0 ? "Add this plan" : "Add free plan")
+                        : (plan.priceCents > 0 ? "Choose this plan" : "Start free plan"),
               ),
             ),
         ],

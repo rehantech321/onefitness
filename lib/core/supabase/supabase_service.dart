@@ -2378,10 +2378,17 @@ class SupabaseService {
   /// ({feeCents, renewsAt, noticeDaysRequired}) without actually canceling,
   /// so the UI can show the early-termination fee before the client confirms.
   /// A real (non-preview) call returns {ok:true, feeCents}.
+  /// [planId] targets one of several plans a client holds; omitted means
+  /// the primary membership.
   static Future<Map<String, dynamic>> cancelMembership({
     bool preview = false,
     bool resume = false,
-  }) => _invokeFunction("cancel-membership", {"preview": preview, "resume": resume});
+    String? planId,
+  }) => _invokeFunction("cancel-membership", {
+        "preview": preview,
+        "resume": resume,
+        if (planId != null) "planId": planId,
+      });
 
   /// Client's own upgrade/downgrade of an EXISTING paid subscription —
   /// mirrors changeMembershipPlan in supabaseData.js. timing: "immediate"
@@ -3166,6 +3173,8 @@ class SupabaseService {
           status: p["status"] as String? ?? "active",
           startDate: p["startDate"] as String? ?? "",
           termMonths: _asInt(p["termMonths"]),
+          subscriptionId: p["subscriptionId"] as String?,
+          cancelsAt: p["cancelsAt"] as String?,
         ),
       ),
       membershipPaused: c["membership_paused"] as bool? ?? false,
