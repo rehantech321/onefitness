@@ -33,6 +33,7 @@ class SquadTab extends ConsumerStatefulWidget {
 
 class _SquadTabState extends ConsumerState<SquadTab> {
   String _sub = "members";
+  final List<String> _subHistory = [];
   bool _searching = false;
 
   /// Explicit choice for the new squad's `billingShared` — null until the
@@ -142,7 +143,11 @@ class _SquadTabState extends ConsumerState<SquadTab> {
       });
     }
 
-    return SingleChildScrollView(
+    // Back steps through the Squad sub-tabs visited before leaving the tab.
+    return LocalBackScope(
+      isOpen: _subHistory.isNotEmpty,
+      onBack: () => setState(() => _sub = _subHistory.removeLast()),
+      child: SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,7 +171,11 @@ class _SquadTabState extends ConsumerState<SquadTab> {
               ]
                   .map((t) => Expanded(
                         child: InkWell(
-                          onTap: () => setState(() => _sub = t.$1),
+                          onTap: () => setState(() {
+                            if (_sub == t.$1) return;
+                            _subHistory.add(_sub);
+                            _sub = t.$1;
+                          }),
                           borderRadius: BorderRadius.circular(7),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -313,6 +322,7 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                         .toList(),
                   ),
         ],
+      ),
       ),
     );
   }

@@ -319,10 +319,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
     }
 
     void goMode(String mode) => ref.read(trainerModeProvider.notifier).go(mode);
-    void openClient(String clientId) {
-      ref.read(selectedClientIdProvider.notifier).select(clientId);
-      goMode("clients");
-    }
+    void openClient(String clientId) => ref.read(trainerModeProvider.notifier).openClient(clientId);
 
     // Staggers the greeting/stats header's entrance by 45ms per block,
     // played once when the Dashboard first mounts.
@@ -831,7 +828,8 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                 ),
               );
             }),
-          if (todayCharges.isNotEmpty)
+          // Collecting charges is the owner's job only — coaches don't see it.
+          if (isOwner && todayCharges.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: InkWell(

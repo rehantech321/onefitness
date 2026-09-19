@@ -8,6 +8,7 @@ import "../../../core/utils/flag_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "../shell/trainer_shell_state.dart";
 
 /// Mirrors RosterBar.jsx, trimmed to what's built so far: search and the
 /// horizontal client-card scroller. Deleting a client lives at the bottom
@@ -109,7 +110,9 @@ class _RosterBarState extends ConsumerState<RosterBar> {
                   return Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: InkWell(
-                      onTap: () => ref.read(selectedClientIdProvider.notifier).select(c.id),
+                      // Through the shell's history, so back returns to the
+                      // client that was open before this one.
+                      onTap: () => ref.read(trainerModeProvider.notifier).openClient(c.id),
                       borderRadius: BorderRadius.circular(14),
                       child: Container(
                         width: 180,

@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
@@ -108,8 +109,13 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
     });
   }
 
-  Future<void> _switchTab(String next) async {
+  /// Sections visited before this one — back steps through them in reverse
+  /// before leaving Customize Platform.
+  final List<String> _tabHistory = [];
+
+  Future<void> _switchTab(String next, {bool fromBack = false}) async {
     if (next == _tab) return;
+    final previous = _tab;
     if (_dirty) {
       final discard = await showDialog<bool>(
         context: context,
@@ -129,8 +135,17 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
       _draft = ref.read(platformSettingsProvider);
       _dirty = false;
       _saveError = null;
+      if (fromBack) {
+        _tabHistory.removeLast();
+      } else {
+        _tabHistory.add(previous);
+      }
       _tab = next;
     });
+  }
+
+  void _backTab() {
+    if (_tabHistory.isNotEmpty) _switchTab(_tabHistory.last, fromBack: true);
   }
 
   Future<void> _save() async {
@@ -159,6 +174,14 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
 
   @override
   Widget build(BuildContext context) {
+    return LocalBackScope(
+      isOpen: _tabHistory.isNotEmpty,
+      onBack: _backTab,
+      child: _buildSections(context),
+    );
+  }
+
+  Widget _buildSections(BuildContext context) {
     ref.listen<PlatformSettings>(platformSettingsProvider, (prev, next) {
       if (!_dirty) setState(() => _draft = next);
     });

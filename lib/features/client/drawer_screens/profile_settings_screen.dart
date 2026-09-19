@@ -377,7 +377,7 @@ class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPr
                       const Text("Text messages (SMS)", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 2),
                       Text(
-                        "Payment issues and other time-sensitive alerts, sent to ${info.phone?.isNotEmpty == true ? info.phone : "the phone number on your profile"}.",
+                        "Notifications and time-sensitive information will be sent to ${info.phone?.isNotEmpty == true ? info.phone : "the phone number on your profile"}.",
                         style: const TextStyle(fontSize: 12, color: AppColors.mute),
                       ),
                     ],
@@ -391,8 +391,6 @@ class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPr
               ],
             ),
           ),
-          const SizedBox(height: 10),
-          const HintBox(text: "Email notifications for plan updates, milestones, and payment receipts are always on — there's no separate opt-out for those since they're about your own account activity, not marketing."),
         ],
       ),
     );

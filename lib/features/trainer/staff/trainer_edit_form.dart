@@ -303,6 +303,12 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               _TabChip(label: "Profile", selected: _tab == "profile", onTap: () => setState(() => _tab = "profile")),
               const SizedBox(width: 8),
               _TabChip(label: "Availability", selected: _tab == "availability", onTap: () => setState(() => _tab = "availability")),
+              // Back from Availability returns to Profile before leaving the form.
+              LocalBackScope(
+                isOpen: _tab == "availability",
+                onBack: () => setState(() => _tab = "profile"),
+                child: const SizedBox.shrink(),
+              ),
             ],
           ),
           const SizedBox(height: 14),

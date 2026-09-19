@@ -31,8 +31,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   String? _selectedDate;
 
   void _openClient(String clientId) {
-    ref.read(selectedClientIdProvider.notifier).select(clientId);
-    ref.read(trainerModeProvider.notifier).go("clients");
+    ref.read(trainerModeProvider.notifier).openClient(clientId);
   }
 
   // Tapping a date always opens the day view listing every session on it,

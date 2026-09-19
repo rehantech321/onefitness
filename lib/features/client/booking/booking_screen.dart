@@ -586,8 +586,21 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           if (held.isEmpty && !info.isStaff)
             _NoPlanGate(onGoMemberships: widget.onGoMemberships)
           else
-          LocalBackScope(
-            isOpen: _chosenType != null,
+          Builder(builder: (context) {
+          // Only one type the client can book (e.g. a single Semi-Private
+          // membership) — step 1 would be a one-option question, so it's
+          // skipped and Booking opens straight on step 2, Choose a Discipline.
+          final types = _bookableTypes(
+            plans: held,
+            trainers: trainers,
+            offeredTypes: ref.watch(platformSettingsProvider).offeredSessionTypes,
+          );
+          final onlyType = types.length == 1 ? types.first : null;
+          final chosenType = _chosenType ?? onlyType;
+          final changeType = onlyType == null ? () => _pickType(null) : null;
+          return LocalBackScope(
+            // With step 1 skipped, step 2 is the start — nothing to go back to.
+            isOpen: _chosenDisc != null || (_chosenType != null && onlyType == null),
             onBack: () => setState(() {
               if (_chosenDisc != null) {
                 _chosenDisc = null;
@@ -595,7 +608,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                 _chosenType = null;
               }
             }),
-            child: _chosenType == null
+            child: chosenType == null
                 ? _StepOne(
                     plans: held,
                     isStaff: info.isStaff,
@@ -605,14 +618,17 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                   )
                 : _chosenDisc == null
                     ? _StepTwo(
-                        chosenType: _chosenType!,
+                        chosenType: chosenType,
                         trainers: trainers,
-                        onChangeType: () => _pickType(null),
-                        onPick: (d) => setState(() => _chosenDisc = d),
+                        onChangeType: changeType,
+                        onPick: (d) => setState(() {
+                          _chosenType = chosenType;
+                          _chosenDisc = d;
+                        }),
                       )
                     : _StepThree(
                         date: _date,
-                        chosenType: _chosenType!,
+                        chosenType: chosenType,
                         chosenDisc: _chosenDisc!,
                         info: info,
                         trainers: trainers,
@@ -626,10 +642,12 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         waitlist: ref.watch(waitlistProvider),
                         gymLocationName: ref.watch(platformSettingsProvider).locationName,
                         onDateChange: (d) => setState(() => _date = d),
-                        onChangeType: () => setState(() {
-                          _chosenType = null;
-                          _chosenDisc = null;
-                        }),
+                        onChangeType: changeType == null
+                            ? null
+                            : () => setState(() {
+                                  _chosenType = null;
+                                  _chosenDisc = null;
+                                }),
                         onChangeDisc: () => setState(() => _chosenDisc = null),
                         onSlotTap: _onSlotTap,
                         onJoinWaitlist: _joinWaitlist,
@@ -637,7 +655,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         waitlistBusyKeys: _waitlistBusyKeys,
                         semiPrivateCap: ref.watch(platformSettingsProvider).semiPrivateCap,
                       ),
-          ),
+          );
+          }),
         ],
       ),
     );
@@ -701,6 +720,26 @@ class _MembershipBanner extends StatelessWidget {
   }
 }
 
+/// The session types this client can pick in step 1 — what any plan they
+/// hold covers (every type for staff booking themselves, who hold none),
+/// limited to what the gym offers (Customize Platform → Services), plus
+/// Large Group, which comes with any membership as long as a coach runs it.
+List<String> _bookableTypes({
+  required List<MembershipPlan> plans,
+  required List<Trainer> trainers,
+  required List<String> offeredTypes,
+}) {
+  final covered = (plans.isEmpty
+          ? const ["semi-private", "one-on-one"]
+          : plans.expand((p) => p.allowedTypes).toSet().toList())
+      .where(offeredTypes.contains)
+      .toList();
+  final anyLargeGroupOffered = offeredTypes.contains("large-group") && trainers.any(
+    (t) => t.availability.any((b) => b.sessionType == "large-group" && b.byDay.values.any((s) => s.isNotEmpty)),
+  );
+  return [...covered, if (anyLargeGroupOffered) "large-group"];
+}
+
 class _StepOne extends StatelessWidget {
   const _StepOne({
     required this.plans,
@@ -723,17 +762,9 @@ class _StepOne extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final allowedTypes = (plans.isEmpty
-            ? const ["semi-private", "one-on-one"]
-            : plans.expand((p) => p.allowedTypes).toSet().toList())
-        .where(offeredTypes.contains)
-        .toList();
-    // Large Group is included with ANY active membership — not gated to a
-    // specific plan tier like allowedTypes — and visible for browsing even
-    // with no membership at all. Only hidden if literally no coach offers it.
-    final anyLargeGroupOffered = offeredTypes.contains("large-group") && trainers.any(
-      (t) => t.availability.any((b) => b.sessionType == "large-group" && b.byDay.values.any((s) => s.isNotEmpty)),
-    );
+    final types = _bookableTypes(plans: plans, trainers: trainers, offeredTypes: offeredTypes);
+    final allowedTypes = types;
+    final anyLargeGroupOffered = types.contains("large-group");
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -845,10 +876,12 @@ class _NoPlanGate extends StatelessWidget {
 }
 
 class _StepTwo extends StatelessWidget {
-  const _StepTwo({required this.chosenType, required this.trainers, required this.onChangeType, required this.onPick});
+  const _StepTwo({required this.chosenType, required this.trainers, this.onChangeType, required this.onPick});
   final String chosenType;
   final List<Trainer> trainers;
-  final VoidCallback onChangeType;
+
+  /// Null when the client can only book one session type — nothing to change to.
+  final VoidCallback? onChangeType;
   final ValueChanged<String> onPick;
 
   @override
@@ -866,13 +899,15 @@ class _StepTwo extends StatelessWidget {
         Row(
           children: [
             Text(sessionTypeLabel(chosenType), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
-            const SizedBox(width: 8),
-            const Text("›", style: TextStyle(fontSize: 13, color: AppColors.mute)),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: onChangeType,
-              child: const Text("Change", style: TextStyle(fontSize: 12, color: AppColors.mute, decoration: TextDecoration.underline)),
-            ),
+            if (onChangeType != null) ...[
+              const SizedBox(width: 8),
+              const Text("›", style: TextStyle(fontSize: 13, color: AppColors.mute)),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: onChangeType,
+                child: const Text("Change", style: TextStyle(fontSize: 12, color: AppColors.mute, decoration: TextDecoration.underline)),
+              ),
+            ],
           ],
         ),
         const SizedBox(height: 18),
@@ -941,7 +976,7 @@ class _StepThree extends StatefulWidget {
     required this.blockedTimes,
     required this.waitlist,
     required this.onDateChange,
-    required this.onChangeType,
+    this.onChangeType,
     required this.onChangeDisc,
     required this.onSlotTap,
     required this.onJoinWaitlist,
@@ -972,7 +1007,8 @@ class _StepThree extends StatefulWidget {
   final List<BlockedTime> blockedTimes;
   final List<WaitlistEntry> waitlist;
   final ValueChanged<String> onDateChange;
-  final VoidCallback onChangeType;
+  /// Null when the client can only book one session type — nothing to change to.
+  final VoidCallback? onChangeType;
   final VoidCallback onChangeDisc;
   final void Function(Trainer, String, String, int, bool, bool) onSlotTap;
   final void Function(Trainer, String, String, int) onJoinWaitlist;
@@ -1048,10 +1084,11 @@ class _StepThreeState extends State<_StepThree> {
             Text(sessionTypeLabel(chosenType), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
             const Text("›", style: TextStyle(fontSize: 13, color: AppColors.mute)),
             Text(disciplineLabel(chosenDisc), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
-            GestureDetector(
-              onTap: onChangeType,
-              child: const Text("Change type", style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
-            ),
+            if (onChangeType != null)
+              GestureDetector(
+                onTap: onChangeType,
+                child: const Text("Change type", style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
+              ),
             GestureDetector(
               onTap: onChangeDisc,
               child: const Text("Change discipline", style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
