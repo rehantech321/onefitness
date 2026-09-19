@@ -143,12 +143,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final daysInMonth = DateTime(_month.year, _month.month + 1, 0).day;
     for (final t in trainers) {
       final weekdays = <int>{
-        for (final b in t.availability)
+        for (final b in t.offeredAvailability)
           for (final e in b.byDay.entries)
             if (e.value.isNotEmpty) e.key,
       };
       final oneOffDates = <String>{
-        for (final b in t.availability)
+        for (final b in t.offeredAvailability)
           for (final e in b.dates.entries)
             if (e.value.isNotEmpty) e.key,
       };
@@ -177,7 +177,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       for (final entry in byDate.entries) entry.key: entry.value.map((b) => b.slot).toSet(),
     };
     for (final t in trainers) {
-      for (final block in t.availability) {
+      for (final block in t.offeredAvailability) {
         block.dates.forEach((date, slots) => out.putIfAbsent(date, () => {}).addAll(slots));
       }
     }

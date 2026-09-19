@@ -11,6 +11,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/availability_block.dart";
 import "../staff/availability_block_editor.dart";
 import "../../../data/models/trainer.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
 
 /// Real coach self-signup — mirrors TrainerForm.jsx's account-creation
@@ -450,7 +451,10 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 child: Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: kDisciplineLabels.entries.map((e) {
+                  // Only what the gym offers (Customize Platform → Services).
+                  children: kDisciplineLabels.entries
+                      .where((e) => ref.watch(platformSettingsProvider).offersDiscipline(e.key))
+                      .map((e) {
                     final on = _disciplines.contains(e.key);
                     return InkWell(
                       onTap: () => setState(() {
@@ -555,7 +559,9 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: kSessionTypeLabels.entries.map((e) {
+                        children: kSessionTypeLabels.entries
+                            .where((e) => ref.watch(platformSettingsProvider).offersSessionType(e.key))
+                            .map((e) {
                           return Padding(
                             padding: EdgeInsets.zero,
                             child: OutlinedButton(

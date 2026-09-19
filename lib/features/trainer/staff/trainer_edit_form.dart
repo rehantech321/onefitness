@@ -1,5 +1,6 @@
 import "dart:convert";
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
@@ -10,6 +11,7 @@ import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/availability_block.dart";
 import "../../../data/models/trainer.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "availability_block_editor.dart";
 
 const _largeGroupDisciplines = {"hike", "outdoor-hiit"};
@@ -416,10 +418,14 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
           const SizedBox(height: 10),
           FieldLabeled(
             label: "Disciplines * (choose one or more)",
-            child: Wrap(
+            child: Consumer(builder: (context, ref, _) {
+              // Only what the gym still offers (Customize Platform → Services).
+              final settings = ref.watch(platformSettingsProvider);
+              return Wrap(
               spacing: 6,
               runSpacing: 6,
               children: kDisciplineLabels.entries
+                  .where((e) => settings.offersDiscipline(e.key))
                   .map(
                     (e) => _Chip(
                       label: e.value,
@@ -428,16 +434,20 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                     ),
                   )
                   .toList(),
-            ),
+            );
+            }),
           ),
           if (hasRegularDiscipline) ...[
             const SizedBox(height: 10),
             FieldLabeled(
               label: "Session types * (choose one or more)",
-              child: Wrap(
+              child: Consumer(builder: (context, ref, _) {
+                final settings = ref.watch(platformSettingsProvider);
+                return Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: _regularSessionTypes
+                    .where(settings.offersSessionType)
                     .map(
                       (st) => _Chip(
                         label: sessionTypeLabel(st),
@@ -446,7 +456,8 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                       ),
                     )
                     .toList(),
-              ),
+              );
+              }),
             ),
             if (largeGroupDisciplines.isNotEmpty)
               const Padding(

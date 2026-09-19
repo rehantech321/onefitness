@@ -735,7 +735,7 @@ List<String> _bookableTypes({
       .where(offeredTypes.contains)
       .toList();
   final anyLargeGroupOffered = offeredTypes.contains("large-group") && trainers.any(
-    (t) => t.availability.any((b) => b.sessionType == "large-group" && b.byDay.values.any((s) => s.isNotEmpty)),
+    (t) => t.offeredAvailability.any((b) => b.sessionType == "large-group" && b.byDay.values.any((s) => s.isNotEmpty)),
   );
   return [...covered, if (anyLargeGroupOffered) "large-group"];
 }
@@ -888,8 +888,10 @@ class _StepTwo extends StatelessWidget {
   Widget build(BuildContext context) {
     final offered = <String>{};
     for (final t in trainers) {
-      for (final block in t.availability) {
-        if (block.sessionType == chosenType) offered.add(block.discipline);
+      for (final block in t.offeredAvailability) {
+        if (block.sessionType == chosenType) {
+          offered.add(block.discipline);
+        }
       }
     }
 

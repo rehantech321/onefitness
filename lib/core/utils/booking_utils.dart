@@ -11,6 +11,7 @@ import "../theme/app_colors.dart";
 import "date_utils.dart";
 import "membership_utils.dart";
 import "merge_token_utils.dart";
+import "offered_catalog.dart";
 import "platform_settings.dart";
 
 /// Booking/scheduling helpers ported from
@@ -48,6 +49,9 @@ class Offering {
 List<Offering> trainerOfferings(Trainer t, int weekday) {
   final out = <Offering>[];
   for (final block in t.availability) {
+    // A type or discipline the owner deleted in Customize Platform is no
+    // longer offered, even if this coach's saved pattern still lists it.
+    if (!LiveCatalog.offers(block.sessionType, block.discipline)) continue;
     final slots = block.byDay[weekday] ?? const [];
     for (final slot in slots) {
       out.add(Offering(sessionType: block.sessionType, discipline: block.discipline, slot: slot, durationMin: block.durationMin));
@@ -64,6 +68,7 @@ List<Offering> trainerOfferingsOn(Trainer t, String dateIso) {
   final weekly = trainerOfferings(t, weekdayOf(dateIso));
   final oneOffs = <Offering>[];
   for (final block in t.availability) {
+    if (!LiveCatalog.offers(block.sessionType, block.discipline)) continue;
     for (final slot in block.dates[dateIso] ?? const <int>[]) {
       oneOffs.add(Offering(sessionType: block.sessionType, discipline: block.discipline, slot: slot, durationMin: block.durationMin, oneOff: true));
     }

@@ -369,8 +369,8 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                     // back to whatever their availability blocks contain so
                     // a coach who only set up availability still reads right.
                     Builder(builder: (context) {
-                      final types = (t.sessionTypes.isNotEmpty ? t.sessionTypes : t.availability.map((b) => b.sessionType)).toSet().toList();
-                      final discs = (t.disciplines.isNotEmpty ? t.disciplines : t.availability.map((b) => b.discipline)).toSet().toList();
+                      final types = (t.sessionTypes.isNotEmpty ? t.offeredSessionTypes : t.offeredAvailability.map((b) => b.sessionType)).toSet().toList();
+                      final discs = (t.disciplines.isNotEmpty ? t.offeredDisciplines : t.offeredAvailability.map((b) => b.discipline)).toSet().toList();
                       if (types.isEmpty && discs.isEmpty) return const SizedBox.shrink();
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

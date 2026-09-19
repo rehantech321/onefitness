@@ -28,7 +28,7 @@ class CoachProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final disciplines = trainer.availability.map((b) => b.discipline).toSet().where((d) => d != "programmer").toList();
+    final disciplines = trainer.offeredAvailability.map((b) => b.discipline).toSet().where((d) => d != "programmer").toList();
     final frames = trainer.beforeAfters
         .where((f) => (f.left != null && f.left!.isNotEmpty) || (f.right != null && f.right!.isNotEmpty))
         .toList();

@@ -9,6 +9,7 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/models/product.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
 const _allowedTypeOptions = ["one-on-one", "semi-private", "large-group"];
@@ -779,7 +780,8 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
-              children: _allowedTypeOptions.map((t) {
+              // Only types the gym still offers (Customize Platform → Services).
+              children: _allowedTypeOptions.where(ref.watch(platformSettingsProvider).offersSessionType).map((t) {
                 final selected = _allowedTypes.contains(t);
                 return InkWell(
                   onTap: () => setState(

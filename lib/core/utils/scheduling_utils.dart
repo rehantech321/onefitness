@@ -1,5 +1,6 @@
 import "../../data/models/booking.dart";
 import "../../data/models/trainer.dart";
+import "offered_catalog.dart";
 
 /// Ported from schedulingHelpers.js, trimmed to what the coach-side
 /// Scheduling screens need: capacity/conflict checks and weekly-offering
@@ -55,6 +56,8 @@ Booking? findTrainerConflict(List<Booking> bookings, String trainerId, String da
 List<({String sessionType, String discipline, int slot})> trainerOfferings(Trainer trainer, int weekday) {
   final out = <({String sessionType, String discipline, int slot})>[];
   for (final block in trainer.availability) {
+    // Deleted in Customize Platform → no longer offered anywhere.
+    if (!LiveCatalog.offers(block.sessionType, block.discipline)) continue;
     for (final slot in block.byDay[weekday] ?? const <int>[]) {
       out.add((sessionType: block.sessionType, discipline: block.discipline, slot: slot));
     }

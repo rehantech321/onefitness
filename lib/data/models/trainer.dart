@@ -1,3 +1,4 @@
+import "../../core/utils/offered_catalog.dart";
 import "availability_block.dart";
 
 /// A single entry in a trainer's `locations` jsonb list (real schema —
@@ -66,6 +67,19 @@ class Trainer {
 
   final String id;
   final String name;
+
+  /// [availability] minus anything the owner deleted from the catalogue
+  /// (Customize Platform → Services) — what the app should show and offer.
+  /// The saved [availability] itself is left untouched, so the coach's own
+  /// editor still has the full record.
+  List<AvailabilityBlock> get offeredAvailability =>
+      availability.where((b) => LiveCatalog.offers(b.sessionType, b.discipline)).toList();
+
+  /// [disciplines] still offered by the gym.
+  List<String> get offeredDisciplines => disciplines.where(LiveCatalog.offersDiscipline).toList();
+
+  /// [sessionTypes] still offered by the gym.
+  List<String> get offeredSessionTypes => sessionTypes.where(LiveCatalog.offersType).toList();
 
   /// Only availability is routinely replaced in place (the owner creating
   /// a one-off session, a coach editing their week); everything else goes

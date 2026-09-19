@@ -1,4 +1,5 @@
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../core/utils/offered_catalog.dart";
 
 /// One fee profile (card or ACH) — mirrors platformSettings.js's
 /// `cardFee`/`achFee` shape exactly (payments.cardFee / payments.achFee in
@@ -266,7 +267,23 @@ class PlatformSettingsNotifier extends Notifier<PlatformSettings> {
   @override
   PlatformSettings build() => const PlatformSettings();
 
-  void update(PlatformSettings Function(PlatformSettings) f) => state = f(state);
+  void update(PlatformSettings Function(PlatformSettings) f) {
+    state = f(state);
+    LiveCatalog.sessionTypes = state.offeredSessionTypes.toSet();
+    LiveCatalog.disciplines = state.offeredDisciplines.toSet();
+  }
 }
 
 final platformSettingsProvider = NotifierProvider<PlatformSettingsNotifier, PlatformSettings>(PlatformSettingsNotifier.new);
+
+/// Customize Platform → Services is the catalogue: a session type or
+/// discipline the owner deleted there is gone from every picker, booking
+/// step and coach profile in the app. These are the one check they all use.
+extension OfferedCatalog on PlatformSettings {
+  /// "programmer" is a staff role (assessments), not a service clients pick,
+  /// so it's never removed by the catalogue.
+  bool offersDiscipline(String key) => key == "programmer" || offeredDisciplines.contains(key);
+
+  /// Intake/assessment sessions are always available to staff.
+  bool offersSessionType(String key) => key.startsWith("assessment") || offeredSessionTypes.contains(key);
+}

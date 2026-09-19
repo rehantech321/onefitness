@@ -208,8 +208,8 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
             ],
           ),
           ...trainers.map((t) {
-            final disciplines = t.availability.map((b) => b.discipline).toSet();
-            final sessionTypes = t.availability
+            final disciplines = t.offeredAvailability.map((b) => b.discipline).toSet();
+            final sessionTypes = t.offeredAvailability
                 .map((b) => b.sessionType)
                 .toSet();
             return AppCard(
@@ -260,7 +260,7 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                     text: _payoutSummary(t),
                   ),
                   const SizedBox(height: 8),
-                  _AvailSummary(availability: t.availability),
+                  _AvailSummary(availability: t.offeredAvailability),
                   if (t.coachCode != null && t.coachCode!.isNotEmpty)
                     _IconLine(
                       icon: LucideIcons.badgePercent,

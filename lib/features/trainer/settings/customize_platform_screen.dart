@@ -330,15 +330,17 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                   ),
                 ],
                 if (_tab == "services") ...[
-                  _MultiChoiceRow(
+                  _CatalogEditor(
                     label: "Session types offered",
+                    noun: "session type",
                     value: s.offeredSessionTypes,
                     options: _sessionTypeOptions,
                     onChange: (v) => _set((d) => d.copyWith(offeredSessionTypes: v)),
                   ),
                   const SizedBox(height: 10),
-                  _MultiChoiceRow(
+                  _CatalogEditor(
                     label: "Disciplines offered",
+                    noun: "discipline",
                     value: s.offeredDisciplines,
                     options: _disciplineOptions,
                     onChange: (v) => _set((d) => d.copyWith(offeredDisciplines: v)),
@@ -848,6 +850,129 @@ class _MultiChoiceRow extends StatelessWidget {
             "Full name and email can't be turned off — every client needs both for their account, enforced at signup. Phone / Birthday / City above are optional-or-required, your call.",
             style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The gym's catalogue of session types or disciplines (Customize Platform →
+/// Services). Each one offered is a chip with a delete button; deleting it
+/// removes it from the whole app — booking, coach profiles, plan editing,
+/// Create Session, the schedule — via the offered lists every one of those
+/// reads (see OfferedCatalog / LiveCatalog). Deleted ones are listed below
+/// so a mistake can be undone. Changes apply when the owner taps Save.
+class _CatalogEditor extends StatelessWidget {
+  const _CatalogEditor({
+    required this.label,
+    required this.noun,
+    required this.value,
+    required this.options,
+    required this.onChange,
+  });
+  final String label;
+  final String noun;
+  final List<String> value;
+  final List<(String, String)> options;
+  final ValueChanged<List<String>> onChange;
+
+  Future<void> _confirmDelete(BuildContext context, (String, String) o) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text("Delete ${o.$2}?"),
+        content: Text(
+          "${o.$2} will be removed from the whole app — clients can't book it, and it disappears from coach profiles, "
+          "plans and the schedule. Sessions already booked stay as they are. You can restore it below any time. "
+          "Tap Save to apply.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Keep")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Delete", style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) onChange(value.where((k) => k != o.$1).toList());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final offered = options.where((o) => value.contains(o.$1)).toList();
+    final deleted = options.where((o) => !value.contains(o.$1)).toList();
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          if (offered.isEmpty)
+            Text("No ${noun}s offered.", style: const TextStyle(fontSize: 12, color: AppColors.mute))
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final o in offered)
+                  Container(
+                    padding: const EdgeInsets.only(left: 10, right: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold.withValues(alpha: 0.15),
+                      border: Border.all(color: AppColors.gold),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(o.$2, style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600)),
+                        IconButton(
+                          tooltip: "Delete",
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                          padding: EdgeInsets.zero,
+                          onPressed: () => _confirmDelete(context, o),
+                          icon: const Icon(LucideIcons.x, size: 14, color: AppColors.gold),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          if (deleted.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text("Deleted — tap to restore", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final o in deleted)
+                  InkWell(
+                    onTap: () => onChange([...value, o.$1]),
+                    borderRadius: BorderRadius.circular(7),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        border: Border.all(color: AppColors.line),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(LucideIcons.plus, size: 12, color: AppColors.mute),
+                          const SizedBox(width: 4),
+                          Text(o.$2, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

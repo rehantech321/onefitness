@@ -470,8 +470,9 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
         final allowed = allowedSet.isNotEmpty
             ? allowedSet.toList()
             : const ["semi-private", "one-on-one"];
+        final settings = ref.watch(platformSettingsProvider);
         final options = kSessionTypeLabels.entries
-            .where((e) => allowed.contains(e.key))
+            .where((e) => allowed.contains(e.key) && settings.offersSessionType(e.key))
             .toList();
         return _StepScaffold(
           breadcrumb: _breadcrumb(_back),
