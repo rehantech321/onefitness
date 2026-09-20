@@ -282,11 +282,18 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     disabled: true,
                     onChange: (_) {},
                   ),
-                  _NumberRow(
-                    label: "Default semi-private session cap",
-                    suffix: "clients per slot",
-                    value: s.semiPrivateCap,
-                    onChange: (v) => _set((d) => d.copyWith(semiPrivateCap: v)),
+                  // Class size for every session type the gym offers, in the
+                  // one place the rest of scheduling is set.
+                  _ClassSizeEditor(
+                    types: s.offeredSessionTypes,
+                    caps: s.sessionTypeCaps,
+                    semiPrivateCap: s.semiPrivateCap,
+                    onChange: (v) => _set((d) => d.copyWith(
+                          sessionTypeCaps: v,
+                          // Keep the long-standing semi-private cap in step,
+                          // since other screens still read it directly.
+                          semiPrivateCap: v["semi-private"] ?? d.semiPrivateCap,
+                        )),
                   ),
                 ],
                 if (_tab == "access") ...[
@@ -340,15 +347,6 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     onChange: (v) => _set((d) => d.copyWith(offeredSessionTypes: v)),
                   ),
                   const SizedBox(height: 10),
-                  // Class size per type — what the booking screen counts down
-                  // ("3 of 4 open") and what the database refuses to exceed.
-                  _ClassSizeEditor(
-                    types: s.offeredSessionTypes,
-                    caps: s.sessionTypeCaps,
-                    semiPrivateCap: s.semiPrivateCap,
-                    onChange: (v) => _set((d) => d.copyWith(sessionTypeCaps: v)),
-                  ),
-                  const SizedBox(height: 10),
                   _CatalogEditor(
                     label: "Disciplines offered",
                     noun: "discipline",
@@ -360,7 +358,8 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                   const SizedBox(height: 6),
                   const Text(
                     "Anything added here shows up for coaches (on their profile and availability), on the schedule when creating a session, "
-                    "and for clients when booking. Assessments are always available to staff regardless of these settings.",
+                    "and for clients when booking. How many clients each type takes is set under Scheduling → Class size limit. "
+                    "Assessments are always available to staff regardless of these settings.",
                     style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
                 ],
