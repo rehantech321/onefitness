@@ -15,7 +15,6 @@ import "../../../data/providers/platform_settings_provider.dart";
 import "availability_block_editor.dart";
 
 const _largeGroupDisciplines = {"hike", "outdoor-hiit"};
-const _regularSessionTypes = ["semi-private", "one-on-one"];
 const _assessmentSessionTypes = ["assessment-call", "assessment-in-person"];
 
 bool _isRegularDiscipline(String d) =>
@@ -208,10 +207,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
         .where((st) => !_isAssessmentType(st))
         .toList();
     if (hasRegular && regularTypesChosen.isEmpty) {
-      return setState(
-        () => _error =
-            "Choose at least one session type (Semi-Private or One-on-One).",
-      );
+      return setState(() => _error = "Choose at least one session type.");
     }
     if (widget.initial == null) {
       if (_pw.text.length < 6)
@@ -424,13 +420,15 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               return Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: kDisciplineLabels.entries
-                  .where((e) => settings.offersDiscipline(e.key))
+              // The gym's own list (Customize Platform → Services), so a
+              // discipline the owner added appears here too. "Programmer" is
+              // a staff role rather than a service, and always shows.
+              children: [...settings.offeredDisciplines, "programmer"]
                   .map(
-                    (e) => _Chip(
-                      label: e.value,
-                      on: _disciplines.contains(e.key),
-                      onTap: () => _toggleDiscipline(e.key),
+                    (d) => _Chip(
+                      label: disciplineLabel(d),
+                      on: _disciplines.contains(d),
+                      onTap: () => _toggleDiscipline(d),
                     ),
                   )
                   .toList(),
@@ -446,8 +444,10 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                 return Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: _regularSessionTypes
-                    .where(settings.offersSessionType)
+                // Every offered type except Large Group, whose availability is
+                // set separately below — including types the owner added.
+                children: settings.offeredSessionTypes
+                    .where((t) => t != "large-group")
                     .map(
                       (st) => _Chip(
                         label: sessionTypeLabel(st),

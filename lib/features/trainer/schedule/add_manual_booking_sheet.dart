@@ -17,8 +17,6 @@ import "../shell/trainer_shell_state.dart";
 import "client_search_picker.dart";
 import "coach_search_picker.dart";
 
-const _sessionTypes = ["semi-private", "one-on-one", "large-group", "assessment-call", "assessment-in-person"];
-const _disciplines = ["personal-training", "boxing", "hike", "outdoor-hiit", "stretch", "stick-mobility", "yoga"];
 
 /// Mirrors AddManualBookingModal.jsx — the coach/owner "book anything" tool.
 /// Bypasses client-facing availability/membership gating on purpose, but
@@ -156,8 +154,8 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
     // Customize Platform → Services narrows the menu. Assessments are staff
     // tools rather than a sold service, so they're never hidden.
     final settings = ref.watch(platformSettingsProvider);
-    final types = _sessionTypes.where((t) => t.startsWith("assessment") || settings.offeredSessionTypes.contains(t)).toList();
-    final disciplines = _disciplines.where(settings.offeredDisciplines.contains).toList();
+    final types = [...settings.offeredSessionTypes, "assessment-call", "assessment-in-person"];
+    final disciplines = settings.offeredDisciplines;
 
     if (_pickingCoach) {
       return PopScope(

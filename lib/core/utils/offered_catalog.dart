@@ -12,6 +12,11 @@ class LiveCatalog {
   static Set<String>? sessionTypes;
   static Set<String>? disciplines;
 
+  /// How many clients each session type takes (Customize Platform →
+  /// Services). Only types the owner gave a limit to are in here; the rest
+  /// fall back to the built-in defaults in capFor.
+  static Map<String, int> caps = const {};
+
   static bool offersType(String sessionType) =>
       sessionType.startsWith("assessment") || sessionTypes == null || sessionTypes!.contains(sessionType);
 

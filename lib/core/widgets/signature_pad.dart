@@ -23,7 +23,17 @@ class SignaturePad extends StatefulWidget {
     required this.onCaptured,
     this.height = 140,
     this.initialTypedText,
+    this.typeLabel = "Type instead",
+    this.drawLabel = "Draw instead",
+    this.typeHint = "Type your name",
   });
+
+  /// What the typed alternative is called here — initials and a signature
+  /// are different things, so each says what it actually captures
+  /// ("Type initials" / "Type your name").
+  final String typeLabel;
+  final String drawLabel;
+  final String typeHint;
 
   final ValueChanged<String?> onCaptured;
   final double height;
@@ -105,10 +115,10 @@ class _SignaturePadState extends State<SignaturePad> {
                         fontSize: 28,
                         color: Colors.black,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         border: InputBorder.none,
-                        hintText: "Type your name",
-                        hintStyle: TextStyle(fontSize: 16, color: Colors.black38),
+                        hintText: widget.typeHint,
+                        hintStyle: const TextStyle(fontSize: 16, color: Colors.black38),
                       ),
                     ),
                   )
@@ -170,7 +180,7 @@ class _SignaturePadState extends State<SignaturePad> {
                 _strokes.clear();
                 _typedController.clear();
               }),
-              child: Text(_typedMode ? "Draw instead" : "Type instead", style: const TextStyle(fontSize: 12)),
+              child: Text(_typedMode ? widget.drawLabel : widget.typeLabel, style: const TextStyle(fontSize: 12)),
             ),
             const Spacer(),
             if (_hasContent)

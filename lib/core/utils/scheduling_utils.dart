@@ -12,6 +12,10 @@ import "offered_catalog.dart";
 /// UI call site — the default here is only the fallback shape (see
 /// core/utils/platform_settings.dart).
 int capFor(String sessionType, {int semiPrivateCap = 4}) {
+  // An owner-set limit wins for any type, including ones they added
+  // themselves (Customize Platform → Services).
+  final own = LiveCatalog.caps[sessionType];
+  if (own != null && own > 0) return own;
   switch (sessionType) {
     case "one-on-one":
       return 1;
@@ -19,8 +23,13 @@ int capFor(String sessionType, {int semiPrivateCap = 4}) {
       return semiPrivateCap;
     case "large-group":
       return 15;
+    case "assessment-call":
+    case "assessment-in-person":
+      return 1;
     default:
-      return 1; // assessment-call / assessment-in-person
+      // A type the owner added with no limit set: treat it as a group class
+      // rather than silently capping it at one client.
+      return LiveCatalog.sessionTypes?.contains(sessionType) == true ? semiPrivateCap : 1;
   }
 }
 

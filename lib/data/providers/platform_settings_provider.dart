@@ -1,6 +1,23 @@
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../core/utils/offered_catalog.dart";
 
+/// One place the gym runs sessions at (Customize Platform → Location). The
+/// first is the main one; the rest are extra sites a session can be created
+/// at. A gym with a single location never sees any of this.
+class GymLocation {
+  const GymLocation({required this.name, this.address = "", this.hint = ""});
+
+  final String name;
+  final String address;
+
+  /// "Park at the back", "Enter through the side door" — shown with the
+  /// address wherever a client sees where their session is.
+  final String hint;
+
+  GymLocation copyWith({String? name, String? address, String? hint}) =>
+      GymLocation(name: name ?? this.name, address: address ?? this.address, hint: hint ?? this.hint);
+}
+
 /// One fee profile (card or ACH) — mirrors platformSettings.js's
 /// `cardFee`/`achFee` shape exactly (payments.cardFee / payments.achFee in
 /// the real `platform_settings` row), including `structure` deciding which
@@ -69,6 +86,8 @@ class PlatformSettings {
     this.businessName = "ONE Fitness",
     this.offeredSessionTypes = const ["semi-private", "one-on-one", "large-group"],
     this.offeredDisciplines = const ["personal-training", "boxing", "hike", "outdoor-hiit", "stretch", "stick-mobility", "yoga"],
+    this.sessionTypeCaps = const {},
+    this.locations = const [],
     this.locationName = "",
     this.locationAddress = "",
     this.locationHint = "",
@@ -143,6 +162,23 @@ class PlatformSettings {
   final List<String> offeredSessionTypes;
   final List<String> offeredDisciplines;
 
+  /// How many clients each session type takes, by type key — the owner's own
+  /// class-size limit, including for types they added themselves. A type with
+  /// no entry here uses the built-in default (see capFor).
+  final Map<String, int> sessionTypeCaps;
+
+  /// Every location the gym runs sessions at. Empty means the single
+  /// location in [locationName]/[locationAddress]/[locationHint] above.
+  final List<GymLocation> locations;
+
+  /// The locations to choose from, always including the main one — so this
+  /// is never empty as long as a location name is set.
+  List<GymLocation> get allLocations => [
+        if (locationName.trim().isNotEmpty)
+          GymLocation(name: locationName, address: locationAddress, hint: locationHint),
+        ...locations.where((l) => l.name.trim().isNotEmpty && l.name != locationName),
+      ];
+
   // ── Location tab ──
   /// The gym's physical location. Shown to clients on sessions whose coach
   /// hasn't set their own, and in the calendar feed.
@@ -201,6 +237,8 @@ class PlatformSettings {
     String? businessName,
     List<String>? offeredSessionTypes,
     List<String>? offeredDisciplines,
+    Map<String, int>? sessionTypeCaps,
+    List<GymLocation>? locations,
     String? locationName,
     String? locationAddress,
     String? locationHint,
@@ -247,6 +285,8 @@ class PlatformSettings {
         businessName: businessName ?? this.businessName,
         offeredSessionTypes: offeredSessionTypes ?? this.offeredSessionTypes,
         offeredDisciplines: offeredDisciplines ?? this.offeredDisciplines,
+        sessionTypeCaps: sessionTypeCaps ?? this.sessionTypeCaps,
+        locations: locations ?? this.locations,
         locationName: locationName ?? this.locationName,
         locationAddress: locationAddress ?? this.locationAddress,
         locationHint: locationHint ?? this.locationHint,
@@ -271,6 +311,7 @@ class PlatformSettingsNotifier extends Notifier<PlatformSettings> {
     state = f(state);
     LiveCatalog.sessionTypes = state.offeredSessionTypes.toSet();
     LiveCatalog.disciplines = state.offeredDisciplines.toSet();
+    LiveCatalog.caps = state.sessionTypeCaps;
   }
 }
 

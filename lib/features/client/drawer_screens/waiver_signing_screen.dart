@@ -58,6 +58,30 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
   String? _error;
   ({String id, String title, String? emailedTo})? _done;
   String? _pdfDataUrl;
+  bool _pdfLoading = false;
+  String? _pdfError;
+
+  /// Fetches the signed PDF (a few hundred KB, so it's not part of the
+  /// signing response) — called once automatically after signing, and again
+  /// by the button if that didn't land.
+  Future<void> _loadPdf(String signatureId) async {
+    setState(() {
+      _pdfLoading = true;
+      _pdfError = null;
+    });
+    try {
+      final pdf = await SupabaseService.loadWaiverSignaturePdf(signatureId);
+      if (!mounted) return;
+      setState(() {
+        _pdfDataUrl = pdf;
+        _pdfError = pdf == null ? "The signed PDF isn't ready yet — try again in a moment, or open the copy emailed to you." : null;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _pdfError = "Couldn't load the PDF — check your connection and tap again.");
+    } finally {
+      if (mounted) setState(() => _pdfLoading = false);
+    }
+  }
 
   List<bool> get _sectionAckFlags => [for (final a in _acks) a != null];
   bool get _allInitialled => _sectionAckFlags.every((f) => f);
@@ -148,8 +172,7 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
           );
       if (!mounted) return;
       setState(() => _done = (id: result.summary.id, title: result.summary.title, emailedTo: result.emailedTo));
-      final pdf = await SupabaseService.loadWaiverSignaturePdf(result.summary.id);
-      if (mounted) setState(() => _pdfDataUrl = pdf);
+      await _loadPdf(result.summary.id);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString().replaceFirst("Exception: ", ""));
     } finally {
@@ -173,6 +196,9 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
+      // Scrolling the page puts the keyboard away — there's a lot to read
+      // and sign below the contact fields.
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -188,7 +214,7 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
           const _StepLabel(n: 2, text: "Emergency contact"),
           Row(
             children: [
-              Expanded(child: FieldLabeled(label: "Name", child: AppField(controller: _ecName, onChanged: (_) => setState(() {})))),
+              Expanded(child: FieldLabeled(label: "Full name", child: AppField(controller: _ecName, onChanged: (_) => setState(() {})))),
               const SizedBox(width: 8),
               Expanded(child: FieldLabeled(label: "Phone", child: AppField(controller: _ecPhone, keyboardType: TextInputType.phone, onChanged: (_) => setState(() {})))),
             ],
@@ -311,9 +337,22 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
           ),
           const SizedBox(height: 10),
           if (_pdfDataUrl != null)
-            DownloadPdfButton(filename: "${done.title}.pdf", pdfDataUrl: _pdfDataUrl!, label: "Open signed PDF")
+            DownloadPdfButton(filename: done.title, pdfDataUrl: _pdfDataUrl!, label: "Open signed PDF")
           else
-            const Center(child: Padding(padding: EdgeInsets.all(8), child: Text("Preparing your PDF…", style: TextStyle(fontSize: 12, color: AppColors.mute)))),
+            // The PDF is fetched right after signing; if that hasn't landed
+            // yet (or the connection dropped), this fetches it on demand
+            // instead of sitting on "Preparing…" with nothing to tap.
+            OutlinedButton.icon(
+              onPressed: _pdfLoading ? null : () => _loadPdf(done.id),
+              style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: const BorderSide(color: AppColors.goldDim)),
+              icon: const Icon(LucideIcons.fileText, size: 14),
+              label: Text(_pdfLoading ? "Preparing your PDF…" : "Open signed PDF", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            ),
+          if (_pdfError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(_pdfError!, style: const TextStyle(fontSize: 11, color: AppColors.errorText)),
+            ),
           const SizedBox(height: 12),
           if (widget.onDone != null)
             BtnGold(full: true, onPressed: widget.onDone, child: Text(widget.doneLabel))
@@ -418,7 +457,14 @@ class _ClauseCard extends StatelessWidget {
                 child: Text("or draw new initials:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
               ),
             ],
-            _PadWithConfirm(height: 170, confirmLabel: "Use these initials", onConfirm: (img) => onAdopt?.call(img, "draw")),
+            _PadWithConfirm(
+              height: 170,
+              confirmLabel: "Use these initials",
+              typeLabel: "Type initials",
+              drawLabel: "Draw initials",
+              typeHint: "Type your initials",
+              onConfirm: (img) => onAdopt?.call(img, "draw"),
+            ),
           ] else if (initials == null)
             const Text("Initial the first section to continue.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic))
           else
@@ -483,7 +529,14 @@ class _SignatureCardState extends State<_SignatureCard> {
                 child: Text("or draw a new signature:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
               ),
             ],
-            _PadWithConfirm(height: 230, confirmLabel: "Use this signature", onConfirm: (img) => widget.onCaptured(img, "draw")),
+            _PadWithConfirm(
+              height: 230,
+              confirmLabel: "Use this signature",
+              typeLabel: "Type your name",
+              drawLabel: "Draw signature",
+              typeHint: "Type your full name",
+              onConfirm: (img) => widget.onCaptured(img, "draw"),
+            ),
           ],
         ],
       ),
@@ -494,10 +547,23 @@ class _SignatureCardState extends State<_SignatureCard> {
 /// A signature pad plus an explicit "use this" button — drawing alone never
 /// counts as signing; the confirm tap is the consent action.
 class _PadWithConfirm extends StatefulWidget {
-  const _PadWithConfirm({required this.height, required this.confirmLabel, required this.onConfirm});
+  const _PadWithConfirm({
+    required this.height,
+    required this.confirmLabel,
+    required this.onConfirm,
+    required this.typeLabel,
+    required this.drawLabel,
+    required this.typeHint,
+  });
   final double height;
   final String confirmLabel;
   final ValueChanged<String> onConfirm;
+
+  /// Initials and a signature capture different things, so each names its
+  /// own typed alternative rather than a generic "Type instead".
+  final String typeLabel;
+  final String drawLabel;
+  final String typeHint;
 
   @override
   State<_PadWithConfirm> createState() => _PadWithConfirmState();
@@ -511,7 +577,13 @@ class _PadWithConfirmState extends State<_PadWithConfirm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SignaturePad(height: widget.height, onCaptured: (img) => setState(() => _drawn = img)),
+        SignaturePad(
+          height: widget.height,
+          typeLabel: widget.typeLabel,
+          drawLabel: widget.drawLabel,
+          typeHint: widget.typeHint,
+          onCaptured: (img) => setState(() => _drawn = img),
+        ),
         const SizedBox(height: 6),
         BtnGold(
           full: true,

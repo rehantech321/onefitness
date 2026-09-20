@@ -19,5 +19,22 @@ const Map<String, String> kSessionTypeLabels = {
   "assessment-in-person": "Intake In-Person",
 };
 
-String disciplineLabel(String key) => kDisciplineLabels[key] ?? key;
-String sessionTypeLabel(String key) => kSessionTypeLabels[key] ?? key;
+/// Anything the owner adds themselves (Customize Platform → Services) has no
+/// entry in the maps above — its key IS its name, so "aerial-yoga" reads back
+/// as "Aerial Yoga".
+String prettifyKey(String key) => key
+    .split(RegExp(r"[-_\s]+"))
+    .where((w) => w.isNotEmpty)
+    .map((w) => w[0].toUpperCase() + w.substring(1))
+    .join(" ");
+
+String disciplineLabel(String key) => kDisciplineLabels[key] ?? prettifyKey(key);
+String sessionTypeLabel(String key) => kSessionTypeLabels[key] ?? prettifyKey(key);
+
+/// The key stored for a name the owner typed — lower-case, dash-separated,
+/// so it round-trips through [prettifyKey] and is safe in a jsonb list.
+String slugifyName(String name) => name
+    .trim()
+    .toLowerCase()
+    .replaceAll(RegExp(r"[^a-z0-9]+"), "-")
+    .replaceAll(RegExp(r"^-+|-+$"), "");

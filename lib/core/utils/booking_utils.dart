@@ -33,11 +33,23 @@ int weekdayOf(String iso) => DateTime.parse(iso).weekday % 7;
 bool isSunday(String iso) => weekdayOf(iso) == 0;
 
 class Offering {
-  const Offering({required this.sessionType, required this.discipline, required this.slot, this.durationMin = 60, this.oneOff = false});
+  const Offering({
+    required this.sessionType,
+    required this.discipline,
+    required this.slot,
+    this.durationMin = 60,
+    this.oneOff = false,
+    this.locationName,
+  });
   final String sessionType;
   final String discipline;
   final int slot;
   final int durationMin;
+
+  /// Which of the gym's locations this session runs at, when the owner
+  /// picked one on Create Session. Null means the coach's own location, or
+  /// the gym's main one.
+  final String? locationName;
 
   /// True for a session the owner created on this specific date rather
   /// than one produced by the coach's weekly pattern.
@@ -54,7 +66,7 @@ List<Offering> trainerOfferings(Trainer t, int weekday) {
     if (!LiveCatalog.offers(block.sessionType, block.discipline)) continue;
     final slots = block.byDay[weekday] ?? const [];
     for (final slot in slots) {
-      out.add(Offering(sessionType: block.sessionType, discipline: block.discipline, slot: slot, durationMin: block.durationMin));
+      out.add(Offering(sessionType: block.sessionType, discipline: block.discipline, slot: slot, durationMin: block.durationMin, locationName: block.locationName));
     }
   }
   return out;
@@ -70,7 +82,7 @@ List<Offering> trainerOfferingsOn(Trainer t, String dateIso) {
   for (final block in t.availability) {
     if (!LiveCatalog.offers(block.sessionType, block.discipline)) continue;
     for (final slot in block.dates[dateIso] ?? const <int>[]) {
-      oneOffs.add(Offering(sessionType: block.sessionType, discipline: block.discipline, slot: slot, durationMin: block.durationMin, oneOff: true));
+      oneOffs.add(Offering(sessionType: block.sessionType, discipline: block.discipline, slot: slot, durationMin: block.durationMin, oneOff: true, locationName: block.locationName));
     }
   }
   final taken = {for (final o in oneOffs) "${o.slot}|${o.sessionType}|${o.discipline}"};

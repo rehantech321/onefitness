@@ -27,19 +27,40 @@ class DownloadPdfButton extends StatefulWidget {
 class _DownloadPdfButtonState extends State<DownloadPdfButton> {
   bool _busy = false;
 
+  /// A name every filesystem accepts: no separators or reserved characters,
+  /// no double spaces, and short enough not to hit a path-length limit —
+  /// a document title like "Liability Waiver, Assumption of Risk, and
+  /// Cancellation Policy Agreement" goes straight into this.
+  static String safeFileName(String name) {
+    var out = name.replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1f]'), " ").replaceAll(RegExp(r"\s+"), " ").trim();
+    if (out.toLowerCase().endsWith(".pdf")) out = out.substring(0, out.length - 4).trim();
+    if (out.length > 60) out = out.substring(0, 60).trim();
+    if (out.isEmpty) out = "document";
+    return "$out.pdf";
+  }
+
   Future<void> _download() async {
     setState(() => _busy = true);
     try {
       final b64 = widget.pdfDataUrl.split(",").last;
       final bytes = base64Decode(b64);
       final dir = await getTemporaryDirectory();
-      final file = File("${dir.path}/${widget.filename}");
+      final file = File("${dir.path}/${safeFileName(widget.filename)}");
       await file.writeAsBytes(bytes);
-      await SharePlus.instance.share(ShareParams(files: [XFile(file.path, mimeType: "application/pdf")], subject: widget.filename));
+      final result = await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path, mimeType: "application/pdf")], subject: widget.filename),
+      );
+      // Nothing was picked (the sheet was dismissed) — say so rather than
+      // leaving the tap looking like it did nothing at all.
+      if (mounted && result.status == ShareResultStatus.unavailable) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No app on this phone can open a PDF — the copy emailed to you opens in any browser.")),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't export — try again.")),
+          SnackBar(content: Text("Couldn't open the PDF: ${e.toString().replaceFirst("Exception: ", "")}")),
         );
       }
     } finally {

@@ -161,6 +161,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     try {
       await SupabaseService.deleteBooking(b.id);
       ref.read(clientBookingsProvider.notifier).cancelBooking(b.id);
+      // The slot list reads the gym-wide list, so it has to drop the booking
+      // too — otherwise the cancelled session keeps showing as "Booked".
+      ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
       // A client cancelling their own booking can only ever be "free" or
       // "late" — a no-show is by definition something the client never
       // reported, so self-cancel never produces one (see cancelWindow).
@@ -226,8 +229,19 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       // original was charged to.
       chargePlanId = _rescheduling!.planId;
     }
+    // Where this session runs: the one the owner created it at (Create
+    // Session → Location), else the coach's own location.
+    final offering = trainerOfferingsOn(t, _date)
+        .where((o) => o.slot == slot && o.sessionType == sessionType && o.discipline == discipline)
+        .firstOrNull;
     setState(() {
-      _picking = PendingPick(trainer: t, sessionType: sessionType, discipline: discipline, slot: slot);
+      _picking = PendingPick(
+        trainer: t,
+        sessionType: sessionType,
+        discipline: discipline,
+        slot: slot,
+        locationName: offering?.locationName,
+      );
       _pickPlanId = chargePlanId;
       _bookingError = null;
     });
@@ -317,7 +331,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       slot: pick.slot,
       sessionType: pick.sessionType,
       discipline: pick.discipline,
-      locationName: pick.trainer.locationName,
+      locationName: pick.locationName ?? pick.trainer.locationName,
       planId: _pickPlanId,
     );
     setState(() {
@@ -326,10 +340,15 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     });
     try {
       final saved = await SupabaseService.insertBooking(draft);
+      // Both lists: the client's own (their upcoming sessions) and the
+      // gym-wide one the slot list reads for "Booked" / "x of 4 open".
+      final allBookings = ref.read(allBookingsProvider.notifier);
+      allBookings.addBooking(saved);
       final rescheduling = _rescheduling;
       if (rescheduling != null) {
         await SupabaseService.deleteBooking(rescheduling.id);
         ref.read(clientBookingsProvider.notifier).reschedule(saved, rescheduling.id);
+        allBookings.cancelBooking(rescheduling.id);
         notifyPush(
           profileId: info.id,
           title: "Session rescheduled",
@@ -385,11 +404,30 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         // — can't get missed and silently look like nothing happened.
         // The database itself refuses a booking without a current waiver
         // signature (enforce_waiver_before_booking) — say so plainly.
-        _bookingError = e.toString().contains("waiver-required")
-            ? "Please sign the waiver under Signatures (in the menu) before booking."
-            : "Couldn't book that session — check your connection and try again.";
+        _bookingError = _bookingErrorMessage(e);
       });
     }
+  }
+
+  /// Why the booking was refused, in the client's terms. The database checks
+  /// capacity, coach double-booking and the waiver as the last word (the app's
+  /// own copy of the schedule can be a few seconds stale), so its reason is
+  /// the accurate one — "check your connection" is only for a real failure.
+  String _bookingErrorMessage(Object e) {
+    final text = e.toString();
+    if (text.contains("waiver-required")) {
+      return "Please sign the waiver under Signatures (in the menu) before booking.";
+    }
+    if (text.contains("already at capacity")) {
+      return "That session just filled up. Pick another time, or join the waitlist.";
+    }
+    if (text.contains("overlaps this time slot")) {
+      return "This coach was just booked for another session at that time. Please pick another time.";
+    }
+    if (text.contains("membership") || text.contains("plan")) {
+      return "That session isn't covered by your current plan — see Membership for what each plan covers.";
+    }
+    return "Couldn't book that session — check your connection and try again.";
   }
 
   @override
@@ -960,11 +998,15 @@ class _JumpToChip extends StatelessWidget {
 }
 
 class _SlotAvailability {
-  _SlotAvailability({required this.trainer, required this.open, required this.cap, required this.mine});
+  _SlotAvailability({required this.trainer, required this.open, required this.cap, required this.mine, this.locationName});
   final Trainer trainer;
   final int open;
   final int cap;
   final bool mine;
+
+  /// Where this session runs, when it was created at one of the gym's other
+  /// locations — otherwise the coach's or the gym's main one.
+  final String? locationName;
 }
 
 class _StepThree extends StatefulWidget {
@@ -1062,7 +1104,7 @@ class _StepThreeState extends State<_StepThree> {
           final used = bookedCount(bookings, t.id, date, o.slot);
           final cap = capFor(o.sessionType, semiPrivateCap: widget.semiPrivateCap);
           final mine = bookings.any((b) => b.clientId == info.id && b.trainerId == t.id && b.date == date && b.slot == o.slot);
-          bySlot.putIfAbsent(o.slot, () => []).add(_SlotAvailability(trainer: t, open: cap - used, cap: cap, mine: mine));
+          bySlot.putIfAbsent(o.slot, () => []).add(_SlotAvailability(trainer: t, open: cap - used, cap: cap, mine: mine, locationName: o.locationName));
         }
       }
       // A session that's already started (or already passed) today can't
@@ -1209,16 +1251,20 @@ class _StepThreeState extends State<_StepThree> {
                                               ),
                                             ),
                                           ),
-                                          // The coach's own location, else the gym's
-                                          // (Customize Platform → Location).
-                                          if ((a.trainer.locationName ?? widget.gymLocationName).isNotEmpty)
+                                          // Where this session runs: the location
+                                          // it was created at, else the coach's
+                                          // own, else the gym's main one.
+                                          if ((a.locationName ?? a.trainer.locationName ?? widget.gymLocationName).isNotEmpty)
                                             Padding(
                                               padding: const EdgeInsets.only(top: 3),
                                               child: Row(
                                                 children: [
                                                   const Icon(LucideIcons.mapPin, size: 11, color: AppColors.mute),
                                                   const SizedBox(width: 3),
-                                                  Text(a.trainer.locationName ?? widget.gymLocationName, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                                                  Text(
+                                                    a.locationName ?? a.trainer.locationName ?? widget.gymLocationName,
+                                                    style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                                  ),
                                                 ],
                                               ),
                                             ),

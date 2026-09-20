@@ -53,6 +53,9 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
     try {
       await SupabaseService.deleteBooking(b.id);
       ref.read(clientBookingsProvider.notifier).cancelBooking(b.id);
+      // Also the gym-wide list the booking slots read, so the cancelled
+      // session stops showing as booked.
+      ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
       // A client cancelling their own booking can only ever be "free" or
       // "late" — a no-show is by definition something the client never
       // reported, so self-cancel never produces one (see cancelWindow).

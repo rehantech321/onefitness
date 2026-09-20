@@ -4,7 +4,9 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/domain_labels.dart";
 import "../../../data/models/blocked_time.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
@@ -94,13 +96,29 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             child: _selectedDate == null
                 ? SingleChildScrollView(
                     padding: const EdgeInsets.all(18),
-                    child: MonthCalendar(
-                      month: _month,
-                      slotsByDate: _slotsByDate(bookings, relevantTrainers),
-                      blockedDates: blocked.map((b) => b.date).toSet(),
-                      availableDates: isOwner ? const {} : _availableDates(relevantTrainers, blocked),
-                      onSelectDay: (d) => _handleSelectDay(d, _bookingsByDate(bookings)),
-                      onChangeMonth: (dir) => setState(() => _month = DateTime(_month.year, _month.month + dir, 1)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        MonthCalendar(
+                          month: _month,
+                          slotsByDate: _slotsByDate(bookings, relevantTrainers),
+                          blockedDates: blocked.map((b) => b.date).toSet(),
+                          availableDates: isOwner ? const {} : _availableDates(relevantTrainers, blocked),
+                          onSelectDay: (d) => _handleSelectDay(d, _bookingsByDate(bookings)),
+                          onChangeMonth: (dir) => setState(() => _month = DateTime(_month.year, _month.month + dir, 1)),
+                        ),
+                        if (isOwner) ...[
+                          const SizedBox(height: 14),
+                          _AdvancedSettings(
+                            onCreateAtLocation: (location) => showCreateSessionSheet(
+                              context,
+                              ref,
+                              initialDate: _selectedDate ?? isoToday(),
+                              initialLocationName: location,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   )
                 : Column(
@@ -182,5 +200,122 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       }
     }
     return {for (final e in out.entries) e.key: (e.value.toList()..sort())};
+  }
+}
+
+/// Owner-only "Advanced settings" under the month view: which location the
+/// gym is scheduling for, and how many clients each session type takes. The
+/// lists themselves are managed in Customize Platform (Location / Services);
+/// this is where sessions are actually created for a location.
+class _AdvancedSettings extends ConsumerStatefulWidget {
+  const _AdvancedSettings({required this.onCreateAtLocation});
+
+  /// Opens Create session with this location pre-picked.
+  final ValueChanged<String?> onCreateAtLocation;
+
+  @override
+  ConsumerState<_AdvancedSettings> createState() => _AdvancedSettingsState();
+}
+
+class _AdvancedSettingsState extends ConsumerState<_AdvancedSettings> {
+  bool _open = false;
+  String? _location;
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(platformSettingsProvider);
+    final locations = settings.allLocations;
+    final selected = _location ?? (locations.isEmpty ? null : locations.first.name);
+    final current = locations.where((l) => l.name == selected).firstOrNull;
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _open = !_open),
+            child: Row(
+              children: [
+                const Icon(LucideIcons.settings2, size: 16, color: AppColors.gold),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text("Advanced settings", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                ),
+                Icon(_open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 16, color: AppColors.mute),
+              ],
+            ),
+          ),
+          if (_open) ...[
+            const SizedBox(height: 12),
+            const Text("LOCATION", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            const SizedBox(height: 6),
+            if (locations.isEmpty)
+              const HintBox(text: "No location set yet — add one under Customize Platform → Location.")
+            else ...[
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final l in locations)
+                    InkWell(
+                      onTap: () => setState(() => _location = l.name),
+                      borderRadius: BorderRadius.circular(7),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: l.name == selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                          border: Border.all(color: l.name == selected ? AppColors.gold : AppColors.line),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Text(
+                          l.name,
+                          style: TextStyle(fontSize: 12, color: l.name == selected ? AppColors.gold : AppColors.txt),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              if ((current?.address ?? "").isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(current!.address, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                ),
+              if ((current?.hint ?? "").isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(current!.hint, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                ),
+              const SizedBox(height: 10),
+              BtnGhost(
+                full: true,
+                onPressed: () => widget.onCreateAtLocation(selected),
+                child: Text("Create session at ${selected ?? "this location"}", style: const TextStyle(fontSize: 12)),
+              ),
+              const SizedBox(height: 12),
+              const Text("CLASS SIZE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+              const SizedBox(height: 6),
+              for (final t in settings.offeredSessionTypes)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(sessionTypeLabel(t), style: const TextStyle(fontSize: 12))),
+                      Text(
+                        "${capFor(t, semiPrivateCap: settings.semiPrivateCap)} client${capFor(t, semiPrivateCap: settings.semiPrivateCap) == 1 ? "" : "s"}",
+                        style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 4),
+              const Text(
+                "Locations, session types and class sizes are set in Customize Platform (Location and Services).",
+                style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
   }
 }

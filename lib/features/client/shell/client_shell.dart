@@ -473,7 +473,12 @@ class _ClientShellState extends ConsumerState<ClientShell> {
               // are: the Booking tab shows a "get a plan" panel instead, and
               // a button that leads to its own "you need a membership"
               // refusal would undercut that.
-              if (screen == "booking" && (heldAccessPlans(info, ref.watch(membershipPlansProvider)).isNotEmpty || info.isStaff))
+              // Also hidden whenever something is open on top of the booking
+              // list — signing a waiver, confirming a pick, cancelling —
+              // where it belongs to a screen the client has stepped past.
+              if (screen == "booking" &&
+                  ref.watch(localBackStackProvider).isEmpty &&
+                  (heldAccessPlans(info, ref.watch(membershipPlansProvider)).isNotEmpty || info.isStaff))
                 Positioned(
                   left: 16,
                   right: 16,

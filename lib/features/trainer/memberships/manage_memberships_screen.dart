@@ -12,7 +12,6 @@ import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 
-const _allowedTypeOptions = ["one-on-one", "semi-private", "large-group"];
 
 /// Mirrors ManageMemberships.jsx + PackageSetupModal.jsx, folded into one
 /// inline form (matching this screen's existing style, rather than
@@ -780,8 +779,9 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
-              // Only types the gym still offers (Customize Platform → Services).
-              children: _allowedTypeOptions.where(ref.watch(platformSettingsProvider).offersSessionType).map((t) {
+              // The gym's own list, so a plan can cover a session type the
+              // owner added (Customize Platform → Services).
+              children: ref.watch(platformSettingsProvider).offeredSessionTypes.map((t) {
                 final selected = _allowedTypes.contains(t);
                 return InkWell(
                   onTap: () => setState(

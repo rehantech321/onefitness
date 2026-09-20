@@ -26,6 +26,7 @@ class AppField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final singleLine = (maxLines ?? 1) == 1;
     return TextField(
       controller: controller,
       obscureText: obscureText,
@@ -34,6 +35,12 @@ class AppField extends StatelessWidget {
       minLines: minLines,
       maxLines: maxLines,
       maxLength: maxLength,
+      // Ways out of the keyboard, since a phone/number pad has no return
+      // key on iOS: tapping anywhere outside the field closes it, and so
+      // does the keyboard's own Done/return key on a single-line field.
+      onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+      textInputAction: singleLine ? TextInputAction.done : null,
+      onSubmitted: singleLine ? (_) => FocusManager.instance.primaryFocus?.unfocus() : null,
       buildCounter: maxLength == null ? null : (context, {required currentLength, required isFocused, maxLength}) => null,
       style: const TextStyle(color: AppColors.txt, fontSize: 14),
       cursorColor: AppColors.gold,

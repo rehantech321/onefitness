@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
+import "../../../core/utils/domain_labels.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
@@ -335,7 +336,17 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     noun: "session type",
                     value: s.offeredSessionTypes,
                     options: _sessionTypeOptions,
+                    labelFor: sessionTypeLabel,
                     onChange: (v) => _set((d) => d.copyWith(offeredSessionTypes: v)),
+                  ),
+                  const SizedBox(height: 10),
+                  // Class size per type — what the booking screen counts down
+                  // ("3 of 4 open") and what the database refuses to exceed.
+                  _ClassSizeEditor(
+                    types: s.offeredSessionTypes,
+                    caps: s.sessionTypeCaps,
+                    semiPrivateCap: s.semiPrivateCap,
+                    onChange: (v) => _set((d) => d.copyWith(sessionTypeCaps: v)),
                   ),
                   const SizedBox(height: 10),
                   _CatalogEditor(
@@ -343,11 +354,13 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     noun: "discipline",
                     value: s.offeredDisciplines,
                     options: _disciplineOptions,
+                    labelFor: disciplineLabel,
                     onChange: (v) => _set((d) => d.copyWith(offeredDisciplines: v)),
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    "Assessments are always available to staff regardless of these settings.",
+                    "Anything added here shows up for coaches (on their profile and availability), on the schedule when creating a session, "
+                    "and for clients when booking. Assessments are always available to staff regardless of these settings.",
                     style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
                 ],
@@ -370,6 +383,14 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                   const Text(
                     "A coach can still set their own location on their profile; that wins for their sessions. This is the gym-wide default.",
                     style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                  ),
+                  const SizedBox(height: 14),
+                  // More than one site: each extra one can be picked when
+                  // creating a session (Schedule → Advanced settings).
+                  _ExtraLocationsEditor(
+                    locations: s.locations,
+                    mainName: s.locationName,
+                    onChange: (v) => _set((d) => d.copyWith(locations: v)),
                   ),
                 ],
                 if (_tab == "clients") ...[
@@ -869,12 +890,44 @@ class _CatalogEditor extends StatelessWidget {
     required this.value,
     required this.options,
     required this.onChange,
+    required this.labelFor,
   });
   final String label;
   final String noun;
   final List<String> value;
+
+  /// The built-in catalogue. Anything the owner added themselves is in
+  /// [value] only, and is listed alongside these.
   final List<(String, String)> options;
   final ValueChanged<List<String>> onChange;
+
+  /// How a key is displayed — handles both built-ins and owner-added keys.
+  final String Function(String) labelFor;
+
+  List<(String, String)> get _all => [
+        ...options,
+        for (final k in value)
+          if (!options.any((o) => o.$1 == k)) (k, labelFor(k)),
+      ];
+
+  Future<void> _add(BuildContext context) async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text("Add a $noun"),
+        content: AppField(controller: controller, placeholder: noun == "discipline" ? "e.g. Pilates" : "e.g. Small Group"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(ctx, controller.text), child: const Text("Add")),
+        ],
+      ),
+    );
+    final key = slugifyName(name ?? "");
+    if (key.isEmpty || value.contains(key)) return;
+    onChange([...value, key]);
+  }
 
   Future<void> _confirmDelete(BuildContext context, (String, String) o) async {
     final ok = await showDialog<bool>(
@@ -901,8 +954,8 @@ class _CatalogEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final offered = options.where((o) => value.contains(o.$1)).toList();
-    final deleted = options.where((o) => !value.contains(o.$1)).toList();
+    final offered = _all.where((o) => value.contains(o.$1)).toList();
+    final deleted = _all.where((o) => !value.contains(o.$1)).toList();
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -910,7 +963,17 @@ class _CatalogEditor extends StatelessWidget {
           Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           if (offered.isEmpty)
-            Text("No ${noun}s offered.", style: const TextStyle(fontSize: 12, color: AppColors.mute))
+            Row(
+              children: [
+                Text("No ${noun}s offered.", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => _add(context),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.gold),
+                  child: Text("Add $noun", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                ),
+              ],
+            )
           else
             Wrap(
               spacing: 6,
@@ -939,6 +1002,27 @@ class _CatalogEditor extends StatelessWidget {
                       ],
                     ),
                   ),
+                // Add one of the gym's own — it then behaves exactly like a
+                // built-in everywhere in the app.
+                InkWell(
+                  onTap: () => _add(context),
+                  borderRadius: BorderRadius.circular(7),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.goldDim),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(LucideIcons.plus, size: 13, color: AppColors.gold),
+                        const SizedBox(width: 4),
+                        Text("Add $noun", style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           if (deleted.isNotEmpty) ...[
@@ -973,6 +1057,181 @@ class _CatalogEditor extends StatelessWidget {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The gym's other locations, beyond the main one above. Each can be picked
+/// when creating a session (Schedule → Advanced settings), and clients see
+/// the location of the session they book.
+class _ExtraLocationsEditor extends StatelessWidget {
+  const _ExtraLocationsEditor({required this.locations, required this.mainName, required this.onChange});
+  final List<GymLocation> locations;
+  final String mainName;
+  final ValueChanged<List<GymLocation>> onChange;
+
+  Future<void> _edit(BuildContext context, {GymLocation? existing, int? index}) async {
+    final name = TextEditingController(text: existing?.name ?? "");
+    final address = TextEditingController(text: existing?.address ?? "");
+    final hint = TextEditingController(text: existing?.hint ?? "");
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text(existing == null ? "Add a location" : "Edit location"),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FieldLabeled(label: "Name", child: AppField(controller: name, placeholder: "e.g. ONE Fitness Burbank")),
+              const SizedBox(height: 8),
+              FieldLabeled(label: "Address", child: AppField(controller: address, placeholder: "Street, city, state, ZIP")),
+              const SizedBox(height: 8),
+              FieldLabeled(label: "Parking / arrival notes", child: AppField(controller: hint, placeholder: "e.g. Park in the rear lot")),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Save")),
+        ],
+      ),
+    );
+    if (saved != true || name.text.trim().isEmpty) return;
+    final next = [...locations];
+    final entry = GymLocation(name: name.text.trim(), address: address.text.trim(), hint: hint.text.trim());
+    if (index == null) {
+      next.add(entry);
+    } else {
+      next[index] = entry;
+    }
+    onChange(next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Other locations", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Text(
+            mainName.trim().isEmpty
+                ? "Set the main location above first."
+                : "$mainName is the main one. Add any other site you run sessions at — you pick the location when creating a session.",
+            style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+          ),
+          const SizedBox(height: 8),
+          for (var i = 0; i < locations.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.mapPin, size: 15, color: AppColors.gold),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(locations[i].name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        if (locations[i].address.isNotEmpty)
+                          Text(locations[i].address, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: "Edit",
+                    onPressed: () => _edit(context, existing: locations[i], index: i),
+                    icon: const Icon(LucideIcons.pencil, size: 15, color: AppColors.mute),
+                  ),
+                  IconButton(
+                    tooltip: "Remove",
+                    onPressed: () => onChange([...locations]..removeAt(i)),
+                    icon: const Icon(LucideIcons.trash2, size: 15, color: AppColors.mute),
+                  ),
+                ],
+              ),
+            ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => _edit(context),
+              style: TextButton.styleFrom(foregroundColor: AppColors.gold, padding: EdgeInsets.zero),
+              icon: const Icon(LucideIcons.plus, size: 14),
+              label: const Text("Add location", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// How many clients fit in each session type — the number the booking screen
+/// counts down ("3 of 4 open") and the database enforces on every booking.
+/// One-on-one and the assessments are fixed at one by definition.
+class _ClassSizeEditor extends StatelessWidget {
+  const _ClassSizeEditor({
+    required this.types,
+    required this.caps,
+    required this.semiPrivateCap,
+    required this.onChange,
+  });
+  final List<String> types;
+  final Map<String, int> caps;
+  final int semiPrivateCap;
+  final ValueChanged<Map<String, int>> onChange;
+
+  static const _fixedAtOne = {"one-on-one", "assessment-call", "assessment-in-person"};
+
+  int _current(String type) =>
+      caps[type] ?? (type == "large-group" ? 15 : (type == "semi-private" ? semiPrivateCap : semiPrivateCap));
+
+  @override
+  Widget build(BuildContext context) {
+    final editable = types.where((t) => !_fixedAtOne.contains(t)).toList();
+    if (editable.isEmpty) return const SizedBox.shrink();
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Class size limit", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          const Text(
+            "The most clients one session of each type takes. Booking stops at this number.",
+            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+          ),
+          const SizedBox(height: 8),
+          for (final t in editable)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(child: Text(sessionTypeLabel(t), style: const TextStyle(fontSize: 13))),
+                  SizedBox(
+                    width: 70,
+                    child: _StableTextField(
+                      value: "${_current(t)}",
+                      keyboardType: TextInputType.number,
+                      onChanged: (v) {
+                        final n = int.tryParse(v.trim());
+                        if (n == null || n < 1) return;
+                        onChange({...caps, t: n});
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text("clients", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                ],
+              ),
+            ),
+          const Text(
+            "One-on-One and assessments are always one client.",
+            style: TextStyle(fontSize: 11, color: AppColors.mute),
+          ),
         ],
       ),
     );

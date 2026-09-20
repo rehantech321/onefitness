@@ -1158,6 +1158,10 @@ class SupabaseService {
           defaults.bookingCoachScope,
       semiPrivateCap:
           _asInt(scheduling["semiPrivateCap"]) ?? defaults.semiPrivateCap,
+      sessionTypeCaps: {
+        for (final e in ((scheduling["sessionTypeCaps"] as Map?) ?? const {}).entries)
+          if (_asInt(e.value) != null) e.key.toString(): _asInt(e.value)!,
+      },
       twoFactorRequirement:
           access["twoFactorRequirement"] as String? ??
           defaults.twoFactorRequirement,
@@ -1217,6 +1221,16 @@ class SupabaseService {
       locationName: location["locationName"] as String? ?? defaults.locationName,
       locationAddress: location["locationAddress"] as String? ?? defaults.locationAddress,
       locationHint: location["locationHint"] as String? ?? defaults.locationHint,
+      // Every location the gym runs sessions at. The main one above is
+      // always the first, so a gym with one location behaves as before.
+      locations: [
+        for (final l in ((location["locations"] as List?) ?? const []).whereType<Map>())
+          GymLocation(
+            name: l["name"] as String? ?? "",
+            address: l["address"] as String? ?? "",
+            hint: l["hint"] as String? ?? "",
+          ),
+      ],
       meritBadgeProgressWeeks:
           _asInt(workouts["meritBadgeProgressWeeks"]) ??
           defaults.meritBadgeProgressWeeks,
@@ -1483,6 +1497,7 @@ class SupabaseService {
     ),
     if (b.dates.isNotEmpty) "dates": b.dates,
     if (b.durationMin != 60) "durationMin": b.durationMin,
+    if (b.locationName != null) "locationName": b.locationName,
   };
 
   /// `client_records.data` is a single JSONB column holding many features'
@@ -2440,6 +2455,9 @@ class SupabaseService {
       "locationName": s.locationName,
       "locationAddress": s.locationAddress,
       "locationHint": s.locationHint,
+      "locations": [
+        for (final l in s.locations) {"name": l.name, "address": l.address, "hint": l.hint},
+      ],
     },
     "workouts": {
       "businessName": s.businessName,
@@ -2467,6 +2485,9 @@ class SupabaseService {
       "blockRescheduleInWindow": s.blockRescheduleInWindow,
       "maxBookingHorizonDays": s.maxBookingHorizonDays,
       "bookingCoachScope": s.bookingCoachScope,
+      // Class size per session type — read back by capFor in the app and by
+      // enforce_booking_limits in the database, so both agree.
+      "sessionTypeCaps": s.sessionTypeCaps,
     },
   };
 
@@ -3395,6 +3416,7 @@ class SupabaseService {
             byDay: byDay,
             dates: dates,
             durationMin: _asInt(block["durationMin"]) ?? 60,
+            locationName: block["locationName"] as String?,
           ),
         );
       } catch (e) {

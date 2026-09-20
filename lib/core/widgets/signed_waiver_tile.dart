@@ -80,7 +80,7 @@ class _SignedWaiverTileState extends State<SignedWaiverTile> {
             ),
           const SizedBox(height: 10),
           if (_pdf != null)
-            DownloadPdfButton(filename: "${widget.title}.pdf", pdfDataUrl: _pdf!, label: "Open signed PDF")
+            DownloadPdfButton(filename: widget.title, pdfDataUrl: _pdf!, label: "Open signed PDF")
           else if (_missing)
             const Text("No PDF on file for this signature (signed before PDFs were stored).", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic))
           else

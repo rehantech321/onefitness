@@ -8,11 +8,15 @@ import "../../../core/widgets/widgets.dart";
 import "../../../data/models/trainer.dart";
 
 class PendingPick {
-  const PendingPick({required this.trainer, required this.sessionType, required this.discipline, required this.slot});
+  const PendingPick({required this.trainer, required this.sessionType, required this.discipline, required this.slot, this.locationName});
   final Trainer trainer;
   final String sessionType;
   final String discipline;
   final int slot;
+
+  /// Where this particular session runs, when the owner created it at one of
+  /// the gym's other locations. Null falls back to the coach's location.
+  final String? locationName;
 }
 
 /// Mirrors the `picking` step of BookSession.jsx — trainer/time summary,

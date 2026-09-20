@@ -14,8 +14,6 @@ import "../../../data/providers/trainer_providers.dart";
 import "../shell/trainer_shell_state.dart";
 import "coach_search_picker.dart";
 
-const _sessionTypes = ["semi-private", "one-on-one", "large-group"];
-const _disciplines = ["personal-training", "boxing", "hike", "outdoor-hiit", "stretch", "stick-mobility", "yoga"];
 
 /// One time window a session will run at. [end] null means one hour.
 class _TimeEntry {
@@ -33,7 +31,14 @@ class _TimeEntry {
 /// Stored as date-specific entries on the coach's availability blocks (see
 /// AvailabilityBlock.dates) rather than as bookings — a booking needs a
 /// client, and a session nobody has booked yet has none.
-Future<void> showCreateSessionSheet(BuildContext context, WidgetRef ref, {required String initialDate}) {
+Future<void> showCreateSessionSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required String initialDate,
+  /// Pre-picks one of the gym's locations — set when opened from the
+  /// schedule's Advanced settings for a specific location.
+  String? initialLocationName,
+}) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -41,14 +46,15 @@ Future<void> showCreateSessionSheet(BuildContext context, WidgetRef ref, {requir
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
     builder: (ctx) => Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-      child: _CreateSessionBody(initialDate: initialDate),
+      child: _CreateSessionBody(initialDate: initialDate, initialLocationName: initialLocationName),
     ),
   );
 }
 
 class _CreateSessionBody extends ConsumerStatefulWidget {
-  const _CreateSessionBody({required this.initialDate});
+  const _CreateSessionBody({required this.initialDate, this.initialLocationName});
   final String initialDate;
+  final String? initialLocationName;
 
   @override
   ConsumerState<_CreateSessionBody> createState() => _CreateSessionBodyState();
@@ -57,6 +63,10 @@ class _CreateSessionBody extends ConsumerStatefulWidget {
 class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
   String _sessionType = "semi-private";
   String _discipline = "personal-training";
+
+  /// Which of the gym's locations these sessions run at — null until the
+  /// owner picks one, which means the gym's main location.
+  late String? _locationName = widget.initialLocationName;
   Trainer? _trainer;
   bool _pickingCoach = false;
   late final List<String> _dates = [
@@ -92,8 +102,22 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
       byDuration.putIfAbsent(t.durationMin, () => []).add(t.start);
     }
     byDuration.forEach((duration, starts) {
-      final i = blocks.indexWhere((b) => b.sessionType == _sessionType && b.discipline == _discipline && b.durationMin == duration);
-      final base = i >= 0 ? blocks[i] : AvailabilityBlock(sessionType: _sessionType, discipline: _discipline, byDay: const {}, durationMin: duration);
+      // Location is part of what makes a block distinct — the same class at
+      // two sites is two sessions, and each keeps its own location.
+      final i = blocks.indexWhere((b) =>
+          b.sessionType == _sessionType &&
+          b.discipline == _discipline &&
+          b.durationMin == duration &&
+          b.locationName == _locationName);
+      final base = i >= 0
+          ? blocks[i]
+          : AvailabilityBlock(
+              sessionType: _sessionType,
+              discipline: _discipline,
+              byDay: const {},
+              durationMin: duration,
+              locationName: _locationName,
+            );
       final dates = {for (final e in base.dates.entries) e.key: [...e.value]};
       for (final d in _dates) {
         final list = dates.putIfAbsent(d, () => []);
@@ -157,8 +181,10 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
     // Customize Platform → Services decides what's offered; a type or
     // discipline switched off there isn't on the menu here.
     final settings = ref.watch(platformSettingsProvider);
-    final types = _sessionTypes.where(settings.offeredSessionTypes.contains).toList();
-    final disciplines = _disciplines.where(settings.offeredDisciplines.contains).toList();
+    // Straight from the gym's own lists, so anything the owner added there
+    // can be scheduled here too.
+    final types = settings.offeredSessionTypes;
+    final disciplines = settings.offeredDisciplines;
 
     if (_pickingCoach) {
       return PopScope(
@@ -240,6 +266,17 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
               ),
             ),
           ),
+          // Only worth asking once the gym has more than one location.
+          if (settings.allLocations.length > 1) ...[
+            const SizedBox(height: 12),
+            const Text("LOCATION", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            const SizedBox(height: 6),
+            _Chips(
+              value: _locationName ?? settings.allLocations.first.name,
+              options: [for (final l in settings.allLocations) (l.name, l.name)],
+              onChanged: (v) => setState(() => _locationName = v),
+            ),
+          ],
           const SizedBox(height: 14),
           _ListHeader(label: "DATES", action: "Add date", onAdd: _addDate),
           const SizedBox(height: 6),

@@ -8,6 +8,7 @@ class AvailabilityBlock {
     required this.byDay,
     this.dates = const {},
     this.durationMin = 60,
+    this.locationName,
   });
 
   final String sessionType;
@@ -25,12 +26,23 @@ class AvailabilityBlock {
   /// end time when creating it.
   final int durationMin;
 
-  AvailabilityBlock copyWith({Map<int, List<int>>? byDay, Map<String, List<int>>? dates, int? durationMin}) =>
+  /// Which of the gym's locations these sessions run at (Customize Platform
+  /// → Location). Null means the gym's main location — which is also what
+  /// every session created before there was more than one location means.
+  final String? locationName;
+
+  AvailabilityBlock copyWith({
+    Map<int, List<int>>? byDay,
+    Map<String, List<int>>? dates,
+    int? durationMin,
+    String? locationName,
+  }) =>
       AvailabilityBlock(
         sessionType: sessionType,
         discipline: discipline,
         byDay: byDay ?? this.byDay,
         dates: dates ?? this.dates,
         durationMin: durationMin ?? this.durationMin,
+        locationName: locationName ?? this.locationName,
       );
 }
