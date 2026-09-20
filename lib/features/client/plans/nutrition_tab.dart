@@ -1,11 +1,13 @@
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/nutrition_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/nutrition_plan.dart";
 import "../../../data/providers/client_providers.dart";
+import "client_meal_picker.dart";
 
 /// Mirrors NutritionScreenReadOnly.jsx: training/rest macro targets, a
 /// reference-only calorie budget panel, suggested meals per category, a
@@ -20,6 +22,40 @@ class NutritionTab extends ConsumerStatefulWidget {
 class _NutritionTabState extends ConsumerState<NutritionTab> {
   String _dayType = "training";
   bool _copied = false;
+
+  /// Saves the client's own picks for one category, and keeps the screen in
+  /// step whether or not the write reaches the server.
+  Future<void> _saveChoices(String category, List<NutritionMeal> meals) async {
+    final id = ref.read(clientInfoProvider).id;
+    final next = {...ref.read(clientRecordProvider).myMeals, category: meals};
+    ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(myMeals: next));
+    try {
+      await SupabaseService.updateClientChosenMeals(id, next);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't save your meal — check your connection and try again.")),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickMeal(String category, String label) async {
+    final n = ref.read(clientRecordProvider).nutrition;
+    final budget = int.tryParse(
+      ((_dayType == "training" ? n?.mealBudgets.training : n?.mealBudgets.rest) ?? const {})[category] ?? "",
+    );
+    final picked = await showClientMealPicker(context, ref, category: category, label: label, budget: budget);
+    if (picked == null) return;
+    final current = ref.read(clientRecordProvider).myMeals[category] ?? const <NutritionMeal>[];
+    if (current.any((m) => m.id == picked.id)) return;
+    await _saveChoices(category, [...current, picked]);
+  }
+
+  Future<void> _removeChoice(String category, NutritionMeal meal) async {
+    final current = ref.read(clientRecordProvider).myMeals[category] ?? const <NutritionMeal>[];
+    await _saveChoices(category, current.where((m) => m.id != meal.id).toList());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +73,12 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
     final hasTargets = targets.values.any((v) => v != null && v.isNotEmpty);
     final dailyCal = int.tryParse(targets["calories"] ?? "") ?? 0;
 
-    final allMeals = [...n.breakfast, ...n.lunch, ...n.dinner, ...n.snacks, ...n.smoothies];
+    // The grocery list covers what the client actually plans to eat, so
+    // their own picks belong in it as much as the coach's suggestions.
+    final allMeals = [
+      ...n.breakfast, ...n.lunch, ...n.dinner, ...n.snacks, ...n.smoothies,
+      ...client.myMeals.values.expand((m) => m),
+    ];
     final grocery = buildGroceryList(allMeals);
 
     return SingleChildScrollView(
@@ -96,9 +137,18 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
             const SizedBox(height: 18),
           ],
 
-          _MealSection(title: "Breakfast", meals: n.breakfast),
-          _MealSection(title: "Lunch", meals: n.lunch),
-          _MealSection(title: "Dinner", meals: n.dinner),
+          // Once the program has targets and budgets, the client picks their
+          // own meals for each of the three main meals — against that meal's
+          // calorie budget — alongside whatever their coach suggested.
+          for (final c in const [("breakfast", "Breakfast"), ("lunch", "Lunch"), ("dinner", "Dinner")])
+            _MealSection(
+              title: c.$2,
+              meals: c.$1 == "breakfast" ? n.breakfast : (c.$1 == "lunch" ? n.lunch : n.dinner),
+              chosen: client.myMeals[c.$1] ?? const [],
+              budget: int.tryParse((_dayType == "training" ? n.mealBudgets.training : n.mealBudgets.rest)[c.$1] ?? ""),
+              onChoose: hasTargets ? () => _pickMeal(c.$1, c.$2) : null,
+              onRemoveChoice: (meal) => _removeChoice(c.$1, meal),
+            ),
           if (n.snacks.isNotEmpty || n.smoothies.isNotEmpty)
             _MealSection(title: "Snacks and/or Smoothies", meals: [...n.snacks, ...n.smoothies]),
 
@@ -317,19 +367,95 @@ class _BudgetBox extends StatelessWidget {
 }
 
 class _MealSection extends StatelessWidget {
-  const _MealSection({required this.title, required this.meals});
+  const _MealSection({
+    required this.title,
+    required this.meals,
+    this.chosen = const [],
+    this.budget,
+    this.onChoose,
+    this.onRemoveChoice,
+  });
   final String title;
   final List<NutritionMeal> meals;
 
+  /// Meals the client picked themselves for this category.
+  final List<NutritionMeal> chosen;
+
+  /// The calorie budget for this meal, when the program set one — shown on
+  /// the picker so a client can pick something that fits.
+  final int? budget;
+  final VoidCallback? onChoose;
+  final ValueChanged<NutritionMeal>? onRemoveChoice;
+
   @override
   Widget build(BuildContext context) {
-    if (meals.isEmpty) return const SizedBox.shrink();
+    if (meals.isEmpty && chosen.isEmpty && onChoose == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionLabel(title),
+          Row(
+            children: [
+              Expanded(child: SectionLabel(title)),
+              if (onChoose != null)
+                TextButton.icon(
+                  onPressed: onChoose,
+                  style: TextButton.styleFrom(foregroundColor: AppColors.gold, padding: EdgeInsets.zero),
+                  icon: const Icon(Icons.add, size: 15),
+                  label: Text(
+                    budget != null ? "Choose your own (~$budget kcal)" : "Choose your own",
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
+            ],
+          ),
+          // The client's own picks first — they're what that person actually
+          // plans to eat; the coach's suggestions stay below.
+          ...chosen.map((meal) => AppCard(
+                borderColor: AppColors.gold,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: Text(meal.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
+                        const Text("Your pick", style: TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.w700)),
+                        if (onRemoveChoice != null)
+                          IconButton(
+                            tooltip: "Remove",
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => onRemoveChoice!(meal),
+                            icon: const Icon(Icons.close, size: 16, color: AppColors.mute),
+                          ),
+                      ],
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        _MacroChip(label: "Cal", value: "${meal.calories}"),
+                        _MacroChip(label: "Pg", value: "${meal.protein.toInt()}"),
+                        _MacroChip(label: "Cg", value: "${meal.carbs.toInt()}"),
+                        _MacroChip(label: "Fg", value: "${meal.fats.toInt()}"),
+                      ],
+                    ),
+                    ...meal.ingredients.map((ing) => Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(ing.item, style: const TextStyle(fontSize: 13, color: AppColors.txt)),
+                              Text(
+                                "${fmtQty(ing.qty)}${ing.unit != null ? ' ${ing.unit}' : ''}",
+                                style: const TextStyle(fontSize: 13, color: AppColors.mute),
+                              ),
+                            ],
+                          ),
+                        )),
+                  ],
+                ),
+              )),
           ...meals.map((meal) => AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -38,6 +38,7 @@ class ClientRecord {
     this.trainerNotes = const [],
     this.sessionFeedback = const [],
     this.savedNutritionPrograms = const [],
+    this.myMeals = const {},
     this.challengeBadges = const [],
     this.adoptedSignatureImage,
     this.adoptedInitialsImage,
@@ -118,6 +119,11 @@ class ClientRecord {
   /// already applied (client.savedNutritionPrograms) — see NutritionBuilder.
   final List<NutritionProgramEntry> savedNutritionPrograms;
 
+  /// Meals the CLIENT picked for themselves, by category (breakfast /
+  /// lunch / dinner). Their coach's suggestions stay as they are — these sit
+  /// alongside them, chosen against the calorie budget for that meal.
+  final Map<String, List<NutritionMeal>> myMeals;
+
   /// Challenge badges awarded to this client (client.challengeBadges) — a
   /// winner badge and/or a "complete-{challengeId}" participation badge per
   /// finished challenge, written by a coach's "Award badges" action.
@@ -161,6 +167,7 @@ class ClientRecord {
     List<TrainerNote>? trainerNotes,
     List<SessionFeedbackEntry>? sessionFeedback,
     List<NutritionProgramEntry>? savedNutritionPrograms,
+    Map<String, List<NutritionMeal>>? myMeals,
     List<ChallengeBadge>? challengeBadges,
     bool? tourSeenDashboard,
     bool? tourSeenDrawer,
@@ -191,6 +198,7 @@ class ClientRecord {
         trainerNotes: trainerNotes ?? this.trainerNotes,
         sessionFeedback: sessionFeedback ?? this.sessionFeedback,
         savedNutritionPrograms: savedNutritionPrograms ?? this.savedNutritionPrograms,
+        myMeals: myMeals ?? this.myMeals,
         challengeBadges: challengeBadges ?? this.challengeBadges,
         adoptedSignatureImage: adoptedSignatureImage ?? this.adoptedSignatureImage,
         adoptedInitialsImage: adoptedInitialsImage ?? this.adoptedInitialsImage,

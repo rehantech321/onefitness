@@ -1839,6 +1839,19 @@ class SupabaseService {
     "nutrition": _nutritionPlanToJson(plan),
   });
 
+  /// `client_records.data.myMeals` — the meals a client picked for
+  /// themselves per category, against the calorie budget their coach's
+  /// program set. Written by the client from their own Nutrition tab (they
+  /// may update their own record — see client_records_update_self_or_staff).
+  static Future<void> updateClientChosenMeals(
+    String profileId,
+    Map<String, List<NutritionMeal>> byCategory,
+  ) => upsertClientRecordPatch(profileId, {
+    "myMeals": {
+      for (final e in byCategory.entries) e.key: e.value.map(_nutritionMealToJson).toList(),
+    },
+  });
+
   /// `client_records.data.savedNutritionPrograms` — the AI-draft review
   /// queue plus any coach-saved target sets. Whole-list replace (same
   /// pattern as updateClientSavedPrograms) — callers pass the full list
@@ -3552,6 +3565,10 @@ class SupabaseService {
         }),
       ),
       nutrition: _nutritionPlanFromJson(j["nutrition"]),
+      myMeals: {
+        for (final e in ((j["myMeals"] as Map?) ?? const {}).entries)
+          e.key.toString(): _nutritionMealListFromJson(e.value),
+      },
       savedNutritionPrograms: _safeMap(
         ((j["savedNutritionPrograms"] as List?) ?? const [])
             .whereType<Map>()
