@@ -80,11 +80,9 @@ class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 10.5, color: AppColors.mute),
                   ),
-                  if (charged)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 2),
-                      child: Text("⚠ Fee window", maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 9, color: Color(0xFFD68A4F), fontWeight: FontWeight.w700)),
-                    ),
+                  // The card's orange border, and the "Late Cancel" button
+                  // itself, already say a fee applies — a label on top of
+                  // that only crowded a deliberately small tile.
                   if (_expanded)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),

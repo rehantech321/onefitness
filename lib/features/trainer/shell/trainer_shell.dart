@@ -69,6 +69,7 @@ const _titles = {
   "equipment": "Equipment Library",
   "builderWorkout": "Build Workout Program",
   "builderNutrition": "Build Nutrition Program",
+  "support": "Support",
 };
 
 /// Mirrors App.jsx's trainer-side chrome: top bar (hamburger + title),
@@ -107,9 +108,15 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
       return;
     }
     // Back retraces the screens actually visited, one at a time, for bottom
-    // tabs and drawer screens alike. With nothing left to retrace, the
-    // PopScope below lets the system back exit the app.
-    ref.read(trainerModeProvider.notifier).goBack();
+    // tabs and drawer screens alike.
+    final nav = ref.read(trainerModeProvider.notifier);
+    if (nav.canGoBack) {
+      nav.goBack();
+      return;
+    }
+    // Nothing left to retrace and not on Dashboard — back goes home rather
+    // than doing nothing. On Dashboard the PopScope lets it exit the app.
+    if (ref.read(trainerModeProvider) != "dashboard") nav.go("dashboard");
   }
 
   void _onPointerDown(PointerDownEvent e) {
@@ -157,10 +164,12 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
     // whether system back should exit the app.
     final hasLocalBack = ref.watch(localBackStackProvider).isNotEmpty;
 
+    // A page other than Dashboard always has somewhere to go back to — home
+    // at worst — so back only exits the app from Dashboard itself.
+    final showBack = mode != "dashboard" || canGoBack || hasLocalBack;
+
     return PopScope(
-      // Exits only when there's genuinely nothing to go back to — no screen
-      // history and no open sub-view.
-      canPop: !canGoBack && !hasLocalBack,
+      canPop: mode == "dashboard" && !canGoBack && !hasLocalBack,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         _handleBack();
@@ -201,7 +210,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                             constraints: const BoxConstraints(),
                           ),
                         ),
-                        if (canGoBack || hasLocalBack) ...[
+                        if (showBack) ...[
                           const SizedBox(width: 6),
                           IconButton(
                             onPressed: _handleBack,
@@ -262,6 +271,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                       "platformSettings" when isOwner => const CustomizePlatformScreen(),
                       "challenges" => const CoachChallengesScreen(),
                       "selfbook" => const SelfBookScreen(),
+                      "support" => const SupportScreen(),
                       _ => PlaceholderScreen(title: _titles[mode] ?? mode),
                     },
                   ),
@@ -463,6 +473,7 @@ class _TrainerDrawer extends ConsumerWidget {
                 ),
               ],
             ),
+            _DrawerEntry(LucideIcons.phone, "Support", "support", true),
           ]
         : [
             _DrawerEntry(LucideIcons.dumbbell, "Dashboard", "dashboard", true),
@@ -477,6 +488,7 @@ class _TrainerDrawer extends ConsumerWidget {
             _DrawerEntry(LucideIcons.calendar, "Calendar Sync", "calendarsync", true),
             _DrawerEntry(LucideIcons.award, "Merit Badges", "coachbadges", true),
             _DrawerEntry(LucideIcons.clipboardCheck, "My Pay", "mypay", true),
+            _DrawerEntry(LucideIcons.phone, "Support", "support", true),
           ];
 
     return Drawer(

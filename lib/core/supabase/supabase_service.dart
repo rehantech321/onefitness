@@ -1221,6 +1221,7 @@ class SupabaseService {
       locationName: location["locationName"] as String? ?? defaults.locationName,
       locationAddress: location["locationAddress"] as String? ?? defaults.locationAddress,
       locationHint: location["locationHint"] as String? ?? defaults.locationHint,
+      supportPhone: location["supportPhone"] as String? ?? defaults.supportPhone,
       // Every location the gym runs sessions at. The main one above is
       // always the first, so a gym with one location behaves as before.
       locations: [
@@ -2471,6 +2472,7 @@ class SupabaseService {
       "locations": [
         for (final l in s.locations) {"name": l.name, "address": l.address, "hint": l.hint},
       ],
+      "supportPhone": s.supportPhone,
     },
     "workouts": {
       "businessName": s.businessName,
@@ -3209,6 +3211,9 @@ class SupabaseService {
           termMonths: _asInt(p["termMonths"]),
           subscriptionId: p["subscriptionId"] as String?,
           cancelsAt: p["cancelsAt"] as String?,
+          rolloverSessions: _asInt(p["rolloverSessions"]) ?? 0,
+          rolloverMonth: p["rolloverMonth"] as String?,
+          endsAt: p["endsAt"] as String?,
         ),
       ),
       membershipPaused: c["membership_paused"] as bool? ?? false,
@@ -3240,6 +3245,15 @@ class SupabaseService {
   /// App (push) notifications on/off — sendPush skips anyone with this off.
   static Future<void> updatePushOptIn(String profileId, bool optIn) =>
       client.from("profiles").update({"push_opt_in": optIn}).eq("id", profileId);
+
+  /// What Stripe's Payment Sheet needs to save a card without charging it
+  /// (Payment Details → Add card).
+  static Future<Map<String, dynamic>> createSetupIntent() async {
+    final res = await client.functions.invoke("create-setup-intent", body: const {});
+    final data = res.data;
+    if (data is Map && data["error"] != null) throw Exception(data["error"]);
+    return (data as Map).cast<String, dynamic>();
+  }
 
   /// Cards / bank accounts saved on the client's Stripe Customer — saved
   /// automatically when they pay for a membership or package. Pass

@@ -16,7 +16,11 @@ import "waiver_signing_screen.dart";
 /// listing whatever the client still needs to sign, since a document
 /// they've never seen can't very well appear in their own signed-docs list.
 class SignaturesScreen extends ConsumerStatefulWidget {
-  const SignaturesScreen({super.key});
+  const SignaturesScreen({super.key, this.onGoBooking});
+
+  /// Where the client lands once they've signed — Booking, since signing is
+  /// what stood between them and booking a session.
+  final VoidCallback? onGoBooking;
 
   @override
   ConsumerState<SignaturesScreen> createState() => _SignaturesScreenState();
@@ -36,7 +40,20 @@ class _SignaturesScreenState extends ConsumerState<SignaturesScreen> {
       return LocalBackScope(
         isOpen: true,
         onBack: () => setState(() => _signing = null),
-        child: WaiverSigningScreen(doc: _signing!, onBack: () => setState(() => _signing = null)),
+        child: WaiverSigningScreen(
+          doc: _signing!,
+          onBack: () => setState(() => _signing = null),
+          // Straight to Booking once it's signed — that's what they were
+          // being kept from. Falls back to this list if Booking isn't
+          // reachable from here.
+          onDone: widget.onGoBooking == null
+              ? null
+              : () {
+                  setState(() => _signing = null);
+                  widget.onGoBooking!();
+                },
+          doneLabel: widget.onGoBooking == null ? "Done" : "Go to Booking",
+        ),
       );
     }
 

@@ -88,6 +88,7 @@ class PlatformSettings {
     this.offeredDisciplines = const ["personal-training", "boxing", "hike", "outdoor-hiit", "stretch", "stick-mobility", "yoga"],
     this.sessionTypeCaps = const {},
     this.locations = const [],
+    this.supportPhone = "",
     this.locationName = "",
     this.locationAddress = "",
     this.locationHint = "",
@@ -171,6 +172,11 @@ class PlatformSettings {
   /// location in [locationName]/[locationAddress]/[locationHint] above.
   final List<GymLocation> locations;
 
+  /// The number clients and coaches reach the gym on — the Chat screen's
+  /// call button and the Support page both dial this, so it's changed in one
+  /// place. Empty hides both.
+  final String supportPhone;
+
   /// The locations to choose from, always including the main one — so this
   /// is never empty as long as a location name is set.
   List<GymLocation> get allLocations => [
@@ -239,6 +245,7 @@ class PlatformSettings {
     List<String>? offeredDisciplines,
     Map<String, int>? sessionTypeCaps,
     List<GymLocation>? locations,
+    String? supportPhone,
     String? locationName,
     String? locationAddress,
     String? locationHint,
@@ -287,6 +294,7 @@ class PlatformSettings {
         offeredDisciplines: offeredDisciplines ?? this.offeredDisciplines,
         sessionTypeCaps: sessionTypeCaps ?? this.sessionTypeCaps,
         locations: locations ?? this.locations,
+        supportPhone: supportPhone ?? this.supportPhone,
         locationName: locationName ?? this.locationName,
         locationAddress: locationAddress ?? this.locationAddress,
         locationHint: locationHint ?? this.locationHint,

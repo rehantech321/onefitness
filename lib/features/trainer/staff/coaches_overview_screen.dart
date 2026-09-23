@@ -6,6 +6,7 @@ import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/attention_utils.dart";
 import "../../../core/utils/booking_utils.dart" show addDaysIso;
@@ -184,7 +185,12 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
     final statusText = isUsed ? "Already used" : isExpired ? "Expired" : expiresAt != null ? "Expires ${niceDate(expiresAt)}" : "Never expires";
     final statusColor = isUsed || isExpired ? AppColors.errorText : AppColors.mute;
 
-    return SingleChildScrollView(
+    // An opened coach card is a step in its own right — back collapses it
+    // before leaving the page.
+    return LocalBackScope(
+      isOpen: _openId != null,
+      onBack: () => setState(() => _openId = null),
+      child: SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,6 +453,7 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
             );
           }),
         ],
+      ),
       ),
     );
   }

@@ -36,8 +36,13 @@ List<MembershipPlan> heldAccessPlans(ClientInfo info, List<MembershipPlan> allPl
   }
 
   add(info.membershipPlanId);
-  final enrolled = [...info.plans.where((e) => e.status == "active")]
-    ..sort((a, b) => a.startDate.compareTo(b.startDate));
+  // A plan the client switched away from keeps its remaining sessions until
+  // the period they already paid for runs out (endsAt) — after that it's
+  // spent, and only whatever rolled over lives on under the new plan.
+  final today = isoToday();
+  final enrolled = [
+    ...info.plans.where((e) => e.status == "active" && (e.endsAt == null || today.compareTo(e.endsAt!) <= 0)),
+  ]..sort((a, b) => a.startDate.compareTo(b.startDate));
   for (final e in enrolled) {
     add(e.planId);
   }
@@ -102,12 +107,27 @@ int sessionsUsedThisPeriod(ClientInfo info, MembershipPlan plan, List<Booking> b
 /// permanent.
 int effectiveMaxSessions(ClientInfo info, MembershipPlan plan) {
   final override = info.sessionCountOverride;
-  if (override == null) return plan.maxSessions ?? 0;
-  final month = info.sessionCountOverrideMonth;
-  if (plan.kind == PlanKind.membership && month != null && month != isoToday().substring(0, 7)) {
-    return plan.maxSessions ?? 0;
+  var base = plan.maxSessions ?? 0;
+  if (override != null) {
+    final month = info.sessionCountOverrideMonth;
+    final stale = plan.kind == PlanKind.membership && month != null && month != isoToday().substring(0, 7);
+    if (!stale) base = override;
   }
-  return override;
+  return base + rolloverSessionsFor(info, plan);
+}
+
+/// Sessions carried into THIS month from last month's leftovers under the
+/// plan's roll-over rule. Written at renewal (stripe-webhook) and good for
+/// that month only, so an unused carry-over never compounds.
+int rolloverSessionsFor(ClientInfo info, MembershipPlan plan) {
+  if (plan.kind != PlanKind.membership) return 0;
+  final thisMonth = isoToday().substring(0, 7);
+  for (final e in info.plans) {
+    if (e.planId == plan.id && e.status == "active" && e.rolloverMonth == thisMonth) {
+      return e.rolloverSessions;
+    }
+  }
+  return 0;
 }
 
 const _months = [

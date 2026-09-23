@@ -383,6 +383,21 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     "A coach can still set their own location on their profile; that wins for their sessions. This is the gym-wide default.",
                     style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
+                  const SizedBox(height: 10),
+                  FieldLabeled(
+                    label: "Support / call number",
+                    child: _StableTextField(
+                      value: s.supportPhone,
+                      placeholder: "e.g. 818-223-7001",
+                      keyboardType: TextInputType.phone,
+                      onChanged: (v) => _set((d) => d.copyWith(supportPhone: v)),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "The number the Chat call button and the Support page dial, for clients and coaches alike. Leave it empty to hide both.",
+                    style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                  ),
                   const SizedBox(height: 14),
                   // More than one site: each extra one can be picked when
                   // creating a session (Schedule → Advanced settings).

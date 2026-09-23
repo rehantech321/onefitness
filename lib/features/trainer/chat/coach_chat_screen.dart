@@ -297,21 +297,33 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
     }
 
     if (_view == _ChatView.list) {
-      return ConversationList(
-        conversations: _recentConversations(roster, records, trainerAuth, isOwner),
-        emptyText: "No conversations yet. Start one with a client below — everything you send is timestamped and logged.",
-        onOpen: (clientId) {
-          setState(() {
-            _recipientId = clientId;
-            // Keep whatever channel they last used; only the picker changes
-            // it, so reopening a thread doesn't silently switch how a
-            // message goes out.
-            _channel ??= _Channel.inappSms;
-            _view = _ChatView.thread;
-          });
-          _markThreadRead(clientId);
-        },
-        onNewChat: () => setState(() => _view = _ChatView.picker),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (settings.supportPhone.trim().isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Align(alignment: Alignment.centerLeft, child: CallGymButton()),
+            ),
+          Expanded(
+            child: ConversationList(
+              conversations: _recentConversations(roster, records, trainerAuth, isOwner),
+              emptyText: "No conversations yet. Start one with a client below — everything you send is timestamped and logged.",
+              onOpen: (clientId) {
+                setState(() {
+                  _recipientId = clientId;
+                  // Keep whatever channel they last used; only the picker changes
+                  // it, so reopening a thread doesn't silently switch how a
+                  // message goes out.
+                  _channel ??= _Channel.inappSms;
+                  _view = _ChatView.thread;
+                });
+                _markThreadRead(clientId);
+              },
+              onNewChat: () => setState(() => _view = _ChatView.picker),
+            ),
+          ),
+        ],
       );
     }
 

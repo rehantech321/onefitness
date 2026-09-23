@@ -141,14 +141,18 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                     onSkip: () => setState(() => _skipOnboarding = true),
                   )
                 : _OnboardingSection(
-                    // Every step shown — none has been done, and none can
-                    // be — with each one routed to the Access Hub.
-                    alerts: kOnboardingSteps.where((s) => s.key != "physicalAssessmentBooked").toList(),
+                    // Nothing bought yet: the two intake forms need a plan,
+                    // so they lead to the Access Hub — but the free physical
+                    // assessment doesn't, so it stays on the list and leads
+                    // straight to Booking, where it's offered free.
+                    alerts: assessmentBooked
+                        ? kOnboardingSteps.where((s) => s.key != "physicalAssessmentBooked").toList()
+                        : kOnboardingSteps,
                     showIntakeButtons: true,
                     locked: true,
                     onBookIntake: widget.onGoMemberships,
                     onGoToForm: (_) => widget.onGoMemberships(),
-                    onGoBookAssessment: widget.onGoMemberships,
+                    onGoBookAssessment: widget.onGoBooking,
                     onSkip: () => setState(() => _skipOnboarding = true),
                   )),
 
@@ -312,7 +316,7 @@ class _OnboardingSection extends StatelessWidget {
                   SizedBox(width: 5),
                   Expanded(
                     child: Text(
-                      "Choose a membership or package to unlock these.",
+                      "Your free physical assessment is ready to book. The intake forms open up once you choose a membership or package.",
                       style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w600),
                     ),
                   ),

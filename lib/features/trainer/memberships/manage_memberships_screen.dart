@@ -8,6 +8,7 @@ import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/models/product.dart";
+import "../../../data/models/waiver_doc.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
@@ -344,10 +345,45 @@ class _ManageMembershipsScreenState
             }),
           ),
           const SizedBox(height: 18),
-          const SectionLabel("All Plans"),
-          ...plans.asMap().entries.map((entry) {
-            final i = entry.key;
-            final p = entry.value;
+          // Grouped by category, in the gym's own category order — the same
+          // way clients see plans, so both sides read alike. Reordering still
+          // works on the full list, so a plan can move between groups.
+          ...(() {
+            final grouped = _plansByCategory(plans, ref.watch(packageCategoriesProvider));
+            return [
+              for (final group in grouped) ...[
+                SectionLabel(group.key),
+                ...group.value.map((p) => _planCard(p, plans.indexOf(p), plans.length)),
+              ],
+            ];
+          })(),
+        ],
+      ),
+    );
+  }
+
+  /// Plans bucketed by category, categories in the owner's own order, with
+  /// anything uncategorised last — mirrors the client-side grouping.
+  List<MapEntry<String, List<MembershipPlan>>> _plansByCategory(List<MembershipPlan> plans, List<String> order) {
+    const uncategorised = "Other";
+    final buckets = <String, List<MembershipPlan>>{};
+    for (final p in plans) {
+      final c = (p.category ?? "").trim();
+      buckets.putIfAbsent(c.isEmpty ? uncategorised : c, () => []).add(p);
+    }
+    final names = <String>[
+      for (final c in order)
+        if (buckets.containsKey(c)) c,
+      for (final c in buckets.keys)
+        if (c != uncategorised && !order.contains(c)) c,
+      if (buckets.containsKey(uncategorised)) uncategorised,
+    ];
+    return [for (final n in names) MapEntry(n, buckets[n]!)];
+  }
+
+  Widget _planCard(MembershipPlan p, int i, int total) {
+    return Builder(
+      builder: (context) {
             final inUse = _membersOn(p.id);
             return Opacity(
               opacity: p.archived ? 0.55 : 1,
@@ -400,15 +436,11 @@ class _ManageMembershipsScreenState
                           ),
                         ),
                         InkWell(
-                          onTap: i == plans.length - 1
-                              ? null
-                              : () => _move(p.id, 1),
+                          onTap: i == total - 1 ? null : () => _move(p.id, 1),
                           child: Icon(
                             LucideIcons.chevronDown,
                             size: 16,
-                            color: i == plans.length - 1
-                                ? AppColors.line
-                                : AppColors.mute,
+                            color: i == total - 1 ? AppColors.line : AppColors.mute,
                           ),
                         ),
                       ],
@@ -423,9 +455,7 @@ class _ManageMembershipsScreenState
                 ),
               ),
             );
-          }),
-        ],
-      ),
+      },
     );
   }
 }
@@ -512,6 +542,78 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
   );
   String? _feeItemProductId;
 
+  /// The plan's own contract — a waiver_docs row scoped to this plan, which
+  /// the client must sign before they can buy it. Loaded from whatever is
+  /// already attached, and saved alongside the plan.
+  WaiverDoc? _contractDoc;
+  late final _contractTitle = TextEditingController();
+  late final _contractBody = TextEditingController();
+  bool _contractLoaded = false;
+
+  void _loadContract() {
+    if (_contractLoaded) return;
+    _contractLoaded = true;
+    final planId = widget.initial?.id;
+    if (planId == null) return;
+    final match = ref
+        .read(waiversProvider)
+        .where((w) => w.scope == "plan" && w.planId == planId && !w.archived);
+    if (match.isEmpty) return;
+    _contractDoc = match.first;
+    _contractTitle.text = _contractDoc!.title;
+    _contractBody.text = _contractDoc!.body;
+  }
+
+  /// Saves the plan and its contract together — the contract needs the
+  /// plan's id, which a brand-new plan only gets here.
+  Future<void> _saveWithContract(MembershipPlan plan) async {
+    await _saveContract(plan.id, plan.name);
+    widget.onSave(plan);
+  }
+
+  /// Writes (or clears) the plan's contract. Called as the plan is saved, so
+  /// a brand-new plan's id is already settled.
+  Future<void> _saveContract(String planId, String planName) async {
+    final body = _contractBody.text.trim();
+    final existing = _contractDoc;
+    try {
+      if (body.isEmpty) {
+        // Contract removed: archived rather than deleted, so signatures
+        // already collected against it still point at a real document.
+        if (existing != null) {
+          final archived = WaiverDoc(
+            id: existing.id,
+            title: existing.title,
+            body: existing.body,
+            scope: "plan",
+            planId: planId,
+            required: existing.required,
+            archived: true,
+          );
+          await SupabaseService.upsertWaiverDoc(archived);
+          ref.read(waiversProvider.notifier).upsert(archived);
+        }
+        return;
+      }
+      final doc = WaiverDoc(
+        id: existing?.id ?? "contract-$planId",
+        title: _contractTitle.text.trim().isEmpty ? "$planName Agreement" : _contractTitle.text.trim(),
+        body: body,
+        scope: "plan",
+        planId: planId,
+        required: true,
+      );
+      await SupabaseService.upsertWaiverDoc(doc);
+      ref.read(waiversProvider.notifier).upsert(doc);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Plan saved, but the contract couldn't be saved — check your connection and try again.")),
+        );
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -577,6 +679,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
 
   @override
   Widget build(BuildContext context) {
+    _loadContract();
     final categories = ref.watch(packageCategoriesProvider);
     final isSub = _kind == PlanKind.membership;
     final isProgram = _kind == PlanKind.program;
@@ -893,6 +996,41 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
               ),
             ],
 
+            // ── Contract ──
+            // A plan can carry its own agreement. A client has to read and
+            // sign it before they can buy this plan; leaving it empty means
+            // no contract for this plan.
+            const SizedBox(height: 14),
+            const SectionLabel("Contract"),
+            const Text(
+              "Clients sign this before they can buy this plan. Leave it empty for no contract.",
+              style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+            ),
+            const SizedBox(height: 8),
+            FieldLabeled(
+              label: "Contract title",
+              child: AppField(controller: _contractTitle, placeholder: "e.g. 12-Month Membership Agreement"),
+            ),
+            const SizedBox(height: 8),
+            FieldLabeled(
+              label: "Contract text",
+              child: AppField(
+                controller: _contractBody,
+                placeholder: "Paste the agreement the client must sign…",
+                minLines: 4,
+                maxLines: 12,
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            if (_contractBody.text.trim().isNotEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  "You can use {{client_full_name}}, {{client_dob}}, {{signature_date}} and {{coach_name}} — they're filled in for each client.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                ),
+              ),
+
             // ── Advanced Settings ──
             const SizedBox(height: 14),
             InkWell(
@@ -1072,7 +1210,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
             full: true,
             onPressed: _name.text.trim().isEmpty
                 ? null
-                : () => widget.onSave(
+                : () => _saveWithContract(
                     MembershipPlan(
                       id:
                           widget.initial?.id ??

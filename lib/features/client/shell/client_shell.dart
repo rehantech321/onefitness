@@ -46,7 +46,7 @@ const _bottomItems = [
   _NavItem("plans", "Plans", LucideIcons.clipboardList),
   _NavItem("booking", "Booking", LucideIcons.calendar),
   _NavItem("chat", "Chat", LucideIcons.messageSquare),
-  _NavItem("memberships", "Membership", LucideIcons.creditCard),
+  _NavItem("memberships", "Access Hub", LucideIcons.creditCard),
 ];
 
 const _drawerItems = [
@@ -62,6 +62,7 @@ const _drawerItems = [
   _NavItem("challenges", "Challenges", LucideIcons.trophy),
   _NavItem("squad", "My Squad", LucideIcons.users2),
   _NavItem("signatures", "Signatures", LucideIcons.fileSignature),
+  _NavItem("support", "Support", LucideIcons.phone),
   _NavItem("settings", "Profile Settings", LucideIcons.settings2),
 ];
 
@@ -72,7 +73,7 @@ const _titles = {
   "day": "Booking",
   "advancedBooking": "Advanced Booking",
   "chat": "Chat",
-  "memberships": "Membership Hub",
+  "memberships": "Access Hub",
   "nutrition": "Nutrition Plan",
   "progress": "Log Progress",
   "habits": "Habit Tracker",
@@ -83,6 +84,7 @@ const _titles = {
   "forms": "Assessments",
   "history": "History",
   "signatures": "Signatures",
+  "support": "Support",
   "squad": "My Squad",
   "settings": "Profile Settings",
 };
@@ -125,7 +127,14 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     // Then the page history itself — always the page before this one,
     // whether that was a bottom tab, a menu page or Dashboard.
     final nav = ref.read(clientScreenProvider.notifier);
-    if (nav.canGoBack) nav.goBack();
+    if (nav.canGoBack) {
+      nav.goBack();
+      return;
+    }
+    // Nothing to go back to and not on Dashboard — a page opened cold (a
+    // push notification, a deep link, a reset history). Back goes home
+    // rather than doing nothing at all.
+    if (ref.read(clientScreenProvider) != "dashboard") nav.go("dashboard");
   }
 
   @override
@@ -267,9 +276,16 @@ class _ClientShellState extends ConsumerState<ClientShell> {
       }
     }
 
+    // Watched, not read: opening or closing a sub-view has to re-evaluate
+    // whether back exits the app, and whether the top bar shows an arrow.
+    final hasLocalBack = ref.watch(localBackStackProvider).isNotEmpty;
+    final canGoBack = ref.watch(clientScreenProvider.notifier).canGoBack;
+    final showBack = screen != "dashboard" || canGoBack || hasLocalBack;
+
     return PopScope(
-      // Exit the app only from the very first page, with nothing to go back to.
-      canPop: screen == "dashboard" && !ref.read(clientScreenProvider.notifier).canGoBack,
+      // Exit the app only from Dashboard, with nothing open and nothing
+      // behind it. Everywhere else back stays inside the app.
+      canPop: screen == "dashboard" && !canGoBack && !hasLocalBack,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         _handleBack();
@@ -317,7 +333,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                                 constraints: const BoxConstraints(),
                               ),
                             ),
-                            if (screen != "dashboard") ...[
+                            if (showBack) ...[
                               const SizedBox(width: 6),
                               IconButton(
                                 onPressed: _handleBack,
@@ -431,7 +447,8 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                         "nutrition" => const NutritionTab(),
                         "habits" => const HabitTrackerScreen(),
                         "history" => const HistoryScreen(),
-                        "signatures" => const SignaturesScreen(),
+                        "signatures" => SignaturesScreen(onGoBooking: goBooking),
+                        "support" => const SupportScreen(),
                         "memberships" => const MembershipHubScreen(),
                         "shop" => const ShopScreen(),
                         "challenges" => const ChallengesScreen(),

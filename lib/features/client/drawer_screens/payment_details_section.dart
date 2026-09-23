@@ -1,26 +1,46 @@
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/payments/payment_sheet_service.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/saved_payment_method.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 
 /// Profile Settings → Payment Details: the cards and bank accounts saved when
 /// the client paid for a membership or package. They're stored by Stripe on
 /// the client's Customer (never by us) and offered again automatically at the
 /// next checkout. The client can remove any except the one a live membership
 /// renews on.
-class PaymentDetailsSection extends StatefulWidget {
+class PaymentDetailsSection extends ConsumerStatefulWidget {
   const PaymentDetailsSection({super.key, required this.onBack});
   final VoidCallback onBack;
 
   @override
-  State<PaymentDetailsSection> createState() => _PaymentDetailsSectionState();
+  ConsumerState<PaymentDetailsSection> createState() => _PaymentDetailsSectionState();
 }
 
-class _PaymentDetailsSectionState extends State<PaymentDetailsSection> {
+class _PaymentDetailsSectionState extends ConsumerState<PaymentDetailsSection> {
   late Future<List<SavedPaymentMethod>> _future = SupabaseService.loadPaymentMethods();
   String? _removing;
+  bool _adding = false;
+
+  Future<void> _addCard() async {
+    setState(() => _adding = true);
+    final result = await PaymentSheetService.addPaymentMethod(
+      businessName: ref.read(platformSettingsProvider).businessName,
+    );
+    if (!mounted) return;
+    setState(() => _adding = false);
+    if (result.cancelled) return;
+    if (!result.ok) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.error ?? "Couldn't save that card.")));
+      return;
+    }
+    setState(() => _future = SupabaseService.loadPaymentMethods());
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Card saved.")));
+  }
 
   Future<void> _remove(SavedPaymentMethod m) async {
     final ok = await showDialog<bool>(
@@ -64,6 +84,14 @@ class _PaymentDetailsSectionState extends State<PaymentDetailsSection> {
         children: [
           BackBar(onBack: widget.onBack, title: "Payment Details"),
           const SizedBox(height: 14),
+          // Add a card up front, without waiting for a purchase — it's then
+          // used for renewals and any cancellation fee.
+          BtnGold(
+            full: true,
+            onPressed: _adding ? null : _addCard,
+            child: Text(_adding ? "Opening…" : "Add card"),
+          ),
+          const SizedBox(height: 12),
           FutureBuilder<List<SavedPaymentMethod>>(
             future: _future,
             builder: (context, snap) {

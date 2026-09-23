@@ -69,6 +69,28 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   String? _bookingError;
   final Set<String> _waitlistBusyKeys = {};
 
+  /// True while booking the free first session (a physical assessment):
+  /// no membership needed, nothing deducted from any plan.
+  bool _freeAssessment = false;
+
+  /// The offer stands until this client has booked anything at all — their
+  /// free assessment, or a first normal session.
+  bool get _freeAssessmentAvailable {
+    final info = ref.watch(clientInfoProvider);
+    if (info.isStaff) return false;
+    final mine = ref.watch(clientBookingsProvider).where((b) => b.clientId == info.id);
+    if (mine.isNotEmpty) return false;
+    // A client whose assessment is already recorded as done doesn't get
+    // offered it again either.
+    return !(ref.watch(clientRecordProvider).intake["physical"]?.completed ?? false);
+  }
+
+  void _startFreeAssessment() => setState(() {
+        _freeAssessment = true;
+        _chosenType = null;
+        _chosenDisc = null;
+      });
+
   /// The waiver being signed inside the booking flow, and what to pick back
   /// up once it's signed (the slot the client tapped, or their waitlist join).
   WaiverDoc? _signingDoc;
@@ -201,7 +223,16 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     final info = ref.read(clientInfoProvider);
     final bookings = ref.read(clientBookingsProvider);
     String? chargePlanId;
-    if (_rescheduling == null) {
+    if (_freeAssessment) {
+      // The free first session needs no plan and is charged to none — the
+      // waiver still applies, and the database still enforces capacity.
+      final waiverCheck = waiverGateCheck(info: info, record: ref.read(clientRecordProvider), waiverDocs: ref.read(waiversProvider));
+      if (waiverCheck != null) {
+        _needsSignature(waiverCheck, () => _onSlotTap(t, sessionType, discipline, slot, mine, isFull));
+        return;
+      }
+      chargePlanId = null;
+    } else if (_rescheduling == null) {
       final held = heldAccessPlans(info, ref.read(membershipPlansProvider));
       final settings = ref.read(platformSettingsProvider);
       final waiverCheck = waiverGateCheck(info: info, record: ref.read(clientRecordProvider), waiverDocs: ref.read(waiversProvider));
@@ -333,6 +364,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       discipline: pick.discipline,
       locationName: pick.locationName ?? pick.trainer.locationName,
       planId: _pickPlanId,
+      // Marks the free first session: it belongs to no plan and is left out
+      // of every session count (see sessionsUsedThisPeriod).
+      isPhysicalAssessment: _freeAssessment,
     );
     setState(() {
       _busy = true;
@@ -382,6 +416,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         _picking = null;
         _pickPlanId = null;
         _rescheduling = null;
+        // The free session is used up — the offer is gone from here on.
+        _freeAssessment = false;
+        _chosenType = null;
+        _chosenDisc = null;
       });
     } catch (e) {
       // ignore: avoid_print
@@ -540,7 +578,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               // measured width rather than assuming either shape.
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 4,
-                mainAxisExtent: 130,
+                // Just tall enough for the date, time, coach and the two
+                // actions — no empty space under them.
+                mainAxisExtent: 108,
                 crossAxisSpacing: 6,
                 mainAxisSpacing: 8,
               ),
@@ -621,18 +661,27 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           // (from a plan that has since ended) still list above; only the
           // pick-and-book steps are replaced. Staff booking themselves are
           // exempt, same as every membership check.
-          if (held.isEmpty && !info.isStaff)
+          // A client who has never booked anything gets their first session
+          // free — a physical assessment with a coach, no membership needed.
+          // The offer disappears the moment they book anything at all.
+          if (_freeAssessmentAvailable && !_freeAssessment) ...[
+            _FreeFirstSessionCard(onStart: _startFreeAssessment),
+            const SizedBox(height: 14),
+          ],
+
+          if (held.isEmpty && !info.isStaff && !_freeAssessment)
             _NoPlanGate(onGoMemberships: widget.onGoMemberships)
           else
           Builder(builder: (context) {
           // Only one type the client can book (e.g. a single Semi-Private
           // membership) — step 1 would be a one-option question, so it's
           // skipped and Booking opens straight on step 2, Choose a Discipline.
-          final types = _bookableTypes(
-            plans: held,
-            trainers: trainers,
-            offeredTypes: ref.watch(platformSettingsProvider).offeredSessionTypes,
-          );
+          // The free first session is bookable as Semi-Private or One-on-One,
+          // whatever the client holds — that's the point of it.
+          final offered = ref.watch(platformSettingsProvider).offeredSessionTypes;
+          final types = _freeAssessment
+              ? ["semi-private", "one-on-one"].where(offered.contains).toList()
+              : _bookableTypes(plans: held, trainers: trainers, offeredTypes: offered);
           final onlyType = types.length == 1 ? types.first : null;
           final chosenType = _chosenType ?? onlyType;
           final changeType = onlyType == null ? () => _pickType(null) : null;
@@ -861,6 +910,51 @@ class _StepOne extends StatelessWidget {
 }
 
 /// What a client with no active plan sees instead of the booking steps.
+/// The first session is on the house: a physical assessment with a coach,
+/// bookable with no membership and deducted from nothing. Shown only to a
+/// client who has never booked anything, and gone as soon as they have.
+class _FreeFirstSessionCard extends StatelessWidget {
+  const _FreeFirstSessionCard({required this.onStart});
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withValues(alpha: 0.08),
+        border: Border.all(color: AppColors.gold),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(LucideIcons.gift, size: 16, color: AppColors.gold),
+              SizedBox(width: 8),
+              Text("Your first session is free", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Book a free physical assessment with a coach — Semi-Private or One-on-One, your choice. "
+            "No membership needed, and it doesn't use up any sessions.",
+            style: TextStyle(fontSize: 12.5, color: AppColors.mute, height: 1.5),
+          ),
+          const SizedBox(height: 14),
+          BtnGold(
+            full: true,
+            onPressed: onStart,
+            child: const Text("Book my free session"),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Nothing on the schedule is bookable for them, so rather than list slots
 /// they'd be refused on, this says why and sends them to the one place that
 /// changes it.

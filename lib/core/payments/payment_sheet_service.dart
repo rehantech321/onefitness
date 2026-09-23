@@ -65,6 +65,57 @@ class PaymentSheetService {
     return _present(intent, businessName);
   }
 
+  /// Saving a card without buying anything — Profile Settings → Payment
+  /// Details → "Add card". Same sheet, in setup mode: the card is attached
+  /// to the client's Stripe Customer for later charges (renewals, a
+  /// cancellation fee) and nothing is charged now.
+  static Future<PaymentResult> addPaymentMethod({required String businessName}) async {
+    if (kIsWeb) {
+      return const PaymentResult.failed("Adding a card isn't available on web yet.");
+    }
+    final Map<String, dynamic> setup;
+    try {
+      setup = await SupabaseService.createSetupIntent();
+    } catch (e) {
+      return PaymentResult.failed(e.toString().replaceFirst("Exception: ", ""));
+    }
+
+    final clientSecret = setup["setupIntentClientSecret"] as String?;
+    final publishableKey = setup["publishableKey"] as String?;
+    if (clientSecret == null || clientSecret.isEmpty) {
+      return const PaymentResult.failed("Couldn't start — please try again.");
+    }
+    if (publishableKey == null || publishableKey.isEmpty) {
+      return const PaymentResult.failed(
+        "Payments aren't configured yet — the Stripe publishable key is missing on the server.",
+      );
+    }
+    if (_configuredKey != publishableKey) {
+      Stripe.publishableKey = publishableKey;
+      await Stripe.instance.applySettings();
+      _configuredKey = publishableKey;
+    }
+
+    try {
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          setupIntentClientSecret: clientSecret,
+          customerId: setup["customerId"] as String?,
+          customerEphemeralKeySecret: setup["ephemeralKey"] as String?,
+          merchantDisplayName: businessName,
+          allowsDelayedPaymentMethods: true,
+        ),
+      );
+      await Stripe.instance.presentPaymentSheet();
+      return const PaymentResult.success();
+    } on StripeException catch (e) {
+      if (e.error.code == FailureCode.Canceled) return const PaymentResult.cancelled();
+      return PaymentResult.failed(e.error.localizedMessage ?? e.error.message ?? "Couldn't save that card.");
+    } catch (e) {
+      return PaymentResult.failed(e.toString().replaceFirst("Exception: ", ""));
+    }
+  }
+
   static Future<PaymentResult> purchase({
     required String planId,
     String? couponCode,

@@ -157,6 +157,17 @@ class SessionsRemainingBadge extends ConsumerWidget {
               ),
             ],
           ),
+          // Sessions carried in from last month under the plan's roll-over
+          // rule — part of the total above, called out so it's clear where
+          // the extra sessions came from and that they expire this month.
+          if (rolloverSessionsFor(info, plan) > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                "Includes ${rolloverSessionsFor(info, plan)} rolled over from last month — use them this month.",
+                style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w600),
+              ),
+            ),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(3),

@@ -83,5 +83,12 @@
 		     leaving this false would suppress that automatic registration. -->
 		<key>FirebaseAppDelegateProxyEnabled</key>
 		<true/>
+		<!-- The Chat call button and the Support page open the phone's dialer
+		     on a tel: link; iOS only allows a scheme listed here to be
+		     checked before opening. -->
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>tel</string>
+		</array>
 	</dict>
 </plist>

@@ -13,8 +13,11 @@ import "../../../data/models/client_info.dart";
 import "../../../data/models/client_plan.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../core/utils/merge_token_utils.dart";
+import "../../../data/models/waiver_doc.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "waiver_signing_screen.dart";
 import "../dashboard/sessions_remaining_badge.dart";
 
 /// Mirrors MembershipsHub.jsx — current plan status (reusing the same badge
@@ -50,6 +53,24 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
 
   /// The held plan (other than the primary one) being cancelled / kept.
   String? _heldBusyPlanId;
+
+  /// The plan's own contract, open for signing, and the plan to carry on
+  /// buying once it's signed.
+  WaiverDoc? _signingContract;
+  MembershipPlan? _afterContractPlan;
+
+  /// This plan's contract when the client hasn't signed the current version
+  /// of it — null when the plan has no contract, or it's already signed.
+  WaiverDoc? _unsignedContractFor(MembershipPlan plan) {
+    final signatures = ref.read(clientRecordProvider).signatures;
+    for (final doc in ref.read(waiversProvider)) {
+      if (doc.archived || !doc.required) continue;
+      if (doc.scope != "plan" || doc.planId != plan.id) continue;
+      final signed = signatures.where((s) => s.docId == doc.id);
+      if (signed.isEmpty || !isCurrentSignature(signed.first, doc)) return doc;
+    }
+    return null;
+  }
   final _couponController = TextEditingController();
 
   /// Anchors for the category tiles to scroll to, keyed `view::category`
@@ -91,6 +112,18 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       _busyPlanId = plan.id;
       _error = null;
     });
+    // A plan can carry its own contract — it has to be read and signed
+    // before the plan can be bought at all.
+    final contract = _unsignedContractFor(plan);
+    if (contract != null) {
+      setState(() {
+        _busyPlanId = null;
+        _signingContract = contract;
+        _afterContractPlan = plan;
+      });
+      return;
+    }
+
     try {
       if (plan.priceCents <= 0) {
         // Free plan — no Stripe involved. Goes through the server rather
@@ -433,11 +466,17 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
           style: const TextStyle(color: AppColors.txt, fontSize: 16, fontWeight: FontWeight.w800),
         ),
         content: Text(
-          immediate
-              ? "This ends now — you'll lose access straight away, any bookings you already have are cancelled, and unused sessions aren't carried "
-                  "over. There's no refund, and this can't be undone."
-              : "Access continues through $periodEndsAt. After that date: any bookings scheduled beyond it are cancelled, you won't be able to "
-                  "book new sessions past it, and unused sessions aren't carried over. There's no refund, and this can't be undone.",
+          [
+            immediate
+                ? "This ends now — you'll lose access straight away, any bookings you already have are cancelled, and unused sessions aren't carried "
+                    "over. There's no refund, and this can't be undone."
+                : "Access continues through $periodEndsAt. After that date: any bookings scheduled beyond it are cancelled, you won't be able to "
+                    "book new sessions past it, and unused sessions aren't carried over. There's no refund, and this can't be undone.",
+            // The plan's cancellation fee is taken from the card on file the
+            // moment this is confirmed, so it's said before, not after.
+            if (((preview["feeCents"] as num?) ?? 0) > 0)
+              "A cancellation fee of \$${(((preview["feeCents"] as num).toInt()) / 100).toStringAsFixed(2)} will be charged to your card on file.",
+          ].join("\n\n"),
           style: const TextStyle(color: AppColors.mute, fontSize: 13, height: 1.5),
         ),
         actions: [
@@ -466,6 +505,16 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     try {
       final result = await SupabaseService.cancelMembership();
       final cancelsAt = result["cancelsAt"] as String?;
+      final feeCents = ((result["feeCents"] as num?) ?? 0).toInt();
+      if (mounted && feeCents > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result["feeCharged"] == true
+                ? "Cancellation fee of \$${(feeCents / 100).toStringAsFixed(2)} charged to your card."
+                : "Cancellation fee of \$${(feeCents / 100).toStringAsFixed(2)} couldn't be charged — ONE Fitness will be in touch."),
+          ),
+        );
+      }
       ref.read(clientInfoProvider.notifier).update(
             (i) => cancelsAt != null
                 ? i.copyWith(membershipCancelsAt: cancelsAt)
@@ -509,6 +558,34 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     // categories that survive the current Memberships/Packages filter.
     final browseGroups = _groupByCategory(filteredBuyable, ref.watch(packageCategoriesProvider));
     final cancelPending = info.membershipCancelsAt != null;
+
+    // Signing the plan's contract, mid-purchase: once it's signed the
+    // purchase carries straight on with the same plan.
+    final signing = _signingContract;
+    if (signing != null) {
+      void close() => setState(() {
+            _signingContract = null;
+            _afterContractPlan = null;
+          });
+      return LocalBackScope(
+        isOpen: true,
+        onBack: close,
+        child: WaiverSigningScreen(
+          key: ValueKey(signing.id),
+          doc: signing,
+          onBack: close,
+          onDone: () {
+            final plan = _afterContractPlan;
+            setState(() {
+              _signingContract = null;
+              _afterContractPlan = null;
+            });
+            if (plan != null) _buy(ref.read(clientInfoProvider).id, plan);
+          },
+          doneLabel: "Continue to payment",
+        ),
+      );
+    }
 
     if (_prorateChoicePlanId != null) {
       final p = plansNotifier.byId(_prorateChoicePlanId);

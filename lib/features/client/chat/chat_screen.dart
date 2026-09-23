@@ -272,16 +272,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     if (_view == _ChatView.list) {
-      return ConversationList(
-        conversations: _recentConversations(client, candidates),
-        emptyText: "No conversations yet. Message your coach below — they'll see it right away.",
-        newChatLabel: "New message",
-        onOpen: (coachId) => setState(() {
-          _recipientId = coachId;
-          _channel ??= _Channel.inappSms;
-          _view = _ChatView.thread;
-        }),
-        onNewChat: () => setState(() => _view = _ChatView.picker),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Rather than message and wait, a client can just call the gym.
+          if (settings.supportPhone.trim().isNotEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Align(alignment: Alignment.centerLeft, child: CallGymButton()),
+            ),
+          Expanded(
+            child: ConversationList(
+              conversations: _recentConversations(client, candidates),
+              emptyText: "No conversations yet. Message your coach below — they'll see it right away.",
+              newChatLabel: "New message",
+              onOpen: (coachId) => setState(() {
+                _recipientId = coachId;
+                _channel ??= _Channel.inappSms;
+                _view = _ChatView.thread;
+              }),
+              onNewChat: () => setState(() => _view = _ChatView.picker),
+            ),
+          ),
+        ],
       );
     }
 
@@ -774,6 +787,8 @@ class _ContextBar extends StatelessWidget {
               ],
             ),
           ),
+          // Some things are quicker said out loud — one tap dials the gym.
+          const CallGymButton(compact: true),
           TextButton(
             onPressed: onChange,
             style: TextButton.styleFrom(foregroundColor: AppColors.gold, padding: EdgeInsets.zero, minimumSize: Size.zero),

@@ -7,6 +7,9 @@ class ClientPlanEnrollment {
     this.termMonths,
     this.subscriptionId,
     this.cancelsAt,
+    this.rolloverSessions = 0,
+    this.rolloverMonth,
+    this.endsAt,
   });
 
   final String planId;
@@ -22,12 +25,36 @@ class ClientPlanEnrollment {
   /// date (what's already paid for), then ends.
   final String? cancelsAt;
 
-  ClientPlanEnrollment copyWith({String? status, String? cancelsAt, bool clearCancelsAt = false}) => ClientPlanEnrollment(
+  /// Sessions carried over from the previous month, under the plan's
+  /// roll-over rule (Plans → Advanced → roll over). They're added to this
+  /// month's allowance and expire with it.
+  final int rolloverSessions;
+
+  /// The "YYYY-MM" [rolloverSessions] belongs to — a carry-over is good for
+  /// that one month only, never stacked month after month.
+  final String? rolloverMonth;
+
+  /// Set when the client switched to a different plan: the old plan's
+  /// remaining sessions stay usable until this date, but it doesn't renew.
+  final String? endsAt;
+
+  ClientPlanEnrollment copyWith({
+    String? status,
+    String? cancelsAt,
+    bool clearCancelsAt = false,
+    int? rolloverSessions,
+    String? rolloverMonth,
+    String? endsAt,
+  }) =>
+      ClientPlanEnrollment(
         planId: planId,
         status: status ?? this.status,
         startDate: startDate,
         termMonths: termMonths,
         subscriptionId: subscriptionId,
         cancelsAt: clearCancelsAt ? null : (cancelsAt ?? this.cancelsAt),
+        rolloverSessions: rolloverSessions ?? this.rolloverSessions,
+        rolloverMonth: rolloverMonth ?? this.rolloverMonth,
+        endsAt: endsAt ?? this.endsAt,
       );
 }

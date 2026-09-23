@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
@@ -125,6 +126,10 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
   bool _busy = false;
   String? _error;
   String _libraryTab = "training";
+
+  /// Library sub-tabs visited, so back steps through them before leaving
+  /// the Plans tab.
+  final List<String> _libraryTabHistory = [];
 
   ClientRecord get _record => ref.watch(trainerClientRecordsProvider)[widget.clientId] ?? widget.record;
 
@@ -468,7 +473,10 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
     final workoutLibrary = ref.watch(programsLibraryProvider);
     final nutritionLibrary = ref.watch(nutritionLibraryProvider);
 
-    return Column(
+    return LocalBackScope(
+      isOpen: _libraryTabHistory.isNotEmpty,
+      onBack: () => setState(() => _libraryTab = _libraryTabHistory.removeLast()),
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_error != null)
@@ -732,7 +740,11 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
             children: [("training", "Training"), ("nutrition", "Nutrition")]
                 .map((t) => Expanded(
                       child: InkWell(
-                        onTap: () => setState(() => _libraryTab = t.$1),
+                        onTap: () => setState(() {
+                          if (_libraryTab == t.$1) return;
+                          _libraryTabHistory.add(_libraryTab);
+                          _libraryTab = t.$1;
+                        }),
                         borderRadius: BorderRadius.circular(7),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -797,6 +809,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
               )),
         ],
       ],
+      ),
     );
   }
 }
