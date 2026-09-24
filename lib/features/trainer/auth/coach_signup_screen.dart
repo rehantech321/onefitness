@@ -453,7 +453,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                   runSpacing: 6,
                   // The gym's own list (Customize Platform → Services),
                   // including disciplines the owner added themselves.
-                  children: [...ref.watch(platformSettingsProvider).offeredDisciplines, "programmer"]
+                  children: ref.watch(platformSettingsProvider).offeredDisciplines
                       .map((k) => MapEntry(k, disciplineLabel(k)))
                       .map((e) {
                     final on = _disciplines.contains(e.key);
@@ -560,11 +560,11 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: [
-                          ...ref.watch(platformSettingsProvider).offeredSessionTypes,
-                          "assessment-call",
-                          "assessment-in-person",
-                        ].map((k) => MapEntry(k, sessionTypeLabel(k))).map((e) {
+                        children: ref
+                            .watch(platformSettingsProvider)
+                            .offeredSessionTypes
+                            .map((k) => MapEntry(k, sessionTypeLabel(k)))
+                            .map((e) {
                           return Padding(
                             padding: EdgeInsets.zero,
                             child: OutlinedButton(

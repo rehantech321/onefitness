@@ -175,7 +175,7 @@ const kIntakeForms = [
     key: "training",
     title: "Training Intake",
     assessments: [
-      AssessmentDef(key: "personalTraining", title: "Personalized Training Intake", by: "Client or Programmer", schema: kTrainingIntakeSchema),
+      AssessmentDef(key: "personalTraining", title: "Personalized Training Intake", by: "Client or Coach", schema: kTrainingIntakeSchema),
       AssessmentDef(key: "physical", title: "Free Physical Assessment Session", by: "Coach · first training session", clientCanFill: false, physical: true),
     ],
   ),
@@ -183,7 +183,7 @@ const kIntakeForms = [
     key: "nutrition",
     title: "Nutrition Intake",
     assessments: [
-      AssessmentDef(key: "nutritional", title: "Nutrition Program Intake", by: "Client or Programmer", schema: kNutritionIntakeSchema),
+      AssessmentDef(key: "nutritional", title: "Nutrition Program Intake", by: "Client or Coach", schema: kNutritionIntakeSchema),
     ],
   ),
 ];

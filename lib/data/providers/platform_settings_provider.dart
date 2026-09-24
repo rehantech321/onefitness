@@ -329,9 +329,9 @@ final platformSettingsProvider = NotifierProvider<PlatformSettingsNotifier, Plat
 /// discipline the owner deleted there is gone from every picker, booking
 /// step and coach profile in the app. These are the one check they all use.
 extension OfferedCatalog on PlatformSettings {
-  /// "programmer" is a staff role (assessments), not a service clients pick,
-  /// so it's never removed by the catalogue.
-  bool offersDiscipline(String key) => key == "programmer" || offeredDisciplines.contains(key);
+  /// "assessment" is what an intake booking is filed under rather than a
+  /// service clients pick, so it's never removed by the catalogue.
+  bool offersDiscipline(String key) => key == "assessment" || offeredDisciplines.contains(key);
 
   /// Intake/assessment sessions are always available to staff.
   bool offersSessionType(String key) => key.startsWith("assessment") || offeredSessionTypes.contains(key);

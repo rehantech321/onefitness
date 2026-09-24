@@ -154,7 +154,7 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
     // Customize Platform → Services narrows the menu. Assessments are staff
     // tools rather than a sold service, so they're never hidden.
     final settings = ref.watch(platformSettingsProvider);
-    final types = [...settings.offeredSessionTypes, "assessment-call", "assessment-in-person"];
+    final types = [...settings.offeredSessionTypes, "assessment-call"];
     final disciplines = settings.offeredDisciplines;
 
     if (_pickingCoach) {
@@ -308,7 +308,7 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
                       setState(() => _error = "You can't book a session in the past.");
                       return;
                     }
-                    final effectiveDiscipline = isAssessment ? "programmer" : _discipline;
+                    final effectiveDiscipline = isAssessment ? "assessment" : _discipline;
                     final conflict = findTrainerConflict(bookings, trainerId, dateIso, slot, _sessionType, effectiveDiscipline);
                     String? overrideReason;
                     if (conflict != null) {

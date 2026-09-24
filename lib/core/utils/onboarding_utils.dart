@@ -46,8 +46,11 @@ bool onboardingStepDone(ClientRecord client, List<Booking> bookings, String clie
     case "nutritionIntake":
       return client.intake["nutritional"]?.completed ?? false;
     case "physicalAssessmentBooked":
+      // The free first session is spent the moment the client books anything
+      // at all — the free assessment itself, or an ordinary session off a
+      // plan. Either way the offer is done, so the prompt goes with it.
       return (client.intake["physical"]?.completed ?? false) ||
-          bookings.any((b) => b.clientId == clientId && b.isPhysicalAssessment);
+          bookings.any((b) => b.clientId == clientId);
     default:
       return false;
   }
@@ -80,9 +83,12 @@ List<OnboardingStep> getOnboardingAlerts(
   MembershipPlan? plan, {
   required IntakeEntitlements entitlements,
 }) {
-  final showAssessment = hasSessionPlan(plan);
   return kOnboardingSteps.where((step) {
-    if (step.key == "physicalAssessmentBooked" && !showAssessment) return false;
+    // The free physical assessment needs no plan at all, so it's never
+    // gated on one — unlike the two questionnaires below.
+    if (step.key == "physicalAssessmentBooked") {
+      return !onboardingStepDone(client, bookings, clientId, step.key);
+    }
     final assessmentKey = _stepToAssessment[step.key];
     if (assessmentKey != null && !entitlements.allows(assessmentKey)) return false;
     return !onboardingStepDone(client, bookings, clientId, step.key);

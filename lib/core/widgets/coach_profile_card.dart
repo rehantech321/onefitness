@@ -28,7 +28,13 @@ class CoachProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final disciplines = trainer.offeredAvailability.map((b) => b.discipline).toSet().where((d) => d != "programmer").toList();
+    // Assessment blocks are a staff tool, not a service — they never show as
+    // something this coach offers ("programmer" is the legacy key for them).
+    final disciplines = trainer.offeredAvailability
+        .map((b) => b.discipline)
+        .toSet()
+        .where((d) => d != "assessment" && d != "programmer")
+        .toList();
     final frames = trainer.beforeAfters
         .where((f) => (f.left != null && f.left!.isNotEmpty) || (f.right != null && f.right!.isNotEmpty))
         .toList();

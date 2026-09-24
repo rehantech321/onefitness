@@ -15,10 +15,11 @@ import "../../../data/providers/platform_settings_provider.dart";
 import "availability_block_editor.dart";
 
 const _largeGroupDisciplines = {"hike", "outdoor-hiit"};
-const _assessmentSessionTypes = ["assessment-call", "assessment-in-person"];
 
-bool _isRegularDiscipline(String d) =>
-    d != "programmer" && !_largeGroupDisciplines.contains(d);
+bool _isRegularDiscipline(String d) => !_largeGroupDisciplines.contains(d);
+
+/// Assessments are a staff tool, not something a coach offers — they're
+/// never selectable here, and any left on an older record is filtered out.
 bool _isAssessmentType(String st) =>
     st == "assessment-call" || st == "assessment-in-person";
 
@@ -45,8 +46,8 @@ class _BlockEditRequest {
 /// owner-edit (`isOwnerEdit: true`) paths — the same shared form on the web,
 /// differing only in commission rate (owner-only) and delete (owner-only).
 /// Trimmed per plan: no 6-month availability lock/override, no
-/// booking-conflict-on-narrowed-availability prompt, no Programmer
-/// assessment-call/in-person availability scheduling UI, no 2FA section,
+/// booking-conflict-on-narrowed-availability prompt, no assessment
+/// availability scheduling UI, no 2FA section,
 /// Before & After uses a plain picker (no dedicated crop/rotate step).
 class TrainerEditForm extends StatefulWidget {
   const TrainerEditForm({
@@ -148,10 +149,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
         _disciplines.add(d);
       }
       final hasRegular = _disciplines.any(_isRegularDiscipline);
-      final hasProgrammer = _disciplines.contains("programmer");
-      _sessionTypes.removeWhere(
-        (st) => _isAssessmentType(st) ? !hasProgrammer : !hasRegular,
-      );
+      _sessionTypes.removeWhere((st) => _isAssessmentType(st) || !hasRegular);
       _error = null;
     });
   }
@@ -278,7 +276,6 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
     }
 
     final hasRegularDiscipline = _disciplines.any(_isRegularDiscipline);
-    final hasProgrammer = _disciplines.contains("programmer");
     final largeGroupDisciplines = _disciplines
         .where(_largeGroupDisciplines.contains)
         .toList();
@@ -421,9 +418,8 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               spacing: 6,
               runSpacing: 6,
               // The gym's own list (Customize Platform → Services), so a
-              // discipline the owner added appears here too. "Programmer" is
-              // a staff role rather than a service, and always shows.
-              children: [...settings.offeredDisciplines, "programmer"]
+              // discipline the owner added appears here too.
+              children: settings.offeredDisciplines
                   .map(
                     (d) => _Chip(
                       label: disciplineLabel(d),
@@ -471,36 +467,6 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                   ),
                 ),
               ),
-          ],
-          if (hasProgrammer) ...[
-            const SizedBox(height: 10),
-            FieldLabeled(
-              label: "Assessment types * (choose one or more)",
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: _assessmentSessionTypes
-                    .map(
-                      (st) => _Chip(
-                        label: sessionTypeLabel(st),
-                        on: _sessionTypes.contains(st),
-                        onTap: () => _toggleSessionType(st),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(top: 6),
-              child: Text(
-                "These are what clients see when booking a programmer. Scheduling assessment availability isn't available from the app yet — contact ONE Fitness to set this up.",
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.mute,
-                  height: 1.4,
-                ),
-              ),
-            ),
           ],
           ], // end profile tab (identity/offering fields)
           if (_tab == "availability") ...[

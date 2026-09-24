@@ -90,8 +90,19 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
     // forms — so they know what's waiting for them — but every one of them
     // leads to the Access Hub, since none can be started without a plan.
     final hasPurchase = entitlements.hasAnyPurchase;
+    // The intake call exists to get the two questionnaires filled in. Once
+    // the client has answered both themselves there is nothing left to book
+    // it for, so the button goes away.
+    final intakeFormsDone = onboardingStepDone(client, bookings, info.id, "personalizedIntake") &&
+        onboardingStepDone(client, bookings, info.id, "nutritionIntake");
+    // Nothing bought yet: the forms are still listed so the client knows
+    // what's coming, but any they've already completed drop off the list
+    // just as they do once a plan is held.
+    final lockedAlerts = kOnboardingSteps
+        .where((s) => !onboardingStepDone(client, bookings, info.id, s.key))
+        .toList();
     final showOnboarding = !_skipOnboarding &&
-        (!hasPurchase || onboardingAlerts.isNotEmpty || !assessmentBooked);
+        (hasPurchase ? (onboardingAlerts.isNotEmpty || !assessmentBooked) : lockedAlerts.isNotEmpty);
 
     // Staggers each top-level section's entrance by 45ms, played once when
     // the Dashboard first mounts.
@@ -134,7 +145,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
             stag(hasPurchase
                 ? _OnboardingSection(
                     alerts: onboardingAlerts,
-                    showIntakeButtons: !assessmentBooked,
+                    showIntakeButtons: !assessmentBooked && !intakeFormsDone,
                     onBookIntake: widget.onGoBooking,
                     onGoToForm: widget.onGoToForm,
                     onGoBookAssessment: widget.onGoBooking,
@@ -145,10 +156,8 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                     // so they lead to the Access Hub — but the free physical
                     // assessment doesn't, so it stays on the list and leads
                     // straight to Booking, where it's offered free.
-                    alerts: assessmentBooked
-                        ? kOnboardingSteps.where((s) => s.key != "physicalAssessmentBooked").toList()
-                        : kOnboardingSteps,
-                    showIntakeButtons: true,
+                    alerts: lockedAlerts,
+                    showIntakeButtons: !intakeFormsDone,
                     locked: true,
                     onBookIntake: widget.onGoMemberships,
                     onGoToForm: (_) => widget.onGoMemberships(),
@@ -325,12 +334,9 @@ class _OnboardingSection extends StatelessWidget {
             ),
           const SizedBox(height: 8),
           if (showIntakeButtons) ...[
-            Row(
-              children: [
-                Expanded(child: _IntakeButton(icon: LucideIcons.phone, label: "Book Intake Call", onTap: onBookIntake)),
-                const SizedBox(width: 8),
-                Expanded(child: _IntakeButton(icon: LucideIcons.mapPin, label: "Book Intake In-Person", onTap: onBookIntake)),
-              ],
+            SizedBox(
+              width: double.infinity,
+              child: _IntakeButton(icon: LucideIcons.phone, label: "Book Intake Call", onTap: onBookIntake),
             ),
             const Padding(
               padding: EdgeInsets.only(top: 8, bottom: 8),

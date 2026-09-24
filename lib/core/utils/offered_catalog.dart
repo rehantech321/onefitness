@@ -21,7 +21,7 @@ class LiveCatalog {
       sessionType.startsWith("assessment") || sessionTypes == null || sessionTypes!.contains(sessionType);
 
   static bool offersDiscipline(String discipline) =>
-      discipline == "programmer" || disciplines == null || disciplines!.contains(discipline);
+      discipline == "assessment" || disciplines == null || disciplines!.contains(discipline);
 
   static bool offers(String sessionType, String discipline) => offersType(sessionType) && offersDiscipline(discipline);
 }

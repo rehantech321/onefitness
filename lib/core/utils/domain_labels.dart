@@ -8,7 +8,10 @@ const Map<String, String> kDisciplineLabels = {
   "stretch": "Stretch",
   "stick-mobility": "Stick Mobility",
   "yoga": "Yoga",
-  "programmer": "Programmer",
+  // The discipline an intake/assessment booking is filed under. "programmer"
+  // is the legacy key still on older rows; both read back as "Assessment".
+  "assessment": "Assessment",
+  "programmer": "Assessment",
 };
 
 const Map<String, String> kSessionTypeLabels = {
