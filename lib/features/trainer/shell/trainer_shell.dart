@@ -198,6 +198,12 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                     ),
                     child: Row(
                       children: [
+                        // Both of these used to be 22x22 hit areas sitting
+                        // 6px apart — roughly 3.5mm on a real phone, with a
+                        // 1mm gap between two different actions. Taps landed
+                        // on nothing, or opened the drawer when back was
+                        // meant, which read as "back is broken". Same fix as
+                        // ClientShell's top bar.
                         Builder(
                           builder: (context) => IconButton(
                             onPressed: () => Scaffold.of(context).openDrawer(),
@@ -207,20 +213,29 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                               color: AppColors.gold,
                             ),
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            visualDensity: VisualDensity.standard,
+                            constraints: const BoxConstraints(
+                              minWidth: 44,
+                              minHeight: 44,
+                            ),
                           ),
                         ),
                         if (showBack) ...[
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           IconButton(
                             onPressed: _handleBack,
+                            tooltip: "Back",
                             icon: const Icon(
                               LucideIcons.chevronLeft,
-                              size: 22,
+                              size: 24,
                               color: AppColors.gold,
                             ),
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            visualDensity: VisualDensity.standard,
+                            constraints: const BoxConstraints(
+                              minWidth: 44,
+                              minHeight: 44,
+                            ),
                           ),
                         ],
                         const Spacer(),
@@ -525,13 +540,18 @@ class _TrainerDrawer extends ConsumerWidget {
                       ),
                       IconButton(
                         onPressed: () => Scaffold.of(context).closeDrawer(),
+                        tooltip: "Close menu",
                         icon: const Icon(
                           LucideIcons.x,
-                          size: 18,
+                          size: 20,
                           color: AppColors.mute,
                         ),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                        visualDensity: VisualDensity.standard,
+                        constraints: const BoxConstraints(
+                          minWidth: 44,
+                          minHeight: 44,
+                        ),
                       ),
                     ],
                   ),

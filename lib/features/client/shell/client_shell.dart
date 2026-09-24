@@ -181,13 +181,17 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     }
   }
 
-  /// Mirrors ClientShell.jsx's `screen === "dashboard" && !drawer &&
-  /// !client.tourSeen?.dashboard` — a plain declarative render tied to
-  /// `screen`, so (unlike the drawer tour, which only ever gets one chance
-  /// per Drawer open) it reappears every time the client lands back on the
-  /// dashboard until they actually Skip/finish it.
+  /// The tour is a full-screen, tap-absorbing overlay. It used to re-arm
+  /// every single time the client landed back on Dashboard, so coming back
+  /// from a page instantly re-covered the screen and the next tap went to
+  /// the tour instead of the button the client aimed at — indistinguishable
+  /// from "the buttons stopped working". It now gets one chance per app
+  /// session, on top of the stored tourSeen flag.
+  bool _dashboardTourArmed = true;
+
   void _syncDashboardTour(String screen, bool tourSeenDashboard) {
-    final shouldShow = screen == "dashboard" && !tourSeenDashboard;
+    final shouldShow =
+        screen == "dashboard" && !tourSeenDashboard && _dashboardTourArmed;
     if (shouldShow && _dashboardTourEntry == null) {
       final entry = OverlayEntry(
         builder: (ctx) => CoachmarkOverlay(
@@ -199,12 +203,16 @@ class _ClientShellState extends ConsumerState<ClientShell> {
       _dashboardTourEntry = entry;
       Overlay.of(context, rootOverlay: true).insert(entry);
     } else if (!shouldShow && _dashboardTourEntry != null) {
+      // Navigated away mid-tour — it's had its turn, so it won't jump back
+      // in front of the client when they return.
+      _dashboardTourArmed = false;
       _dashboardTourEntry!.remove();
       _dashboardTourEntry = null;
     }
   }
 
   void _finishDashboardTour() {
+    _dashboardTourArmed = false;
     _dashboardTourEntry?.remove();
     _dashboardTourEntry = null;
     final id = ref.read(clientInfoProvider).id;
@@ -319,6 +327,14 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                         ),
                         child: Row(
                           children: [
+                            // Both of these used to be 22x22 hit areas sitting
+                            // 6px apart — roughly 3.5mm on a real phone, with
+                            // a 1mm gap between two different actions. Taps
+                            // landed on nothing, or opened the drawer when
+                            // back was meant, which read as "back is broken".
+                            // A widget test never catches it (it taps the
+                            // exact centre), so they're now full 44px targets
+                            // with real space between them.
                             Builder(
                               key: kDashboardTourKeys["dash-hamburger"],
                               builder: (context) => IconButton(
@@ -330,20 +346,29 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                                   color: AppColors.txt,
                                 ),
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
+                                visualDensity: VisualDensity.standard,
+                                constraints: const BoxConstraints(
+                                  minWidth: 44,
+                                  minHeight: 44,
+                                ),
                               ),
                             ),
                             if (showBack) ...[
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 8),
                               IconButton(
                                 onPressed: _handleBack,
+                                tooltip: "Back",
                                 icon: const Icon(
                                   LucideIcons.chevronLeft,
-                                  size: 22,
+                                  size: 24,
                                   color: AppColors.txt,
                                 ),
                                 padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
+                                visualDensity: VisualDensity.standard,
+                                constraints: const BoxConstraints(
+                                  minWidth: 44,
+                                  minHeight: 44,
+                                ),
                               ),
                             ],
                             Expanded(
@@ -672,13 +697,18 @@ class _ClientDrawerState extends ConsumerState<_ClientDrawer> {
                   ),
                   IconButton(
                     onPressed: () => Scaffold.of(context).closeDrawer(),
+                    tooltip: "Close menu",
                     icon: const Icon(
                       LucideIcons.x,
-                      size: 18,
+                      size: 20,
                       color: AppColors.mute,
                     ),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.standard,
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
                   ),
                 ],
               ),
