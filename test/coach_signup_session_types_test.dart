@@ -120,6 +120,19 @@ void main() {
     await tester.pumpAndSettle();
 
     // ".last" — the same string is also the page's own title bar.
+    // Consent is validated before session types, so tick both gates or the
+    // age error masks the one under test.
+    final ageBox = find.text("I confirm I am 18 or older");
+    await tester.ensureVisible(ageBox);
+    await tester.pumpAndSettle();
+    await tester.tap(ageBox);
+    await tester.pumpAndSettle();
+    final termsBox = find.text("I agree to the ");
+    await tester.ensureVisible(termsBox);
+    await tester.pumpAndSettle();
+    await tester.tap(termsBox);
+    await tester.pumpAndSettle();
+
     final submit = find.text("Create coach profile").last;
     await tester.ensureVisible(submit);
     await tester.pumpAndSettle();

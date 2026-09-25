@@ -3,6 +3,8 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
+import "../../../core/legal/terms_screen.dart";
+import "../../../core/legal/terms_text.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
@@ -76,6 +78,15 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
   /// (rather than left for My Profile later) because the booking flow only
   /// offers a coach for the types they actually hold.
   final Set<String> _sessionTypes = {};
+
+  /// Apple guideline 5.1.1 — an age confirmation instead of a date of birth.
+  bool _over18 = false;
+
+  /// Apple guideline 1.2 — signup is blocked until the Terms are accepted.
+  bool _agreedToTerms = false;
+
+  /// Shows the full Terms over the form without losing anything typed.
+  bool _readingTerms = false;
 
   /// Optional at signup — a coach can leave it empty and set it later from
   /// their profile. Collected here because a coach with no availability is
@@ -204,9 +215,13 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
     final email = _email.text.trim();
     final password = _password.text;
     final phone = _phone.text.trim();
-    if (firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty) {
+    // Name, email and password are all it takes to open an account. A phone
+    // number is useful for coordinating sessions but isn't essential to
+    // creating one (Apple guideline 5.1.1), so it's optional here and can be
+    // filled in later from My Profile.
+    if (firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty) {
       setState(
-        () => _error = "First name, last name, email, password, and phone are all required.",
+        () => _error = "First name, last name, email, and password are all required.",
       );
       return;
     }
@@ -220,6 +235,14 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
     }
     if (_disciplines.isEmpty) {
       setState(() => _error = "Choose at least one discipline.");
+      return;
+    }
+    if (!_over18) {
+      setState(() => _error = "You must confirm you are 18 or older to use ONE Fitness.");
+      return;
+    }
+    if (!_agreedToTerms) {
+      setState(() => _error = "Please agree to the Terms of Use to continue.");
       return;
     }
     // Only gate on this when the gym actually offers any — otherwise it'd be
@@ -242,7 +265,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
       _busy = true;
     });
     try {
-      await SupabaseService.signUpCoach(
+      final newCoachId = await SupabaseService.signUpCoach(
         email: email,
         password: password,
         name: name,
@@ -260,6 +283,13 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
         bio: _bio.text.trim(),
         beforeAfters: _beforeAfters,
         coachCode: _coachCode.text.trim().isEmpty ? null : _coachCode.text.trim(),
+      );
+      // Evidence of acceptance, with the version agreed to — a later
+      // revision of the Terms re-prompts rather than counting this one.
+      await SupabaseService.recordTermsAcceptance(
+        newCoachId,
+        version: kTermsVersion,
+        confirmedOver18: true,
       );
       await loadAndSeedCoreData(ref);
     } catch (e) {
@@ -299,6 +329,9 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
       );
     }
 
+    if (_readingTerms) {
+      return TermsScreen(onBack: () => setState(() => _readingTerms = false));
+    }
     if (!_codeVerified) {
       return PopScope(
         canPop: false,
@@ -498,7 +531,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
               ),
               const SizedBox(height: 10),
               FieldLabeled(
-                label: "Phone",
+                label: "Phone (optional)",
                 child: AppField(
                   controller: _phone,
                   keyboardType: TextInputType.phone,
@@ -875,6 +908,54 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                   placeholder: "••••••",
                   obscureText: true,
                   onChanged: (_) => setState(() => _error = null),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Divider(color: AppColors.line, height: 1),
+              const SizedBox(height: 6),
+              ConsentCheckbox(
+                value: _over18,
+                onChanged: (v) => setState(() {
+                  _over18 = v;
+                  _error = null;
+                }),
+                child: const Text(
+                  "I confirm I am 18 or older",
+                  style: TextStyle(fontSize: 13, height: 1.4),
+                ),
+              ),
+              ConsentCheckbox(
+                value: _agreedToTerms,
+                onChanged: (v) => setState(() {
+                  _agreedToTerms = v;
+                  _error = null;
+                }),
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Text("I agree to the ", style: TextStyle(fontSize: 13, height: 1.4)),
+                    GestureDetector(
+                      onTap: () => setState(() => _readingTerms = true),
+                      child: const Text(
+                        "Terms of Use",
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.4,
+                          color: AppColors.gold,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.gold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(left: 36, top: 2),
+                child: Text(
+                  "ONE Fitness has zero tolerance for objectionable content or abusive users.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                 ),
               ),
               if (_error != null) ...[

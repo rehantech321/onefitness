@@ -76,6 +76,47 @@ void main() {
     expect(find.text("+ Semi-Private"), findsOneWidget);
   });
 
+  testWidgets("phone is optional and the consent gates are present",
+      (tester) async {
+    await boot(tester);
+    expect(find.text("Phone (optional)"), findsOneWidget,
+        reason: "a phone number isn't needed to open a coach account");
+    expect(find.text("I confirm I am 18 or older"), findsOneWidget);
+    expect(find.textContaining("I agree to the"), findsOneWidget);
+    expect(find.text("Terms of Use"), findsOneWidget);
+  });
+
+  testWidgets("signup is refused without the age and Terms boxes ticked",
+      (tester) async {
+    await boot(tester);
+    await tester.tap(find.text("Boxing"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Semi-Private"));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), "Sam");
+    await tester.enterText(fields.at(1), "Coach");
+    await tester.enterText(fields.at(3), "sam@example.com");
+    final count = fields.evaluate().length;
+    await tester.enterText(fields.at(count - 2), "secret123");
+    await tester.enterText(fields.at(count - 1), "secret123");
+    await tester.pumpAndSettle();
+
+    final submit = find.text("Create coach profile").last;
+    await tester.ensureVisible(submit);
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    // Note: no phone entered at all, and the complaint is about the age
+    // box — proving phone is genuinely not required any more.
+    expect(
+      find.text("You must confirm you are 18 or older to use ONE Fitness."),
+      findsOneWidget,
+    );
+  });
+
   testWidgets("signup is refused with no availability added", (tester) async {
     await boot(tester);
     await tester.tap(find.text("Boxing"));
@@ -93,6 +134,17 @@ void main() {
     final count = fields.evaluate().length;
     await tester.enterText(fields.at(count - 2), "secret123");
     await tester.enterText(fields.at(count - 1), "secret123");
+    await tester.pumpAndSettle();
+
+    final ageBox = find.text("I confirm I am 18 or older");
+    await tester.ensureVisible(ageBox);
+    await tester.pumpAndSettle();
+    await tester.tap(ageBox);
+    await tester.pumpAndSettle();
+    final termsBox = find.text("I agree to the ");
+    await tester.ensureVisible(termsBox);
+    await tester.pumpAndSettle();
+    await tester.tap(termsBox);
     await tester.pumpAndSettle();
 
     final submit = find.text("Create coach profile").last;
