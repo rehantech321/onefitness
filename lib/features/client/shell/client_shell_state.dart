@@ -98,3 +98,23 @@ final pendingBookingTargetProvider =
     NotifierProvider<PendingBookingTargetNotifier, BookingTarget?>(
       PendingBookingTargetNotifier.new,
     );
+
+/// True once the client has tapped "Book my free session" and until that
+/// session is actually booked (or they back out of it).
+///
+/// Lives here rather than in BookingScreen's own state because the free
+/// session usually needs a waiver signed first, and signing can take the
+/// client off the Booking screen entirely — saving the waiver brings them
+/// straight back to Booking, and without this they'd land on the ordinary
+/// booking page with their free-session choice forgotten.
+class FreeAssessmentIntentNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) => state = value;
+}
+
+final freeAssessmentIntentProvider =
+    NotifierProvider<FreeAssessmentIntentNotifier, bool>(
+      FreeAssessmentIntentNotifier.new,
+    );

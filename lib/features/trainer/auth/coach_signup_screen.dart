@@ -31,9 +31,18 @@ import "../../../data/providers/supabase_bootstrap_provider.dart";
 /// is the real, race-safe, server-side enforcement; this step is a fast
 /// client-side pre-check, same division of labor as the web app's).
 class CoachSignupScreen extends ConsumerStatefulWidget {
-  const CoachSignupScreen({super.key, required this.onBack});
+  const CoachSignupScreen({
+    super.key,
+    required this.onBack,
+    this.debugSkipCodeGate = false,
+  });
 
   final VoidCallback onBack;
+
+  /// Tests only — starts past the approval-code step so the profile form
+  /// itself can be driven without a live Supabase approval code.
+  @visibleForTesting
+  final bool debugSkipCodeGate;
 
   @override
   ConsumerState<CoachSignupScreen> createState() => _CoachSignupScreenState();
@@ -62,6 +71,12 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
 
   final Set<String> _disciplines = {};
 
+  /// Which session types this coach runs — the gym's own list, exactly as
+  /// the owner set it up in Customize Platform → Services. Collected here
+  /// (rather than left for My Profile later) because the booking flow only
+  /// offers a coach for the types they actually hold.
+  final Set<String> _sessionTypes = {};
+
   /// Optional at signup — a coach can leave it empty and set it later from
   /// their profile. Collected here because a coach with no availability is
   /// invisible in the booking flow, which is a confusing first experience
@@ -80,7 +95,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
   final _bio = TextEditingController();
   List<TrainerBeforeAfter> _beforeAfters = [];
 
-  bool _codeVerified = false;
+  late bool _codeVerified = widget.debugSkipCodeGate;
   String? _codeError;
   bool _verifyingCode = false;
 
@@ -99,6 +114,35 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
     _coachCode.dispose();
     _bio.dispose();
     super.dispose();
+  }
+
+  /// The selectable pill used by both the Disciplines and Session types
+  /// pickers below, so the two always look and behave the same.
+  Widget _pickChip({
+    required String label,
+    required bool on,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: on ? AppColors.gold : AppColors.line),
+          color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: on ? AppColors.gold : AppColors.mute,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _verifyCode() async {
@@ -178,6 +222,13 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
       setState(() => _error = "Choose at least one discipline.");
       return;
     }
+    // Only gate on this when the gym actually offers any — otherwise it'd be
+    // an impossible requirement on a brand-new, unconfigured platform.
+    if (_sessionTypes.isEmpty &&
+        ref.read(platformSettingsProvider).offeredSessionTypes.isNotEmpty) {
+      setState(() => _error = "Choose at least one session type.");
+      return;
+    }
     setState(() {
       _error = null;
       _busy = true;
@@ -194,6 +245,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
         approvalCode: _code.text.trim(),
         photo: _photoDataUrl,
         disciplines: _disciplines.toList(),
+        sessionTypes: _sessionTypes.toList(),
         availability: _availability,
         locationName: _locationName.text.trim(),
         locationAddress: _locationAddress.text.trim(),
@@ -453,52 +505,76 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                   runSpacing: 6,
                   // The gym's own list (Customize Platform → Services),
                   // including disciplines the owner added themselves.
-                  children: ref.watch(platformSettingsProvider).offeredDisciplines
-                      .map((k) => MapEntry(k, disciplineLabel(k)))
-                      .map((e) {
-                    final on = _disciplines.contains(e.key);
-                    return InkWell(
-                      onTap: () => setState(() {
-                        if (on) {
-                          _disciplines.remove(e.key);
-                        } else {
-                          _disciplines.add(e.key);
-                        }
-                        _error = null;
-                      }),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
+                  children: ref
+                      .watch(platformSettingsProvider)
+                      .offeredDisciplines
+                      .map(
+                        (k) => _pickChip(
+                          label: disciplineLabel(k),
+                          on: _disciplines.contains(k),
+                          onTap: () => setState(() {
+                            _disciplines.contains(k)
+                                ? _disciplines.remove(k)
+                                : _disciplines.add(k);
+                            _error = null;
+                          }),
                         ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: on ? AppColors.gold : AppColors.line,
-                          ),
-                          color: on
-                              ? AppColors.gold.withValues(alpha: 0.15)
-                              : AppColors.bg,
-                        ),
-                        child: Text(
-                          e.value,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: on ? AppColors.gold : AppColors.mute,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
+                      )
+                      .toList(),
                 ),
               ),
+              const SizedBox(height: 10),
+              // Same source as the Disciplines list above: whatever the owner
+              // set up in Customize Platform → Services, including any type
+              // they added themselves. A type the owner deletes stops being
+              // offered here too.
+              FieldLabeled(
+                label: "Session types (choose one or more)",
+                child: Builder(builder: (context) {
+                  final offered =
+                      ref.watch(platformSettingsProvider).offeredSessionTypes;
+                  if (offered.isEmpty) {
+                    return const Text(
+                      "ONE Fitness hasn't set up any session types yet — you "
+                      "can add yours later from My Profile.",
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.mute,
+                        height: 1.4,
+                      ),
+                    );
+                  }
+                  return Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: offered
+                        .map(
+                          (k) => _pickChip(
+                            label: sessionTypeLabel(k),
+                            on: _sessionTypes.contains(k),
+                            onTap: () => setState(() {
+                              if (_sessionTypes.contains(k)) {
+                                _sessionTypes.remove(k);
+                                // Availability is set per session type — drop
+                                // any blocks for a type just unticked.
+                                _availability
+                                    .removeWhere((b) => b.sessionType == k);
+                              } else {
+                                _sessionTypes.add(k);
+                              }
+                              _error = null;
+                            }),
+                          ),
+                        )
+                        .toList(),
+                  );
+                }),
+              ),
               const SizedBox(height: 14),
-              // Optional, and only offered once disciplines are picked —
-              // an availability block has to be for a discipline, so asking
+              // Optional, and only offered once a discipline AND a session
+              // type are picked — a block is for one of each, so asking
               // before that would present an empty editor.
-              if (_disciplines.isNotEmpty) ...[
+              if (_disciplines.isNotEmpty && _sessionTypes.isNotEmpty) ...[
                 FieldLabeled(
                   label: "Availability (optional)",
                   child: Column(
@@ -560,9 +636,10 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: ref
-                            .watch(platformSettingsProvider)
-                            .offeredSessionTypes
+                        // Only the types this coach ticked above — a "+" for
+                        // a type they don't run would save a block the
+                        // booking flow never looks at.
+                        children: _sessionTypes
                             .map((k) => MapEntry(k, sessionTypeLabel(k)))
                             .map((e) {
                           return Padding(

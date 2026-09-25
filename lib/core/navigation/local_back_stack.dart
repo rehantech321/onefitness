@@ -65,8 +65,17 @@ class _LocalBackScopeState extends ConsumerState<LocalBackScope> {
   void _handler() => widget.onBack();
   bool _pushed = false;
 
+  /// Held in a field rather than read through `ref` on demand: dispose runs
+  /// once the element is already deactivated, and reading a provider through
+  /// `ref` at that point throws ("Using \"ref\" when a widget is about to or
+  /// has been unmounted is unsafe"). That fired every time a screen was left
+  /// with a sub-view still open — the exact case dispose exists to clean up.
+  late final LocalBackStackNotifier _stack =
+      ref.read(localBackStackProvider.notifier);
+
   void _sync() {
-    final stack = ref.read(localBackStackProvider.notifier);
+    if (!mounted) return;
+    final stack = _stack;
     if (widget.isOpen && !_pushed) {
       stack.push(_handler);
       _pushed = true;
@@ -76,23 +85,38 @@ class _LocalBackScopeState extends ConsumerState<LocalBackScope> {
     }
   }
 
+  /// Always deferred to after the frame. Both entry points below run inside
+  /// the build phase, and pushing/popping here writes to a provider the
+  /// shells watch — doing that mid-build throws "Tried to modify a provider
+  /// while the widget tree was building", which takes the whole screen down
+  /// to a blank error box.
+  ///
+  /// This bit whenever a screen swapped one sub-view for another that is
+  /// also a LocalBackScope: Flutter reuses the element, so the swap arrives
+  /// as didUpdateWidget with isOpen flipping false -> true, mid-build. The
+  /// Access Hub hit it opening a plan's contract, which is how it was found.
+  void _syncAfterFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
+  }
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _sync();
-    });
+    _syncAfterFrame();
   }
 
   @override
   void didUpdateWidget(covariant LocalBackScope oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _sync();
+    if (widget.isOpen != oldWidget.isOpen) _syncAfterFrame();
   }
 
   @override
   void dispose() {
-    if (_pushed) ref.read(localBackStackProvider.notifier).pop(_handler);
+    if (_pushed) {
+      _pushed = false;
+      _stack.pop(_handler);
+    }
     super.dispose();
   }
 

@@ -220,6 +220,7 @@ class SupabaseService {
     required String approvalCode,
     String? photo,
     List<String>? disciplines,
+    List<String>? sessionTypes,
     List<AvailabilityBlock>? availability,
     String? locationName,
     String? locationAddress,
@@ -248,6 +249,10 @@ class SupabaseService {
           "availability": availability.map(_availabilityToJson).toList(),
         if (disciplines != null && disciplines.isNotEmpty)
           "disciplines": disciplines,
+        // Picked at signup from the gym's own catalogue — the booking flow
+        // only offers a coach for the types they hold.
+        if (sessionTypes != null && sessionTypes.isNotEmpty)
+          "session_types": sessionTypes,
         if (locationName != null || locationAddress != null)
           "locations": [
             {

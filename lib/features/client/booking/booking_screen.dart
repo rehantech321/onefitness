@@ -13,6 +13,8 @@ import "../../../core/utils/notification_triggers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/blocked_time.dart";
 import "../../../data/models/booking.dart";
+import "../../../data/models/client_info.dart";
+import "../../../data/models/client_record.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/models/waitlist_entry.dart";
@@ -21,6 +23,7 @@ import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../drawer_screens/waiver_signing_screen.dart";
+import "../shell/client_shell_state.dart";
 import "booking_cancel_screen.dart";
 import "booking_picking_screen.dart";
 import "date_strip.dart";
@@ -70,23 +73,47 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   final Set<String> _waitlistBusyKeys = {};
 
   /// True while booking the free first session (a physical assessment):
-  /// no membership needed, nothing deducted from any plan.
+  /// no membership needed, nothing deducted from any plan. Seeded from
+  /// [freeAssessmentIntentProvider] in initState so the choice survives a
+  /// trip out to sign a waiver and back.
   bool _freeAssessment = false;
+
+  /// Keeps the shared intent in step with local state, so leaving this
+  /// screen and coming back resumes the free session rather than dropping
+  /// the client on the ordinary booking page.
+  void _setFreeAssessment(bool value) {
+    _freeAssessment = value;
+    ref.read(freeAssessmentIntentProvider.notifier).set(value);
+  }
 
   /// The offer stands until this client has booked anything at all — their
   /// free assessment, or a first normal session.
-  bool get _freeAssessmentAvailable {
-    final info = ref.watch(clientInfoProvider);
+  bool get _freeAssessmentAvailable => _freeOfferStands(
+        ref.watch(clientInfoProvider),
+        ref.watch(clientBookingsProvider),
+        ref.watch(clientRecordProvider),
+      );
+
+  /// The same rule, taking its inputs directly so initState can apply it
+  /// too — `ref.watch` isn't allowed there.
+  static bool _freeOfferStands(ClientInfo info, List<Booking> bookings, ClientRecord record) {
     if (info.isStaff) return false;
-    final mine = ref.watch(clientBookingsProvider).where((b) => b.clientId == info.id);
-    if (mine.isNotEmpty) return false;
+    if (bookings.any((b) => b.clientId == info.id)) return false;
     // A client whose assessment is already recorded as done doesn't get
     // offered it again either.
-    return !(ref.watch(clientRecordProvider).intake["physical"]?.completed ?? false);
+    return !(record.intake["physical"]?.completed ?? false);
   }
 
   void _startFreeAssessment() => setState(() {
-        _freeAssessment = true;
+        _setFreeAssessment(true);
+        _chosenType = null;
+        _chosenDisc = null;
+      });
+
+  /// Leaves the free-session flow for ordinary booking — the offer card
+  /// comes back, since nothing has been booked.
+  void _exitFreeAssessment() => setState(() {
+        _setFreeAssessment(false);
         _chosenType = null;
         _chosenDisc = null;
       });
@@ -156,6 +183,25 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       _rescheduling = reschedule;
       _chosenType = reschedule.sessionType;
       _chosenDisc = reschedule.discipline;
+      return;
+    }
+    // Resumes the free first session after a detour — signing a waiver,
+    // most often, which lands the client back here on a fresh screen. Only
+    // if the offer still stands, so a stale intent (they booked something
+    // in the meantime) can't strand them in a flow that no longer applies.
+    if (!ref.read(freeAssessmentIntentProvider)) return;
+    final stillFree = _freeOfferStands(
+      ref.read(clientInfoProvider),
+      ref.read(clientBookingsProvider),
+      ref.read(clientRecordProvider),
+    );
+    _freeAssessment = stillFree;
+    if (!stillFree) {
+      // After the frame: writing a provider from initState throws the same
+      // "modify a provider while the widget tree was building" error.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(freeAssessmentIntentProvider.notifier).set(false);
+      });
     }
   }
 
@@ -417,7 +463,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         _pickPlanId = null;
         _rescheduling = null;
         // The free session is used up — the offer is gone from here on.
-        _freeAssessment = false;
+        _setFreeAssessment(false);
         _chosenType = null;
         _chosenDisc = null;
       });
@@ -666,6 +712,13 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           // The offer disappears the moment they book anything at all.
           if (_freeAssessmentAvailable && !_freeAssessment) ...[
             _FreeFirstSessionCard(onStart: _startFreeAssessment),
+            const SizedBox(height: 14),
+          ],
+
+          // In the free flow: says so, and offers a way back out for a
+          // client who holds a plan and meant to book an ordinary session.
+          if (_freeAssessment) ...[
+            _FreeSessionActiveBanner(onExit: _exitFreeAssessment),
             const SizedBox(height: 14),
           ],
 
@@ -948,6 +1001,53 @@ class _FreeFirstSessionCard extends StatelessWidget {
             full: true,
             onPressed: onStart,
             child: const Text("Book my free session"),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown for the whole of the free-session flow — including after a detour
+/// to sign a waiver, which drops the client back here on a fresh screen and
+/// would otherwise leave them wondering whether the free session stuck.
+class _FreeSessionActiveBanner extends StatelessWidget {
+  const _FreeSessionActiveBanner({required this.onExit});
+  final VoidCallback onExit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+      decoration: BoxDecoration(
+        color: AppColors.gold.withValues(alpha: 0.08),
+        border: Border.all(color: AppColors.gold),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 1),
+            child: Icon(LucideIcons.gift, size: 16, color: AppColors.gold),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              "Booking your free physical assessment — pick a time below. "
+              "It won't use any of your sessions.",
+              style: TextStyle(fontSize: 12, color: AppColors.txt, height: 1.5),
+            ),
+          ),
+          TextButton(
+            onPressed: onExit,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.mute,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              minimumSize: Size.zero,
+            ),
+            child: const Text("Not now", style: TextStyle(fontSize: 12)),
           ),
         ],
       ),
