@@ -108,6 +108,62 @@ class SupabaseService {
   /// is off), matching the web app's own self-signup UX — the caller
   /// still needs to seed core data / restore state afterward, same as a
   /// normal sign-in.
+  /// Permanently deletes the signed-in user's own account (Apple guideline
+  /// 5.1.1(v)). The server takes the id from the caller's JWT, never from
+  /// this call, so it can only ever delete the account making the request.
+  ///
+  /// On success the session is already invalid server-side; [signOut] here
+  /// clears the local copy so nothing is left on the device.
+  static Future<void> deleteMyAccount() async {
+    final res = await client.functions.invoke("delete-account", body: {});
+    final data = res.data;
+    if (data is Map && data["error"] != null) {
+      throw Exception(data["error"].toString());
+    }
+    if (res.status != 200) {
+      throw Exception("We couldn't delete your account just now. Please try again.");
+    }
+    try {
+      await client.auth.signOut();
+    } catch (_) {
+      // The user is already gone server-side; a failed sign-out call must
+      // not make a successful deletion look like a failure.
+    }
+  }
+
+  /// Records that this user accepted the Terms of Use (Apple guideline 1.2)
+  /// and, at signup, confirmed they are 18 or older (guideline 5.1.1, which
+  /// is why no date of birth is required).
+  ///
+  /// Stores the version accepted, so a later revision of the text re-prompts
+  /// on next sign-in rather than silently counting the old acceptance.
+  static Future<void> recordTermsAcceptance(
+    String userId, {
+    required String version,
+    bool confirmedOver18 = false,
+  }) async {
+    final now = DateTime.now().toUtc().toIso8601String();
+    await client.from("profiles").update({
+      "accepted_terms_at": now,
+      "accepted_terms_version": version,
+      if (confirmedOver18) "over_18_confirmed_at": now,
+    }).eq("id", userId);
+  }
+
+  /// Whether this user still needs to accept the current Terms — true for
+  /// an account created before the Terms existed, or before the latest
+  /// revision. Read on sign-in to decide whether to show the gate.
+  static Future<bool> needsTermsAcceptance(String userId, String currentVersion) async {
+    final row = await client
+        .from("profiles")
+        .select("accepted_terms_at, accepted_terms_version")
+        .eq("id", userId)
+        .maybeSingle();
+    if (row == null) return false;
+    if (row["accepted_terms_at"] == null) return true;
+    return row["accepted_terms_version"] != currentVersion;
+  }
+
   static Future<String> signUpClient({
     required String email,
     required String password,

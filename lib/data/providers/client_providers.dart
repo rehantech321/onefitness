@@ -24,6 +24,21 @@ class ClientSignedIn extends Notifier<bool> {
 
 final clientSignedInProvider = NotifierProvider<ClientSignedIn, bool>(ClientSignedIn.new);
 
+/// Set the moment an account is deleted, so the welcome screen can confirm
+/// it happened ("Your account has been deleted") rather than silently
+/// dropping the user back at sign-in as though they'd just logged out.
+/// Cleared once shown.
+class AccountDeletedNotice extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void show() => state = true;
+  void clear() => state = false;
+}
+
+final accountDeletedNoticeProvider =
+    NotifierProvider<AccountDeletedNotice, bool>(AccountDeletedNotice.new);
+
 /// Whether ClientAuthScreen is currently showing ClientSignupScreen instead
 /// of its sign-in form — read by the root shell to hide the Coach/Client
 /// header toggle on the create-profile page (the user has already committed

@@ -17,6 +17,7 @@ import "../../../core/utils/merge_token_utils.dart";
 import "../../../data/models/waiver_doc.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "add_phone_screen.dart";
 import "waiver_signing_screen.dart";
 import "../dashboard/sessions_remaining_badge.dart";
 
@@ -58,6 +59,15 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
   /// buying once it's signed.
   WaiverDoc? _signingContract;
   MembershipPlan? _afterContractPlan;
+
+  /// Set when a client without a phone number tries to buy — the plan to
+  /// carry on buying once they've added one.
+  MembershipPlan? _afterPhonePlan;
+
+  /// A phone number is only asked for at the point it's needed: buying a
+  /// plan commits the client to in-person sessions their coach has to
+  /// coordinate. Signup itself doesn't require one.
+  bool _needsPhone(ClientInfo info) => (info.phone ?? "").trim().isEmpty;
 
   /// This plan's contract when the client hasn't signed the current version
   /// of it — null when the plan has no contract, or it's already signed.
@@ -112,6 +122,15 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       _busyPlanId = plan.id;
       _error = null;
     });
+    // Asked for before anything else, so the client isn't sent back to a
+    // form after signing a contract.
+    if (_needsPhone(ref.read(clientInfoProvider))) {
+      setState(() {
+        _busyPlanId = null;
+        _afterPhonePlan = plan;
+      });
+      return;
+    }
     // A plan can carry its own contract — it has to be read and signed
     // before the plan can be bought at all.
     final contract = _unsignedContractFor(plan);
@@ -558,6 +577,27 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     // categories that survive the current Memberships/Packages filter.
     final browseGroups = _groupByCategory(filteredBuyable, ref.watch(packageCategoriesProvider));
     final cancelPending = info.membershipCancelsAt != null;
+
+    // Adding a phone number, mid-purchase: once saved, the purchase carries
+    // straight on with the same plan.
+    final phonePlan = _afterPhonePlan;
+    if (phonePlan != null) {
+      void close() => setState(() => _afterPhonePlan = null);
+      return LocalBackScope(
+        isOpen: true,
+        onBack: close,
+        child: AddPhoneScreen(
+          onBack: close,
+          reason:
+              "Your coach needs your phone number to coordinate your sessions. "
+              "We'll only use it for your bookings.",
+          onSaved: () {
+            setState(() => _afterPhonePlan = null);
+            _buy(ref.read(clientInfoProvider).id, phonePlan);
+          },
+        ),
+      );
+    }
 
     // Signing the plan's contract, mid-purchase: once it's signed the
     // purchase carries straight on with the same plan.

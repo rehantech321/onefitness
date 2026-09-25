@@ -73,6 +73,20 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
     if (ref.watch(clientSigningUpProvider)) {
       return ClientSignupScreen(onBack: () => ref.read(clientSigningUpProvider.notifier).set(false));
     }
+    // Landing here straight after deleting an account: confirm it happened,
+    // rather than looking like an ordinary sign-out.
+    if (ref.watch(accountDeletedNoticeProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Your account has been deleted."),
+            duration: Duration(seconds: 6),
+          ),
+        );
+        ref.read(accountDeletedNoticeProvider.notifier).clear();
+      });
+    }
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(

@@ -2,6 +2,8 @@ import "dart:convert";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../core/legal/terms_screen.dart";
+import "../../core/legal/terms_text.dart";
 import "../../core/supabase/supabase_service.dart";
 import "../../core/theme/app_colors.dart";
 import "../../core/utils/photo_picker_utils.dart";
@@ -41,6 +43,16 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
   String? _error;
   bool _busy = false;
   bool _pickingPhoto = false;
+
+  /// Apple guideline 5.1.1 — an age confirmation replaces asking for a date
+  /// of birth, which isn't needed to run the app. Birthday stays optional.
+  bool _over18 = false;
+
+  /// Apple guideline 1.2 — signup is blocked until the Terms are accepted.
+  bool _agreedToTerms = false;
+
+  /// Shows the full Terms over the form without losing anything typed.
+  bool _readingTerms = false;
 
   @override
   void dispose() {
@@ -88,8 +100,11 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
     final password = _password.text;
     final phone = _phone.text.trim();
     final city = _city.text.trim();
-    if (firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty || city.isEmpty) {
-      setState(() => _error = "First name, last name, email, password, phone number, and city are all required.");
+    // Name, email and password are all it takes to open an account. Phone
+    // and city are genuinely optional here — phone is asked for at the one
+    // point it's actually needed, booking an in-person session.
+    if (firstName.isEmpty || lastName.isEmpty || email.isEmpty || password.isEmpty) {
+      setState(() => _error = "First name, last name, email, and password are all required.");
       return;
     }
     if (password.length < 6) {
@@ -98,6 +113,14 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
     }
     if (password != _password2.text) {
       setState(() => _error = "Passwords don't match.");
+      return;
+    }
+    if (!_over18) {
+      setState(() => _error = "You must confirm you are 18 or older to use ONE Fitness.");
+      return;
+    }
+    if (!_agreedToTerms) {
+      setState(() => _error = "Please agree to the Terms of Use to continue.");
       return;
     }
     setState(() {
@@ -115,6 +138,13 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
         city: city,
         birthday: _birthday.text.trim().isEmpty ? null : _birthday.text.trim(),
         coachCode: _coachCode.text.trim().isEmpty ? null : _coachCode.text.trim(),
+      );
+      // Recorded against the account as evidence of acceptance, with the
+      // version of the text agreed to — a later revision re-prompts.
+      await SupabaseService.recordTermsAcceptance(
+        userId,
+        version: kTermsVersion,
+        confirmedOver18: true,
       );
       if (_photoDataUrl != null) {
         await SupabaseService.updateClientRow(userId, photo: _photoDataUrl);
@@ -147,6 +177,11 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Over the form, not instead of it — everything typed is still here on
+    // the way back.
+    if (_readingTerms) {
+      return TermsScreen(onBack: () => setState(() => _readingTerms = false));
+    }
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -230,15 +265,25 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                 child: AppField(controller: _password2, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
               ),
               const SizedBox(height: 10),
-              FieldLabeled(label: "Phone number", child: AppField(controller: _phone, keyboardType: TextInputType.phone, onChanged: (_) => setState(() => _error = null))),
+              FieldLabeled(
+                label: "Phone number (optional)",
+                child: AppField(controller: _phone, keyboardType: TextInputType.phone, onChanged: (_) => setState(() => _error = null)),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  "We'll ask for this when you book your first in-person session, so your coach can coordinate with you. You can add it later.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic, height: 1.4),
+                ),
+              ),
               const SizedBox(height: 10),
               FieldLabeled(
-                label: "City",
+                label: "City (optional)",
                 child: AppField(controller: _city, onChanged: (_) => setState(() => _error = null)),
               ),
               const Padding(
                 padding: EdgeInsets.only(top: 4),
-                child: Text("Personalized training near you", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
+                child: Text("Helps us show you coaches near you.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
               ),
               const SizedBox(height: 10),
               FieldLabeled(
@@ -268,6 +313,54 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
               const Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text("If a coach gave you a code, enter it here to link your account to them.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
+              ),
+              const SizedBox(height: 14),
+              const Divider(color: AppColors.line, height: 1),
+              const SizedBox(height: 6),
+              ConsentCheckbox(
+                value: _over18,
+                onChanged: (v) => setState(() {
+                  _over18 = v;
+                  _error = null;
+                }),
+                child: const Text(
+                  "I confirm I am 18 or older",
+                  style: TextStyle(fontSize: 13, height: 1.4),
+                ),
+              ),
+              ConsentCheckbox(
+                value: _agreedToTerms,
+                onChanged: (v) => setState(() {
+                  _agreedToTerms = v;
+                  _error = null;
+                }),
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Text("I agree to the ", style: TextStyle(fontSize: 13, height: 1.4)),
+                    GestureDetector(
+                      onTap: () => setState(() => _readingTerms = true),
+                      child: const Text(
+                        "Terms of Use",
+                        style: TextStyle(
+                          fontSize: 13,
+                          height: 1.4,
+                          color: AppColors.gold,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.gold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(left: 36, top: 2),
+                child: Text(
+                  "ONE Fitness has zero tolerance for objectionable content or abusive users.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                ),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 10),

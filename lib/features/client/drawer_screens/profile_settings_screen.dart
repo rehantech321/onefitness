@@ -7,7 +7,9 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/utils/photo_picker_utils.dart";
+import "../../../core/legal/terms_screen.dart";
 import "../../../core/widgets/calendar_sync_section.dart";
+import "../../../core/widgets/delete_account_screen.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
@@ -100,6 +102,28 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
               const CalendarSyncSection(),
             ],
           ),
+        ),
+      );
+    }
+    if (_section == "terms") {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _section = null),
+        child: TermsScreen(onBack: () => setState(() => _section = null)),
+      );
+    }
+    if (_section == "delete") {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _section = null),
+        child: DeleteAccountScreen(
+          onBack: () => setState(() => _section = null),
+          onDeleted: () {
+            // Back to the welcome screen with everything cleared — the
+            // session is already dead server-side.
+            ref.read(accountDeletedNoticeProvider.notifier).show();
+            ref.read(clientSignedInProvider.notifier).signOut();
+          },
         ),
       );
     }
@@ -198,6 +222,27 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
               ),
             ),
           ),
+
+          // ── Account ──
+          // Deleting your own account has to be doable from inside the app,
+          // in a couple of taps, without contacting support (Apple guideline
+          // 5.1.1(v)).
+          const SizedBox(height: 18),
+          const SectionLabel("Account"),
+          _SettingRow(
+            icon: LucideIcons.fileText,
+            label: "Terms of Use",
+            detail: "What you agreed to when you joined",
+            onTap: () => setState(() => _section = "terms"),
+          ),
+          _SettingRow(
+            icon: LucideIcons.trash2,
+            label: "Delete Account",
+            detail: "Permanently delete your account and data",
+            danger: true,
+            onTap: () => setState(() => _section = "delete"),
+          ),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -220,6 +265,7 @@ class _SettingRow extends StatelessWidget {
     required this.label,
     required this.detail,
     this.badge,
+    this.danger = false,
     this.onTap,
   });
 
@@ -229,6 +275,9 @@ class _SettingRow extends StatelessWidget {
   final String? badge;
   final VoidCallback? onTap;
 
+  /// Destructive actions (Delete Account) read in red, not gold.
+  final bool danger;
+
   @override
   Widget build(BuildContext context) {
     return Opacity(
@@ -237,7 +286,7 @@ class _SettingRow extends StatelessWidget {
         onTap: onTap,
         child: Row(
           children: [
-            Icon(icon, size: 18, color: AppColors.gold),
+            Icon(icon, size: 18, color: danger ? AppColors.errorText : AppColors.gold),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
