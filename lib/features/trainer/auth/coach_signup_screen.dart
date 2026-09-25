@@ -229,6 +229,14 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
       setState(() => _error = "Choose at least one session type.");
       return;
     }
+    // A coach with no availability never appears in the booking screen, so
+    // the account would be created and then be invisible. Required, not a
+    // "you can do this later".
+    if (_availability.isEmpty) {
+      setState(() => _error =
+          "Add at least one availability block so clients can book you.");
+      return;
+    }
     setState(() {
       _error = null;
       _busy = true;
@@ -571,23 +579,43 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 }),
               ),
               const SizedBox(height: 14),
-              // Optional, and only offered once a discipline AND a session
-              // type are picked — a block is for one of each, so asking
-              // before that would present an empty editor.
-              if (_disciplines.isNotEmpty && _sessionTypes.isNotEmpty) ...[
-                FieldLabeled(
-                  label: "Availability (optional)",
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 8),
+              // Always shown, never hidden: a coach with no availability is
+              // invisible in the booking screen, so this is required, not
+              // optional. When the prerequisites aren't picked yet the
+              // section says so rather than silently disappearing — hiding
+              // it made it look like the feature had been removed.
+              FieldLabeled(
+                label: "Availability * (required)",
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        "When can clients book you? Add at least one block — "
+                        "without it you won't appear in the booking screen at all.",
+                        style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                      ),
+                    ),
+                    if (_disciplines.isEmpty || _sessionTypes.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: 0.08),
+                          border: Border.all(color: AppColors.goldDim),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         child: Text(
-                          "When can clients book you? You can skip this and set it later from your profile — "
-                          "but until it is set you will not appear in the booking screen.",
-                          style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                          _disciplines.isEmpty && _sessionTypes.isEmpty
+                              ? "Choose your disciplines and session types above, then add your available times here."
+                              : _disciplines.isEmpty
+                                  ? "Choose your disciplines above, then add your available times here."
+                                  : "Choose your session types above, then add your available times here.",
+                          style: const TextStyle(fontSize: 11.5, color: AppColors.gold, height: 1.4),
                         ),
                       ),
+                    if (_disciplines.isNotEmpty && _sessionTypes.isNotEmpty) ...[
                       ..._availability.asMap().entries.map((entry) {
                         final i = entry.key;
                         final b = entry.value;
@@ -661,10 +689,10 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                         }).toList(),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-              ],
+              ),
+              const SizedBox(height: 10),
               const Text(
                 "Where you train",
                 style: TextStyle(

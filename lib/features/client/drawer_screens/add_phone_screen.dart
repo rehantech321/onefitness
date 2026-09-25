@@ -5,6 +5,151 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/client_providers.dart";
 
+/// Saves a phone number onto the signed-in client's profile and keeps the
+/// in-memory copy in step. Shared by the full-screen prompt below and the
+/// dialog, so there's one place that knows how a number is stored.
+Future<void> savePhoneNumber(WidgetRef ref, String phone) async {
+  final id = ref.read(clientInfoProvider).id;
+  await SupabaseService.updateClientRow(id, phone: phone);
+  ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(phone: phone));
+}
+
+/// Loose on purpose: numbers arrive with spaces, dashes, brackets and
+/// country codes. Enough digits to be a real number is the whole test.
+bool isUsablePhone(String raw) =>
+    raw.replaceAll(RegExp(r"[^0-9]"), "").length >= 7;
+
+/// Whether the signed-in client still needs to give us a number.
+bool clientNeedsPhone(WidgetRef ref) =>
+    (ref.read(clientInfoProvider).phone ?? "").trim().isEmpty;
+
+/// A compact version of [AddPhoneScreen] for places that shouldn't leave the
+/// current screen — picking In App / SMS in Chat, where taking the client
+/// away from the conversation to a separate page would lose their place.
+///
+/// Returns true once a number is saved, false if they backed out.
+Future<bool> promptForPhoneDialog(
+  BuildContext context,
+  WidgetRef ref, {
+  required String reason,
+}) async {
+  final saved = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => _PhoneDialog(ref: ref, reason: reason),
+  );
+  return saved ?? false;
+}
+
+/// A StatefulWidget rather than a controller created beside `showDialog`:
+/// the dialog keeps building through its close animation, so a controller
+/// disposed the moment `showDialog` returns is used after disposal and
+/// throws. Owning it here ties its life to the dialog's own.
+class _PhoneDialog extends StatefulWidget {
+  const _PhoneDialog({required this.ref, required this.reason});
+  final WidgetRef ref;
+  final String reason;
+
+  @override
+  State<_PhoneDialog> createState() => _PhoneDialogState();
+}
+
+class _PhoneDialogState extends State<_PhoneDialog> {
+  late final _controller = TextEditingController(
+    text: widget.ref.read(clientInfoProvider).phone ?? "",
+  );
+  String? _error;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final phone = _controller.text.trim();
+    if (!isUsablePhone(phone)) {
+      setState(() => _error = "Enter a number your coach can reach you on.");
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await savePhoneNumber(widget.ref, phone);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = "Couldn't save — check your connection.";
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.card,
+      title: const Text(
+        "Add your phone number",
+        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(widget.reason, style: const TextStyle(fontSize: 13, height: 1.5)),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            keyboardType: TextInputType.phone,
+            autofocus: true,
+            style: const TextStyle(fontSize: 15),
+            decoration: InputDecoration(
+              hintText: "e.g. (555) 010-0199",
+              hintStyle: const TextStyle(color: AppColors.mute, fontSize: 14),
+              filled: true,
+              fillColor: AppColors.bg,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.line),
+              ),
+              errorText: _error,
+            ),
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+            onSubmitted: (_) => _busy ? null : _save(),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Saved to your profile. Only your coach and ONE Fitness staff can see it, and you can change it any time in Profile Settings.",
+            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
+          style: TextButton.styleFrom(foregroundColor: AppColors.mute),
+          child: const Text("Not now"),
+        ),
+        TextButton(
+          onPressed: _busy ? null : _save,
+          style: TextButton.styleFrom(foregroundColor: AppColors.gold),
+          child: Text(_busy ? "Saving…" : "Save",
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+        ),
+      ],
+    );
+  }
+}
+
 /// Asked for at the one point it's genuinely needed — buying a plan, which
 /// commits the client to in-person sessions a coach has to coordinate.
 ///
@@ -48,10 +193,7 @@ class _AddPhoneScreenState extends ConsumerState<AddPhoneScreen> {
 
   Future<void> _save() async {
     final phone = _phone.text.trim();
-    // Deliberately loose: numbers arrive with spaces, dashes, brackets and
-    // country codes. Enough digits to be a real number is the whole test.
-    final digits = phone.replaceAll(RegExp(r"[^0-9]"), "");
-    if (digits.length < 7) {
+    if (!isUsablePhone(phone)) {
       setState(() => _error = "Enter a phone number your coach can reach you on.");
       return;
     }
@@ -60,9 +202,7 @@ class _AddPhoneScreenState extends ConsumerState<AddPhoneScreen> {
       _busy = true;
     });
     try {
-      final id = ref.read(clientInfoProvider).id;
-      await SupabaseService.updateClientRow(id, phone: phone);
-      ref.read(clientInfoProvider.notifier).update((i) => i.copyWith(phone: phone));
+      await savePhoneNumber(ref, phone);
       if (!mounted) return;
       setState(() => _busy = false);
       widget.onSaved();

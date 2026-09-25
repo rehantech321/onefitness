@@ -9,6 +9,7 @@ class CommMessage {
     this.trainerId,
     this.readByCoach = false,
     this.channel,
+    this.createdAt,
   });
 
   final String id;
@@ -23,6 +24,11 @@ class CommMessage {
   /// was tracked, or from the original web app.
   final String? channel;
 
+  /// The row's real `messages.created_at`, for messages stored in the
+  /// `messages` table. Null for legacy entries that still live in
+  /// `client_records.data->'comms'`, whose time is recovered from [id].
+  final DateTime? createdAt;
+
   /// Real chronological timestamp for day-grouping/sort order in the chat
   /// UI. [id] is always a microsecond-epoch stamp for a message this app
   /// created (see chat_screen.dart/coach_chat_screen.dart's `send()`), so
@@ -31,6 +37,10 @@ class CommMessage {
   /// anything with a non-numeric id — e.g. legacy data from the web app's
   /// own `uid()` scheme.
   DateTime get sentAt {
+    // A real timestamp always wins; table rows have UUID ids that carry no
+    // time at all, so the old int.parse trick would sort them to the epoch.
+    final stored = createdAt;
+    if (stored != null) return stored;
     final micros = int.tryParse(id);
     return micros != null
         ? DateTime.fromMicrosecondsSinceEpoch(micros)
@@ -45,5 +55,6 @@ class CommMessage {
         trainerId: trainerId,
         readByCoach: readByCoach ?? this.readByCoach,
         channel: channel,
+        createdAt: createdAt,
       );
 }

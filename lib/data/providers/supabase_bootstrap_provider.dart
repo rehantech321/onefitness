@@ -243,6 +243,26 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   await Future.wait(roster.map((c) async {
     clientRecords[c.id] = await SupabaseService.loadClientRecord(c.id);
   }));
+
+  // Chat lives in the `messages` table now, not in the record's jsonb. Any
+  // older entries still in `comms` are kept and merged, so test threads
+  // written before the move don't vanish; everything is sorted by real send
+  // time. The table's own policy has already dropped blocked users' rows,
+  // so blocking takes effect here without any client-side filtering.
+  try {
+    final byClient = await SupabaseService.loadAllMessages();
+    for (final entry in byClient.entries) {
+      final existing = clientRecords[entry.key];
+      if (existing == null) continue;
+      final merged = [...existing.comms, ...entry.value]
+        ..sort((a, b) => b.sentAt.compareTo(a.sentAt)); // newest first
+      clientRecords[entry.key] = existing.copyWith(comms: merged);
+    }
+  } catch (e) {
+    // A chat load failure must not stop the whole app booting.
+    // ignore: avoid_print
+    print("[bootstrap] messages load failed: $e");
+  }
   ref.read(trainerClientRecordsProvider.notifier).setAll(clientRecords);
 
   // ── Restore who's signed in from the current Supabase Auth session ──

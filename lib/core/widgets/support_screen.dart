@@ -4,6 +4,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "package:url_launcher/url_launcher.dart";
 import "../theme/app_colors.dart";
 import "../../data/providers/platform_settings_provider.dart";
+import "../../data/providers/trainer_providers.dart";
 import "widgets.dart";
 
 /// The gym's phone number as typed by the owner, as dialable digits —
@@ -84,8 +85,16 @@ class SupportScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const SectionLabel("Support"),
+          // The empty state used to tell everyone — clients included — to
+          // "add one under Customize Platform → Location". That's a screen
+          // only the owner can open, so a client was being handed an
+          // instruction they can't act on and no way to get help.
           if (phone.isEmpty)
-            const HintBox(text: "No support number has been set yet. Ask ONE Fitness to add one under Customize Platform → Location.")
+            HintBox(
+              text: ref.watch(trainerAuthProvider) == "owner"
+                  ? "No support number set yet. Add one under Customize Platform → Location and it will appear here, on the Support page, and on the Chat call button — for clients and coaches alike."
+                  : "No support number has been set up yet. In the meantime, message your coach from the Chat tab and they'll help.",
+            )
           else
             AppCard(
               borderColor: AppColors.goldDim,

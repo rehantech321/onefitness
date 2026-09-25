@@ -1657,6 +1657,192 @@ class SupabaseService {
     "comms": comms.map(_commMessageToJson).toList(),
   });
 
+  // ── Chat: the `messages` table ─────────────────────────────────────────
+  // Chat used to be a jsonb blob on `client_records`, rewritten wholesale on
+  // every send. It's a real table now so the content filter and the block
+  // rules are enforced by the database (Apple guideline 1.2) instead of
+  // being a UI-only courtesy anyone could bypass by calling the API.
+
+  static CommMessage _messageFromRow(Map<String, dynamic> r) => CommMessage(
+    id: r["id"] as String,
+    who: r["who"] as String,
+    text: (r["body"] as String?) ?? "",
+    at: stamp(DateTime.tryParse((r["created_at"] as String?) ?? "")?.toLocal()),
+    trainerId: r["trainer_id"] as String?,
+    readByCoach: (r["read_by_coach"] as bool?) ?? false,
+    channel: r["channel"] as String?,
+    createdAt: DateTime.tryParse((r["created_at"] as String?) ?? "")?.toLocal(),
+  );
+
+  /// Turns the database's enforcement errors into something a person can
+  /// act on. The trigger raises `objectionable_content: <words>` or
+  /// `blocked: ...`; neither is fit to show anyone as-is.
+  static Exception _chatError(Object e) {
+    final raw = e.toString();
+    if (raw.contains("objectionable_content")) {
+      return Exception(
+        "That message can't be sent. ONE Fitness has zero tolerance for "
+        "abusive or offensive language — please reword it and try again.",
+      );
+    }
+    if (raw.contains("blocked")) {
+      return Exception("You can't message this person because one of you has blocked the other.");
+    }
+    if (raw.contains("account_suspended")) {
+      return Exception("Your account has been suspended and can no longer send messages.");
+    }
+    return Exception("Couldn't send — check your connection and try again.");
+  }
+
+  /// Sends one message. [who] is "client" or "trainer"; the sender is always
+  /// the signed-in user, which the table's own policy also enforces.
+  static Future<CommMessage> sendMessage({
+    required String clientId,
+    required String? trainerId,
+    required String who,
+    required String text,
+    String? channel,
+  }) async {
+    final senderId = currentUser?.id;
+    if (senderId == null) throw Exception("You're signed out — sign in and try again.");
+    try {
+      final row = await client.from("messages").insert({
+        "client_id": clientId,
+        "trainer_id": trainerId,
+        "sender_id": senderId,
+        "who": who,
+        "body": text,
+        if (channel != null) "channel": channel,
+        "read_by_coach": who == "trainer",
+      }).select().single();
+      return _messageFromRow(row);
+    } catch (e) {
+      throw _chatError(e);
+    }
+  }
+
+  /// Every message in one client's thread, oldest first. Blocked users'
+  /// messages are already excluded by the table's own select policy.
+  static Future<List<CommMessage>> loadMessagesFor(String clientId) async {
+    final rows = await client
+        .from("messages")
+        .select()
+        .eq("client_id", clientId)
+        .order("created_at");
+    return (rows as List).cast<Map<String, dynamic>>().map(_messageFromRow).toList();
+  }
+
+  /// Every thread at once, keyed by client id — what the coach's chat list
+  /// needs on load.
+  static Future<Map<String, List<CommMessage>>> loadAllMessages() async {
+    final rows = await client.from("messages").select().order("created_at");
+    final out = <String, List<CommMessage>>{};
+    for (final r in (rows as List).cast<Map<String, dynamic>>()) {
+      (out[r["client_id"] as String] ??= []).add(_messageFromRow(r));
+    }
+    return out;
+  }
+
+  // ── Reporting and blocking (Apple guideline 1.2) ───────────────────────
+
+  /// Files a report against a piece of content or a user. [contentType] is
+  /// "message" | "profile" | "review" | "post" | "bio"; [excerpt] is a
+  /// snapshot so moderation still works if the original is edited or
+  /// deleted. The owner is notified so it can be acted on within 24 hours.
+  static Future<void> submitReport({
+    required String? reportedUserId,
+    required String contentType,
+    String? contentId,
+    String? excerpt,
+    required String reason,
+    String? note,
+  }) async {
+    final me = currentUser?.id;
+    if (me == null) throw Exception("You're signed out — sign in and try again.");
+    await client.from("reports").insert({
+      "reporter_id": me,
+      "reported_user_id": reportedUserId,
+      "content_type": contentType,
+      if (contentId != null) "content_id": contentId,
+      if (excerpt != null) "content_excerpt": excerpt.length > 500 ? excerpt.substring(0, 500) : excerpt,
+      "reason": reason,
+      if (note != null && note.trim().isNotEmpty) "note": note.trim(),
+    });
+    // Best effort — a failed notification must not lose the report, which
+    // is already safely stored above.
+    try {
+      await client.functions.invoke("notify-moderation", body: {
+        "kind": "report",
+        "reportedUserId": reportedUserId,
+        "contentType": contentType,
+        "reason": reason,
+        "excerpt": excerpt,
+        "note": note,
+      });
+    } catch (_) {}
+  }
+
+  /// Blocks another user. Takes effect immediately: the database stops the
+  /// two of them messaging each other in either direction, and hides the
+  /// blocked user's existing messages from the blocker.
+  static Future<void> blockUser(String blockedId) async {
+    final me = currentUser?.id;
+    if (me == null) throw Exception("You're signed out — sign in and try again.");
+    if (me == blockedId) throw Exception("You can't block yourself.");
+    await client.from("blocks").upsert(
+      {"blocker_id": me, "blocked_id": blockedId},
+      onConflict: "blocker_id,blocked_id",
+    );
+    try {
+      await client.functions.invoke("notify-moderation", body: {
+        "kind": "block",
+        "reportedUserId": blockedId,
+      });
+    } catch (_) {}
+  }
+
+  static Future<void> unblockUser(String blockedId) async {
+    final me = currentUser?.id;
+    if (me == null) return;
+    await client.from("blocks").delete().eq("blocker_id", me).eq("blocked_id", blockedId);
+  }
+
+  /// The people this user has blocked, newest first — for the Blocked users
+  /// list in Settings. Returns id -> display name.
+  static Future<List<({String id, String name})>> loadMyBlocks() async {
+    final me = currentUser?.id;
+    if (me == null) return [];
+    final rows = await client
+        .from("blocks")
+        .select("blocked_id, created_at, profiles!blocks_blocked_id_fkey(name)")
+        .eq("blocker_id", me)
+        .order("created_at", ascending: false);
+    return (rows as List).cast<Map<String, dynamic>>().map((r) {
+      final p = r["profiles"];
+      final name = p is Map ? (p["name"] as String?) ?? "Deleted user" : "Deleted user";
+      return (id: r["blocked_id"] as String, name: name);
+    }).toList();
+  }
+
+  /// Ids this user has blocked — used to hide their content from listings
+  /// the database can't filter on its own (coach cards, search results).
+  static Future<Set<String>> loadBlockedIds() async {
+    final me = currentUser?.id;
+    if (me == null) return {};
+    final rows = await client.from("blocks").select("blocked_id").eq("blocker_id", me);
+    return (rows as List).map((r) => r["blocked_id"] as String).toSet();
+  }
+
+  /// Read receipts for the coach viewing a thread.
+  static Future<void> markMessagesRead(String clientId) async {
+    await client
+        .from("messages")
+        .update({"read_by_coach": true})
+        .eq("client_id", clientId)
+        .eq("who", "client")
+        .eq("read_by_coach", false);
+  }
+
   static Map<String, dynamic> _trainerNoteToJson(TrainerNote n) => {
     "id": n.id,
     "flag": n.flag,

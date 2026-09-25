@@ -115,7 +115,7 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
     if (!record.comms.any(isUnread)) return;
     final updated = record.comms.map((m) => isUnread(m) ? m.copyWith(readByCoach: true) : m).toList();
     ref.read(trainerClientRecordsProvider.notifier).update(clientId, (r) => r.copyWith(comms: updated));
-    SupabaseService.updateClientComms(clientId, updated).catchError((Object _) {});
+    SupabaseService.markMessagesRead(clientId).catchError((Object _) {});
   }
 
   void _scrollToBottom({bool animate = true}) {
@@ -159,35 +159,53 @@ class _CoachChatScreenState extends ConsumerState<CoachChatScreen> {
   }) async {
     final text = _msgController.text.trim();
     if (text.isEmpty) return;
-    final entry = CommMessage(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+    // Optimistic bubble under a temporary id; the server returns the real
+    // row, and is where the content filter and block rules are applied.
+    final tempId = DateTime.now().microsecondsSinceEpoch.toString();
+    final pending = CommMessage(
+      id: tempId,
       who: "trainer",
       text: text,
       at: stamp(),
       trainerId: trainerAuth,
       readByCoach: true,
       channel: channel.name,
+      createdAt: DateTime.now(),
     );
     _msgController.clear();
-    setState(() => _pendingIds.add(entry.id));
-    ref.read(trainerClientRecordsProvider.notifier).update(client.id, (r) => r.copyWith(comms: [entry, ...r.comms]));
+    setState(() => _pendingIds.add(tempId));
+    ref.read(trainerClientRecordsProvider.notifier).update(client.id, (r) => r.copyWith(comms: [pending, ...r.comms]));
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     try {
-      final comms = ref.read(trainerClientRecordsProvider)[client.id]!.comms;
-      await SupabaseService.updateClientComms(client.id, comms);
+      final saved = await SupabaseService.sendMessage(
+        clientId: client.id,
+        trainerId: trainerAuth,
+        who: "trainer",
+        text: text,
+        channel: channel.name,
+      );
+      ref.read(trainerClientRecordsProvider.notifier).update(
+            client.id,
+            (r) => r.copyWith(comms: r.comms.map((c) => c.id == tempId ? saved : c).toList()),
+          );
       notifyPush(profileId: client.id, title: "New message from your coach", body: text);
     } catch (e) {
       ref.read(trainerClientRecordsProvider.notifier).update(
             client.id,
-            (r) => r.copyWith(comms: r.comms.where((c) => c.id != entry.id).toList()),
+            (r) => r.copyWith(comms: r.comms.where((c) => c.id != tempId).toList()),
           );
       if (mounted) {
+        // Keep the text so it only needs rewording, and say why it bounced.
+        _msgController.text = text;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't send — check your connection and try again.")),
+          SnackBar(
+            content: Text(e.toString().replaceFirst("Exception: ", "")),
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } finally {
-      if (mounted) setState(() => _pendingIds.remove(entry.id));
+      if (mounted) setState(() => _pendingIds.remove(tempId));
     }
     // "In App" nudges the recipient's phone via a native SMS composer in
     // the source app — a device-integration feature, not a backend one,

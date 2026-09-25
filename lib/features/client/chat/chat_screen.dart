@@ -5,6 +5,8 @@ import "package:shared_preferences/shared_preferences.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/widgets/report_block_sheet.dart";
+import "../drawer_screens/add_phone_screen.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
@@ -83,6 +85,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _confirmSetup(String recipientId, _Channel channel) async {
+    // In App / SMS sends a text, so it needs a number. Signup no longer
+    // collects one (Apple guideline 5.1.1 — don't demand what isn't
+    // essential), so it's asked for here, at the moment it becomes
+    // essential, and saved straight onto the profile.
+    final needsSms = channel == _Channel.inappSms || channel == _Channel.both;
+    if (needsSms && clientNeedsPhone(ref)) {
+      final saved = await promptForPhoneDialog(
+        context,
+        ref,
+        reason: "To get messages by text we need a number to send them to. "
+            "It's saved to your profile so you only enter it once.",
+      );
+      if (!saved) {
+        // They backed out — don't switch to a channel that can't deliver.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Add a phone number to use In App / SMS. You can still message in the app by choosing Email."),
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefRecipientKey, recipientId);
     await prefs.setString(_prefChannelKey, channel.name);
@@ -150,31 +177,56 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }) async {
     final text = _msgController.text.trim();
     if (text.isEmpty) return;
-    final entry = CommMessage(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+    // Optimistic bubble, with a temporary local id. The real row — and its
+    // real id — comes back from the server, which is also where the content
+    // filter and the block rules are applied.
+    final tempId = DateTime.now().microsecondsSinceEpoch.toString();
+    final pending = CommMessage(
+      id: tempId,
       who: "client",
       text: text,
       at: stamp(),
       trainerId: selectedCoach.id,
       channel: channel.name,
+      createdAt: DateTime.now(),
     );
     _msgController.clear();
-    setState(() => _pendingIds.add(entry.id));
-    ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(comms: [entry, ...r.comms]));
+    setState(() => _pendingIds.add(tempId));
+    ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(comms: [pending, ...r.comms]));
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     try {
-      await SupabaseService.updateClientComms(info.id, ref.read(clientRecordProvider).comms);
-    } catch (e) {
+      final saved = await SupabaseService.sendMessage(
+        clientId: info.id,
+        trainerId: selectedCoach.id,
+        who: "client",
+        text: text,
+        channel: channel.name,
+      );
+      // Swap the placeholder for the stored row.
       ref.read(clientRecordProvider.notifier).update(
-            (r) => r.copyWith(comms: r.comms.where((c) => c.id != entry.id).toList()),
+            (r) => r.copyWith(
+              comms: r.comms.map((c) => c.id == tempId ? saved : c).toList(),
+            ),
+          );
+    } catch (e) {
+      // Rejected (or offline): take the bubble back so the client never
+      // sees an unsent message sitting there as though it went through.
+      ref.read(clientRecordProvider.notifier).update(
+            (r) => r.copyWith(comms: r.comms.where((c) => c.id != tempId).toList()),
           );
       if (mounted) {
+        // Put the text back in the box so it isn't lost — they only need
+        // to reword it.
+        _msgController.text = text;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't send — check your connection and try again.")),
+          SnackBar(
+            content: Text(e.toString().replaceFirst("Exception: ", "")),
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } finally {
-      if (mounted) setState(() => _pendingIds.remove(entry.id));
+      if (mounted) setState(() => _pendingIds.remove(tempId));
     }
     // "In App" nudges the recipient's phone via a native SMS composer in
     // the source app — a device-integration feature, not a backend one,
@@ -333,7 +385,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               : ListView(
                   controller: _scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  children: _buildBubbleList(thread),
+                  children: _buildBubbleList(thread, selectedCoach),
                 ),
         ),
         _Composer(
@@ -346,7 +398,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  List<Widget> _buildBubbleList(List<CommMessage> thread) {
+  List<Widget> _buildBubbleList(List<CommMessage> thread, Trainer coach) {
     final items = <Widget>[];
     DateTime? lastDay;
     for (final c in thread) {
@@ -355,7 +407,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         items.add(_DaySeparator(label: _dayLabel(day)));
         lastDay = day;
       }
-      items.add(_Bubble(message: c, isPending: _pendingIds.contains(c.id)));
+      items.add(_Bubble(
+        message: c,
+        isPending: _pendingIds.contains(c.id),
+        // Only the coach's own messages can be reported — reporting your
+        // own is meaningless, and a pending message has no stored id yet.
+        onReport: (c.who == "client" || _pendingIds.contains(c.id))
+            ? null
+            : () => showReportBlockSheet(
+                  context,
+                  ref: ref,
+                  reportedUserId: coach.id,
+                  reportedUserName: coach.name,
+                  contentType: "message",
+                  contentId: c.id,
+                  excerpt: c.text,
+                ),
+      ));
     }
     return items;
   }
@@ -820,9 +888,17 @@ class _DaySeparator extends StatelessWidget {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.message, required this.isPending});
+  const _Bubble({
+    required this.message,
+    required this.isPending,
+    this.onReport,
+  });
   final CommMessage message;
   final bool isPending;
+
+  /// Long-press to report or block — offered on every message the client
+  /// didn't write themselves (Apple guideline 1.2).
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -841,16 +917,19 @@ class _Bubble extends StatelessWidget {
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-              decoration: BoxDecoration(
-                color: isMine ? AppColors.gold : AppColors.card,
-                border: isMine ? null : Border.all(color: AppColors.line),
-                borderRadius: radius,
-              ),
-              child: Text(
-                message.text,
-                style: TextStyle(color: isMine ? Colors.white : AppColors.txt, fontSize: 14, height: 1.35),
+            child: GestureDetector(
+              onLongPress: onReport,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+                decoration: BoxDecoration(
+                  color: isMine ? AppColors.gold : AppColors.card,
+                  border: isMine ? null : Border.all(color: AppColors.line),
+                  borderRadius: radius,
+                ),
+                child: Text(
+                  message.text,
+                  style: TextStyle(color: isMine ? Colors.white : AppColors.txt, fontSize: 14, height: 1.35),
+                ),
               ),
             ),
           ),
