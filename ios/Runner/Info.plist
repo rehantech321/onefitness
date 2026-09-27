@@ -54,11 +54,12 @@
 		     if any linked API lacks its purpose string. -->
 		<key>NSCameraUsageDescription</key>
 		<string>ONE Fitness uses your camera to take profile and progress photos.</string>
-		<!-- The Stripe SDK references location APIs internally. The app never
-		     asks for location, but the string has to exist for the same
-		     reason as the camera one above. -->
+		<!-- Used when the client taps to find their nearest gym on the
+		     booking screen. Only read while the app is open, only on that
+		     tap, and never stored or sent anywhere — the distance is worked
+		     out on the device. -->
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>ONE Fitness does not track your location. This permission is only requested by the payment provider if needed for fraud prevention.</string>
+		<string>ONE Fitness uses your location to show which of our gyms is nearest to you and how far away it is when you book a session. Your location stays on your device.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 		<key>CFBundleURLTypes</key>

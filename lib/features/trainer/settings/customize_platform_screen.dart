@@ -3,10 +3,12 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/utils/domain_labels.dart";
+import "../../../core/utils/nearest_location.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/waiver_doc.dart";
+import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "manage_coupons_screen.dart";
@@ -156,8 +158,19 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
     });
     final prev = ref.read(platformSettingsProvider);
     try {
-      await SupabaseService.savePlatformSettings(prev, _draft);
-      ref.read(platformSettingsProvider.notifier).update((_) => _draft);
+      // Any location with an address but no coordinates gets geocoded now,
+      // once, so the client's "nearest gym" distance later needs no lookup.
+      // Best effort: an address the geocoder can't place just keeps no
+      // coordinates, and everything else still saves.
+      var toSave = _draft;
+      if (_tab == "location") {
+        try {
+          toSave = await withGeocodedLocations(_draft);
+        } catch (_) {}
+      }
+      await SupabaseService.savePlatformSettings(prev, toSave);
+      ref.read(platformSettingsProvider.notifier).update((_) => toSave);
+      _draft = toSave;
       if (!mounted) return;
       setState(() {
         _dirty = false;
@@ -406,6 +419,18 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     mainName: s.locationName,
                     onChange: (v) => _set((d) => d.copyWith(locations: v)),
                   ),
+                  const SizedBox(height: 14),
+                  // Which site a coach without their own location runs at,
+                  // and what a client sees pre-selected when booking.
+                  _DefaultLocationPicker(
+                    settings: s,
+                    onChange: (name) => _set((d) => d.copyWith(defaultLocationName: name)),
+                  ),
+                  const SizedBox(height: 14),
+                  // Coaches set their own location on their profile; those
+                  // are real places the gym runs sessions at, so they belong
+                  // in this list too.
+                  const _CoachLocationsList(),
                 ],
                 if (_tab == "clients") ...[
                   _MultiChoiceRow(label: "Required profile fields", value: s.requiredProfileFields, options: _requiredFieldOptions, onChange: (v) => _set((d) => d.copyWith(requiredProfileFields: v))),
@@ -1071,6 +1096,166 @@ class _CatalogEditor extends StatelessWidget {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Picks which of the gym's locations is the default. The default is where
+/// a coach who has not set their own location runs sessions, and what a
+/// client sees selected first when booking.
+class _DefaultLocationPicker extends StatelessWidget {
+  const _DefaultLocationPicker({required this.settings, required this.onChange});
+  final PlatformSettings settings;
+  final ValueChanged<String> onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    final all = settings.allLocations;
+    final current = settings.defaultLocation?.name;
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Default location", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          const Text(
+            "Used for coaches who have not set their own location, and shown first to clients when they book.",
+            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+          ),
+          const SizedBox(height: 10),
+          if (all.isEmpty)
+            const Text(
+              "Add a location above first.",
+              style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic),
+            )
+          else
+            for (final l in all)
+              InkWell(
+                onTap: () => onChange(l.name),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        l.name == current ? LucideIcons.circleCheck : LucideIcons.circle,
+                        size: 17,
+                        color: l.name == current ? AppColors.gold : AppColors.mute,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l.name,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: l.name == current ? AppColors.gold : AppColors.txt,
+                              ),
+                            ),
+                            if (l.address.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 1),
+                                child: Text(l.address, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (l.name == current)
+                        const Text(
+                          "Default",
+                          style: TextStyle(fontSize: 10.5, color: AppColors.gold, fontWeight: FontWeight.w800),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Every distinct location coaches have set on their own profiles, so the
+/// owner can see where sessions actually happen — not only the sites they
+/// added here themselves.
+class _CoachLocationsList extends ConsumerWidget {
+  const _CoachLocationsList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(platformSettingsProvider);
+    final gymNames = settings.allLocations.map((l) => l.name.trim().toLowerCase()).toSet();
+
+    // Location name -> the coaches who train there.
+    final byName = <String, List<String>>{};
+    for (final t in ref.watch(trainersProvider)) {
+      for (final l in t.locations) {
+        final name = l.name.trim();
+        if (name.isEmpty) continue;
+        (byName[name] ??= []).add(t.name);
+      }
+    }
+    final entries = byName.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Coach locations", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 2),
+          Text(
+            entries.isEmpty
+                ? "No coach has set their own location — they all use the default above."
+                : "Set by coaches on their own profiles. Anything not already in your list is marked, so you can add it above if it is a real site.",
+            style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+          ),
+          if (entries.isNotEmpty) const SizedBox(height: 10),
+          for (final e in entries)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(LucideIcons.mapPin, size: 14, color: AppColors.gold),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(e.key, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 1),
+                          child: Text(
+                            e.value.join(", "),
+                            style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!gymNames.contains(e.key.trim().toLowerCase()))
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.gold.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: const Text(
+                        "Coach only",
+                        style: TextStyle(fontSize: 9.5, color: AppColors.gold, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                ],
+              ),
+            ),
         ],
       ),
     );

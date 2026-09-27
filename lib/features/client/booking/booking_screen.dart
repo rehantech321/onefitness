@@ -27,6 +27,7 @@ import "../shell/client_shell_state.dart";
 import "booking_cancel_screen.dart";
 import "booking_picking_screen.dart";
 import "date_strip.dart";
+import "location_picker.dart";
 import "upcoming_session_card.dart";
 import "waitlist_offer_banner.dart";
 
@@ -67,6 +68,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   /// Which held plan the pending pick will be charged to — decided by
   /// canBookOffering when the slot was tapped, written onto the booking.
   String? _pickPlanId;
+  /// Which location the client is browsing, null = any. Chosen in the
+  /// picker above the slot list.
+  String? _locationFilter;
+
   bool _showAllUpcoming = false;
   bool _busy = false;
   String? _bookingError;
@@ -408,7 +413,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       slot: pick.slot,
       sessionType: pick.sessionType,
       discipline: pick.discipline,
-      locationName: pick.locationName ?? pick.trainer.locationName,
+      // Falls back to the gym default so every booking records where
+      // it happens, even when neither the session nor the coach says.
+      locationName: pick.locationName ??
+          ref.read(platformSettingsProvider).locationForCoach(pick.trainer.locationName),
       planId: _pickPlanId,
       // Marks the free first session: it belongs to no plan and is left out
       // of every session count (see sessionsUsedThisPeriod).
@@ -780,7 +788,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         bookings: ref.watch(allBookingsProvider),
                         blockedTimes: ref.watch(blockedTimesProvider),
                         waitlist: ref.watch(waitlistProvider),
-                        gymLocationName: ref.watch(platformSettingsProvider).locationName,
+                        // The owner's chosen default, not just the main site — a coach
+                        // without their own location runs sessions there.
+                        gymLocationName: ref.watch(platformSettingsProvider).defaultLocation?.name ??
+                            ref.watch(platformSettingsProvider).locationName,
                         onDateChange: (d) => setState(() => _date = d),
                         onChangeType: changeType == null
                             ? null
@@ -794,6 +805,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         onLeaveWaitlist: _leaveWaitlist,
                         waitlistBusyKeys: _waitlistBusyKeys,
                         semiPrivateCap: ref.watch(platformSettingsProvider).semiPrivateCap,
+                        locationFilter: _locationFilter,
+                        onLocationChange: (v) => setState(() => _locationFilter = v),
                       ),
           );
           }),
@@ -1222,11 +1235,17 @@ class _StepThree extends StatefulWidget {
     required this.waitlistBusyKeys,
     required this.semiPrivateCap,
     required this.gymLocationName,
+    required this.locationFilter,
+    required this.onLocationChange,
   });
 
   /// Customize Platform → Location, shown on a slot whose coach has no
   /// location of their own.
   final String gymLocationName;
+
+  /// Only show sessions at this location; null shows them all.
+  final String? locationFilter;
+  final ValueChanged<String?> onLocationChange;
   final String date;
   final String chosenType;
   final String chosenDisc;
@@ -1298,6 +1317,11 @@ class _StepThreeState extends State<_StepThree> {
           final used = bookedCount(bookings, t.id, date, o.slot);
           final cap = capFor(o.sessionType, semiPrivateCap: widget.semiPrivateCap);
           final mine = bookings.any((b) => b.clientId == info.id && b.trainerId == t.id && b.date == date && b.slot == o.slot);
+          // Where this slot actually happens: the session's own
+          // location, else the coach's, else the gym default.
+          final where = o.locationName ?? t.locationName ?? widget.gymLocationName;
+          final wanted = widget.locationFilter;
+          if (wanted != null && where != wanted) continue;
           bySlot.putIfAbsent(o.slot, () => []).add(_SlotAvailability(trainer: t, open: cap - used, cap: cap, mine: mine, locationName: o.locationName));
         }
       }
@@ -1334,6 +1358,8 @@ class _StepThreeState extends State<_StepThree> {
           ],
         ),
         const SizedBox(height: 4),
+        // Only appears when the gym actually runs more than one site.
+        LocationPicker(selected: widget.locationFilter, onSelect: widget.onLocationChange),
         DateStrip(date: date, onSelect: onDateChange, disablePast: true),
         if (slots.isNotEmpty)
           Padding(

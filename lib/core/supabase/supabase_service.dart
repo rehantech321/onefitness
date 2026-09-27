@@ -1283,11 +1283,16 @@ class SupabaseService {
       locationAddress: location["locationAddress"] as String? ?? defaults.locationAddress,
       locationHint: location["locationHint"] as String? ?? defaults.locationHint,
       supportPhone: location["supportPhone"] as String? ?? defaults.supportPhone,
+      defaultLocationName: location["defaultLocationName"] as String? ?? defaults.defaultLocationName,
+      locationLat: (location["locationLat"] as num?)?.toDouble(),
+      locationLng: (location["locationLng"] as num?)?.toDouble(),
       // Every location the gym runs sessions at. The main one above is
       // always the first, so a gym with one location behaves as before.
       locations: [
         for (final l in ((location["locations"] as List?) ?? const []).whereType<Map>())
           GymLocation(
+            lat: (l["lat"] as num?)?.toDouble(),
+            lng: (l["lng"] as num?)?.toDouble(),
             name: l["name"] as String? ?? "",
             address: l["address"] as String? ?? "",
             hint: l["hint"] as String? ?? "",
@@ -2717,9 +2722,20 @@ class SupabaseService {
       "locationAddress": s.locationAddress,
       "locationHint": s.locationHint,
       "locations": [
-        for (final l in s.locations) {"name": l.name, "address": l.address, "hint": l.hint},
+        for (final l in s.locations)
+          {
+            "name": l.name,
+            "address": l.address,
+            "hint": l.hint,
+            // Cached so the nearest-gym distance needs no lookup at runtime.
+            if (l.lat != null) "lat": l.lat,
+            if (l.lng != null) "lng": l.lng,
+          },
       ],
       "supportPhone": s.supportPhone,
+      "defaultLocationName": s.defaultLocationName,
+      if (s.locationLat != null) "locationLat": s.locationLat,
+      if (s.locationLng != null) "locationLng": s.locationLng,
     },
     "workouts": {
       "businessName": s.businessName,

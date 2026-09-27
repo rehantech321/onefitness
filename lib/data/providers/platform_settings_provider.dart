@@ -5,7 +5,13 @@ import "../../core/utils/offered_catalog.dart";
 /// first is the main one; the rest are extra sites a session can be created
 /// at. A gym with a single location never sees any of this.
 class GymLocation {
-  const GymLocation({required this.name, this.address = "", this.hint = ""});
+  const GymLocation({
+    required this.name,
+    this.address = "",
+    this.hint = "",
+    this.lat,
+    this.lng,
+  });
 
   final String name;
   final String address;
@@ -14,8 +20,29 @@ class GymLocation {
   /// address wherever a client sees where their session is.
   final String hint;
 
-  GymLocation copyWith({String? name, String? address, String? hint}) =>
-      GymLocation(name: name ?? this.name, address: address ?? this.address, hint: hint ?? this.hint);
+  /// Coordinates for [address], resolved once by geocoding it and then kept,
+  /// so working out how far a client is from here needs no network and no
+  /// repeated lookups. Null until the address has been geocoded, or when it
+  /// could not be.
+  final double? lat;
+  final double? lng;
+
+  bool get hasCoords => lat != null && lng != null;
+
+  GymLocation copyWith({
+    String? name,
+    String? address,
+    String? hint,
+    double? lat,
+    double? lng,
+  }) =>
+      GymLocation(
+        name: name ?? this.name,
+        address: address ?? this.address,
+        hint: hint ?? this.hint,
+        lat: lat ?? this.lat,
+        lng: lng ?? this.lng,
+      );
 }
 
 /// One fee profile (card or ACH) — mirrors platformSettings.js's
@@ -89,6 +116,9 @@ class PlatformSettings {
     this.sessionTypeCaps = const {},
     this.locations = const [],
     this.supportPhone = "",
+    this.defaultLocationName = "",
+    this.locationLat,
+    this.locationLng,
     this.locationName = "",
     this.locationAddress = "",
     this.locationHint = "",
@@ -177,13 +207,49 @@ class PlatformSettings {
   /// place. Empty hides both.
   final String supportPhone;
 
+  /// Which of [allLocations] is the gym's default, by name. A coach who
+  /// hasn't set a location of their own runs sessions here, and it's what a
+  /// client sees pre-selected when booking. Empty means "the first one",
+  /// so a gym that never touches this still behaves sensibly.
+  final String defaultLocationName;
+
+  /// Cached coordinates for the main location's address — the same
+  /// role [GymLocation.lat]/[GymLocation.lng] play for the others.
+  final double? locationLat;
+  final double? locationLng;
+
   /// The locations to choose from, always including the main one — so this
   /// is never empty as long as a location name is set.
   List<GymLocation> get allLocations => [
         if (locationName.trim().isNotEmpty)
-          GymLocation(name: locationName, address: locationAddress, hint: locationHint),
+          GymLocation(
+            name: locationName,
+            address: locationAddress,
+            hint: locationHint,
+            lat: locationLat,
+            lng: locationLng,
+          ),
         ...locations.where((l) => l.name.trim().isNotEmpty && l.name != locationName),
       ];
+
+  /// The default location itself — the one named by [defaultLocationName]
+  /// when it still exists, otherwise the first location the gym has. Null
+  /// only when no location has been set up at all.
+  GymLocation? get defaultLocation {
+    final all = allLocations;
+    if (all.isEmpty) return null;
+    final match = all.where((l) => l.name == defaultLocationName);
+    return match.isNotEmpty ? match.first : all.first;
+  }
+
+  /// Where a coach's sessions happen: their own location if they set one,
+  /// otherwise the gym default. One place so booking, the schedule and the
+  /// calendar feed can't disagree about it.
+  String? locationForCoach(String? coachLocationName) {
+    final own = coachLocationName?.trim() ?? "";
+    if (own.isNotEmpty) return own;
+    return defaultLocation?.name;
+  }
 
   // ── Location tab ──
   /// The gym's physical location. Shown to clients on sessions whose coach
@@ -246,6 +312,9 @@ class PlatformSettings {
     Map<String, int>? sessionTypeCaps,
     List<GymLocation>? locations,
     String? supportPhone,
+    String? defaultLocationName,
+    double? locationLat,
+    double? locationLng,
     String? locationName,
     String? locationAddress,
     String? locationHint,
@@ -295,6 +364,9 @@ class PlatformSettings {
         sessionTypeCaps: sessionTypeCaps ?? this.sessionTypeCaps,
         locations: locations ?? this.locations,
         supportPhone: supportPhone ?? this.supportPhone,
+        defaultLocationName: defaultLocationName ?? this.defaultLocationName,
+        locationLat: locationLat ?? this.locationLat,
+        locationLng: locationLng ?? this.locationLng,
         locationName: locationName ?? this.locationName,
         locationAddress: locationAddress ?? this.locationAddress,
         locationHint: locationHint ?? this.locationHint,
