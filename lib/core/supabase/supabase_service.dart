@@ -1682,6 +1682,13 @@ class SupabaseService {
   /// Turns the database's enforcement errors into something a person can
   /// act on. The trigger raises `objectionable_content: <words>` or
   /// `blocked: ...`; neither is fit to show anyone as-is.
+  /// Cheap shape check — enough to keep a sentinel like "owner" or
+  /// "business" out of a uuid column without pulling in a parser.
+  static bool _looksLikeUuid(String? v) =>
+      v != null &&
+      RegExp(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+          .hasMatch(v);
+
   static Exception _chatError(Object e) {
     final raw = e.toString();
     if (raw.contains("objectionable_content")) {
@@ -1696,7 +1703,11 @@ class SupabaseService {
     if (raw.contains("account_suspended")) {
       return Exception("Your account has been suspended and can no longer send messages.");
     }
-    return Exception("Couldn't send — check your connection and try again.");
+    // Anything else: say it didn't send without inventing a cause. The real
+    // error is logged so a genuine fault is still diagnosable.
+    // ignore: avoid_print
+    print("[sendMessage] failed: $raw");
+    return Exception("That message didn't send. Please try again.");
   }
 
   /// Sends one message. [who] is "client" or "trainer"; the sender is always
@@ -1710,10 +1721,23 @@ class SupabaseService {
   }) async {
     final senderId = currentUser?.id;
     if (senderId == null) throw Exception("You're signed out — sign in and try again.");
+    // `trainer_id` is a real profiles FK, but the app's trainer-auth state
+    // uses sentinels that aren't ids at all: the owner signs in as the
+    // literal "owner", and the client-side recipient list offers a
+    // pseudo-coach called "business" for messaging the gym itself. Sending
+    // either straight through produced `invalid input syntax for type uuid`,
+    // which surfaced to the user as "check your connection".
+    //
+    // A staff member sending IS the trainer on the message, so their own id
+    // is the right value; anything else non-UUID becomes null (a message to
+    // the gym rather than to one coach).
+    final resolvedTrainerId = who == "trainer"
+        ? senderId
+        : (_looksLikeUuid(trainerId) ? trainerId : null);
     try {
       final row = await client.from("messages").insert({
         "client_id": clientId,
-        "trainer_id": trainerId,
+        "trainer_id": resolvedTrainerId,
         "sender_id": senderId,
         "who": who,
         "body": text,
