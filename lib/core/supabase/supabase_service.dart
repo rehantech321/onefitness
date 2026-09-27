@@ -2502,6 +2502,20 @@ class SupabaseService {
   static Future<void> sendSms({required String to, required String text}) =>
       _invokeFunction("send-sms", {"to": to, "text": text});
 
+  /// Confirms a waitlist join by push, SMS and email. Server-side because it
+  /// reads the client's phone and SMS preference, and because joining used
+  /// to send nothing at all — the client saw a row appear and heard nothing.
+  static Future<void> notifyWaitlistJoined({
+    required String date,
+    required int slot,
+    int? position,
+  }) =>
+      _invokeFunction("notify-waitlist-joined", {
+        "date": date,
+        "slot": slot,
+        if (position != null) "position": position,
+      });
+
   /// Enrolls in a FREE plan (paid ones go through createCheckoutSession and
   /// are granted by stripe-webhook once payment confirms). Server-side
   /// because `clients.plans` is a grant — it decides which intake forms are

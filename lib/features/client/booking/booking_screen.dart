@@ -380,6 +380,16 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         addedAt: stamp(),
       ));
       ref.read(waitlistProvider.notifier).add(saved);
+      // Tell them it worked. Best effort — the entry is already saved, so a
+      // failed message must never look like a failed join.
+      SupabaseService.notifyWaitlistJoined(
+        date: _date,
+        slot: slot,
+        position: position,
+      ).catchError((Object e) {
+        // ignore: avoid_print
+        print("[waitlist join notify] failed: $e");
+      });
     } catch (e) {
       _showError("Couldn't join the waitlist — check your connection and try again.");
     } finally {
