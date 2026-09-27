@@ -77,6 +77,39 @@ void _subscribeRealtimeUpdates(Ref ref) {
       )
       .subscribe();
 
+  // Chat. Re-reads the affected thread rather than patching from the
+  // payload, so a message that RLS hides (a blocked user's) never slips in
+  // through the realtime path — the select policy is applied on the reread.
+  SupabaseService.client
+      .channel("messages_live")
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: "public",
+        table: "messages",
+        callback: (payload) async {
+          final row = payload.newRecord.isNotEmpty ? payload.newRecord : payload.oldRecord;
+          final clientId = row["client_id"] as String?;
+          if (clientId == null) return;
+          try {
+            final thread = await SupabaseService.loadMessagesFor(clientId);
+            // Newest first, matching how every chat screen reads `comms`.
+            final ordered = thread.reversed.toList();
+            ref.read(trainerClientRecordsProvider.notifier).update(
+                  clientId,
+                  (r) => r.copyWith(comms: ordered),
+                );
+            // The signed-in client's own copy is a separate provider.
+            if (ref.read(clientInfoProvider).id == clientId) {
+              ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(comms: ordered));
+            }
+          } catch (e) {
+            // ignore: avoid_print
+            print("[realtime messages] reload failed: $e");
+          }
+        },
+      )
+      .subscribe();
+
   SupabaseService.client
       .channel("platform_settings_live")
       .onPostgresChanges(

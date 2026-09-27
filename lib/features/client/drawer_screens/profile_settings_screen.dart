@@ -9,6 +9,7 @@ import "../../../core/utils/membership_utils.dart";
 import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/legal/terms_screen.dart";
 import "../../../core/widgets/calendar_sync_section.dart";
+import "../../../core/widgets/blocked_users_screen.dart";
 import "../../../core/widgets/delete_account_screen.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
@@ -103,6 +104,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             ],
           ),
         ),
+      );
+    }
+    if (_section == "blocked") {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _section = null),
+        child: BlockedUsersScreen(onBack: () => setState(() => _section = null)),
       );
     }
     if (_section == "terms") {
@@ -229,6 +237,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
           // 5.1.1(v)).
           const SizedBox(height: 18),
           const SectionLabel("Account"),
+          _SettingRow(
+            icon: LucideIcons.ban,
+            label: "Blocked users",
+            detail: "People you've blocked from contacting you",
+            onTap: () => setState(() => _section = "blocked"),
+          ),
           _SettingRow(
             icon: LucideIcons.fileText,
             label: "Terms of Use",

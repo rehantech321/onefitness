@@ -5,6 +5,7 @@ import "../../../core/legal/terms_screen.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/widgets/blocked_users_screen.dart";
 import "../../../core/widgets/delete_account_screen.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/client_providers.dart";
@@ -32,6 +33,13 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_section == "blocked") {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: _close,
+        child: BlockedUsersScreen(onBack: _close),
+      );
+    }
     if (_section == "terms") {
       return LocalBackScope(
         isOpen: true,
@@ -112,6 +120,14 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
           ),
           child: Row(
             children: [
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: () => setState(() => _section = "blocked"),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.mute),
+                  icon: const Icon(LucideIcons.ban, size: 15),
+                  label: const Text("Blocked", style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                ),
+              ),
               Expanded(
                 child: TextButton.icon(
                   onPressed: () => setState(() => _section = "terms"),
