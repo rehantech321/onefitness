@@ -110,6 +110,42 @@ void _subscribeRealtimeUpdates(Ref ref) {
       )
       .subscribe();
 
+  // A client's saved programs, nutrition plan, intake answers and logs all
+  // live on this row. Without this, a program the owner assigned only showed
+  // up after the client fully restarted the app.
+  SupabaseService.client
+      .channel("client_records_live")
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: "public",
+        table: "client_records",
+        callback: (payload) async {
+          final row = payload.newRecord.isNotEmpty ? payload.newRecord : payload.oldRecord;
+          final profileId = row["profile_id"] as String?;
+          if (profileId == null) return;
+          try {
+            // Re-read rather than trusting the payload, so RLS decides what
+            // this user may actually see.
+            final record = await SupabaseService.loadClientRecord(profileId);
+            // Chat lives in its own table now; keep whatever the messages
+            // channel has already put in place rather than blanking it.
+            final existingComms =
+                ref.read(trainerClientRecordsProvider)[profileId]?.comms ?? const [];
+            final merged = record.copyWith(
+              comms: record.comms.isEmpty ? existingComms : record.comms,
+            );
+            ref.read(trainerClientRecordsProvider.notifier).update(profileId, (_) => merged);
+            if (ref.read(clientInfoProvider).id == profileId) {
+              ref.read(clientRecordProvider.notifier).update((_) => merged);
+            }
+          } catch (e) {
+            // ignore: avoid_print
+            print("[realtime client_records] reload failed: $e");
+          }
+        },
+      )
+      .subscribe();
+
   SupabaseService.client
       .channel("platform_settings_live")
       .onPostgresChanges(

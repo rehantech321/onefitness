@@ -137,20 +137,39 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
             const SizedBox(height: 18),
           ],
 
-          // Once the program has targets and budgets, the client picks their
-          // own meals for each of the three main meals — against that meal's
-          // calorie budget — alongside whatever their coach suggested.
-          for (final c in const [("breakfast", "Breakfast"), ("lunch", "Lunch"), ("dinner", "Dinner")])
+          // The client picks their own meals for every category, alongside
+          // whatever their coach or the AI suggested. Snacks and smoothies
+          // used to be one read-only section that disappeared entirely when
+          // the program suggested none — so a client could never add their
+          // own. Each category is now separately choosable and always shown.
+          //
+          // Choosing is never gated on the program having calorie budgets:
+          // a budget makes the picker smarter (it can sort and filter by
+          // "fits this meal"), but its absence is no reason to stop someone
+          // deciding what they eat.
+          for (final c in const [
+            ("breakfast", "Breakfast"),
+            ("lunch", "Lunch"),
+            ("dinner", "Dinner"),
+            ("snacks", "Snacks"),
+            ("smoothies", "Smoothies"),
+          ])
             _MealSection(
               title: c.$2,
-              meals: c.$1 == "breakfast" ? n.breakfast : (c.$1 == "lunch" ? n.lunch : n.dinner),
+              meals: switch (c.$1) {
+                "breakfast" => n.breakfast,
+                "lunch" => n.lunch,
+                "dinner" => n.dinner,
+                "snacks" => n.snacks,
+                _ => n.smoothies,
+              },
               chosen: client.myMeals[c.$1] ?? const [],
-              budget: int.tryParse((_dayType == "training" ? n.mealBudgets.training : n.mealBudgets.rest)[c.$1] ?? ""),
-              onChoose: hasTargets ? () => _pickMeal(c.$1, c.$2) : null,
+              budget: int.tryParse(
+                (_dayType == "training" ? n.mealBudgets.training : n.mealBudgets.rest)[c.$1] ?? "",
+              ),
+              onChoose: () => _pickMeal(c.$1, c.$2),
               onRemoveChoice: (meal) => _removeChoice(c.$1, meal),
             ),
-          if (n.snacks.isNotEmpty || n.smoothies.isNotEmpty)
-            _MealSection(title: "Snacks and/or Smoothies", meals: [...n.snacks, ...n.smoothies]),
 
           if (grocery.isNotEmpty) ...[
             Row(
