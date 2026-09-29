@@ -28,7 +28,10 @@ class ClientInfo {
     this.isStaff = false,
     this.referredByTrainerId,
     this.coachCodeAlertSeen = false,
-    this.smsOptIn = true,
+    // Opt-OUT by default: a client who never actively agreed has not
+    // consented, and texting them would breach carrier rules (A2P
+    // 10DLC / CTIA express consent).
+    this.smsOptIn = false,
     this.pushOptIn = true,
     this.billingAnchorDay,
   });

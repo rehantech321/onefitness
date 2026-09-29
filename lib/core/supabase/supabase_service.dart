@@ -44,6 +44,7 @@ import "../../data/models/waitlist_entry.dart";
 import "../../data/models/waiver_doc.dart";
 import "../../data/models/waiver_signature_record.dart";
 import "../../data/models/workout_log.dart";
+import "../legal/sms_consent.dart";
 import "../../data/providers/platform_settings_provider.dart";
 import "supabase_config.dart";
 
@@ -3563,7 +3564,10 @@ class SupabaseService {
           c["redeem_points_next_renewal"] as bool? ?? false,
       referredByTrainerId: c["referred_by_trainer_id"] as String?,
       coachCodeAlertSeen: c["coach_code_alert_seen"] as bool? ?? false,
-      smsOptIn: c["sms_opt_in"] as bool? ?? true,
+      // Defaults to false, not true: a client who never actively opted
+      // in has not consented, and texting them would be a carrier
+      // violation (A2P 10DLC / CTIA express consent).
+      smsOptIn: c["sms_opt_in"] as bool? ?? false,
       pushOptIn: profile["push_opt_in"] as bool? ?? true,
       billingAnchorDay: _asInt(c["billing_anchor_day"]),
     );
@@ -3572,7 +3576,14 @@ class SupabaseService {
   /// Notifications spec — the client's own SMS opt-in toggle (Profile
   /// Settings → Notification Preferences).
   static Future<void> updateSmsOptIn(String clientId, bool optIn) =>
-      client.from("clients").update({"sms_opt_in": optIn}).eq("profile_id", clientId);
+      client.from("clients").update({
+        "sms_opt_in": optIn,
+        // Evidence of express consent: when, and to what wording. Cleared
+        // on opt-out so a stale timestamp can't imply consent that was
+        // withdrawn.
+        "sms_opt_in_at": optIn ? DateTime.now().toUtc().toIso8601String() : null,
+        "sms_consent_text": optIn ? smsConsentRecord() : null,
+      }).eq("profile_id", clientId);
 
   /// App (push) notifications on/off — sendPush skips anyone with this off.
   static Future<void> updatePushOptIn(String profileId, bool optIn) =>

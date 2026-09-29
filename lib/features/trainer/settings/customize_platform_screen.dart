@@ -4,6 +4,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/nearest_location.dart";
+import "../../../core/widgets/map_location_picker.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
@@ -1272,6 +1273,8 @@ class _ExtraLocationsEditor extends StatelessWidget {
   final ValueChanged<List<GymLocation>> onChange;
 
   Future<void> _edit(BuildContext context, {GymLocation? existing, int? index}) async {
+    // Outside the builder so it survives the dialog's own rebuilds.
+    final pinned = ValueNotifier<PickedPoint?>(null);
     final name = TextEditingController(text: existing?.name ?? "");
     final address = TextEditingController(text: existing?.address ?? "");
     final hint = TextEditingController(text: existing?.hint ?? "");
@@ -1289,6 +1292,64 @@ class _ExtraLocationsEditor extends StatelessWidget {
               FieldLabeled(label: "Address", child: AppField(controller: address, placeholder: "Street, city, state, ZIP")),
               const SizedBox(height: 8),
               FieldLabeled(label: "Parking / arrival notes", child: AppField(controller: hint, placeholder: "e.g. Park in the rear lot")),
+              const SizedBox(height: 10),
+              // Placing the pin is the reliable path: an address that won't
+              // geocode, or one that lands on the wrong side of the block,
+              // leaves the location out of every distance calculation.
+              StatefulBuilder(
+                builder: (ctx2, setDialogState) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await showMapLocationPicker(
+                          ctx,
+                          title: "Where is this location?",
+                          subtitle: "Drag the map onto the gym, or tap the crosshair to use where you are now.",
+                          initial: pinned.value ??
+                              (existing != null && existing.hasCoords
+                                  ? PickedPoint(lat: existing.lat!, lng: existing.lng!)
+                                  : null),
+                        );
+                        if (picked == null) return;
+                        pinned.value = picked;
+                        if ((picked.address ?? "").isNotEmpty && address.text.trim().isEmpty) {
+                          address.text = picked.address!;
+                        }
+                        setDialogState(() {});
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.gold,
+                        side: const BorderSide(color: AppColors.goldDim),
+                      ),
+                      icon: const Icon(LucideIcons.map, size: 14),
+                      label: Text(
+                        pinned.value != null || (existing?.hasCoords ?? false)
+                            ? "Move pin on map"
+                            : "Set on map / use current location",
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    if (pinned.value != null || (existing?.hasCoords ?? false))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          "Pinned at ${(pinned.value?.lat ?? existing!.lat!).toStringAsFixed(5)}, "
+                          "${(pinned.value?.lng ?? existing!.lng!).toStringAsFixed(5)}",
+                          style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                        ),
+                      )
+                    else
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: Text(
+                          "Without a pin we'll try to place it from the address when you save.",
+                          style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -1300,7 +1361,16 @@ class _ExtraLocationsEditor extends StatelessWidget {
     );
     if (saved != true || name.text.trim().isEmpty) return;
     final next = [...locations];
-    final entry = GymLocation(name: name.text.trim(), address: address.text.trim(), hint: hint.text.trim());
+    final pin = pinned.value;
+    final entry = GymLocation(
+      name: name.text.trim(),
+      address: address.text.trim(),
+      hint: hint.text.trim(),
+      // A pin always wins over geocoding the address — it's the one the
+      // owner actually looked at.
+      lat: pin?.lat ?? existing?.lat,
+      lng: pin?.lng ?? existing?.lng,
+    );
     if (index == null) {
       next.add(entry);
     } else {

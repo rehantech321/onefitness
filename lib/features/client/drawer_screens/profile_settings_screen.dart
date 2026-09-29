@@ -7,6 +7,7 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/utils/photo_picker_utils.dart";
+import "../../../core/legal/sms_consent.dart";
 import "../../../core/legal/terms_screen.dart";
 import "../../../core/widgets/calendar_sync_section.dart";
 import "../../../core/widgets/blocked_users_screen.dart";
@@ -430,27 +431,44 @@ class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPr
             ),
           ),
           const SizedBox(height: 10),
+          // The SMS opt-in, worded to satisfy carrier review for A2P 10DLC:
+          // who is texting, what about, how often, that rates may apply, and
+          // how to stop. Off unless the client turns it on — a default-on
+          // switch is not consent, and is what got the campaign rejected.
           AppCard(
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Text messages (SMS)", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      const SizedBox(height: 2),
-                      Text(
-                        "Notifications and time-sensitive information will be sent to ${info.phone?.isNotEmpty == true ? info.phone : "the phone number on your profile"}.",
-                        style: const TextStyle(fontSize: 12, color: AppColors.mute),
-                      ),
-                    ],
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text("Text messages (SMS)",
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    ),
+                    Switch(
+                      value: info.smsOptIn,
+                      onChanged: _saving ? null : _toggle,
+                      activeThumbColor: AppColors.gold,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  kSmsConsentLabel,
+                  style: TextStyle(fontSize: 12.5, color: AppColors.txt, height: 1.45),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  kSmsConsentDisclosure,
+                  style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.45),
+                ),
+                if (info.smsOptIn) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    "Texts go to ${info.phone?.isNotEmpty == true ? info.phone : "the phone number on your profile"}.",
+                    style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
-                ),
-                Switch(
-                  value: info.smsOptIn,
-                  onChanged: _saving ? null : _toggle,
-                  activeThumbColor: AppColors.gold,
-                ),
+                ],
               ],
             ),
           ),

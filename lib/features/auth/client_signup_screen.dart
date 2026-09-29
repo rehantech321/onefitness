@@ -2,6 +2,7 @@ import "dart:convert";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../core/legal/sms_consent.dart";
 import "../../core/legal/terms_screen.dart";
 import "../../core/legal/terms_text.dart";
 import "../../core/supabase/supabase_service.dart";
@@ -50,6 +51,12 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
 
   /// Apple guideline 1.2 — signup is blocked until the Terms are accepted.
   bool _agreedToTerms = false;
+
+  /// Express written consent to receive SMS (A2P 10DLC / CTIA). Starts
+  /// unticked and is entirely optional — signup works either way. A
+  /// pre-ticked box is not consent, and is what got the carrier campaign
+  /// rejected.
+  bool _smsConsent = false;
 
   /// Shows the full Terms over the form without losing anything typed.
   bool _readingTerms = false;
@@ -141,6 +148,11 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
       );
       // Recorded against the account as evidence of acceptance, with the
       // version of the text agreed to — a later revision re-prompts.
+      // Only written when they actually ticked it; the column defaults to
+      // false, so doing nothing correctly leaves them opted out.
+      if (_smsConsent) {
+        await SupabaseService.updateSmsOptIn(userId, true);
+      }
       await SupabaseService.recordTermsAcceptance(
         userId,
         version: kTermsVersion,
@@ -359,6 +371,24 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                 padding: EdgeInsets.only(left: 36, top: 2),
                 child: Text(
                   "ONE Fitness has zero tolerance for objectionable content or abusive users.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                ),
+              ),
+              const SizedBox(height: 6),
+              // Optional — never a condition of signing up, which is both
+              // the law and what carriers check for.
+              ConsentCheckbox(
+                value: _smsConsent,
+                onChanged: (v) => setState(() => _smsConsent = v),
+                child: const Text(
+                  kSmsConsentLabel,
+                  style: TextStyle(fontSize: 13, height: 1.4),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(left: 36, top: 2),
+                child: Text(
+                  kSmsConsentDisclosure,
                   style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                 ),
               ),

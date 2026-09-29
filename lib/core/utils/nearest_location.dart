@@ -34,6 +34,37 @@ class LocationDistance {
 /// Why we couldn't work out a distance, in words a client can act on.
 enum NearestError { serviceOff, denied, deniedForever, noCoords, failed }
 
+/// Which settings screen actually fixes each failure — the device's
+/// location switch, or this app's own permission. Null when opening
+/// settings wouldn't help.
+enum SettingsTarget { device, app }
+
+SettingsTarget? settingsTargetFor(NearestError e) {
+  switch (e) {
+    case NearestError.serviceOff:
+      return SettingsTarget.device;
+    case NearestError.denied:
+    case NearestError.deniedForever:
+      return SettingsTarget.app;
+    case NearestError.noCoords:
+    case NearestError.failed:
+      return null;
+  }
+}
+
+/// Opens the right settings screen for [e]. The client comes back to
+/// exactly where they were — the caller retries when the app resumes.
+Future<void> openSettingsFor(NearestError e) async {
+  switch (settingsTargetFor(e)) {
+    case SettingsTarget.device:
+      await Geolocator.openLocationSettings();
+    case SettingsTarget.app:
+      await Geolocator.openAppSettings();
+    case null:
+      break;
+  }
+}
+
 String nearestErrorMessage(NearestError e) {
   switch (e) {
     case NearestError.serviceOff:
@@ -104,6 +135,40 @@ Future<NearestResult> sortByDistance(List<GymLocation> locations) async {
     return NearestResult(sorted: out);
   } catch (e) {
     return const NearestResult(error: NearestError.failed);
+  }
+}
+
+/// Distances from an arbitrary point, for a client who set their position
+/// on the map instead of using GPS. Same ordering and labelling as
+/// [sortByDistance]; locations without coordinates are left out.
+List<LocationDistance> distancesFrom(double lat, double lng, List<GymLocation> locations) {
+  final out = locations
+      .where((l) => l.hasCoords)
+      .map((l) => LocationDistance(
+            location: l,
+            metres: Geolocator.distanceBetween(lat, lng, l.lat!, l.lng!),
+          ))
+      .toList()
+    ..sort((a, b) => a.metres.compareTo(b.metres));
+  return out;
+}
+
+/// The nearest street address to a point, for showing back what was picked
+/// on the map. Null when the platform geocoder can't name it.
+Future<String?> addressFor(double lat, double lng) async {
+  try {
+    final places = await geo.placemarkFromCoordinates(lat, lng);
+    if (places.isEmpty) return null;
+    final p = places.first;
+    final parts = [
+      [p.street, p.subThoroughfare].where((v) => (v ?? "").isNotEmpty).join(" ").trim(),
+      p.locality,
+      p.administrativeArea,
+      p.postalCode,
+    ].where((v) => (v ?? "").trim().isNotEmpty).cast<String>().toList();
+    return parts.isEmpty ? null : parts.join(", ");
+  } catch (e) {
+    return null;
   }
 }
 
