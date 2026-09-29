@@ -114,6 +114,13 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
         child: BlockedUsersScreen(onBack: () => setState(() => _section = null)),
       );
     }
+    if (_section == "privacy") {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _section = null),
+        child: PrivacyPolicyScreen(onBack: () => setState(() => _section = null)),
+      );
+    }
     if (_section == "terms") {
       return LocalBackScope(
         isOpen: true,
@@ -249,6 +256,12 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             label: "Terms of Use",
             detail: "What you agreed to when you joined",
             onTap: () => setState(() => _section = "terms"),
+          ),
+          _SettingRow(
+            icon: LucideIcons.shieldCheck,
+            label: "Privacy Policy",
+            detail: "How we handle your information",
+            onTap: () => setState(() => _section = "privacy"),
           ),
           _SettingRow(
             icon: LucideIcons.trash2,
@@ -461,6 +474,39 @@ class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPr
                 const Text(
                   kSmsConsentDisclosure,
                   style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.45),
+                ),
+                // The disclosure names both documents, so they have to be
+                // reachable from the same screen — a carrier reviewing the
+                // campaign checks the person consenting can actually read
+                // them.
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (ctx) => TermsScreen(onBack: () => Navigator.of(ctx).pop()),
+                      )),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.gold,
+                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+                        minimumSize: Size.zero,
+                      ),
+                      child: const Text("Terms of Use",
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                    ),
+                    const Text("  ·  ", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (ctx) => PrivacyPolicyScreen(onBack: () => Navigator.of(ctx).pop()),
+                      )),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.gold,
+                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+                        minimumSize: Size.zero,
+                      ),
+                      child: const Text("Privacy Policy",
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                    ),
+                  ],
                 ),
                 if (info.smsOptIn) ...[
                   const SizedBox(height: 8),

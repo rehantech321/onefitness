@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "../theme/app_colors.dart";
 import "../widgets/widgets.dart";
+import "privacy_policy_text.dart";
 import "terms_text.dart";
 
 /// The full Terms of Use, readable on its own. Reached from the signup
@@ -46,6 +47,59 @@ class TermsScreen extends StatelessWidget {
                           color: AppColors.txt,
                           height: 1.6,
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The Privacy Policy, readable on its own. Reached from Profile Settings,
+/// from the SMS consent disclosure, and from the Terms — carriers reviewing
+/// an A2P 10DLC campaign check the policy is available to whoever is giving
+/// consent.
+class PrivacyPolicyScreen extends StatelessWidget {
+  const PrivacyPolicyScreen({super.key, required this.onBack});
+
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) onBack();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.bg,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+                child: BackBar(onBack: onBack, title: "Privacy Policy"),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        "Effective $kPrivacyPolicyEffectiveDate",
+                        style: TextStyle(fontSize: 11, color: AppColors.mute),
+                      ),
+                      SizedBox(height: 14),
+                      Text(
+                        kPrivacyPolicy,
+                        style: TextStyle(fontSize: 13, color: AppColors.txt, height: 1.6),
                       ),
                     ],
                   ),
