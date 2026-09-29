@@ -48,6 +48,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   bool _purchasing = false;
   bool _freezing = false;
   bool _freezeBusy = false;
+  bool _cancelBusy = false;
   late final _freezeStart = TextEditingController(text: isoToday());
   final _freezeEnd = TextEditingController();
   String? _freezeErr;
@@ -441,6 +442,25 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         ],
                       ),
                     ),
+                  // Ending the membership outright, with an explicit choice
+                  // about when access stops. Separate from freeze, and
+                  // deliberately the last action in this block.
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: _cancelBusy ? null : () => _confirmCancelMembership(info, plan, update),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.errorText,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      icon: const Icon(LucideIcons.circleX, size: 14),
+                      label: Text(
+                        _cancelBusy ? "Cancelling…" : "Cancel membership",
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
                 ],
                 if (plan != null && plan.kind != PlanKind.program) ...[
                   Padding(
@@ -677,6 +697,114 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
         );
     } finally {
       if (mounted) setState(() => _freezeBusy = false);
+    }
+  }
+
+
+  /// Staff ending a client's membership. The choice that matters is when
+  /// access actually stops, so it's the whole dialog rather than a footnote:
+  /// letting them finish the period they've paid for is the default, and
+  /// cancelling outright is the deliberate second option.
+  Future<void> _confirmCancelMembership(
+    ClientInfo info,
+    MembershipPlan plan,
+    void Function(ClientInfoUpdater) update,
+  ) async {
+    setState(() {
+      _cancelBusy = true;
+      _freezeErr = null;
+    });
+
+    Map<String, dynamic> preview;
+    try {
+      preview = await SupabaseService.adminCancelMembershipPreview(info.id);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cancelBusy = false;
+        _freezeErr = "Couldn't check this membership — check your connection and try again.";
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _cancelBusy = false);
+
+    final endsAt = preview["periodEndsAt"] as String?;
+    final canScheduleEnd = preview["canScheduleEnd"] == true;
+
+    final mode = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text("Cancel ${plan.name}?",
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "How should ${info.name}'s access end?",
+              style: const TextStyle(fontSize: 13, height: 1.5),
+            ),
+            const SizedBox(height: 14),
+            _CancelModeOption(
+              title: "Let them finish",
+              detail: canScheduleEnd
+                  ? "Billing stops now. They keep their sessions until ${endsAt ?? 'the end of the period'}, which they've already paid for."
+                  : "Not available — this plan has no billing period to run out.",
+              enabled: canScheduleEnd,
+              onTap: () => Navigator.of(ctx).pop("period_end"),
+            ),
+            const SizedBox(height: 8),
+            _CancelModeOption(
+              title: "Cancel immediately",
+              detail: "Access ends right now and the membership is removed. Use this for a refund or a member who has left.",
+              enabled: true,
+              danger: true,
+              onTap: () => Navigator.of(ctx).pop("immediate"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: TextButton.styleFrom(foregroundColor: AppColors.mute),
+            child: const Text("Keep membership"),
+          ),
+        ],
+      ),
+    );
+    if (mode == null || !mounted) return;
+
+    setState(() => _cancelBusy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final res = await SupabaseService.adminCancelMembership(clientId: info.id, mode: mode);
+      if (!mounted) return;
+      setState(() => _cancelBusy = false);
+      final cancelsAt = res["cancelsAt"] as String?;
+      messenger.showSnackBar(SnackBar(
+        content: Text(cancelsAt != null
+            ? "Membership ends ${cancelsAt}. Billing has stopped."
+            : "Membership cancelled. Access has ended."),
+        duration: const Duration(seconds: 5),
+      ));
+      // Mirror what the server just did so the card updates now.
+      if (cancelsAt != null) {
+        update((c) => c.copyWith(membershipCancelsAt: cancelsAt));
+      } else {
+        update((c) => c.copyWith(
+              membershipPlanId: null,
+              stripeSubscriptionId: null,
+              membershipCancelsAt: null,
+            ));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _cancelBusy = false;
+        _freezeErr = e.toString().replaceFirst("Exception: ", "");
+      });
     }
   }
 
@@ -1300,6 +1428,57 @@ class _EditSectionState extends State<_EditSection> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One of the two ways a staff member can end a membership. A card rather
+/// than a radio row: the difference between them matters to the client, so
+/// the consequence is spelled out under each rather than hidden behind a
+/// label.
+class _CancelModeOption extends StatelessWidget {
+  const _CancelModeOption({
+    required this.title,
+    required this.detail,
+    required this.enabled,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  final String title;
+  final String detail;
+  final bool enabled;
+  final bool danger;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = danger ? AppColors.errorText : AppColors.gold;
+    return Opacity(
+      opacity: enabled ? 1 : 0.5,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: enabled ? accent : AppColors.line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: TextStyle(
+                      fontSize: 13.5, fontWeight: FontWeight.w800, color: enabled ? accent : AppColors.mute)),
+              const SizedBox(height: 3),
+              Text(detail,
+                  style: const TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4)),
+            ],
+          ),
+        ),
       ),
     );
   }

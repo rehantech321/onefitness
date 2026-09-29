@@ -2502,6 +2502,37 @@ class SupabaseService {
   static Future<void> sendSms({required String to, required String text}) =>
       _invokeFunction("send-sms", {"to": to, "text": text});
 
+  /// What would happen if staff cancelled this client's membership —
+  /// whether the paid-for period can be run out, and when it ends. Asked
+  /// before showing the choice so the dialog states real dates rather than
+  /// offering an option that turns out not to apply.
+  static Future<Map<String, dynamic>> adminCancelMembershipPreview(String clientId) async {
+    final res = await client.functions.invoke(
+      "admin-cancel-membership",
+      body: {"clientId": clientId, "preview": true},
+    );
+    final data = res.data;
+    if (data is Map && data["error"] != null) throw Exception(data["error"].toString());
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  /// Staff ending a client's membership. [mode] is "period_end" (billing
+  /// stops now, sessions continue to the end of the period already paid
+  /// for) or "immediate" (access ends at once).
+  static Future<Map<String, dynamic>> adminCancelMembership({
+    required String clientId,
+    required String mode,
+  }) async {
+    final res = await client.functions.invoke(
+      "admin-cancel-membership",
+      body: {"clientId": clientId, "mode": mode},
+    );
+    final data = res.data;
+    if (data is Map && data["error"] != null) throw Exception(data["error"].toString());
+    if (res.status != 200) throw Exception("Couldn't cancel that membership. Please try again.");
+    return Map<String, dynamic>.from(data as Map);
+  }
+
   /// Confirms a waitlist join by push, SMS and email. Server-side because it
   /// reads the client's phone and SMS preference, and because joining used
   /// to send nothing at all — the client saw a row appear and heard nothing.
