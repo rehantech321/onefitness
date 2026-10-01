@@ -1,7 +1,9 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../../core/supabase/supabase_service.dart";
+import "../../../core/legal/health_sources.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/widgets/source_citations.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/program_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -336,6 +338,16 @@ class _WorkoutTabState extends ConsumerState<WorkoutTab> {
             client: client,
             onSave: _saveSession,
             exerciseFooterBuilder: _exerciseFooter,
+            // Guideline 1.4.1 again: a training program is health guidance,
+            // so it carries its sources and the same stop-if-you-feel-unwell
+            // warning, on the screen rather than in a legal page.
+            footer: const Padding(
+              padding: EdgeInsets.fromLTRB(18, 0, 18, 18),
+              child: SourceCitations(
+                sources: kTrainingSources,
+                disclaimer: kTrainingDisclaimer,
+              ),
+            ),
           ),
         ),
       ],

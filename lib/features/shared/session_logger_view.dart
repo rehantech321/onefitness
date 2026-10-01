@@ -37,9 +37,14 @@ class SessionLoggerView extends StatefulWidget {
     this.emptyProgramText =
         "No active workout program yet. Your coach will assign one to your profile.",
     this.exerciseFooterBuilder,
+    this.footer,
   });
 
   final ClientRecord client;
+
+  /// Pinned under the program — used for the health-guidance citations that
+  /// App Review guideline 1.4.1 requires alongside a training program.
+  final Widget? footer;
 
   /// "client" (self-logged) | "coach" (logged on the client's behalf).
   final String loggedBy;
@@ -602,6 +607,9 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
               ),
             ),
           ],
+          // Last in the scroll view, so the citations sit under the whole
+          // program rather than interrupting it.
+          if (widget.footer != null) widget.footer!,
         ],
       ),
       ),

@@ -7,6 +7,8 @@ import "../../../core/utils/nutrition_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/nutrition_plan.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../core/legal/health_sources.dart";
+import "../../../core/widgets/source_citations.dart";
 import "client_meal_picker.dart";
 
 /// Mirrors NutritionScreenReadOnly.jsx: training/rest macro targets, a
@@ -227,6 +229,16 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
               child: Text(n.guidelines!, style: const TextStyle(fontSize: 13, color: AppColors.txt, height: 1.6)),
             ),
           ],
+
+          // Directly beneath the guidance, never folded away: App Review
+          // guideline 1.4.1 requires health recommendations to carry
+          // citations that are easy for the user to find. Shown whenever
+          // there is a program at all — the targets above are themselves a
+          // health recommendation, with or without written guidelines.
+          const SourceCitations(
+            sources: kNutritionSources,
+            disclaimer: kNutritionDisclaimer,
+          ),
         ],
       ),
     );
