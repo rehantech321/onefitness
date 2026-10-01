@@ -3570,8 +3570,14 @@ class SupabaseService {
       smsOptIn: c["sms_opt_in"] as bool? ?? false,
       pushOptIn: profile["push_opt_in"] as bool? ?? true,
       billingAnchorDay: _asInt(c["billing_anchor_day"]),
+      bookingLocation: c["booking_location"] as String?,
     );
   }
+
+  /// "Change Location" on the booking screen — where this client books
+  /// from from now on. Never touches clients.city: that stays their home.
+  static Future<void> updateBookingLocation(String clientId, String location) =>
+      client.from("clients").update({"booking_location": location}).eq("profile_id", clientId);
 
   /// Notifications spec — the client's own SMS opt-in toggle (Profile
   /// Settings → Notification Preferences).

@@ -275,7 +275,7 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+                    color: selected ? AppColors.gold : AppColors.card,
                     border: Border.all(color: selected ? AppColors.gold : AppColors.line),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -284,7 +284,7 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
                     style: TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
-                      color: out ? AppColors.line : (selected ? AppColors.gold : AppColors.txt),
+                      color: out ? AppColors.line : (selected ? AppColors.onGold : AppColors.txt),
                       decoration: out ? TextDecoration.lineThrough : null,
                     ),
                   ),

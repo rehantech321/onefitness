@@ -212,7 +212,7 @@ class _VisitsTab extends StatelessWidget {
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.12) : AppColors.card,
+          color: selected ? AppColors.gold : AppColors.card,
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
           borderRadius: BorderRadius.circular(8),
         ),
@@ -221,7 +221,7 @@ class _VisitsTab extends StatelessWidget {
           style: TextStyle(
             fontSize: 12.5,
             fontWeight: FontWeight.w700,
-            color: selected ? AppColors.gold : AppColors.mute,
+            color: selected ? AppColors.onGold : AppColors.mute,
           ),
         ),
       ),

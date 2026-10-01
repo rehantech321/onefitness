@@ -212,7 +212,7 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                   onPressed: () => setState(() => _adding = true),
                   style: TextButton.styleFrom(
                     backgroundColor: AppColors.gold,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.onGold,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
@@ -254,12 +254,12 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onGold),
                                 )
                               : const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   mainAxisSize: MainAxisSize.min,
-                                  children: [Icon(LucideIcons.check, size: 15, color: Colors.white), SizedBox(width: 6), Text("Save")],
+                                  children: [Icon(LucideIcons.check, size: 15, color: AppColors.onGold), SizedBox(width: 6), Text("Save")],
                                 ),
                         ),
                       ),

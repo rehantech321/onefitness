@@ -34,6 +34,7 @@ class ClientInfo {
     this.smsOptIn = false,
     this.pushOptIn = true,
     this.billingAnchorDay,
+    this.bookingLocation,
   });
 
   final String id;
@@ -121,6 +122,13 @@ class ClientInfo {
   /// way it's read back off the real Stripe subscription, never assumed.
   final int? billingAnchorDay;
 
+  /// The gym location this client books from, chosen via "Change Location"
+  /// on the booking screen — deliberately separate from [city], so browsing
+  /// another site while travelling never rewrites their home city. Null
+  /// until they first pick (booking then follows [city], else the gym
+  /// default); [kAnyLocation] means "Any location".
+  final String? bookingLocation;
+
   ClientInfo copyWith({
     String? name,
     String? email,
@@ -151,6 +159,7 @@ class ClientInfo {
     bool? smsOptIn,
     bool? pushOptIn,
     int? billingAnchorDay,
+    String? bookingLocation,
     List<ClientPlanEnrollment>? plans,
   }) =>
       ClientInfo(
@@ -181,5 +190,10 @@ class ClientInfo {
         smsOptIn: smsOptIn ?? this.smsOptIn,
         pushOptIn: pushOptIn ?? this.pushOptIn,
         billingAnchorDay: billingAnchorDay ?? this.billingAnchorDay,
+        bookingLocation: bookingLocation ?? this.bookingLocation,
       );
 }
+
+/// Stored in [ClientInfo.bookingLocation] when the client chose "Any
+/// location" — distinct from null, which means they never chose.
+const kAnyLocation = "*";

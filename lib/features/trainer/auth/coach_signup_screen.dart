@@ -142,14 +142,14 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: on ? AppColors.gold : AppColors.line),
-          color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+          color: on ? AppColors.gold : AppColors.bg,
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: on ? AppColors.gold : AppColors.mute,
+            color: on ? AppColors.onGold : AppColors.mute,
           ),
         ),
       ),

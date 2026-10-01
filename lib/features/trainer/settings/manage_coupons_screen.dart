@@ -242,9 +242,9 @@ class _CouponEditFormState extends State<_CouponEditForm> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: _type == t.$1 ? AppColors.gold : AppColors.line),
-                      color: _type == t.$1 ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                      color: _type == t.$1 ? AppColors.gold : AppColors.bg,
                     ),
-                    child: Text(t.$2, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _type == t.$1 ? AppColors.gold : AppColors.txt)),
+                    child: Text(t.$2, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _type == t.$1 ? AppColors.onGold : AppColors.txt)),
                   ),
                 ),
             ],

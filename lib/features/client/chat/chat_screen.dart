@@ -807,13 +807,13 @@ class _SegOption extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? AppColors.gold.withValues(alpha: 0.12) : AppColors.card,
+            color: selected ? AppColors.gold : AppColors.card,
             border: Border.all(color: selected ? AppColors.gold : AppColors.line),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
             label,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.mute),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute),
           ),
         ),
       ),
@@ -928,7 +928,7 @@ class _Bubble extends StatelessWidget {
                 ),
                 child: Text(
                   message.text,
-                  style: TextStyle(color: isMine ? Colors.white : AppColors.txt, fontSize: 14, height: 1.35),
+                  style: TextStyle(color: isMine ? AppColors.onGold : AppColors.txt, fontSize: 14, height: 1.35),
                 ),
               ),
             ),
@@ -1059,7 +1059,7 @@ class _ComposerState extends State<_Composer> {
                   color: hasText ? AppColors.gold : AppColors.card,
                   border: hasText ? null : Border.all(color: AppColors.line),
                 ),
-                child: Icon(LucideIcons.send, size: 17, color: hasText ? Colors.white : AppColors.mute),
+                child: Icon(LucideIcons.send, size: 17, color: hasText ? AppColors.onGold : AppColors.mute),
               ),
             ),
           ],

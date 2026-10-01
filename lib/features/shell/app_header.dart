@@ -56,7 +56,7 @@ class _PillButton extends StatelessWidget {
           decoration: BoxDecoration(color: selected ? AppColors.gold : Colors.transparent, borderRadius: BorderRadius.circular(50)),
           child: Text(
             label,
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: 0.3, color: selected ? Colors.white : AppColors.mute),
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: 0.3, color: selected ? AppColors.onGold : AppColors.mute),
           ),
         ),
       ),

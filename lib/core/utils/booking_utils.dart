@@ -146,6 +146,22 @@ Booking? findTrainerConflict(List<Booking> bookings, String trainerId, String da
   return null;
 }
 
+/// Whether a session at [date]/[slot] has already started — judged against
+/// the current time, not just the date, so a 4:00 PM session is gone by
+/// 5:00 PM the same day. The booking tab hides these everywhere.
+///
+/// Deliberately separate from the booking lead-time cutoff in
+/// [canBookOffering] (minBookingLeadHours, 2h by default): a session inside
+/// that window still shows — tapping it explains why it can't be booked —
+/// and only drops off the list once it actually starts.
+bool sessionHasStarted(String date, int slot) {
+  final today = isoToday();
+  final cmp = date.compareTo(today);
+  if (cmp != 0) return cmp < 0;
+  final now = DateTime.now();
+  return slot <= now.hour * 60 + now.minute;
+}
+
 /// Mirrors lib/helpers.js `cancelWindow`.
 String cancelWindow(Booking b, {int lateCancellationHours = kLateCancellationHours}) {
   final start = DateTime.parse(b.date).add(Duration(minutes: b.slot));

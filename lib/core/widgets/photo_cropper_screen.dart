@@ -202,7 +202,7 @@ class _PhotoCropperScreenState extends State<PhotoCropperScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.gold,
                             disabledBackgroundColor: AppColors.line,
-                            foregroundColor: Colors.white,
+                            foregroundColor: AppColors.onGold,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             elevation: 0,

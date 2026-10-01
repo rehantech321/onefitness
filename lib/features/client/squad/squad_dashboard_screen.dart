@@ -205,7 +205,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(LucideIcons.users2, size: 15, color: Colors.white),
+                      Icon(LucideIcons.users2, size: 15, color: AppColors.onGold),
                       SizedBox(width: 6),
                       Text("Create Squad"),
                     ],
@@ -247,7 +247,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(LucideIcons.plus, size: 15, color: Colors.white),
+                    Icon(LucideIcons.plus, size: 15, color: AppColors.onGold),
                     SizedBox(width: 6),
                     Text("Create a Squad"),
                   ],
@@ -421,7 +421,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: _sub == t.$1
-                                ? AppColors.gold.withValues(alpha: 0.15)
+                                ? AppColors.gold
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(7),
                           ),
@@ -431,7 +431,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: _sub == t.$1
-                                  ? AppColors.gold
+                                  ? AppColors.onGold
                                   : AppColors.mute,
                             ),
                           ),
@@ -555,11 +555,9 @@ class _MembersTab extends ConsumerWidget {
                                     vertical: 1,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.gold.withValues(
-                                      alpha: 0.12,
-                                    ),
+                                    color: AppColors.gold,
                                     border: Border.all(
-                                      color: AppColors.goldDim,
+                                      color: AppColors.gold,
                                     ),
                                     borderRadius: BorderRadius.circular(5),
                                   ),
@@ -569,7 +567,7 @@ class _MembersTab extends ConsumerWidget {
                                       Icon(
                                         LucideIcons.crown,
                                         size: 9,
-                                        color: AppColors.gold,
+                                        color: AppColors.onGold,
                                       ),
                                       SizedBox(width: 3),
                                       Text(
@@ -577,7 +575,7 @@ class _MembersTab extends ConsumerWidget {
                                         style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w800,
-                                          color: AppColors.gold,
+                                          color: AppColors.onGold,
                                         ),
                                       ),
                                     ],

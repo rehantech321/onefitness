@@ -12,8 +12,25 @@ class AppTheme {
       colorScheme: base.colorScheme.copyWith(
         surface: AppColors.bg,
         primary: AppColors.gold,
+        onPrimary: AppColors.onGold,
         secondary: AppColors.gold,
+        onSecondary: AppColors.onGold,
         error: AppColors.danger,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.gold,
+          foregroundColor: AppColors.onGold,
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.gold,
+          foregroundColor: AppColors.onGold,
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        checkColor: const WidgetStatePropertyAll(AppColors.onGold),
       ),
       textTheme: base.textTheme.apply(
         bodyColor: AppColors.txt,

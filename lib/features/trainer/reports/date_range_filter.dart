@@ -66,11 +66,11 @@ class _DateRangeFilterState extends State<DateRangeFilter> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+                      color: selected ? AppColors.gold : AppColors.card,
                       border: Border.all(color: selected ? AppColors.gold : AppColors.line),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Text(p.$2, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? AppColors.gold : AppColors.mute)),
+                    child: Text(p.$2, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? AppColors.onGold : AppColors.mute)),
                   ),
                 ),
               );

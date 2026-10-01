@@ -4,6 +4,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/booking_location.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
@@ -68,9 +69,22 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   /// Which held plan the pending pick will be charged to — decided by
   /// canBookOffering when the slot was tapped, written onto the booking.
   String? _pickPlanId;
-  /// Which location the client is browsing, null = any. Chosen in the
-  /// picker above the slot list.
-  String? _locationFilter;
+
+  /// "Change Location" — becomes this client's booking location from now
+  /// on (not a one-off filter). Applied locally first so the slot list
+  /// refreshes at once; the save is best-effort, and a failure only means
+  /// the choice isn't remembered next time. Profile city is left alone.
+  Future<void> _changeBookingLocation(String? name) async {
+    final value = name ?? kAnyLocation;
+    final info = ref.read(clientInfoProvider);
+    ref.read(clientInfoProvider.notifier).update((c) => c.copyWith(bookingLocation: value));
+    try {
+      await SupabaseService.updateBookingLocation(info.id, value);
+    } catch (e) {
+      // ignore: avoid_print
+      print("[BookingScreen] booking location not saved: $e");
+    }
+  }
 
   bool _showAllUpcoming = false;
   bool _busy = false;
@@ -607,7 +621,8 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     }
 
     final held = heldAccessPlans(info, ref.watch(membershipPlansProvider));
-    final myUpcoming = bookings.where((b) => b.clientId == info.id && b.date.compareTo(isoToday()) >= 0).toList()
+    // Time-aware, not just date: this morning's session is gone by tonight.
+    final myUpcoming = bookings.where((b) => b.clientId == info.id && !sessionHasStarted(b.date, b.slot)).toList()
       ..sort((a, b) => (a.date + a.slot.toString().padLeft(4, '0')).compareTo(b.date + b.slot.toString().padLeft(4, '0')));
 
     return SingleChildScrollView(
@@ -815,8 +830,9 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         onLeaveWaitlist: _leaveWaitlist,
                         waitlistBusyKeys: _waitlistBusyKeys,
                         semiPrivateCap: ref.watch(platformSettingsProvider).semiPrivateCap,
-                        locationFilter: _locationFilter,
-                        onLocationChange: (v) => setState(() => _locationFilter = v),
+                        locationFilter: effectiveBookingLocation(ref, info),
+                        locationDistances: bookingLocationDistances(ref, info),
+                        onLocationChange: _changeBookingLocation,
                       ),
           );
           }),
@@ -1118,7 +1134,7 @@ class _NoPlanGate extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(LucideIcons.creditCard, size: 15, color: Colors.white),
+                Icon(LucideIcons.creditCard, size: 15, color: AppColors.onGold),
                 SizedBox(width: 6),
                 Text("See plans and what each covers"),
               ],
@@ -1246,6 +1262,7 @@ class _StepThree extends StatefulWidget {
     required this.semiPrivateCap,
     required this.gymLocationName,
     required this.locationFilter,
+    required this.locationDistances,
     required this.onLocationChange,
   });
 
@@ -1255,6 +1272,10 @@ class _StepThree extends StatefulWidget {
 
   /// Only show sessions at this location; null shows them all.
   final String? locationFilter;
+
+  /// Metres from the client's booking location to each gym location, by
+  /// name — orders each time's sessions nearest first.
+  final Map<String, double> locationDistances;
   final ValueChanged<String?> onLocationChange;
   final String date;
   final String chosenType;
@@ -1335,14 +1356,19 @@ class _StepThreeState extends State<_StepThree> {
           bySlot.putIfAbsent(o.slot, () => []).add(_SlotAvailability(trainer: t, open: cap - used, cap: cap, mine: mine, locationName: o.locationName));
         }
       }
-      // A session that's already started (or already passed) today can't
-      // be booked — every other date on the calendar is entirely future,
-      // so this only ever trims today's slot list.
-      if (date == isoToday()) {
-        final now = DateTime.now();
-        final nowMin = now.hour * 60 + now.minute;
-        bySlot.removeWhere((slot, _) => slot <= nowMin);
+      // Nearest first within each time; locations we can't measure go last.
+      final dist = widget.locationDistances;
+      if (dist.isNotEmpty) {
+        double away(_SlotAvailability a) =>
+            dist[a.locationName ?? a.trainer.locationName ?? widget.gymLocationName] ?? double.infinity;
+        for (final list in bySlot.values) {
+          list.sort((a, b) => away(a).compareTo(away(b)));
+        }
       }
+      // A session that's already started never shows — today's earlier
+      // slots, and every slot on a past date. The 2-hour lead-time cutoff
+      // is separate (canBookOffering, on tap), so this doesn't repeat it.
+      bySlot.removeWhere((slot, _) => sessionHasStarted(date, slot));
     }
     final slots = bySlot.keys.toList()..sort();
 
@@ -1368,7 +1394,8 @@ class _StepThreeState extends State<_StepThree> {
           ],
         ),
         const SizedBox(height: 4),
-        // Only appears when the gym actually runs more than one site.
+        // Collapsed to one line like the discipline row above; only appears
+        // when the gym actually runs more than one site.
         LocationPicker(selected: widget.locationFilter, onSelect: widget.onLocationChange),
         DateStrip(date: date, onSelect: onDateChange, disablePast: true),
         if (slots.isNotEmpty)

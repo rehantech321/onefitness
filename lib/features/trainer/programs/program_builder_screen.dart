@@ -837,7 +837,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                                           fontSize: 11,
                                           fontWeight: FontWeight.w700,
                                           color: on
-                                              ? Colors.white
+                                              ? AppColors.onGold
                                               : AppColors.mute,
                                         ),
                                       ),
@@ -1153,7 +1153,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0x1433733F),
+              color: const Color(0x14D9D9D9),
               border: Border.all(color: AppColors.goldDim),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -1270,7 +1270,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
               child: OutlinedButton(
                 onPressed: () => setState(() => _saved = false),
                 style: OutlinedButton.styleFrom(
-                  backgroundColor: const Color(0x1F33733F),
+                  backgroundColor: const Color(0x1FD9D9D9),
                   foregroundColor: AppColors.gold,
                   side: const BorderSide(color: AppColors.goldDim),
                   padding: const EdgeInsets.symmetric(vertical: 11),

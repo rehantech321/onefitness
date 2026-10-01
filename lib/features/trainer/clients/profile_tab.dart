@@ -1225,7 +1225,7 @@ class _AddChargeFormState extends State<_AddChargeForm> {
                       color: selected ? AppColors.gold : AppColors.line,
                     ),
                     color: selected
-                        ? AppColors.gold.withValues(alpha: 0.15)
+                        ? AppColors.gold
                         : AppColors.card,
                   ),
                   child: Text(
@@ -1233,7 +1233,7 @@ class _AddChargeFormState extends State<_AddChargeForm> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: selected ? AppColors.gold : AppColors.mute,
+                      color: selected ? AppColors.onGold : AppColors.mute,
                     ),
                   ),
                 ),

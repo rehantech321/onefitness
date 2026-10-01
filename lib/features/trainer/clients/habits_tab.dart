@@ -96,7 +96,7 @@ class _HabitsTabState extends ConsumerState<HabitsTab> {
                 margin: const EdgeInsets.only(bottom: 7),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: done ? AppColors.grn.withValues(alpha: 0.08) : AppColors.card,
+                  color: done ? AppColors.grn : AppColors.card,
                   border: Border.all(color: done ? AppColors.grn : AppColors.line),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -104,8 +104,8 @@ class _HabitsTabState extends ConsumerState<HabitsTab> {
                   children: [
                     Text(h.emoji, style: const TextStyle(fontSize: 20)),
                     const SizedBox(width: 12),
-                    Expanded(child: Text(h.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: done ? AppColors.grn : AppColors.txt))),
-                    Icon(done ? LucideIcons.checkCircle2 : LucideIcons.circle, size: 18, color: done ? AppColors.grn : AppColors.line),
+                    Expanded(child: Text(h.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: done ? AppColors.onGold : AppColors.txt))),
+                    Icon(done ? LucideIcons.checkCircle2 : LucideIcons.circle, size: 18, color: done ? AppColors.onGold : AppColors.line),
                   ],
                 ),
               );
@@ -160,7 +160,7 @@ class _HabitsTabState extends ConsumerState<HabitsTab> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          color: on ? AppColors.grn.withValues(alpha: 0.08) : AppColors.card,
+                          color: on ? AppColors.grn : AppColors.card,
                           border: Border.all(color: on ? AppColors.grn : AppColors.line),
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -168,8 +168,8 @@ class _HabitsTabState extends ConsumerState<HabitsTab> {
                           children: [
                             Text(h.emoji, style: const TextStyle(fontSize: 16)),
                             const SizedBox(width: 10),
-                            Expanded(child: Text(h.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-                            Text(on ? "ON" : "OFF", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: on ? AppColors.grn : AppColors.mute)),
+                            Expanded(child: Text(h.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: on ? AppColors.onGold : AppColors.txt))),
+                            Text(on ? "ON" : "OFF", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: on ? AppColors.onGold : AppColors.mute)),
                           ],
                         ),
                       ),

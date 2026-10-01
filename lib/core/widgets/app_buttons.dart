@@ -16,8 +16,9 @@ class BtnGold extends StatelessWidget {
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.gold,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.onGold,
         disabledBackgroundColor: AppColors.gold.withValues(alpha: 0.5),
+        disabledForegroundColor: AppColors.onGold.withValues(alpha: 0.6),
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

@@ -83,11 +83,11 @@ class _BlockTimeBodyState extends ConsumerState<_BlockTimeBody> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                      color: selected ? AppColors.gold : AppColors.bg,
                       border: Border.all(color: selected ? AppColors.gold : AppColors.line),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(t.name, style: TextStyle(fontSize: 12, color: selected ? AppColors.gold : AppColors.txt)),
+                    child: Text(t.name, style: TextStyle(fontSize: 12, color: selected ? AppColors.onGold : AppColors.txt)),
                   ),
                 );
               }).toList(),

@@ -304,7 +304,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: done
-                                  ? AppColors.gold.withValues(alpha: 0.12)
+                                  ? AppColors.gold
                                   : Colors.transparent,
                               border: Border.all(
                                 color: done
@@ -318,7 +318,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                color: done && !locked ? AppColors.gold : AppColors.mute,
+                                color: done ? AppColors.onGold : AppColors.mute,
                               ),
                             ),
                           ),

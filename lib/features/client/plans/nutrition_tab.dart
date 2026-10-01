@@ -254,7 +254,7 @@ class _DayTypeButton extends StatelessWidget {
           ),
           child: Text(
             label,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppColors.mute),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute),
           ),
         ),
       ),

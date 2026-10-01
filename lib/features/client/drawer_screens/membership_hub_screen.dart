@@ -1517,7 +1517,7 @@ class _TypeFilterChip extends StatelessWidget {
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
           borderRadius: BorderRadius.circular(50),
         ),
-        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppColors.mute)),
+        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute)),
       ),
     );
   }

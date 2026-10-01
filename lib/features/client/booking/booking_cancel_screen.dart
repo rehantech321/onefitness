@@ -84,7 +84,7 @@ class BookingCancelScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(LucideIcons.check, size: 15, color: Colors.white),
+                      const Icon(LucideIcons.check, size: 15, color: AppColors.onGold),
                       const SizedBox(width: 6),
                       Text(charged ? "Cancel anyway" : "Confirm cancel"),
                     ],
@@ -161,7 +161,7 @@ class BookingDeniedScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(LucideIcons.fileSignature, size: 15, color: Colors.white),
+                  Icon(LucideIcons.fileSignature, size: 15, color: AppColors.onGold),
                   SizedBox(width: 6),
                   Text("Sign now"),
                 ],
@@ -175,7 +175,7 @@ class BookingDeniedScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(LucideIcons.creditCard, size: 15, color: Colors.white),
+                  Icon(LucideIcons.creditCard, size: 15, color: AppColors.onGold),
                   SizedBox(width: 6),
                   Text("Go to Membership Hub"),
                 ],

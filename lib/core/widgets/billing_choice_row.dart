@@ -40,13 +40,13 @@ class _Option extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.12) : AppColors.card,
+          color: selected ? AppColors.gold : AppColors.card,
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
           label,
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.mute),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute),
         ),
       ),
     );

@@ -181,10 +181,10 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: _sub == t.$1 ? AppColors.gold.withValues(alpha: 0.15) : Colors.transparent,
+                              color: _sub == t.$1 ? AppColors.gold : Colors.transparent,
                               borderRadius: BorderRadius.circular(7),
                             ),
-                            child: Text(t.$2, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _sub == t.$1 ? AppColors.gold : AppColors.mute)),
+                            child: Text(t.$2, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _sub == t.$1 ? AppColors.onGold : AppColors.mute)),
                           ),
                         ),
                       ))
@@ -213,11 +213,11 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                               if (lead)
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                  decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.12), border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(5)),
+                                  decoration: BoxDecoration(color: AppColors.gold, border: Border.all(color: AppColors.gold), borderRadius: BorderRadius.circular(5)),
                                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                                    Icon(LucideIcons.crown, size: 9, color: AppColors.gold),
+                                    Icon(LucideIcons.crown, size: 9, color: AppColors.onGold),
                                     SizedBox(width: 3),
-                                    Text("LEAD", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.gold)),
+                                    Text("LEAD", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.onGold)),
                                   ]),
                                 ),
                             ],

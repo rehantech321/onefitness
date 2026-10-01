@@ -850,8 +850,8 @@ class _ChoiceRow extends StatelessWidget {
                 onTap: () => onChange(o.$1),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  decoration: BoxDecoration(color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg, border: Border.all(color: selected ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(7)),
-                  child: Text(o.$2, style: TextStyle(fontSize: 11, color: selected ? AppColors.gold : AppColors.txt)),
+                  decoration: BoxDecoration(color: selected ? AppColors.gold : AppColors.bg, border: Border.all(color: selected ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(7)),
+                  child: Text(o.$2, style: TextStyle(fontSize: 11, color: selected ? AppColors.onGold : AppColors.txt)),
                 ),
               );
             }).toList(),
@@ -900,8 +900,8 @@ class _MultiChoiceRow extends StatelessWidget {
                 onTap: () => onChange(selected ? value.where((k) => k != o.$1).toList() : [...value, o.$1]),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  decoration: BoxDecoration(color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg, border: Border.all(color: selected ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(7)),
-                  child: Text(o.$2, style: TextStyle(fontSize: 11, color: selected ? AppColors.gold : AppColors.txt)),
+                  decoration: BoxDecoration(color: selected ? AppColors.gold : AppColors.bg, border: Border.all(color: selected ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(7)),
+                  child: Text(o.$2, style: TextStyle(fontSize: 11, color: selected ? AppColors.onGold : AppColors.txt)),
                 ),
               );
             }).toList(),
@@ -1515,13 +1515,13 @@ class _LockedPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.goldDim), color: AppColors.gold.withValues(alpha: 0.15)),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.gold), color: AppColors.gold),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.lock, size: 11, color: AppColors.gold),
+          const Icon(LucideIcons.lock, size: 11, color: AppColors.onGold),
           const SizedBox(width: 5),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.gold)),
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.onGold)),
         ],
       ),
     );

@@ -147,7 +147,7 @@ class ConsentCheckbox extends StatelessWidget {
                 value: value,
                 onChanged: (v) => onChanged(v ?? false),
                 activeColor: AppColors.gold,
-                checkColor: Colors.white,
+                checkColor: AppColors.onGold,
                 side: const BorderSide(color: AppColors.line, width: 1.5),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,

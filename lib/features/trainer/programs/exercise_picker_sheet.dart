@@ -70,11 +70,11 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
                       decoration: BoxDecoration(
-                        color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                        color: selected ? AppColors.gold : AppColors.bg,
                         border: Border.all(color: selected ? AppColors.gold : AppColors.line),
                         borderRadius: BorderRadius.circular(7),
                       ),
-                      child: Text(g, style: TextStyle(fontSize: 11, color: selected ? AppColors.gold : AppColors.txt)),
+                      child: Text(g, style: TextStyle(fontSize: 11, color: selected ? AppColors.onGold : AppColors.txt)),
                     ),
                   );
                 }).toList(),
@@ -172,11 +172,11 @@ class _MuscleChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+            color: selected ? AppColors.gold : AppColors.card,
             border: Border.all(color: selected ? AppColors.gold : AppColors.line),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Text(label, style: TextStyle(fontSize: 11, color: selected ? AppColors.gold : AppColors.mute)),
+          child: Text(label, style: TextStyle(fontSize: 11, color: selected ? AppColors.onGold : AppColors.mute)),
         ),
       ),
     );

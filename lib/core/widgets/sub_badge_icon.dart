@@ -63,7 +63,7 @@ class SubBadgeIcon extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: earned ? const Color(0x1F33733F) : Colors.transparent,
+        color: earned ? const Color(0x1FD9D9D9) : Colors.transparent,
         border: Border.all(color: borderColor, width: 1.5),
       ),
       child: Icon(icon, size: size * 0.5, color: earned ? AppColors.gold : AppColors.mute),

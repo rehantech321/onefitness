@@ -176,7 +176,7 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
                       SizedBox(
                         width: 14,
                         height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.onGold)),
                       ),
                       SizedBox(width: 8),
                       Text("Saving…"),
@@ -186,7 +186,7 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(LucideIcons.check, size: 16, color: Colors.white),
+                      Icon(LucideIcons.check, size: 16, color: AppColors.onGold),
                       SizedBox(width: 6),
                       Text("Save & mark complete"),
                     ],
@@ -248,11 +248,11 @@ class _QuestionInput extends StatelessWidget {
                 height: 36,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                  color: selected ? AppColors.gold : AppColors.bg,
                   border: Border.all(color: selected ? AppColors.gold : AppColors.line),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text("$n", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.mute)),
+                child: Text("$n", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute)),
               ),
             );
           }).toList(),
@@ -294,11 +294,11 @@ class _OptionChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+          color: selected ? AppColors.gold : AppColors.bg,
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: selected ? AppColors.gold : AppColors.mute)),
+        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: selected ? AppColors.onGold : AppColors.mute)),
       ),
     );
   }

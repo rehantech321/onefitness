@@ -74,8 +74,8 @@ class _PlansTabState extends ConsumerState<PlansTab> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             alignment: Alignment.center,
-                            decoration: BoxDecoration(color: _sub == t.$1 ? AppColors.gold.withValues(alpha: 0.15) : Colors.transparent, borderRadius: BorderRadius.circular(7)),
-                            child: Text(t.$2, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _sub == t.$1 ? AppColors.gold : AppColors.mute)),
+                            decoration: BoxDecoration(color: _sub == t.$1 ? AppColors.gold : Colors.transparent, borderRadius: BorderRadius.circular(7)),
+                            child: Text(t.$2, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _sub == t.$1 ? AppColors.onGold : AppColors.mute)),
                           ),
                         ),
                       ))
@@ -749,8 +749,8 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           alignment: Alignment.center,
-                          decoration: BoxDecoration(color: _libraryTab == t.$1 ? AppColors.gold.withValues(alpha: 0.15) : Colors.transparent, borderRadius: BorderRadius.circular(7)),
-                          child: Text(t.$2, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _libraryTab == t.$1 ? AppColors.gold : AppColors.mute)),
+                          decoration: BoxDecoration(color: _libraryTab == t.$1 ? AppColors.gold : Colors.transparent, borderRadius: BorderRadius.circular(7)),
+                          child: Text(t.$2, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _libraryTab == t.$1 ? AppColors.onGold : AppColors.mute)),
                         ),
                       ),
                     ))

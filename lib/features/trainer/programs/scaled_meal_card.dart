@@ -137,7 +137,7 @@ class _ScaledMealCardState extends State<ScaledMealCard> {
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
                                 filled: true,
-                                fillColor: isOverridden ? const Color(0x1433733F) : AppColors.bg,
+                                fillColor: isOverridden ? const Color(0x14D9D9D9) : AppColors.bg,
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: isOverridden ? AppColors.goldDim : AppColors.line)),
                                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: isOverridden ? AppColors.goldDim : AppColors.line)),
                               ),

@@ -9,6 +9,10 @@ import "../../../data/providers/platform_settings_provider.dart";
 /// Lets the client choose which of the gym's locations they want to train
 /// at, and — if they ask — orders them by how far away they are.
 ///
+/// Collapsed to one line by default — "My Location: X — Change Location",
+/// the same pattern as "Change discipline" — and only opens into the full
+/// picker when tapped. Picking closes it again.
+///
 /// Location is only read on the "Use my location" tap. Nothing is stored or
 /// sent anywhere; the distance is worked out on the device from coordinates
 /// already saved against each location.
@@ -33,6 +37,15 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
   Map<String, LocationDistance> _distances = {};
   bool _locating = false;
   NearestError? _error;
+
+  /// Whether the full picker is open (vs. the one-line summary).
+  bool _expanded = false;
+
+  /// Every way of picking ends here: report it, and fold back to one line.
+  void _choose(String? name) {
+    setState(() => _expanded = false);
+    widget.onSelect(name);
+  }
 
   /// Set while the client is away in the device's settings, so coming back
   /// retries automatically instead of making them tap again.
@@ -74,9 +87,9 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
         return;
       }
       _distances = {for (final d in result.sorted) d.location.name: d};
-      final nearest = result.nearest;
-      if (nearest != null) widget.onSelect(nearest.location.name);
     });
+    final nearest = result.nearest;
+    if (result.error == null && nearest != null) _choose(nearest.location.name);
   }
 
   Future<void> _openSettings() async {
@@ -103,7 +116,7 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
       _error = sorted.isEmpty ? NearestError.noCoords : null;
       _distances = {for (final d in sorted) d.location.name: d};
     });
-    if (sorted.isNotEmpty) widget.onSelect(sorted.first.location.name);
+    if (sorted.isNotEmpty) _choose(sorted.first.location.name);
   }
 
   @override
@@ -127,6 +140,69 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
           }));
     final nearestName = _distances.isEmpty ? null : ordered.first.name;
 
+    // One line, styled like the discipline row above it. No address here —
+    // the open picker shows those.
+    if (!_expanded) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 12),
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 6,
+          children: [
+            const Text("My Location:", style: TextStyle(fontSize: 13, color: AppColors.mute)),
+            Text(widget.selected ?? "Any location",
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
+            GestureDetector(
+              onTap: () => setState(() => _expanded = true),
+              child: const Text("Change Location",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget option(String? value, String label, {String address = "", LocationDistance? distance}) {
+      final on = widget.selected == value;
+      return InkWell(
+        onTap: () => _choose(value),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(on ? Icons.radio_button_checked : Icons.radio_button_off,
+                  size: 18, color: on ? AppColors.gold : AppColors.mute),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: TextStyle(fontSize: 13.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500)),
+                    if (address.isNotEmpty)
+                      Text(address, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3)),
+                  ],
+                ),
+              ),
+              if (distance != null) ...[
+                const SizedBox(width: 8),
+                Text(
+                  distance.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: value == nearestName ? AppColors.gold : AppColors.mute,
+                    fontWeight: value == nearestName ? FontWeight.w800 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
@@ -138,83 +214,25 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(LucideIcons.mapPin, size: 15, color: AppColors.gold),
-              SizedBox(width: 7),
-              Text("Location", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+              const Icon(LucideIcons.mapPin, size: 15, color: AppColors.gold),
+              const SizedBox(width: 7),
+              const Expanded(
+                child: Text("Change Location", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+              ),
+              // Close without changing anything.
+              GestureDetector(
+                onTap: () => setState(() => _expanded = false),
+                child: const Icon(LucideIcons.x, size: 16, color: AppColors.mute),
+              ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
 
-          // A dropdown rather than a row per location: a gym with several
-          // sites would otherwise push the whole slot list off the screen.
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.bg,
-              border: Border.all(color: AppColors.line),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: widget.selected,
-                  isExpanded: true,
-                  dropdownColor: AppColors.card,
-                  borderRadius: BorderRadius.circular(10),
-                  icon: const Icon(LucideIcons.chevronDown, size: 16, color: AppColors.mute),
-                  style: const TextStyle(fontSize: 13.5, color: AppColors.txt),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      value: null,
-                      child: Text("Any location", style: TextStyle(fontSize: 13.5)),
-                    ),
-                    for (final l in ordered)
-                      DropdownMenuItem<String?>(
-                        value: l.name,
-                        child: Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                l.name,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 13.5),
-                              ),
-                            ),
-                            if (_distances[l.name] != null) ...[
-                              const SizedBox(width: 8),
-                              Text(
-                                _distances[l.name]!.label,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: l.name == nearestName ? AppColors.gold : AppColors.mute,
-                                  fontWeight: l.name == nearestName ? FontWeight.w800 : FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                  ],
-                  onChanged: widget.onSelect,
-                ),
-              ),
-            ),
-          ),
-
-          // The address of whatever is picked, so the choice is concrete.
-          if (widget.selected != null)
-            Builder(builder: (context) {
-              final match = all.where((l) => l.name == widget.selected);
-              final addr = match.isEmpty ? "" : match.first.address;
-              if (addr.isEmpty) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(addr,
-                    style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3)),
-              );
-            }),
+          option(null, "Any location"),
+          for (final l in ordered)
+            option(l.name, l.name, address: l.address, distance: _distances[l.name]),
 
           const SizedBox(height: 8),
           Row(

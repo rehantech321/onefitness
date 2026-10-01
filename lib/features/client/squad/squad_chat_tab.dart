@@ -213,7 +213,7 @@ class _SquadBubble extends StatelessWidget {
                   ? _SharedProgressCard(message: message, isMine: isMine)
                   : Text(
                       message.text ?? "",
-                      style: TextStyle(color: isMine ? Colors.white : AppColors.txt, fontSize: 14, height: 1.35),
+                      style: TextStyle(color: isMine ? AppColors.onGold : AppColors.txt, fontSize: 14, height: 1.35),
                     ),
             ),
           ),
@@ -237,8 +237,8 @@ class _SharedProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = isMine ? Colors.white : AppColors.txt;
-    final muted = isMine ? Colors.white.withValues(alpha: 0.75) : AppColors.mute;
+    final fg = isMine ? AppColors.onGold : AppColors.txt;
+    final muted = isMine ? AppColors.onGold.withValues(alpha: 0.75) : AppColors.mute;
     final payload = message.payload ?? const {};
 
     switch (message.shareKind) {
@@ -277,9 +277,9 @@ class _SharedProgressCard extends StatelessWidget {
         final seriesMap = (payload["series"] as Map?) ?? const {};
         // On isMine's gold bubble, a gold line would be invisible against
         // the gold background — swap the first (default) series color for
-        // white in that case; the rest of the palette already contrasts.
+        // onGold in that case; the rest of the palette already contrasts.
         final colors = [
-          isMine ? Colors.white : AppColors.gold,
+          isMine ? AppColors.onGold : AppColors.gold,
           const Color(0xFF64B5F6),
           const Color(0xFFFF7043),
           const Color(0xFFCE93D8),
@@ -310,7 +310,7 @@ class _SharedProgressCard extends StatelessWidget {
           icon: LucideIcons.activity,
           label: "Shared body progress",
           sublabel: latest != null ? "$latest lbs $trendArrow" : null,
-          series: [ChartSeries(values: values, color: isMine ? Colors.white : AppColors.gold)],
+          series: [ChartSeries(values: values, color: isMine ? AppColors.onGold : AppColors.gold)],
           values: values,
           fg: fg,
           muted: muted,
@@ -450,7 +450,7 @@ class _SquadComposerState extends State<_SquadComposer> {
                   color: hasText ? AppColors.gold : AppColors.card,
                   border: hasText ? null : Border.all(color: AppColors.line),
                 ),
-                child: Icon(LucideIcons.send, size: 17, color: hasText ? Colors.white : AppColors.mute),
+                child: Icon(LucideIcons.send, size: 17, color: hasText ? AppColors.onGold : AppColors.mute),
               ),
             ),
           ],

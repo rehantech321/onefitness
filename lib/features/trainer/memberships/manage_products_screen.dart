@@ -490,7 +490,7 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
                         color: _category == c ? AppColors.gold : AppColors.line,
                       ),
                       color: _category == c
-                          ? AppColors.gold.withValues(alpha: 0.15)
+                          ? AppColors.gold
                           : AppColors.bg,
                     ),
                     child: Text(
@@ -498,7 +498,7 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: _category == c ? AppColors.gold : AppColors.txt,
+                        color: _category == c ? AppColors.onGold : AppColors.txt,
                       ),
                     ),
                   ),
@@ -801,7 +801,7 @@ class _Seg extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 9),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+          color: selected ? AppColors.gold : AppColors.card,
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
           borderRadius: BorderRadius.circular(8),
         ),
@@ -810,7 +810,7 @@ class _Seg extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: selected ? AppColors.gold : AppColors.mute,
+            color: selected ? AppColors.onGold : AppColors.mute,
           ),
         ),
       ),

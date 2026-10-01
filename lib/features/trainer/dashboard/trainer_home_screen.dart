@@ -251,7 +251,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                           width: 76,
                           padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
                           decoration: BoxDecoration(
-                            color: active ? AppColors.gold.withValues(alpha: 0.14) : AppColors.card,
+                            color: active ? AppColors.gold : AppColors.card,
                             border: Border.all(color: active ? AppColors.gold : AppColors.line),
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -267,7 +267,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                 style: TextStyle(
                                   fontSize: 10.5,
                                   fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-                                  color: active ? AppColors.gold : AppColors.mute,
+                                  color: active ? AppColors.onGold : AppColors.mute,
                                 ),
                               ),
                             ],
@@ -594,8 +594,8 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.gold,
                             disabledBackgroundColor: AppColors.gold.withValues(alpha: 0.35),
-                            foregroundColor: Colors.white,
-                            disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
+                            foregroundColor: AppColors.onGold,
+                            disabledForegroundColor: AppColors.onGold.withValues(alpha: 0.6),
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,

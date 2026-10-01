@@ -391,11 +391,11 @@ class _ChoiceRow<T> extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+              color: selected ? AppColors.gold : AppColors.bg,
               border: Border.all(color: selected ? AppColors.gold : AppColors.line),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(o.$2, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? AppColors.gold : AppColors.txt)),
+            child: Text(o.$2, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: selected ? AppColors.onGold : AppColors.txt)),
           ),
         );
       }).toList(),

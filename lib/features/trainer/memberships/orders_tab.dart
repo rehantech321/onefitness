@@ -138,7 +138,7 @@ class _FilterChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+          color: selected ? AppColors.gold : AppColors.card,
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
           borderRadius: BorderRadius.circular(8),
         ),
@@ -147,7 +147,7 @@ class _FilterChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: selected ? AppColors.gold : AppColors.mute,
+            color: selected ? AppColors.onGold : AppColors.mute,
           ),
         ),
       ),
@@ -242,7 +242,7 @@ class _StatusPill extends StatelessWidget {
     final (bg, fg) = switch (status) {
       "paid" => (AppColors.gold.withValues(alpha: 0.15), AppColors.gold),
       "preparing" => (const Color(0x1AC9784A), const Color(0xFFD68A4F)),
-      "ready" => (const Color(0x1A4CAF50), AppColors.success),
+      "ready" => (const Color(0x1AD9D9D9), AppColors.success),
       "completed" => (AppColors.bg, AppColors.mute),
       _ => (AppColors.bg, const Color(0xFFC97F7F)),
     };

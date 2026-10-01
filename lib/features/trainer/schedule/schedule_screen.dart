@@ -82,7 +82,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
-                    children: [Icon(LucideIcons.plus, size: 15, color: Colors.white), SizedBox(width: 6), Text("Book session")],
+                    children: [Icon(LucideIcons.plus, size: 15, color: AppColors.onGold), SizedBox(width: 6), Text("Book session")],
                   ),
                 ),
               ),
@@ -263,13 +263,13 @@ class _AdvancedSettingsState extends ConsumerState<_AdvancedSettings> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                         decoration: BoxDecoration(
-                          color: l.name == selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                          color: l.name == selected ? AppColors.gold : AppColors.bg,
                           border: Border.all(color: l.name == selected ? AppColors.gold : AppColors.line),
                           borderRadius: BorderRadius.circular(7),
                         ),
                         child: Text(
                           l.name,
-                          style: TextStyle(fontSize: 12, color: l.name == selected ? AppColors.gold : AppColors.txt),
+                          style: TextStyle(fontSize: 12, color: l.name == selected ? AppColors.onGold : AppColors.txt),
                         ),
                       ),
                     ),

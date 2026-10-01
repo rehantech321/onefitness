@@ -760,11 +760,11 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
-                            color: _rewardPoints == pts ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                            color: _rewardPoints == pts ? AppColors.gold : AppColors.bg,
                             border: Border.all(color: _rewardPoints == pts ? AppColors.gold : AppColors.line),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text("$pts pt${pts == 1 ? '' : 's'}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _rewardPoints == pts ? AppColors.gold : AppColors.txt)),
+                          child: Text("$pts pt${pts == 1 ? '' : 's'}", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _rewardPoints == pts ? AppColors.onGold : AppColors.txt)),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -938,7 +938,7 @@ class _WinnerModeOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 9),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+          color: selected ? AppColors.gold : AppColors.bg,
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
           borderRadius: BorderRadius.circular(8),
         ),
@@ -948,7 +948,7 @@ class _WinnerModeOption extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: selected ? AppColors.gold : AppColors.mute,
+            color: selected ? AppColors.onGold : AppColors.mute,
           ),
         ),
       ),

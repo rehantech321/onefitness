@@ -136,7 +136,7 @@ class SupportScreen extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(LucideIcons.phone, size: 15, color: Colors.white),
+                        Icon(LucideIcons.phone, size: 15, color: AppColors.onGold),
                         SizedBox(width: 8),
                         Text("Call now"),
                       ],

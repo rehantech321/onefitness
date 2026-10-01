@@ -715,7 +715,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
                                     "✓ Will be booked${coach != null ? " with ${coach.name}" : ""}",
                                     style: const TextStyle(
                                       fontSize: 11,
-                                      color: Color(0xFF4EC97A),
+                                      color: AppColors.success,
                                     ),
                                   ),
                                 ),
@@ -1051,7 +1051,7 @@ class _BracketEditor extends StatelessWidget {
                       color: on ? AppColors.gold : AppColors.line,
                     ),
                     color: on
-                        ? AppColors.gold.withValues(alpha: 0.15)
+                        ? AppColors.gold
                         : AppColors.bg,
                   ),
                   child: Text(
@@ -1059,7 +1059,7 @@ class _BracketEditor extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: on ? AppColors.gold : AppColors.mute,
+                      color: on ? AppColors.onGold : AppColors.mute,
                     ),
                   ),
                 ),

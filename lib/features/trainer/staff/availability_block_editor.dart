@@ -150,9 +150,9 @@ class _AvailabilityBlockEditorState extends State<AvailabilityBlockEditor> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: on ? AppColors.gold : AppColors.line),
-                      color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                      color: on ? AppColors.gold : AppColors.bg,
                     ),
-                    child: Text(disciplineLabel(d), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: on ? AppColors.gold : AppColors.mute)),
+                    child: Text(disciplineLabel(d), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: on ? AppColors.onGold : AppColors.mute)),
                   ),
                 );
               }).toList(),
@@ -178,14 +178,14 @@ class _AvailabilityBlockEditorState extends State<AvailabilityBlockEditor> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: sel ? AppColors.gold : AppColors.line),
-                          color: sel ? AppColors.gold.withValues(alpha: 0.18) : AppColors.bg,
+                          color: sel ? AppColors.gold : AppColors.bg,
                         ),
                         child: Stack(
                           clipBehavior: Clip.none,
                           children: [
-                            Text(_weekdayShort[d]!, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: sel ? AppColors.gold : (has ? AppColors.txt : AppColors.mute))),
+                            Text(_weekdayShort[d]!, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: sel ? AppColors.onGold : (has ? AppColors.txt : AppColors.mute))),
                             if (has)
-                              Positioned(top: -4, right: -6, child: Container(width: 5, height: 5, decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.gold))),
+                              Positioned(top: -4, right: -6, child: Container(width: 5, height: 5, decoration: BoxDecoration(shape: BoxShape.circle, color: sel ? AppColors.onGold : AppColors.gold))),
                           ],
                         ),
                       ),
@@ -290,9 +290,9 @@ class _SlotGroup extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: on ? AppColors.gold : (partial ? AppColors.goldDim : AppColors.line)),
-                    color: on ? AppColors.gold.withValues(alpha: 0.18) : (partial ? AppColors.gold.withValues(alpha: 0.06) : AppColors.card),
+                    color: on ? AppColors.gold : (partial ? AppColors.gold.withValues(alpha: 0.06) : AppColors.card),
                   ),
-                  child: Text(fmtSlotShort(s), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: on ? AppColors.gold : (partial ? AppColors.txt : AppColors.mute))),
+                  child: Text(fmtSlotShort(s), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: on ? AppColors.onGold : (partial ? AppColors.txt : AppColors.mute))),
                 ),
               );
             }).toList(),
@@ -317,7 +317,7 @@ class _IntervalToggle extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), color: selected ? AppColors.gold : Colors.transparent),
-        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppColors.mute)),
+        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute)),
       ),
     );
   }

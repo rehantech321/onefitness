@@ -443,7 +443,7 @@ class _ChipPicker extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
               color: selected
-                  ? AppColors.gold.withValues(alpha: 0.15)
+                  ? AppColors.gold
                   : AppColors.card,
               border: Border.all(
                 color: selected ? AppColors.gold : AppColors.line,
@@ -454,7 +454,7 @@ class _ChipPicker extends StatelessWidget {
               o,
               style: TextStyle(
                 fontSize: 12,
-                color: selected ? AppColors.gold : AppColors.txt,
+                color: selected ? AppColors.onGold : AppColors.txt,
               ),
             ),
           ),

@@ -817,7 +817,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                   ),
                   decoration: BoxDecoration(
                     color: selected
-                        ? AppColors.gold.withValues(alpha: 0.15)
+                        ? AppColors.gold
                         : AppColors.card,
                     border: Border.all(
                       color: selected ? AppColors.gold : AppColors.line,
@@ -828,7 +828,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                     _kindLabel(k),
                     style: TextStyle(
                       fontSize: 12,
-                      color: selected ? AppColors.gold : AppColors.txt,
+                      color: selected ? AppColors.onGold : AppColors.txt,
                     ),
                   ),
                 ),
@@ -899,7 +899,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                     ),
                     decoration: BoxDecoration(
                       color: selected
-                          ? AppColors.gold.withValues(alpha: 0.15)
+                          ? AppColors.gold
                           : AppColors.card,
                       border: Border.all(
                         color: selected ? AppColors.gold : AppColors.line,
@@ -910,7 +910,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                       sessionTypeLabel(t),
                       style: TextStyle(
                         fontSize: 12,
-                        color: selected ? AppColors.gold : AppColors.txt,
+                        color: selected ? AppColors.onGold : AppColors.txt,
                       ),
                     ),
                   ),
@@ -948,7 +948,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                               : AppColors.line,
                         ),
                         color: _category == c
-                            ? AppColors.gold.withValues(alpha: 0.15)
+                            ? AppColors.gold
                             : AppColors.bg,
                       ),
                       child: Text(
@@ -957,7 +957,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: _category == c
-                              ? AppColors.gold
+                              ? AppColors.onGold
                               : AppColors.txt,
                         ),
                       ),

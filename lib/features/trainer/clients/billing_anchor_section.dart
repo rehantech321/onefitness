@@ -112,9 +112,9 @@ class _BillingAnchorSectionState extends ConsumerState<BillingAnchorSection> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: selected ? AppColors.gold : AppColors.line),
-                    color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+                    color: selected ? AppColors.gold : AppColors.card,
                   ),
-                  child: Text("$day", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.txt)),
+                  child: Text("$day", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.txt)),
                 ),
               );
             }).toList(),

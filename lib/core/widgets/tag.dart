@@ -13,16 +13,16 @@ class Tag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
-        color: gold ? AppColors.gold.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.06),
+        color: gold ? AppColors.gold : Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: gold ? AppColors.goldDim : AppColors.line),
+        border: Border.all(color: gold ? AppColors.gold : AppColors.line),
       ),
       child: Text(
         text,
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: gold ? AppColors.gold : AppColors.mute,
+          color: gold ? AppColors.onGold : AppColors.mute,
         ),
       ),
     );

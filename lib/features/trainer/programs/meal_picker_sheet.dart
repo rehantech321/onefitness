@@ -105,8 +105,8 @@ class _MealPickerBodyState extends ConsumerState<_MealPickerBody> {
                     onTap: () => setState(() => on ? _tags.remove(t.$1) : _tags.add(t.$1)),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                      decoration: BoxDecoration(color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card, border: Border.all(color: on ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(14)),
-                      child: Text(t.$2, style: TextStyle(fontSize: 10, color: on ? AppColors.gold : AppColors.mute)),
+                      decoration: BoxDecoration(color: on ? AppColors.gold : AppColors.card, border: Border.all(color: on ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(14)),
+                      child: Text(t.$2, style: TextStyle(fontSize: 10, color: on ? AppColors.onGold : AppColors.mute)),
                     ),
                   ),
                 );

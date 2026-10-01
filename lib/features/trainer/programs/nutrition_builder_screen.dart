@@ -734,7 +734,7 @@ class _DayTypeTab extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 7),
         alignment: Alignment.center,
         decoration: BoxDecoration(color: selected ? AppColors.gold : Colors.transparent, borderRadius: BorderRadius.circular(6)),
-        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppColors.mute)),
+        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute)),
       ),
     );
   }
@@ -787,7 +787,7 @@ class _TargetsCard extends StatelessWidget {
                         height: 5,
                         child: Row(
                           children: [
-                            for (final seg in [(p, AppColors.grn), (c, AppColors.gold), (f, const Color(0xFFD68A4F)), (100 - total, AppColors.line)])
+                            for (final seg in [(p, AppColors.grn), (c, AppColors.mute), (f, const Color(0xFFD68A4F)), (100 - total, AppColors.line)])
                               if (seg.$1 > 0) Expanded(flex: seg.$1.round().clamp(1, 1000), child: Container(color: seg.$2)),
                           ],
                         ),

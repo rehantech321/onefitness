@@ -112,7 +112,7 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
                 onPressed: _busy ? null : _addPhoto,
                 style: TextButton.styleFrom(
                   backgroundColor: AppColors.gold,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.onGold,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
@@ -163,7 +163,7 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
                             child: Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
-                              child: const Icon(LucideIcons.messageSquare, size: 13, color: Colors.white),
+                              child: const Icon(LucideIcons.messageSquare, size: 13, color: AppColors.onGold),
                             ),
                           ),
                         ),

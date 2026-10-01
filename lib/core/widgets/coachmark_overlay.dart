@@ -141,7 +141,7 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
                               onPressed: _advance,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.gold,
-                                foregroundColor: Colors.white,
+                                foregroundColor: AppColors.onGold,
                                 elevation: 0,
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

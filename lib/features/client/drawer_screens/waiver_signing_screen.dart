@@ -380,7 +380,7 @@ class _StepLabel extends StatelessWidget {
             height: 22,
             alignment: Alignment.center,
             decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
-            child: Text("$n", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+            child: Text("$n", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.onGold)),
           ),
           const SizedBox(width: 8),
           Expanded(child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800))),

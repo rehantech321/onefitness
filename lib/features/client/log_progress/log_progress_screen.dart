@@ -39,13 +39,13 @@ class _LogProgressScreenState extends State<LogProgressScreen> {
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                               decoration: BoxDecoration(
-                                color: _range == r.$1 ? AppColors.gold.withValues(alpha: 0.12) : Colors.transparent,
+                                color: _range == r.$1 ? AppColors.gold : Colors.transparent,
                                 border: Border.all(color: _range == r.$1 ? AppColors.gold : AppColors.line),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Text(
                                 r.$2,
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _range == r.$1 ? AppColors.gold : AppColors.mute),
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _range == r.$1 ? AppColors.onGold : AppColors.mute),
                               ),
                             ),
                           ),

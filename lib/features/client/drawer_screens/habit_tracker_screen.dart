@@ -123,7 +123,7 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
                 margin: const EdgeInsets.only(bottom: 7),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: done ? AppColors.grn.withValues(alpha: 0.08) : AppColors.card,
+                  color: done ? AppColors.grn : AppColors.card,
                   border: Border.all(color: done ? AppColors.grn : AppColors.line),
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -134,7 +134,7 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
                     Expanded(
                       child: Text(
                         h.label,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: done ? AppColors.grn : AppColors.txt),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: done ? AppColors.onGold : AppColors.txt),
                       ),
                     ),
                     Container(
@@ -145,7 +145,7 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
                         border: Border.all(color: done ? AppColors.grn : AppColors.line, width: 1.5),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: done ? const Icon(LucideIcons.check, size: 14, color: Colors.white) : null,
+                      child: done ? const Icon(LucideIcons.check, size: 14, color: AppColors.onGold) : null,
                     ),
                   ],
                 ),

@@ -87,7 +87,7 @@ class _DateStripState extends State<DateStrip> {
                                     style: TextStyle(
                                       fontSize: 9.5,
                                       fontWeight: FontWeight.w700,
-                                      color: sel ? Colors.white : (past ? const Color(0xFF454545) : (isToday ? AppColors.gold : AppColors.txt)),
+                                      color: sel ? AppColors.onGold : (past ? const Color(0xFF454545) : (isToday ? AppColors.gold : AppColors.txt)),
                                     ),
                                   ),
                                   const SizedBox(height: 2),
@@ -96,7 +96,7 @@ class _DateStripState extends State<DateStrip> {
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
-                                      color: sel ? Colors.white : (past ? const Color(0xFF454545) : (isToday ? AppColors.gold : AppColors.txt)),
+                                      color: sel ? AppColors.onGold : (past ? const Color(0xFF454545) : (isToday ? AppColors.gold : AppColors.txt)),
                                     ),
                                   ),
                                 ],

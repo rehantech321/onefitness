@@ -766,9 +766,9 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: selected ? AppColors.gold : AppColors.line),
-                      color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                      color: selected ? AppColors.gold : AppColors.bg,
                     ),
-                    child: Text(opt.$2, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.txt)),
+                    child: Text(opt.$2, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.txt)),
                   ),
                 );
               }).toList(),
@@ -965,9 +965,9 @@ class _TabChip extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
-          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+          color: selected ? AppColors.gold : AppColors.bg,
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.mute)),
+        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute)),
       ),
     );
   }
@@ -1193,14 +1193,14 @@ class _Chip extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: on ? AppColors.gold : AppColors.line),
-          color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+          color: on ? AppColors.gold : AppColors.bg,
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: on ? AppColors.gold : AppColors.mute,
+            color: on ? AppColors.onGold : AppColors.mute,
           ),
         ),
       ),

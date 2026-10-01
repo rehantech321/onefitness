@@ -602,7 +602,7 @@ class _ScopeChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.gold.withValues(alpha: 0.15)
+              ? AppColors.gold
               : AppColors.card,
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
           borderRadius: BorderRadius.circular(8),
@@ -611,7 +611,7 @@ class _ScopeChip extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: selected ? AppColors.gold : AppColors.txt,
+            color: selected ? AppColors.onGold : AppColors.txt,
           ),
         ),
       ),

@@ -251,7 +251,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0x1433733F),
+                color: const Color(0x14D9D9D9),
                 border: Border.all(color: AppColors.goldDim),
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -980,7 +980,7 @@ class _GymCitizenChecklistState extends ConsumerState<_GymCitizenChecklist> {
                             ? const Icon(
                                 LucideIcons.check,
                                 size: 14,
-                                color: Colors.white,
+                                color: AppColors.onGold,
                               )
                             : null,
                       ),

@@ -138,7 +138,7 @@ class BookingPickingScreen extends StatelessWidget {
                       SizedBox(
                         width: 14,
                         height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.onGold)),
                       ),
                       SizedBox(width: 8),
                       Text("Booking…"),
@@ -148,7 +148,7 @@ class BookingPickingScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(LucideIcons.check, size: 15, color: Colors.white),
+                      Icon(LucideIcons.check, size: 15, color: AppColors.onGold),
                       SizedBox(width: 6),
                       Text("Confirm booking"),
                     ],

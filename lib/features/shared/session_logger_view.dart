@@ -324,7 +324,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                                 onPressed: () => _startDay(d.id),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.gold,
-                                  foregroundColor: Colors.white,
+                                  foregroundColor: AppColors.onGold,
                                   elevation: 0,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 14,
@@ -427,7 +427,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                         label: "Hit target reps",
                       ),
                       _LegendDot(color: Color(0xFF00E676), label: "Weight PR"),
-                      _LegendDot(color: AppColors.gold, label: "Same weight"),
+                      _LegendDot(color: AppColors.mute, label: "Same weight"),
                       _LegendDot(
                         color: AppColors.danger,
                         label: "Weight dropped",
@@ -592,7 +592,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation(
-                                  Colors.white,
+                                  AppColors.onGold,
                                 ),
                               ),
                             )
@@ -630,7 +630,7 @@ class _Chip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.gold.withValues(alpha: 0.12)
+              ? AppColors.gold
               : AppColors.card,
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
           borderRadius: BorderRadius.circular(20),
@@ -643,7 +643,7 @@ class _Chip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: selected ? AppColors.gold : AppColors.mute,
+                color: selected ? AppColors.onGold : AppColors.mute,
               ),
             ),
             if (trailingCheck) ...[
@@ -710,21 +710,21 @@ class _ViewToggleOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+          color: selected ? AppColors.gold : AppColors.card,
           border: Border.all(color: selected ? AppColors.gold : AppColors.line),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 13, color: selected ? AppColors.gold : AppColors.mute),
+            Icon(icon, size: 13, color: selected ? AppColors.onGold : AppColors.mute),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: selected ? AppColors.gold : AppColors.mute,
+                color: selected ? AppColors.onGold : AppColors.mute,
               ),
             ),
           ],

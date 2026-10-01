@@ -44,7 +44,7 @@ class HabitDateTabButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 7),
           alignment: Alignment.center,
           decoration: BoxDecoration(color: selected ? AppColors.gold : Colors.transparent, borderRadius: BorderRadius.circular(6)),
-          child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppColors.mute)),
+          child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute)),
         ),
       ),
     );
@@ -82,11 +82,11 @@ class HabitRatingRow extends StatelessWidget {
                     height: 34,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.gold.withValues(alpha: 0.2) : AppColors.bg,
+                      color: selected ? AppColors.gold : AppColors.bg,
                       border: Border.all(color: selected ? AppColors.gold : AppColors.line),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text("$n", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.gold : AppColors.mute)),
+                    child: Text("$n", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute)),
                   ),
                 ),
               ),

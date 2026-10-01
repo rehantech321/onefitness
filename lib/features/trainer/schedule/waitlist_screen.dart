@@ -145,15 +145,15 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                       decoration: BoxDecoration(
-                        color: _category == c.$1 ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card,
+                        color: _category == c.$1 ? AppColors.gold : AppColors.card,
                         border: Border.all(color: _category == c.$1 ? AppColors.gold : AppColors.line),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Column(
                         children: [
-                          Text("${countFor(c.$1)}", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _category == c.$1 ? AppColors.gold : AppColors.txt)),
+                          Text("${countFor(c.$1)}", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _category == c.$1 ? AppColors.onGold : AppColors.txt)),
                           const SizedBox(height: 2),
-                          Text(c.$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _category == c.$1 ? AppColors.gold : AppColors.mute)),
+                          Text(c.$2, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _category == c.$1 ? AppColors.onGold : AppColors.mute)),
                         ],
                       ),
                     ),

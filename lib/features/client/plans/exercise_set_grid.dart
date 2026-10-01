@@ -230,7 +230,7 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
     final hit = reps != null && exercise.reps > 0 && reps >= exercise.reps;
     return _cellWrap(Container(
       decoration: BoxDecoration(
-        color: hit ? AppColors.grn.withValues(alpha: 0.15) : AppColors.card,
+        color: hit ? AppColors.grn : AppColors.card,
         border: Border.all(color: hit ? AppColors.grn : AppColors.line),
         borderRadius: BorderRadius.circular(8),
       ),
@@ -238,7 +238,7 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
         controller: _repsControllers[setNum - 1],
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: hit ? AppColors.grn : AppColors.txt),
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: hit ? AppColors.onGold : AppColors.txt),
         decoration: InputDecoration(
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 7),
@@ -280,9 +280,9 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
         border = const Color(0xFF00E676);
         color = const Color(0xFF00E676);
       } else if (weight == last.weight) {
-        bg = AppColors.gold.withValues(alpha: 0.12);
-        border = AppColors.gold;
-        color = AppColors.gold;
+        bg = AppColors.mute.withValues(alpha: 0.12);
+        border = AppColors.mute;
+        color = AppColors.mute;
       } else {
         bg = AppColors.danger.withValues(alpha: 0.12);
         border = AppColors.danger;
@@ -294,9 +294,9 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
         border = const Color(0xFF00E676);
         color = const Color(0xFF00E676);
       } else if (weight == suggested) {
-        bg = AppColors.gold.withValues(alpha: 0.12);
-        border = AppColors.gold;
-        color = AppColors.gold;
+        bg = AppColors.mute.withValues(alpha: 0.12);
+        border = AppColors.mute;
+        color = AppColors.mute;
       } else {
         bg = AppColors.danger.withValues(alpha: 0.12);
         border = AppColors.danger;

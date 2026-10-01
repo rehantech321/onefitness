@@ -148,14 +148,14 @@ Future<void> _showReportReasons(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: chosen == r.key ? AppColors.gold : AppColors.line),
-                        color: chosen == r.key ? AppColors.gold.withValues(alpha: 0.12) : Colors.transparent,
+                        color: chosen == r.key ? AppColors.gold : Colors.transparent,
                       ),
                       child: Row(
                         children: [
                           Icon(
                             chosen == r.key ? LucideIcons.circleCheck : LucideIcons.circle,
                             size: 17,
-                            color: chosen == r.key ? AppColors.gold : AppColors.mute,
+                            color: chosen == r.key ? AppColors.onGold : AppColors.mute,
                           ),
                           const SizedBox(width: 11),
                           Expanded(
@@ -163,10 +163,10 @@ Future<void> _showReportReasons(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(r.label,
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: chosen == r.key ? AppColors.onGold : AppColors.txt)),
                                 const SizedBox(height: 1),
                                 Text(r.hint,
-                                    style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3)),
+                                    style: TextStyle(fontSize: 11, color: chosen == r.key ? AppColors.onGold.withValues(alpha: 0.7) : AppColors.mute, height: 1.3)),
                               ],
                             ),
                           ),
@@ -229,7 +229,7 @@ Future<void> _showReportReasons(
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.gold,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.onGold,
                     disabledBackgroundColor: AppColors.line,
                     disabledForegroundColor: AppColors.mute,
                     padding: const EdgeInsets.symmetric(vertical: 13),

@@ -221,8 +221,8 @@ class _CustomMealFormState extends State<CustomMealForm> {
                 onTap: () => setState(() => on ? _tags.remove(t.$1) : _tags.add(t.$1)),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-                  decoration: BoxDecoration(color: on ? AppColors.gold.withValues(alpha: 0.15) : AppColors.card, border: Border.all(color: on ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(7)),
-                  child: Text(t.$2, style: TextStyle(fontSize: 11, color: on ? AppColors.gold : AppColors.mute)),
+                  decoration: BoxDecoration(color: on ? AppColors.gold : AppColors.card, border: Border.all(color: on ? AppColors.gold : AppColors.line), borderRadius: BorderRadius.circular(7)),
+                  child: Text(t.$2, style: TextStyle(fontSize: 11, color: on ? AppColors.onGold : AppColors.mute)),
                 ),
               );
             }).toList(),

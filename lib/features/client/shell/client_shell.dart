@@ -538,7 +538,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                         Icon(
                           LucideIcons.calendar,
                           size: 15,
-                          color: Colors.white,
+                          color: AppColors.onGold,
                         ),
                         SizedBox(width: 8),
                         Text("Advanced Booking"),
@@ -732,7 +732,7 @@ class _ClientDrawerState extends ConsumerState<_ClientDrawer> {
                         ),
                         decoration: BoxDecoration(
                           color: on
-                              ? AppColors.gold.withValues(alpha: 0.1)
+                              ? AppColors.gold
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -741,7 +741,7 @@ class _ClientDrawerState extends ConsumerState<_ClientDrawer> {
                             Icon(
                               item.icon,
                               size: 18,
-                              color: on ? AppColors.gold : AppColors.mute,
+                              color: on ? AppColors.onGold : AppColors.mute,
                             ),
                             const SizedBox(width: 12),
                             Text(
@@ -749,7 +749,7 @@ class _ClientDrawerState extends ConsumerState<_ClientDrawer> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: on ? AppColors.gold : AppColors.txt,
+                                color: on ? AppColors.onGold : AppColors.txt,
                               ),
                             ),
                           ],

@@ -635,7 +635,7 @@ class _NoteFormState extends State<_NoteForm> {
                   ),
                   decoration: BoxDecoration(
                     color: selected
-                        ? AppColors.gold.withValues(alpha: 0.15)
+                        ? AppColors.gold
                         : AppColors.card,
                     border: Border.all(
                       color: selected ? AppColors.gold : AppColors.line,
@@ -646,7 +646,7 @@ class _NoteFormState extends State<_NoteForm> {
                     a,
                     style: TextStyle(
                       fontSize: 11,
-                      color: selected ? AppColors.gold : AppColors.mute,
+                      color: selected ? AppColors.onGold : AppColors.mute,
                     ),
                   ),
                 ),

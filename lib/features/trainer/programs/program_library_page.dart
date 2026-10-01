@@ -117,7 +117,7 @@ class _ProgramLibraryPageState extends ConsumerState<ProgramLibraryPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(LucideIcons.plus, size: 15, color: Colors.white),
+                const Icon(LucideIcons.plus, size: 15, color: AppColors.onGold),
                 const SizedBox(width: 6),
                 Text(isWorkout ? "Build new workout program" : "Build new nutrition program"),
               ],
