@@ -60,6 +60,16 @@
 		     out on the device. -->
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>ONE Fitness uses your location to show which of our gyms is nearest to you and how far away it is when you book a session. Your location stays on your device.</string>
+		<!-- The app only ever asks for when-in-use location, but the
+		     geolocator plugin links CLLocationManager's always-authorization
+		     APIs too, and App Store Connect rejects the upload (ITMS-90683)
+		     if any linked API lacks its purpose string. These describe the
+		     same single use, and say plainly that nothing runs in the
+		     background — an inaccurate string here is itself a rejection. -->
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>ONE Fitness only uses your location while you are using the app, to show which of our gyms is nearest to you when you book a session. It never tracks you in the background. Your location stays on your device.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>ONE Fitness only uses your location while you are using the app, to show which of our gyms is nearest to you when you book a session. It never tracks you in the background. Your location stays on your device.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 		<key>CFBundleURLTypes</key>
