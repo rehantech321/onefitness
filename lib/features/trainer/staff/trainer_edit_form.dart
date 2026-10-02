@@ -8,6 +8,7 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/photo_picker_utils.dart";
+import "../../../core/widgets/password_actions.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/availability_block.dart";
 import "../../../data/models/trainer.dart";
@@ -407,6 +408,13 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               keyboardType: TextInputType.phone,
               onChanged: (_) => setState(() => _error = null),
             ),
+          ),
+          // Directly under the contact details, where someone dealing with a
+          // locked-out coach will look for it.
+          PasswordActions(
+            profileId: widget.initial?.id,
+            email: _email.text.trim(),
+            name: widget.initial?.name ?? "this coach",
           ),
           const SizedBox(height: 10),
           FieldLabeled(

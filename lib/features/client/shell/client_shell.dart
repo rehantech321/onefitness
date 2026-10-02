@@ -51,8 +51,10 @@ const _bottomItems = [
 
 const _drawerItems = [
   _NavItem("progress", "Log Progress", LucideIcons.barChart2),
-  _NavItem("plans", "Workout Plan", LucideIcons.clipboardList),
-  _NavItem("nutrition", "Nutrition Plan", LucideIcons.apple),
+  // Workout Plan and Nutrition Plan are not listed here: both already live
+  // in the Plans bottom tab, and a second route to the same screens made
+  // the menu longer without adding anything. The "nutrition" screen key is
+  // kept below so existing deep links still resolve.
   _NavItem("habits", "Habit Tracker", LucideIcons.flame),
   _NavItem("history", "History", LucideIcons.history),
   _NavItem("forms", "Assessments", LucideIcons.fileText),

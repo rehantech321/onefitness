@@ -73,8 +73,8 @@ void main() {
   // Every entry in ClientShell's hamburger menu, label → screen key.
   const menuPages = {
     "Log Progress": "progress",
-    "Workout Plan": "plans",
-    "Nutrition Plan": "nutrition",
+    // Workout Plan and Nutrition Plan were removed from this menu — both
+    // are reachable from the Plans bottom tab, which is covered below.
     "Habit Tracker": "habits",
     "History": "history",
     "Assessments": "forms",

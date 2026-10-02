@@ -2534,6 +2534,39 @@ class SupabaseService {
     return Map<String, dynamic>.from(data as Map);
   }
 
+  /// Owner setting a new password for a client or coach by hand — the desk
+  /// case, when the person can't reach their email. Owner only, enforced
+  /// server-side: a coach able to set another account's password could take
+  /// over the owner's account.
+  static Future<void> adminSetPassword({
+    required String profileId,
+    required String password,
+  }) async {
+    final res = await client.functions.invoke(
+      "admin-set-password",
+      body: {"profileId": profileId, "password": password},
+    );
+    final data = res.data;
+    if (data is Map && data["error"] != null) throw Exception(data["error"].toString());
+    if (res.status != 200) throw Exception("Couldn't set that password. Please try again.");
+  }
+
+  /// Takes the late-cancellation fee from the client's saved card. The
+  /// server decides the amount from platform settings and re-checks the
+  /// window against the booking's own time, so the app can't influence what
+  /// is charged. Returns {charged, feeCents, failure}.
+  static Future<Map<String, dynamic>> chargeLateCancellation({
+    required String bookingId,
+  }) async {
+    final res = await client.functions.invoke(
+      "charge-late-cancellation",
+      body: {"bookingId": bookingId},
+    );
+    final data = res.data;
+    if (data is Map && data["error"] != null) throw Exception(data["error"].toString());
+    return Map<String, dynamic>.from(data as Map);
+  }
+
   /// Confirms a waitlist join by push, SMS and email. Server-side because it
   /// reads the client's phone and SMS preference, and because joining used
   /// to send nothing at all — the client saw a row appear and heard nothing.

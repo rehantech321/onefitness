@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
+import "../../../core/widgets/password_actions.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/client_status_utils.dart";
 import "../../../core/utils/date_utils.dart";
@@ -545,6 +546,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             icon: LucideIcons.mapPin,
             label: "City",
             value: info.city,
+          ),
+          // Same two options as the coach profile, in the same place and
+          // with the same wording — someone dealing with a locked-out
+          // client shouldn't have to learn a second screen.
+          PasswordActions(
+            profileId: info.id,
+            email: info.email ?? "",
+            name: info.name,
           ),
           const SizedBox(height: 8),
           Row(

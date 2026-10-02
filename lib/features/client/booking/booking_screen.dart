@@ -244,6 +244,45 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   Future<void> _confirmCancel() async {
     if (_busy) return;
     final b = _cancelTarget!;
+    final settingsNow = ref.read(platformSettingsProvider);
+    final isLate = cancelWindow(b, lateCancellationHours: settingsNow.lateCancellationHours) != "free";
+    final feeCents = settingsNow.lateCancellationFeeCents;
+
+    // The fee is taken from the card now rather than left as a debt the gym
+    // has to chase, so the last word before that happens says the amount
+    // plainly. The screen behind this already explains the window; this is
+    // the point of no return for money leaving an account.
+    if (isLate && feeCents > 0) {
+      final goAhead = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.card,
+          title: const Text("Cancel and pay the fee?",
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          content: Text(
+            "This is a late cancellation, so ${lateCancellationFeeLabel(feeCents: feeCents)} "
+            "will be charged to your card on file now. "
+            "Your session will be cancelled either way.",
+            style: const TextStyle(fontSize: 13, height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              style: TextButton.styleFrom(foregroundColor: AppColors.mute),
+              child: const Text("Keep my session"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: TextButton.styleFrom(foregroundColor: AppColors.errorText),
+              child: const Text("Cancel and pay",
+                  style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      );
+      if (goAhead != true || !mounted) return;
+    }
+
     setState(() => _busy = true);
     try {
       await SupabaseService.deleteBooking(b.id);
@@ -254,23 +293,35 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       // A client cancelling their own booking can only ever be "free" or
       // "late" — a no-show is by definition something the client never
       // reported, so self-cancel never produces one (see cancelWindow).
-      final settings = ref.read(platformSettingsProvider);
-      if (cancelWindow(b, lateCancellationHours: settings.lateCancellationHours) != "free") {
-        final info = ref.read(clientInfoProvider);
-        final trainer = ref.read(trainersProvider).where((t) => t.id == b.trainerId);
-        final charge = attendanceChargeFor(
-          b,
-          "late-cancel",
-          clientName: info.name,
-          trainerName: trainer.isNotEmpty ? trainer.first.name : null,
-          lateCancellationFeeCents: settings.lateCancellationFeeCents,
-          noShowFeeCents: settings.noShowFeeCents,
-        );
-        if (charge != null) {
-          SupabaseService.insertCharge(charge).then((saved) => ref.read(chargesProvider.notifier).add(saved)).catchError((Object e) {
-            // ignore: avoid_print
-            print("[cancel charge] failed to save: $e");
-          });
+      if (isLate) {
+        // Server-side: it decides the amount from settings and re-checks the
+        // window against the booking's own time, takes it from the saved
+        // card, and records the charge either way. The app no longer writes
+        // the charge row itself — that only ever recorded a debt nobody
+        // collected.
+        try {
+          final res = await SupabaseService.chargeLateCancellation(bookingId: b.id);
+          if (mounted && res["charged"] == true) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(
+                "${lateCancellationFeeLabel(feeCents: feeCents)} charged for the late cancellation.",
+              ),
+            ));
+          } else if (mounted && (res["feeCents"] as num? ?? 0) > 0) {
+            // Declined or no card: the session is still cancelled and the
+            // fee is recorded as owed, so say so rather than implying it
+            // was taken.
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                "Cancelled. We couldn't take the late cancellation fee — "
+                "ONE Fitness will be in touch about it.",
+              ),
+              duration: Duration(seconds: 6),
+            ));
+          }
+        } catch (e) {
+          // ignore: avoid_print
+          print("[late cancel charge] failed: $e");
         }
       }
       setState(() {
