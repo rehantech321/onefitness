@@ -133,7 +133,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
               ),
             ],
           ),
-          AppField(
+          AppField(kind: FieldKind.search,
             controller: _search,
             placeholder: "Search name, muscle, movement, equipment…",
             onChanged: (_) => setState(() {}),
@@ -240,7 +240,7 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
           const SizedBox(height: 14),
           FieldLabeled(
             label: "Name",
-            child: AppField(controller: _name),
+            child: AppField(kind: FieldKind.name, controller: _name),
           ),
           const SizedBox(height: 10),
           const Text(
@@ -338,7 +338,7 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Expanded(child: AppField(controller: _newEquipment, placeholder: "Add new equipment…")),
+                      Expanded(child: AppField(kind: FieldKind.name, controller: _newEquipment, placeholder: "Add new equipment…")),
                       const SizedBox(width: 8),
                       BtnGhost(onPressed: _addingEquipment ? null : addNew, child: Text(_addingEquipment ? "Adding…" : "+ Add")),
                     ],

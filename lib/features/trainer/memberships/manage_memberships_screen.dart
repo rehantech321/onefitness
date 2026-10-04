@@ -697,7 +697,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
           const SizedBox(height: 12),
           FieldLabeled(
             label: "Name",
-            child: AppField(
+            child: AppField(kind: FieldKind.name,
               controller: _name,
               onChanged: (_) => setState(() {}),
             ),
@@ -985,7 +985,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
               Row(
                 children: [
                   Expanded(
-                    child: AppField(
+                    child: AppField(kind: FieldKind.name,
                       controller: _newCategory,
                       placeholder: "e.g. Fees, Apparel",
                     ),
@@ -1009,7 +1009,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
             const SizedBox(height: 8),
             FieldLabeled(
               label: "Contract title",
-              child: AppField(controller: _contractTitle, placeholder: "e.g. 12-Month Membership Agreement"),
+              child: AppField(kind: FieldKind.name, controller: _contractTitle, placeholder: "e.g. 12-Month Membership Agreement"),
             ),
             const SizedBox(height: 8),
             FieldLabeled(
@@ -1523,7 +1523,7 @@ class _CategoryManagerState extends State<_CategoryManager> {
           Row(
             children: [
               Expanded(
-                child: AppField(
+                child: AppField(kind: FieldKind.name,
                   controller: _custom,
                   placeholder: "New category name",
                   onChanged: (_) {

@@ -710,7 +710,7 @@ Future<String?> _promptName(BuildContext context, {String? initial}) {
     builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.card,
       title: const Text("Nutrition program name"),
-      content: AppField(controller: controller, placeholder: "e.g. Cutting Phase — 1800 kcal"),
+      content: AppField(kind: FieldKind.name, controller: controller, placeholder: "e.g. Cutting Phase — 1800 kcal"),
       actions: [
         TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Cancel")),
         TextButton(onPressed: () => Navigator.of(ctx).pop(controller.text), child: const Text("Save")),
@@ -770,7 +770,7 @@ class _TargetsCard extends StatelessWidget {
             children: [
               Expanded(child: MiniField(label: "Fat % (%)", value: targets.fats ?? "", onChange: (v) => onChange(MacroTargets(calories: targets.calories, protein: targets.protein, carbs: targets.carbs, fats: v, water: targets.water)))),
               const SizedBox(width: 6),
-              Expanded(child: MiniField(label: "Water", value: targets.water ?? "", onChange: (v) => onChange(MacroTargets(calories: targets.calories, protein: targets.protein, carbs: targets.carbs, fats: targets.fats, water: v)))),
+              Expanded(child: MiniField(kind: FieldKind.measure, label: "Water", value: targets.water ?? "", onChange: (v) => onChange(MacroTargets(calories: targets.calories, protein: targets.protein, carbs: targets.carbs, fats: targets.fats, water: v)))),
               const SizedBox(width: 6),
               const Expanded(child: SizedBox()),
             ],

@@ -85,9 +85,9 @@ class _LocationsEditorState extends State<LocationsEditor> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FieldLabeled(label: "Gym / location name *", child: AppField(controller: _name, placeholder: "e.g. Iron Athletics")),
+            FieldLabeled(label: "Gym / location name *", child: AppField(kind: FieldKind.name, controller: _name, placeholder: "e.g. Iron Athletics")),
             const SizedBox(height: 8),
-            FieldLabeled(label: "Address *", child: AppField(controller: _address, placeholder: "Street, City, State ZIP")),
+            FieldLabeled(label: "Address *", child: AppField(kind: FieldKind.address, controller: _address, placeholder: "Street, City, State ZIP")),
             const SizedBox(height: 8),
             FieldLabeled(
               label: "Arrival / parking / suite hints",

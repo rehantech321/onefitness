@@ -3,15 +3,27 @@ import "../../data/models/client_info.dart";
 import "../../data/providers/platform_settings_provider.dart";
 import "nearest_location.dart";
 
-/// The gym location nearest a free-text profile city ("Miami, FL"), by
-/// name. Null while the geocoder hasn't answered, when it can't place the
-/// city, or when no location has coordinates to compare against.
+/// How a client's profile location is handed to the geocoder: "Burbank, CA".
 ///
-/// Keyed on the city text, so editing the city in Profile Settings
+/// City alone is ambiguous — Burbank is in California and Illinois,
+/// Glendale in half a dozen states — so the state is what turns the
+/// geocoder's answer from a guess into the right one. Either part may be
+/// missing; whatever is there is used.
+String clientPlaceQuery(ClientInfo info) {
+  final parts = [info.city?.trim() ?? "", info.state?.trim() ?? ""]
+      .where((p) => p.isNotEmpty);
+  return parts.join(", ");
+}
+
+/// The gym location nearest a free-text profile place ("Burbank, CA"), by
+/// name. Null while the geocoder hasn't answered, when it can't place it,
+/// or when no location has coordinates to compare against.
+///
+/// Keyed on the place text, so editing either field in Profile Settings
 /// naturally re-resolves it, and repeat visits reuse the one lookup.
-final nearestToCityProvider = FutureProvider.family<String?, String>((ref, city) async {
+final nearestToCityProvider = FutureProvider.family<String?, String>((ref, place) async {
   final all = ref.watch(platformSettingsProvider.select((s) => s.allLocations));
-  final point = await geocodeAddress(city);
+  final point = await geocodeAddress(place);
   if (point == null) return null;
   final sorted = distancesFrom(point.lat, point.lng, all);
   return sorted.isEmpty ? null : sorted.first.location.name;
@@ -36,13 +48,13 @@ String? effectiveBookingLocation(WidgetRef ref, ClientInfo info) {
   return _homeLocation(ref, info, settings);
 }
 
-/// Steps 2–3 of [effectiveBookingLocation]: nearest to the profile city,
+/// Steps 2–3 of [effectiveBookingLocation]: nearest to the profile place,
 /// else the gym default.
 String? _homeLocation(WidgetRef ref, ClientInfo info, PlatformSettings settings) {
   final names = {for (final l in settings.allLocations) l.name};
-  final city = info.city?.trim() ?? "";
-  if (city.isNotEmpty) {
-    final nearest = ref.watch(nearestToCityProvider(city)).value;
+  final place = clientPlaceQuery(info);
+  if (place.isNotEmpty) {
+    final nearest = ref.watch(nearestToCityProvider(place)).value;
     if (nearest != null && names.contains(nearest)) return nearest;
   }
   return settings.defaultLocation?.name;

@@ -62,7 +62,7 @@ class _SquadMemberSearchScreenState extends State<SquadMemberSearchScreen> {
               text: "Selecting someone sends them an invitation — they'll need to accept it before joining the Squad.",
             ),
           ),
-          AppField(controller: _controller, placeholder: "Name or email…", onChanged: (v) => setState(() => _query = v)),
+          AppField(kind: FieldKind.search, controller: _controller, placeholder: "Name or email…", onChanged: (v) => setState(() => _query = v)),
           const SizedBox(height: 10),
           if (q.length < 2)
             const HintBox(text: "Type at least 2 characters to search.")

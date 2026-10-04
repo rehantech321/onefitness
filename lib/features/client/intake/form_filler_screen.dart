@@ -210,6 +210,9 @@ class _QuestionInput extends StatelessWidget {
     switch (question.type) {
       case "text":
         return AppField(
+          // An age, a weight or a phone number gets the keyboard it needs
+          // rather than the letter keyboard; see IntakeQuestion.inputKind.
+          kind: question.inputKind ?? FieldKind.text,
           placeholder: "Type here…",
           controller: TextEditingController(text: value as String? ?? "")..selection = TextSelection.collapsed(offset: (value as String? ?? "").length),
           onChanged: onText,

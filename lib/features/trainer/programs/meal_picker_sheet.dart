@@ -91,7 +91,7 @@ class _MealPickerBodyState extends ConsumerState<_MealPickerBody> {
               TextButton(onPressed: () => setState(() => _creating = true), child: const Text("Create Custom Meal", style: TextStyle(color: AppColors.gold, fontSize: 12))),
             ],
           ),
-          AppField(controller: _search, placeholder: "Search…", onChanged: (_) => setState(() {})),
+          AppField(kind: FieldKind.search, controller: _search, placeholder: "Search…", onChanged: (_) => setState(() {})),
           const SizedBox(height: 8),
           SizedBox(
             height: 30,

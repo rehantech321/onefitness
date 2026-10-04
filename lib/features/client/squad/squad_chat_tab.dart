@@ -421,6 +421,8 @@ class _SquadComposerState extends State<_SquadComposer> {
                 constraints: const BoxConstraints(maxHeight: 110),
                 child: TextField(
                   controller: widget.controller,
+      keyboardType: TextInputType.multiline,
+      textCapitalization: TextCapitalization.sentences,
                   minLines: 1,
                   maxLines: 4,
                   style: const TextStyle(color: AppColors.txt, fontSize: 14),

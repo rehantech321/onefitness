@@ -957,7 +957,7 @@ class _CatalogEditor extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         title: Text("Add a $noun"),
-        content: AppField(controller: controller, placeholder: noun == "discipline" ? "e.g. Pilates" : "e.g. Small Group"),
+        content: AppField(kind: FieldKind.name, controller: controller, placeholder: noun == "discipline" ? "e.g. Pilates" : "e.g. Small Group"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           TextButton(onPressed: () => Navigator.pop(ctx, controller.text), child: const Text("Add")),
@@ -1287,9 +1287,9 @@ class _ExtraLocationsEditor extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              FieldLabeled(label: "Name", child: AppField(controller: name, placeholder: "e.g. ONE Fitness Burbank")),
+              FieldLabeled(label: "Name", child: AppField(kind: FieldKind.name, controller: name, placeholder: "e.g. ONE Fitness Burbank")),
               const SizedBox(height: 8),
-              FieldLabeled(label: "Address", child: AppField(controller: address, placeholder: "Street, city, state, ZIP")),
+              FieldLabeled(label: "Address", child: AppField(kind: FieldKind.address, controller: address, placeholder: "Street, city, state, ZIP")),
               const SizedBox(height: 8),
               FieldLabeled(label: "Parking / arrival notes", child: AppField(controller: hint, placeholder: "e.g. Park in the rear lot")),
               const SizedBox(height: 10),
@@ -1611,7 +1611,7 @@ class _CustomFieldsEditorState extends State<_CustomFieldsEditor> {
           }),
           Row(
             children: [
-              Expanded(child: AppField(controller: _newLabel, placeholder: "New field label…")),
+              Expanded(child: AppField(kind: FieldKind.name, controller: _newLabel, placeholder: "New field label…")),
               const SizedBox(width: 6),
               DropdownButton<String>(
                 value: _newType,
@@ -1772,7 +1772,7 @@ class _SignupWaiverEditorState extends ConsumerState<_SignupWaiverEditor> {
         children: [
           const Text("Waiver document", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          FieldLabeled(label: "Title", child: AppField(controller: _title, placeholder: "Membership Waiver & Release")),
+          FieldLabeled(label: "Title", child: AppField(kind: FieldKind.name, controller: _title, placeholder: "Membership Waiver & Release")),
           const SizedBox(height: 10),
           FieldLabeled(label: "Body", child: AppField(controller: _body, maxLines: 8, minLines: 4)),
           if (_error != null) ...[

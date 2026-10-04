@@ -6,6 +6,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/photo_picker_utils.dart";
+import "../../../core/widgets/city_state_fields.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
 
@@ -41,6 +42,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
   final _password2 = TextEditingController();
   final _phone = TextEditingController();
   final _city = TextEditingController();
+  final _state = TextEditingController();
   final _birthday = TextEditingController();
   final _coachCode = TextEditingController();
   String? _photoDataUrl;
@@ -63,6 +65,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
     _password2.dispose();
     _phone.dispose();
     _city.dispose();
+    _state.dispose();
     _birthday.dispose();
     _coachCode.dispose();
     super.dispose();
@@ -217,14 +220,14 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
             Expanded(
               child: FieldLabeled(
                 label: "First name",
-                child: AppField(controller: _firstName, onChanged: (_) => setState(() => _error = null)),
+                child: AppField(kind: FieldKind.name, controller: _firstName, onChanged: (_) => setState(() => _error = null)),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: FieldLabeled(
                 label: "Last name",
-                child: AppField(controller: _lastName, onChanged: (_) => setState(() => _error = null)),
+                child: AppField(kind: FieldKind.name, controller: _lastName, onChanged: (_) => setState(() => _error = null)),
               ),
             ),
           ],
@@ -242,7 +245,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
         const SizedBox(height: 10),
         FieldLabeled(
           label: "Password",
-          child: AppField(
+          child: AppField(kind: FieldKind.password,
             controller: _password,
             obscureText: true,
             placeholder: "At least 6 characters",
@@ -252,7 +255,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
         const SizedBox(height: 10),
         FieldLabeled(
           label: "Confirm password",
-          child: AppField(
+          child: AppField(kind: FieldKind.password,
             controller: _password2,
             obscureText: true,
             placeholder: "••••••",
@@ -265,10 +268,12 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
           child: AppField(controller: _phone, keyboardType: TextInputType.phone, onChanged: (_) => setState(() => _error = null)),
         ),
         const SizedBox(height: 10),
-        FieldLabeled(
-          label: "City",
-          child: AppField(controller: _city, onChanged: (_) => setState(() => _error = null)),
-        ),
+          CityStateFields(
+            city: _city,
+            state: _state,
+            helper: null,
+            onChanged: () => setState(() => _error = null),
+          ),
         const Padding(
           padding: EdgeInsets.only(top: 4),
           child: Text("Personalized training near you", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
@@ -296,7 +301,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
         const SizedBox(height: 10),
         FieldLabeled(
           label: "Coach Code (optional)",
-          child: AppField(controller: _coachCode, placeholder: "e.g. JESS10"),
+          child: AppField(kind: FieldKind.code, controller: _coachCode, placeholder: "e.g. JESS10"),
         ),
         const Padding(
           padding: EdgeInsets.only(top: 4),

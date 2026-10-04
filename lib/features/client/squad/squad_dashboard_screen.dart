@@ -145,7 +145,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                 const SectionLabel("Create a Squad"),
                 FieldLabeled(
                   label: "Squad name (optional)",
-                  child: AppField(
+                  child: AppField(kind: FieldKind.name,
                     controller: _newSquadNameController,
                     placeholder: "e.g. The Smith Family",
                   ),
@@ -345,7 +345,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
               const SizedBox(width: 10),
               if (_nameEditing) ...[
                 Expanded(
-                  child: AppField(
+                  child: AppField(kind: FieldKind.name,
                     controller: _nameDraftController,
                     placeholder: "Squad name…",
                   ),
@@ -632,7 +632,7 @@ class _MembersTab extends ConsumerWidget {
                 if (isLead)
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
-                    child: AppField(
+                    child: AppField(kind: FieldKind.name,
                       placeholder:
                           "${c.name}'s relationship (e.g. Spouse, Child)",
                       controller: TextEditingController(text: m.relationship),

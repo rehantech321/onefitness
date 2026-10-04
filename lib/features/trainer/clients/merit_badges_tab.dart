@@ -760,7 +760,7 @@ Future<String?> _promptExercise(
               ),
               const SizedBox(height: 4),
             ],
-            AppField(controller: controller),
+            AppField(kind: FieldKind.name, controller: controller),
           ],
         ),
         actions: [

@@ -217,7 +217,7 @@ class _SetPasswordDialogState extends State<_SetPasswordDialog> {
           const SizedBox(height: 14),
           FieldLabeled(
             label: "New password",
-            child: AppField(
+            child: AppField(kind: FieldKind.password,
               controller: _a,
               obscureText: true,
               placeholder: "At least 8 characters",
@@ -227,7 +227,7 @@ class _SetPasswordDialogState extends State<_SetPasswordDialog> {
           const SizedBox(height: 8),
           FieldLabeled(
             label: "Confirm password",
-            child: AppField(
+            child: AppField(kind: FieldKind.password,
               controller: _b,
               obscureText: true,
               placeholder: "••••••••",

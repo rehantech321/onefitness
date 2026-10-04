@@ -583,7 +583,7 @@ class _NoteFormState extends State<_NoteForm> {
           const SizedBox(height: 14),
           FieldLabeled(
             label: "Title (optional)",
-            child: AppField(controller: _title),
+            child: AppField(kind: FieldKind.name, controller: _title),
           ),
           const SizedBox(height: 10),
           FieldLabeled(
@@ -656,7 +656,7 @@ class _NoteFormState extends State<_NoteForm> {
           const SizedBox(height: 10),
           FieldLabeled(
             label: "Resolve by (optional, YYYY-MM-DD)",
-            child: AppField(controller: _resolveBy),
+            child: AppField(kind: FieldKind.date, controller: _resolveBy),
           ),
           const SizedBox(height: 10),
           InkWell(

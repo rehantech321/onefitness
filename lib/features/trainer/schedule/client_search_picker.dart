@@ -34,7 +34,7 @@ class _ClientSearchPickerState extends State<ClientSearchPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppField(controller: _controller, placeholder: "Search clients…", onChanged: (_) => setState(() {})),
+        AppField(kind: FieldKind.search, controller: _controller, placeholder: "Search clients…", onChanged: (_) => setState(() {})),
         const SizedBox(height: 10),
         SizedBox(
           height: 260,

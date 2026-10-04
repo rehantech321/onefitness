@@ -416,7 +416,7 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
           const SizedBox(height: 12),
           FieldLabeled(
             label: "Name",
-            child: AppField(
+            child: AppField(kind: FieldKind.name,
               controller: _name,
               onChanged: (_) => setState(() {}),
             ),
@@ -525,7 +525,7 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
             Row(
               children: [
                 Expanded(
-                  child: AppField(
+                  child: AppField(kind: FieldKind.name,
                     controller: _newCategory,
                     placeholder: "e.g. Fees, Apparel",
                   ),
@@ -721,7 +721,7 @@ class _SizeInventoryEditor extends StatelessWidget {
                 children: [
                   Expanded(
                     flex: 3,
-                    child: AppField(
+                    child: AppField(kind: FieldKind.measure,
                       controller: rows[i].label,
                       placeholder: "Size (S, M, L…)",
                       onChanged: (_) => onChanged(),

@@ -63,7 +63,7 @@ class _RosterBarState extends ConsumerState<RosterBar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppField(
+          AppField(kind: FieldKind.search,
             controller: _search,
             placeholder: "Search clients by name or email…",
             onChanged: (_) => setState(() {}),

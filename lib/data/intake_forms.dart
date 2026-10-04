@@ -1,3 +1,4 @@
+import "../core/widgets/app_text_field.dart" show FieldKind;
 import "models/intake_schema.dart";
 
 /// Mirrors src/features/intake/schemas.js — TRAINING_INTAKE_SCHEMA,
@@ -24,13 +25,13 @@ const kTrainingIntakeSchema = IntakeSchema(
       IntakeQuestion(id: "referralOther", label: "Tell us more", type: "text", showIfId: "referralSource", showIfValue: "Other"),
     ]),
     IntakeSection(title: "Basic Client Information", questions: [
-      IntakeQuestion(id: "fullName", label: "Full Name", type: "text"),
-      IntakeQuestion(id: "age", label: "Age", type: "text"),
+      IntakeQuestion(id: "fullName", label: "Full Name", type: "text", inputKind: FieldKind.name),
+      IntakeQuestion(id: "age", label: "Age", type: "text", inputKind: FieldKind.integer),
       IntakeQuestion(id: "sex", label: "Sex at birth", type: "text"),
       IntakeQuestion(id: "genderIdentity", label: "Gender Identity", type: "text"),
-      IntakeQuestion(id: "height", label: "Height", type: "text"),
-      IntakeQuestion(id: "weight", label: "Current Weight", type: "text"),
-      IntakeQuestion(id: "goalWeight", label: "Goal Weight (if applicable)", type: "text"),
+      IntakeQuestion(id: "height", label: "Height", type: "text", inputKind: FieldKind.measure),
+      IntakeQuestion(id: "weight", label: "Current Weight", type: "text", inputKind: FieldKind.decimal),
+      IntakeQuestion(id: "goalWeight", label: "Goal Weight (if applicable)", type: "text", inputKind: FieldKind.decimal),
       IntakeQuestion(id: "occupation", label: "Occupation", type: "text"),
       IntakeQuestion(
         id: "activity",
@@ -38,7 +39,7 @@ const kTrainingIntakeSchema = IntakeSchema(
         type: "single",
         options: ["Sedentary", "Lightly Active", "Moderately Active", "Very Active"],
       ),
-      IntakeQuestion(id: "sleep", label: "Average Hours of Sleep Per Night", type: "text"),
+      IntakeQuestion(id: "sleep", label: "Average Hours of Sleep Per Night", type: "text", inputKind: FieldKind.decimal),
     ]),
     IntakeSection(title: "Goals", questions: [
       IntakeQuestion(
@@ -76,7 +77,7 @@ const kTrainingIntakeSchema = IntakeSchema(
       IntakeQuestion(id: "experience", label: "Training experience", type: "single", options: ["Beginner", "Intermediate", "Advanced"]),
       IntakeQuestion(id: "sports", label: "Previous sports or athletic background", type: "textarea"),
       IntakeQuestion(id: "currentRoutine", label: "Current workout routine", type: "textarea"),
-      IntakeQuestion(id: "daysPerWeek", label: "How many days per week can you realistically train?", type: "text"),
+      IntakeQuestion(id: "daysPerWeek", label: "How many days per week can you realistically train?", type: "text", inputKind: FieldKind.integer),
       IntakeQuestion(
         id: "style",
         label: "Preferred training style",
@@ -109,9 +110,9 @@ const kTrainingIntakeSchema = IntakeSchema(
       IntakeQuestion(id: "anythingElse", label: "Anything else important the trainer should know?", type: "textarea"),
     ]),
     IntakeSection(title: "Emergency Contact", questions: [
-      IntakeQuestion(id: "ecName", label: "Emergency contact name", type: "text"),
-      IntakeQuestion(id: "ecRelationship", label: "Relationship", type: "text"),
-      IntakeQuestion(id: "ecPhone", label: "Phone number", type: "text"),
+      IntakeQuestion(id: "ecName", label: "Emergency contact name", type: "text", inputKind: FieldKind.name),
+      IntakeQuestion(id: "ecRelationship", label: "Relationship", type: "text", inputKind: FieldKind.name),
+      IntakeQuestion(id: "ecPhone", label: "Phone number", type: "text", inputKind: FieldKind.phone),
     ]),
   ],
 );
@@ -120,13 +121,13 @@ const kNutritionIntakeSchema = IntakeSchema(
   title: "Nutrition Program Intake",
   sections: [
     IntakeSection(title: "Basic Client Information", questions: [
-      IntakeQuestion(id: "fullName", label: "Full Name", type: "text"),
-      IntakeQuestion(id: "age", label: "Age", type: "text"),
+      IntakeQuestion(id: "fullName", label: "Full Name", type: "text", inputKind: FieldKind.name),
+      IntakeQuestion(id: "age", label: "Age", type: "text", inputKind: FieldKind.integer),
       IntakeQuestion(id: "sex", label: "Sex at birth", type: "text"),
       IntakeQuestion(id: "genderIdentity", label: "Gender Identity", type: "text"),
-      IntakeQuestion(id: "height", label: "Height", type: "text"),
-      IntakeQuestion(id: "weight", label: "Current Weight", type: "text"),
-      IntakeQuestion(id: "goalWeight", label: "Goal Weight (if applicable)", type: "text"),
+      IntakeQuestion(id: "height", label: "Height", type: "text", inputKind: FieldKind.measure),
+      IntakeQuestion(id: "weight", label: "Current Weight", type: "text", inputKind: FieldKind.decimal),
+      IntakeQuestion(id: "goalWeight", label: "Goal Weight (if applicable)", type: "text", inputKind: FieldKind.decimal),
     ]),
     IntakeSection(title: "Nutrition Information", questions: [
       IntakeQuestion(
@@ -147,9 +148,9 @@ const kNutritionIntakeSchema = IntakeSchema(
         options: ["No Restrictions", "Vegetarian", "Vegan", "Pescatarian", "Kosher", "Halal", "Gluten-Free", "Dairy-Free", "Other"],
       ),
       IntakeQuestion(id: "dietaryStyleOther", label: "Tell us more", type: "text", showIfId: "dietaryStyle", showIfValue: "Other"),
-      IntakeQuestion(id: "mealsPerDay", label: "How many meals per day do you eat on average?", type: "text"),
+      IntakeQuestion(id: "mealsPerDay", label: "How many meals per day do you eat on average?", type: "text", inputKind: FieldKind.integer),
       IntakeQuestion(id: "hungryTimes", label: "Times of day you get most hungry", type: "text"),
-      IntakeQuestion(id: "eatingOut", label: "Frequency of eating out per week", type: "text"),
+      IntakeQuestion(id: "eatingOut", label: "Frequency of eating out per week", type: "text", inputKind: FieldKind.integer),
       IntakeQuestion(id: "alcohol", label: "Alcohol consumption", type: "single", options: ["No alcohol", "A couple drinks a month", "A couple drinks a week", "More"]),
       IntakeQuestion(id: "smoking", label: "Smoking/nicotine use", type: "single", options: ["Yes", "Occasional", "None"]),
       IntakeQuestion(

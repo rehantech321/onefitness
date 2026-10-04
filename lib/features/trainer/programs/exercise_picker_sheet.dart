@@ -57,7 +57,7 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
             children: [
               BackBar(onBack: () => setState(() => _custom = false), title: "Custom Exercise"),
               const SizedBox(height: 12),
-              FieldLabeled(label: "Name", child: AppField(controller: _customName)),
+              FieldLabeled(label: "Name", child: AppField(kind: FieldKind.name, controller: _customName)),
               const SizedBox(height: 10),
               const Text("MUSCLE GROUP", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
               const SizedBox(height: 6),
@@ -113,7 +113,7 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
               TextButton(onPressed: () => setState(() => _custom = true), child: const Text("Custom", style: TextStyle(color: AppColors.gold, fontSize: 12))),
             ],
           ),
-          AppField(controller: _search, placeholder: "Search…", onChanged: (_) => setState(() {})),
+          AppField(kind: FieldKind.search, controller: _search, placeholder: "Search…", onChanged: (_) => setState(() {})),
           const SizedBox(height: 8),
           SizedBox(
             height: 32,

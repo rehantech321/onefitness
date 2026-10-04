@@ -9,6 +9,9 @@ import "../../../data/models/nutrition_plan.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../core/legal/health_sources.dart";
 import "../../../core/widgets/source_citations.dart";
+import "../../../core/utils/nutrition_helpers.dart"
+    show effectiveIngredients, effectiveMacros;
+import "meal_ingredient_editor.dart";
 import "client_meal_picker.dart";
 
 /// Mirrors NutritionScreenReadOnly.jsx: training/rest macro targets, a
@@ -52,6 +55,23 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
     final current = ref.read(clientRecordProvider).myMeals[category] ?? const <NutritionMeal>[];
     if (current.any((m) => m.id == picked.id)) return;
     await _saveChoices(category, [...current, picked]);
+  }
+
+  /// Lets the client change how much of each ingredient is in a meal they
+  /// picked. Saved as per-ingredient overrides, so the original recipe is
+  /// never overwritten and the totals recompute from the new amounts.
+  Future<void> _editMeal(String category, NutritionMeal meal) async {
+    final n = ref.read(clientRecordProvider).nutrition;
+    final budget = int.tryParse(
+      ((_dayType == "training" ? n?.mealBudgets.training : n?.mealBudgets.rest) ?? const {})[category] ?? "",
+    );
+    final updated = await showMealIngredientEditor(context, meal: meal, budget: budget);
+    if (updated == null) return;
+    final current = ref.read(clientRecordProvider).myMeals[category] ?? const <NutritionMeal>[];
+    await _saveChoices(
+      category,
+      current.map((m) => m.id == updated.id ? updated : m).toList(),
+    );
   }
 
   Future<void> _removeChoice(String category, NutritionMeal meal) async {
@@ -171,6 +191,7 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
               ),
               onChoose: () => _pickMeal(c.$1, c.$2),
               onRemoveChoice: (meal) => _removeChoice(c.$1, meal),
+              onEditMeal: (meal) => _editMeal(c.$1, meal),
             ),
 
           if (grocery.isNotEmpty) ...[
@@ -405,6 +426,7 @@ class _MealSection extends StatelessWidget {
     this.budget,
     this.onChoose,
     this.onRemoveChoice,
+    this.onEditMeal,
   });
   final String title;
   final List<NutritionMeal> meals;
@@ -417,6 +439,10 @@ class _MealSection extends StatelessWidget {
   final int? budget;
   final VoidCallback? onChoose;
   final ValueChanged<NutritionMeal>? onRemoveChoice;
+
+  /// Opens the ingredient editor for one of the client's own picks. Null on
+  /// the coach's suggested meals, which stay as prescribed.
+  final ValueChanged<NutritionMeal>? onEditMeal;
 
   @override
   Widget build(BuildContext context) {
@@ -461,17 +487,22 @@ class _MealSection extends StatelessWidget {
                           ),
                       ],
                     ),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        _MacroChip(label: "Cal", value: "${meal.calories}"),
-                        _MacroChip(label: "Pg", value: "${meal.protein.toInt()}"),
-                        _MacroChip(label: "Cg", value: "${meal.carbs.toInt()}"),
-                        _MacroChip(label: "Fg", value: "${meal.fats.toInt()}"),
-                      ],
-                    ),
-                    ...meal.ingredients.map((ing) => Padding(
+                    // Recomputed from the ingredient quantities, so changing
+                    // an amount moves these numbers straight away.
+                    Builder(builder: (context) {
+                      final m = effectiveMacros(meal);
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          _MacroChip(label: "Cal", value: "${m.calories}"),
+                          _MacroChip(label: "Pg", value: "${m.protein.toInt()}"),
+                          _MacroChip(label: "Cg", value: "${m.carbs.toInt()}"),
+                          _MacroChip(label: "Fg", value: "${m.fats.toInt()}"),
+                        ],
+                      );
+                    }),
+                    ...effectiveIngredients(meal).map((ing) => Padding(
                           padding: const EdgeInsets.only(top: 5),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -484,6 +515,25 @@ class _MealSection extends StatelessWidget {
                             ],
                           ),
                         )),
+                    if (onEditMeal != null)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () => onEditMeal!(meal),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.gold,
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                            minimumSize: Size.zero,
+                          ),
+                          icon: const Icon(Icons.tune, size: 15),
+                          label: Text(
+                            meal.overrides.isEmpty
+                                ? "Adjust ingredients"
+                                : "Adjusted · edit again",
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               )),

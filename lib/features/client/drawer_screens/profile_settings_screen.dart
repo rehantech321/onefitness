@@ -12,6 +12,7 @@ import "../../../core/legal/terms_screen.dart";
 import "../../../core/widgets/calendar_sync_section.dart";
 import "../../../core/widgets/blocked_users_screen.dart";
 import "../../../core/widgets/delete_account_screen.dart";
+import "../../../core/widgets/city_state_fields.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
@@ -546,6 +547,9 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
   late final _city = TextEditingController(
     text: ref.read(clientInfoProvider).city ?? "",
   );
+  late final _state = TextEditingController(
+    text: ref.read(clientInfoProvider).state ?? "",
+  );
   late final _birthday = TextEditingController(
     text: ref.read(clientInfoProvider).birthday ?? "",
   );
@@ -726,7 +730,7 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
           const SizedBox(height: 6),
           FieldLabeled(
             label: "Name",
-            child: AppField(controller: _name),
+            child: AppField(kind: FieldKind.name, controller: _name),
           ),
           const SizedBox(height: 10),
           FieldLabeled(
@@ -745,10 +749,7 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
             ),
           ),
           const SizedBox(height: 10),
-          FieldLabeled(
-            label: "City",
-            child: AppField(controller: _city),
-          ),
+          CityStateFields(city: _city, state: _state),
           const Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text(

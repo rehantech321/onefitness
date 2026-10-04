@@ -368,7 +368,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
           const SizedBox(height: 12),
           FieldLabeled(
             label: "Full name *",
-            child: AppField(
+            child: AppField(kind: FieldKind.name,
               controller: _name,
               placeholder: "First Last",
               onChanged: (_) => setState(() => _error = null),
@@ -377,7 +377,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
           const SizedBox(height: 10),
           FieldLabeled(
             label: "Title",
-            child: AppField(
+            child: AppField(kind: FieldKind.name,
               controller: _title,
               placeholder: "Coach",
               onChanged: (_) => setState(() => _error = null),
@@ -741,7 +741,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                       style: const TextStyle(fontSize: 14, color: AppColors.mute),
                     ),
                   )
-                : AppField(controller: _coachCode, placeholder: "e.g. JESS10"),
+                : AppField(kind: FieldKind.code, controller: _coachCode, placeholder: "e.g. JESS10"),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -903,12 +903,12 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
           ] else ...[
             FieldLabeled(
               label: "Create password *",
-              child: AppField(controller: _pw, obscureText: true),
+              child: AppField(kind: FieldKind.password, controller: _pw, obscureText: true),
             ),
             const SizedBox(height: 10),
             FieldLabeled(
               label: "Confirm password",
-              child: AppField(controller: _pw2, obscureText: true),
+              child: AppField(kind: FieldKind.password, controller: _pw2, obscureText: true),
             ),
           ],
           ], // end profile tab (location/coach-code/payout/bio/before-after/password)

@@ -497,7 +497,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: AppField(
+                    child: AppField(kind: FieldKind.name,
                       controller: TextEditingController(text: activeDay.title),
                       onChanged: (v) => _renameDay(activeDay.id, v),
                     ),
@@ -712,7 +712,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: MiniField(
+                          child: MiniField(kind: FieldKind.integer,
                             label: "Sets",
                             value: "${ex.sets}",
                             ph: "3",
@@ -725,7 +725,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                         ),
                         const SizedBox(width: 6),
                         Expanded(
-                          child: MiniField(
+                          child: MiniField(kind: FieldKind.integer,
                             label: "Reps",
                             value: "${ex.reps}",
                             ph: "10",
@@ -738,7 +738,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                         ),
                         const SizedBox(width: 6),
                         Expanded(
-                          child: MiniField(
+                          child: MiniField(kind: FieldKind.measure,
                             label: "Weight",
                             value: ex.weight ?? "",
                             ph: "lbs",
@@ -754,7 +754,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: MiniField(
+                          child: MiniField(kind: FieldKind.measure,
                             label: "Time",
                             value: ex.time ?? "",
                             ph: "30s or 5m",
@@ -764,7 +764,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                         ),
                         const SizedBox(width: 6),
                         Expanded(
-                          child: MiniField(
+                          child: MiniField(kind: FieldKind.measure,
                             label: "Distance",
                             value: ex.distance ?? "",
                             ph: "e.g. 1 mi",
@@ -776,7 +776,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                         ),
                         const SizedBox(width: 6),
                         Expanded(
-                          child: MiniField(
+                          child: MiniField(kind: FieldKind.measure,
                             label: "Rest",
                             value: ex.rest ?? "",
                             ph: "60s or 3m",
@@ -1195,7 +1195,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
               style: TextStyle(fontSize: 13, color: AppColors.mute),
             ),
           ),
-        AppField(controller: _name, placeholder: "e.g. Push / Pull / Legs"),
+        AppField(kind: FieldKind.name, controller: _name, placeholder: "e.g. Push / Pull / Legs"),
         if (_err != null)
           Padding(
             padding: const EdgeInsets.only(top: 8),

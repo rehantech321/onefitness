@@ -732,7 +732,7 @@ class _CoachSearchSheetState extends State<_CoachSearchSheet> {
                 children: [
                   const SectionLabel("Find a coach"),
                   const SizedBox(height: 8),
-                  AppField(
+                  AppField(kind: FieldKind.search,
                     controller: _controller,
                     placeholder: "Search by name, discipline, or location…",
                     onChanged: (v) => setState(() => _query = v),
@@ -1021,6 +1021,8 @@ class _ComposerState extends State<_Composer> {
                 constraints: const BoxConstraints(maxHeight: 110),
                 child: TextField(
                   controller: widget.controller,
+      keyboardType: TextInputType.multiline,
+      textCapitalization: TextCapitalization.sentences,
                   minLines: 1,
                   maxLines: 4,
                   style: const TextStyle(color: AppColors.txt, fontSize: 14),

@@ -726,7 +726,7 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
             ],
           ),
           const SizedBox(height: 16),
-          FieldLabeled(label: "Challenge name *", child: AppField(controller: _name)),
+          FieldLabeled(label: "Challenge name *", child: AppField(kind: FieldKind.name, controller: _name)),
           const SizedBox(height: 10),
           FieldLabeled(
             label: "Description — clients will see this when registering *",

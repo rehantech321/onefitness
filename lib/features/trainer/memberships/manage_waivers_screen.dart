@@ -360,7 +360,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
           const SizedBox(height: 12),
           FieldLabeled(
             label: "Title",
-            child: AppField(
+            child: AppField(kind: FieldKind.name,
               controller: _title,
               onChanged: (_) => setState(() {}),
             ),

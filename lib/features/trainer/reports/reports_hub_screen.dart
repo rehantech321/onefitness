@@ -243,7 +243,7 @@ class _ReportsHubScreenState extends State<ReportsHubScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppField(
+          AppField(kind: FieldKind.search,
             placeholder: "Search reports…",
             onChanged: (v) => setState(() => _query = v),
           ),

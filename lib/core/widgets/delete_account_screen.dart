@@ -156,7 +156,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           const SizedBox(height: 20),
           FieldLabeled(
             label: "Type DELETE to confirm",
-            child: AppField(
+            child: AppField(kind: FieldKind.code,
               controller: _confirm,
               placeholder: "DELETE",
               onChanged: (_) => setState(() => _error = null),

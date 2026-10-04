@@ -47,6 +47,8 @@ class CallGymButton extends ConsumerWidget {
 
     Future<void> call() async {
       final ok = await callNumber(phone);
+      // Only on failure is the number itself shown — at that point it's the
+      // only way for them to make the call.
       if (!ok && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Couldn't open the dialer — call ${prettyPhone(phone)}.")),
@@ -54,9 +56,13 @@ class CallGymButton extends ConsumerWidget {
       }
     }
 
+    // The number is never printed in chat: the button says who it reaches
+    // and the dialer shows the number once it opens.
+    const label = "Contact ONE Fitness";
+
     if (compact) {
       return IconButton(
-        tooltip: "Call ${prettyPhone(phone)}",
+        tooltip: label,
         onPressed: call,
         icon: const Icon(LucideIcons.phone, size: 18, color: AppColors.gold),
       );
@@ -65,7 +71,7 @@ class CallGymButton extends ConsumerWidget {
       onPressed: call,
       style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: const BorderSide(color: AppColors.goldDim)),
       icon: const Icon(LucideIcons.phone, size: 14),
-      label: Text("Call ${prettyPhone(phone)}", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+      label: const Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
     );
   }
 }

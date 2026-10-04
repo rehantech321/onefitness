@@ -63,7 +63,11 @@ class _PointsTabState extends ConsumerState<PointsTab> {
     }
 
     void deduct() async {
-      final amountStr = await _promptText(context, "Deduct how many points from ${info.name}? (current balance: ${replay.balance})");
+      final amountStr = await _promptText(
+        context,
+        "Deduct how many points from ${info.name}? (current balance: ${replay.balance})",
+        kind: FieldKind.integer,
+      );
       if (amountStr == null || !context.mounted) return;
       final amount = int.tryParse(amountStr.trim());
       if (amount == null || amount <= 0) return;
@@ -157,14 +161,16 @@ Future<String?> _askReason(BuildContext context, String verb) async {
   return reason.trim();
 }
 
-Future<String?> _promptText(BuildContext context, String label) {
+/// [kind] matters here because this one dialog asks for two very different
+/// things: a number of points, and a free-text reason.
+Future<String?> _promptText(BuildContext context, String label, {FieldKind kind = FieldKind.text}) {
   final controller = TextEditingController();
   return showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: AppColors.card,
       title: Text(label, style: const TextStyle(fontSize: 14)),
-      content: AppField(controller: controller),
+      content: AppField(kind: kind, controller: controller),
       actions: [
         TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Cancel")),
         TextButton(onPressed: () => Navigator.of(ctx).pop(controller.text), child: const Text("OK")),

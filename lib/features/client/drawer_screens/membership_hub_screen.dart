@@ -1019,7 +1019,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               const SizedBox(height: 12),
               FieldLabeled(
                 label: "Coupon code (optional)",
-                child: AppField(
+                child: AppField(kind: FieldKind.code,
                   controller: _couponController,
                   placeholder: "Enter a code",
                   onChanged: (_) => setState(() => _error = null),

@@ -230,7 +230,7 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  FieldLabeled(label: "Date", child: AppField(controller: _dateController)),
+                  FieldLabeled(label: "Date", child: AppField(kind: FieldKind.date, controller: _dateController)),
                   const SizedBox(height: 8),
                   GridView.count(
                     crossAxisCount: 2,

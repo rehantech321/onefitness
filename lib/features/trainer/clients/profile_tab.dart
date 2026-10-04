@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
+import "../../../core/widgets/city_state_fields.dart";
 import "../../../core/widgets/password_actions.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/client_status_utils.dart";
@@ -99,13 +100,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
         child: _EditSection(
           info: info,
           onCancel: () => setState(() => _editing = false),
-          onSave: (name, email, phone, city) async {
+          onSave: (name, email, phone, city, state) async {
             await SupabaseService.updateClientRow(
               info.id,
               name: name,
               email: email,
               phone: phone,
               city: city,
+              state: state,
             );
             update(
               (c) => c.copyWith(
@@ -113,6 +115,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 email: email,
                 phone: phone,
                 city: city,
+                state: state,
               ),
             );
             if (mounted) setState(() => _editing = false);
@@ -385,14 +388,14 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               Expanded(
                                 child: FieldLabeled(
                                   label: "Start (YYYY-MM-DD)",
-                                  child: AppField(controller: _freezeStart),
+                                  child: AppField(kind: FieldKind.date, controller: _freezeStart),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: FieldLabeled(
                                   label: "End (YYYY-MM-DD)",
-                                  child: AppField(controller: _freezeEnd),
+                                  child: AppField(kind: FieldKind.date, controller: _freezeEnd),
                                 ),
                               ),
                             ],
@@ -1336,6 +1339,7 @@ class _EditSection extends StatefulWidget {
     String email,
     String phone,
     String city,
+    String state,
   )
   onSave;
 
@@ -1348,6 +1352,7 @@ class _EditSectionState extends State<_EditSection> {
   late final _email = TextEditingController(text: widget.info.email ?? "");
   late final _phone = TextEditingController(text: widget.info.phone ?? "");
   late final _city = TextEditingController(text: widget.info.city ?? "");
+  late final _state = TextEditingController(text: widget.info.state ?? "");
   String? _err;
   bool _busy = false;
 
@@ -1357,6 +1362,7 @@ class _EditSectionState extends State<_EditSection> {
     _email.dispose();
     _phone.dispose();
     _city.dispose();
+    _state.dispose();
     super.dispose();
   }
 
@@ -1371,6 +1377,7 @@ class _EditSectionState extends State<_EditSection> {
         _email.text.trim(),
         _phone.text.trim(),
         _city.text.trim(),
+        _state.text.trim(),
       );
     } catch (e) {
       if (mounted)
@@ -1392,7 +1399,7 @@ class _EditSectionState extends State<_EditSection> {
           const SectionLabel("Edit Profile"),
           FieldLabeled(
             label: "Name",
-            child: AppField(controller: _name),
+            child: AppField(kind: FieldKind.name, controller: _name),
           ),
           const SizedBox(height: 10),
           FieldLabeled(
@@ -1411,10 +1418,7 @@ class _EditSectionState extends State<_EditSection> {
             ),
           ),
           const SizedBox(height: 10),
-          FieldLabeled(
-            label: "City",
-            child: AppField(controller: _city),
-          ),
+          CityStateFields(city: _city, state: _state, helper: null),
           if (_err != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),

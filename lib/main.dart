@@ -20,11 +20,12 @@ import "features/trainer/shell/trainer_shell_state.dart";
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SupabaseService.initialize();
+  // Supabase and Firebase don't depend on each other, so initialise them
+  // side by side rather than paying for both one after the other.
   // Firebase only — the permission prompt and token registration wait
   // until sign-in, so the OS asks with context rather than on a cold
   // first launch. Never throws: push failing must not block startup.
-  await PushService.init();
+  await Future.wait([SupabaseService.initialize(), PushService.init()]);
   runApp(const ProviderScope(child: OneFitnessApp()));
 }
 

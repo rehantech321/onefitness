@@ -113,7 +113,7 @@ class _EquipmentLibraryScreenState extends ConsumerState<EquipmentLibraryScreen>
                 Row(
                   children: [
                     Expanded(
-                      child: AppField(
+                      child: AppField(kind: FieldKind.name,
                         controller: _name,
                         placeholder: "e.g. Kettlebell 16kg",
                         onChanged: (_) {
@@ -131,7 +131,7 @@ class _EquipmentLibraryScreenState extends ConsumerState<EquipmentLibraryScreen>
             ),
           ),
           const SizedBox(height: 14),
-          AppField(controller: _search, placeholder: "Search equipment…", onChanged: (_) => setState(() {})),
+          AppField(kind: FieldKind.search, controller: _search, placeholder: "Search equipment…", onChanged: (_) => setState(() {})),
           const SizedBox(height: 10),
           if (all.isEmpty)
             const HintBox(text: "No equipment yet — add the first item above.")

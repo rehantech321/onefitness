@@ -1,3 +1,5 @@
+import "../../core/widgets/app_text_field.dart" show FieldKind;
+
 /// A single form field within an intake schema — mirrors the question shape
 /// in src/features/intake/schemas.js.
 class IntakeQuestion {
@@ -5,6 +7,7 @@ class IntakeQuestion {
     required this.id,
     required this.label,
     required this.type, // "text" | "textarea" | "single" | "multi" | "scale"
+    this.inputKind,
     this.options = const [],
     this.min,
     this.max,
@@ -15,6 +18,14 @@ class IntakeQuestion {
   final String id;
   final String label;
   final String type;
+
+  /// For a "text" question, what sort of answer it takes — which decides
+  /// the keyboard the client gets. An age or a phone number is still a
+  /// "text" question structurally; without this it would raise the letter
+  /// keyboard and the client would have to switch to digits by hand for
+  /// every one of them. Null means ordinary prose.
+  final FieldKind? inputKind;
+
   final List<String> options;
   final int? min;
   final int? max;

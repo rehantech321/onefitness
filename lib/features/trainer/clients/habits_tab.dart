@@ -234,7 +234,7 @@ class _AddCustomHabitRowState extends State<_AddCustomHabitRow> {
         children: [
           SizedBox(width: 52, child: AppField(controller: _emoji)),
           const SizedBox(width: 8),
-          Expanded(child: AppField(controller: _label, placeholder: "Custom habit name…")),
+          Expanded(child: AppField(kind: FieldKind.name, controller: _label, placeholder: "Custom habit name…")),
           const SizedBox(width: 8),
           BtnGhost(
             onPressed: () {

@@ -8,6 +8,7 @@ import "../../core/legal/terms_text.dart";
 import "../../core/supabase/supabase_service.dart";
 import "../../core/theme/app_colors.dart";
 import "../../core/utils/photo_picker_utils.dart";
+import "../../core/widgets/city_state_fields.dart";
 import "../../core/widgets/widgets.dart";
 import "../../data/providers/client_providers.dart";
 import "../../data/providers/supabase_bootstrap_provider.dart";
@@ -38,6 +39,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
   final _password2 = TextEditingController();
   final _phone = TextEditingController();
   final _city = TextEditingController();
+  final _state = TextEditingController();
   final _birthday = TextEditingController();
   final _coachCode = TextEditingController();
   String? _photoDataUrl;
@@ -70,6 +72,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
     _password2.dispose();
     _phone.dispose();
     _city.dispose();
+    _state.dispose();
     _birthday.dispose();
     _coachCode.dispose();
     super.dispose();
@@ -143,6 +146,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
         lastName: lastName,
         phone: phone,
         city: city,
+        state: _state.text.trim(),
         birthday: _birthday.text.trim().isEmpty ? null : _birthday.text.trim(),
         coachCode: _coachCode.text.trim().isEmpty ? null : _coachCode.text.trim(),
       );
@@ -249,14 +253,14 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                   Expanded(
                     child: FieldLabeled(
                       label: "First name",
-                      child: AppField(controller: _firstName, onChanged: (_) => setState(() => _error = null)),
+                      child: AppField(kind: FieldKind.name, controller: _firstName, onChanged: (_) => setState(() => _error = null)),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: FieldLabeled(
                       label: "Last name",
-                      child: AppField(controller: _lastName, onChanged: (_) => setState(() => _error = null)),
+                      child: AppField(kind: FieldKind.name, controller: _lastName, onChanged: (_) => setState(() => _error = null)),
                     ),
                   ),
                 ],
@@ -269,12 +273,12 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Password",
-                child: AppField(controller: _password, placeholder: "At least 6 characters", obscureText: true, onChanged: (_) => setState(() => _error = null)),
+                child: AppField(kind: FieldKind.password, controller: _password, placeholder: "At least 6 characters", obscureText: true, onChanged: (_) => setState(() => _error = null)),
               ),
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Confirm password",
-                child: AppField(controller: _password2, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
+                child: AppField(kind: FieldKind.password, controller: _password2, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
               ),
               const SizedBox(height: 10),
               FieldLabeled(
@@ -289,13 +293,13 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              FieldLabeled(
-                label: "City (optional)",
-                child: AppField(controller: _city, onChanged: (_) => setState(() => _error = null)),
-              ),
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Text("Helps us show you coaches near you.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
+              CityStateFields(
+                city: _city,
+                state: _state,
+                cityLabel: "City (optional)",
+                stateLabel: "State",
+                helper: "Helps us show you the gym and coaches nearest you.",
+                onChanged: () => setState(() => _error = null),
               ),
               const SizedBox(height: 10),
               FieldLabeled(
@@ -320,7 +324,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Coach Code (optional)",
-                child: AppField(controller: _coachCode, placeholder: "e.g. JESS10", onChanged: (_) => setState(() => _error = null)),
+                child: AppField(kind: FieldKind.code, controller: _coachCode, placeholder: "e.g. JESS10", onChanged: (_) => setState(() => _error = null)),
               ),
               const Padding(
                 padding: EdgeInsets.only(top: 4),

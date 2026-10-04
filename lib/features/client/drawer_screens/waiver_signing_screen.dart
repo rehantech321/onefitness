@@ -214,7 +214,7 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
           const _StepLabel(n: 2, text: "Emergency contact"),
           Row(
             children: [
-              Expanded(child: FieldLabeled(label: "Full name", child: AppField(controller: _ecName, onChanged: (_) => setState(() {})))),
+              Expanded(child: FieldLabeled(label: "Full name", child: AppField(kind: FieldKind.name, controller: _ecName, onChanged: (_) => setState(() {})))),
               const SizedBox(width: 8),
               Expanded(child: FieldLabeled(label: "Phone", child: AppField(controller: _ecPhone, keyboardType: TextInputType.phone, onChanged: (_) => setState(() {})))),
             ],
@@ -274,7 +274,7 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
             if (isMinor) ...[
               const HintBox(text: "You're under 18, so a parent or legal guardian needs to sign on your behalf."),
               const SizedBox(height: 8),
-              FieldLabeled(label: "Parent / guardian full name", child: AppField(controller: _guardianName, onChanged: (_) => setState(() {}))),
+              FieldLabeled(label: "Parent / guardian full name", child: AppField(kind: FieldKind.name, controller: _guardianName, onChanged: (_) => setState(() {}))),
               const SizedBox(height: 10),
             ],
             _SignatureCard(

@@ -173,6 +173,7 @@ class SupabaseService {
     String? lastName,
     String? phone,
     String? city,
+    String? state,
     String? birthday,
     String? coachCode,
   }) async {
@@ -211,6 +212,7 @@ class SupabaseService {
     await client.from("clients").upsert({
       "profile_id": userId,
       if (city != null) "city": city,
+      if (state != null) "state": state,
       if (birthday != null) "birthday": birthday,
       // A referred client becomes that coach's client — this is what
       // makes the coach's roster-scoped Needs Attention alert (and their
@@ -521,6 +523,36 @@ class SupabaseService {
         .maybeSingle();
     final data = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
     return _clientRecordFromJson(id, data);
+  }
+
+  /// Every listed client's record in a handful of requests instead of one
+  /// per client — the per-client loop made startup grow with roster size.
+  /// Ids are chunked so the `in` filter never pushes the request URL past
+  /// what the gateway accepts. A client with no row gets the same blank
+  /// record [loadClientRecord] would have returned.
+  static Future<Map<String, ClientRecord>> loadClientRecords(
+    List<String> ids,
+  ) async {
+    const chunkSize = 100;
+    final chunks = [
+      for (var i = 0; i < ids.length; i += chunkSize)
+        ids.sublist(i, i + chunkSize > ids.length ? ids.length : i + chunkSize),
+    ];
+    final results = await Future.wait(chunks.map(
+      (chunk) => client
+          .from("client_records")
+          .select("profile_id, data")
+          .inFilter("profile_id", chunk),
+    ));
+    final dataById = <String, Map<String, dynamic>>{
+      for (final rows in results)
+        for (final r in rows)
+          r["profile_id"] as String:
+              (r["data"] as Map?)?.cast<String, dynamic>() ?? const {},
+    };
+    return {
+      for (final id in ids) id: _clientRecordFromJson(id, dataById[id] ?? const {}),
+    };
   }
 
   /// Owner-edited membership plans (jsonb-blob-per-row, same convention as
@@ -1376,6 +1408,23 @@ class SupabaseService {
   /// `profiles`, city on `clients`) — mirrors updateClientRow's field split
   /// in supabaseData.js, trimmed to the fields the app's Edit Profile screen
   /// actually exposes.
+  /// Turns a unique-index violation on a contact detail into something a
+  /// person can act on. Both indexes are partial and expression-based, so
+  /// the message names the index rather than a column — unreadable as-is.
+  static Never _rethrowContactClash(Object e) {
+    final raw = e.toString();
+    if (raw.contains("profiles_unique_phone_digits")) {
+      throw Exception(
+        "That phone number is already on another account. "
+        "Each person needs their own number.",
+      );
+    }
+    if (raw.contains("profiles_unique_email")) {
+      throw Exception("That email address is already on another account.");
+    }
+    throw e;
+  }
+
   static Future<void> updateClientRow(
     String id, {
     String? name,
@@ -1385,6 +1434,7 @@ class SupabaseService {
     String? phone,
     String? photo,
     String? city,
+    String? state,
     String? birthday,
     String? membershipPlanId,
     bool? redeemPointsNextRenewal,
@@ -1400,10 +1450,18 @@ class SupabaseService {
       if (phone != null) "phone": phone,
       if (photo != null) "photo_url": photo,
     };
-    if (profileFields.isNotEmpty)
-      await client.from("profiles").update(profileFields).eq("id", id);
+    if (profileFields.isNotEmpty) {
+      try {
+        await client.from("profiles").update(profileFields).eq("id", id);
+      } catch (e) {
+        // A reused phone or email surfaces as a unique-index violation
+        // naming the index; say what actually went wrong instead.
+        _rethrowContactClash(e);
+      }
+    }
     final clientFields = <String, dynamic>{
       if (city != null) "city": city,
+      if (state != null) "state": state,
       if (birthday != null) "birthday": birthday,
       if (membershipPlanId != null) "membership_plan_id": membershipPlanId,
       if (redeemPointsNextRenewal != null)
@@ -1480,8 +1538,15 @@ class SupabaseService {
       if (phone != null) "phone": phone,
       if (photo != null) "photo_url": photo,
     };
-    if (profileFields.isNotEmpty)
-      await client.from("profiles").update(profileFields).eq("id", id);
+    if (profileFields.isNotEmpty) {
+      try {
+        await client.from("profiles").update(profileFields).eq("id", id);
+      } catch (e) {
+        // A reused phone or email surfaces as a unique-index violation
+        // naming the index; say what actually went wrong instead.
+        _rethrowContactClash(e);
+      }
+    }
     final trainerFields = <String, dynamic>{
       if (title != null) "title": title,
       if (disciplines != null) "disciplines": disciplines,
@@ -2624,6 +2689,7 @@ class SupabaseService {
     String? lastName,
     String? phone,
     String? city,
+    String? state,
     String? birthday,
     String? password,
     String? photo,
@@ -2640,6 +2706,7 @@ class SupabaseService {
         if (lastName != null && lastName.trim().isNotEmpty) "lastName": lastName.trim(),
         if (phone != null && phone.trim().isNotEmpty) "phone": phone.trim(),
         if (city != null && city.trim().isNotEmpty) "city": city.trim(),
+        if (state != null && state.trim().isNotEmpty) "state": state.trim(),
         if (birthday != null && birthday.trim().isNotEmpty) "birthday": birthday.trim(),
         if (primaryTrainerId != null) "primaryTrainerId": primaryTrainerId,
       });
@@ -3566,6 +3633,7 @@ class SupabaseService {
       phone: profile["phone"] as String?,
       photo: profile["photo_url"] as String?,
       city: c["city"] as String?,
+      state: c["state"] as String?,
       birthday: c["birthday"] as String?,
       membershipPlanId: c["membership_plan_id"] as String?,
       plans: _safeMap(

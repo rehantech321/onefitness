@@ -102,7 +102,7 @@ class _ClientMealPickerBodyState extends ConsumerState<_ClientMealPickerBody> {
                 style: const TextStyle(fontSize: 12, color: AppColors.mute),
               ),
             const SizedBox(height: 10),
-            AppField(
+            AppField(kind: FieldKind.search,
               controller: _search,
               placeholder: "Search meals or ingredients…",
               onChanged: (_) => setState(() {}),

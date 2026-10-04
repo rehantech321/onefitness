@@ -192,7 +192,7 @@ class _ScaledMealCardState extends State<ScaledMealCard> {
             ),
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: AppField(
+            child: AppField(kind: FieldKind.measure,
               controller: TextEditingController(text: meal.time ?? ""),
               placeholder: "When? (optional, e.g. 7am)",
               onChanged: (v) => widget.onUpdate(meal.copyWith(time: v)),

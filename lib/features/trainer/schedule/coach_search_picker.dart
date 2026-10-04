@@ -48,7 +48,7 @@ class _CoachSearchPickerState extends State<CoachSearchPicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        AppField(controller: _controller, placeholder: "Search coaches…", onChanged: (_) => setState(() {})),
+        AppField(kind: FieldKind.search, controller: _controller, placeholder: "Search coaches…", onChanged: (_) => setState(() {})),
         if (widget.onCreateCoach != null)
           Align(
             alignment: Alignment.centerLeft,

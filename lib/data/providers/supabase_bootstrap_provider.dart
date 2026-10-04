@@ -1,3 +1,4 @@
+import "dart:async";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:supabase_flutter/supabase_flutter.dart";
 import "../../core/notifications/push_service.dart";
@@ -202,6 +203,12 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final List<String> equipment;
   final List<CoachMeritBadge> coachMeritBadges;
   final List<CoachPrEvent> coachPrEvents;
+  // Chat threads and the signed-in profile don't depend on anything below,
+  // so they go out with the core fetch rather than after it. ignore() only
+  // stops an error being reported as unhandled if the core fetch bails out
+  // early — awaiting them further down still sees the result or the error.
+  final messagesF = SupabaseService.loadAllMessages()..ignore();
+  final profileF = SupabaseService.getSessionProfile()..ignore();
   try {
     // Firing all 16 requests before awaiting any of them (rather than one
     // `await` per line) starts them concurrently — each async call runs up
@@ -308,10 +315,9 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     ref.read(platformSettingsProvider.notifier).update((_) => resolvedSettings);
   }
 
-  final clientRecords = <String, ClientRecord>{};
-  await Future.wait(roster.map((c) async {
-    clientRecords[c.id] = await SupabaseService.loadClientRecord(c.id);
-  }));
+  final clientRecords = await SupabaseService.loadClientRecords(
+    roster.map((c) => c.id).toList(),
+  );
 
   // Chat lives in the `messages` table now, not in the record's jsonb. Any
   // older entries still in `comms` are kept and merged, so test threads
@@ -319,7 +325,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   // time. The table's own policy has already dropped blocked users' rows,
   // so blocking takes effect here without any client-side filtering.
   try {
-    final byClient = await SupabaseService.loadAllMessages();
+    final byClient = await messagesF;
     for (final entry in byClient.entries) {
       final existing = clientRecords[entry.key];
       if (existing == null) continue;
@@ -335,7 +341,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   ref.read(trainerClientRecordsProvider.notifier).setAll(clientRecords);
 
   // ── Restore who's signed in from the current Supabase Auth session ──
-  final profile = await SupabaseService.getSessionProfile();
+  final profile = await profileF;
   if (profile == null) return;
 
   final role = profile["role"] as String?;
@@ -376,8 +382,10 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   // session is resolved, not at startup. This runs on both a cold start with
   // an existing session and a fresh sign-in, which is exactly the coverage
   // needed. Never throws (see PushService), so a push problem can't break
-  // sign-in.
-  await PushService.registerForCurrentUser();
+  // sign-in. Not awaited: it can sit on the OS permission prompt and a
+  // token round trip, and the app shouldn't stay on the loading spinner
+  // for either.
+  unawaited(PushService.registerForCurrentUser());
 }
 
 /// Shared by squad_dashboard_screen.dart (client) and squad_tab.dart (coach)

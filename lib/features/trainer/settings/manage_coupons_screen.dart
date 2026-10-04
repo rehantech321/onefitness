@@ -217,7 +217,7 @@ class _CouponEditFormState extends State<_CouponEditForm> {
           const SizedBox(height: 12),
           FieldLabeled(
             label: "Code",
-            child: AppField(
+            child: AppField(kind: FieldKind.code,
               controller: _code,
               placeholder: "e.g. SUMMER10",
               onChanged: (_) => setState(() {}),

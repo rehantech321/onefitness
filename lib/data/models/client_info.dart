@@ -10,6 +10,7 @@ class ClientInfo {
     this.phone,
     this.photo,
     this.city,
+    this.state,
     this.birthday,
     this.membershipPlanId,
     this.plans = const [],
@@ -43,6 +44,10 @@ class ClientInfo {
   final String? phone;
   final String? photo;
   final String? city;
+
+  /// Geocoded together with [city] to find the gym nearest this client —
+  /// a bare city name is ambiguous across states.
+  final String? state;
   final String? birthday;
   final String? membershipPlanId;
   final List<ClientPlanEnrollment> plans;
@@ -135,6 +140,7 @@ class ClientInfo {
     String? phone,
     String? photo,
     String? city,
+    String? state,
     String? birthday,
     String? membershipPlanId,
     bool? membershipPaused,
@@ -169,6 +175,7 @@ class ClientInfo {
         phone: phone ?? this.phone,
         photo: photo ?? this.photo,
         city: city ?? this.city,
+        state: state ?? this.state,
         birthday: birthday ?? this.birthday,
         membershipPlanId: clearMembershipPlanId ? null : (membershipPlanId ?? this.membershipPlanId),
         plans: plans ?? this.plans,

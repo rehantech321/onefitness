@@ -163,7 +163,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                               const SizedBox(height: 5),
                               FieldLabeled(
                                 label: "Password",
-                                child: AppField(
+                                child: AppField(kind: FieldKind.password,
                                   controller: _password,
                                   placeholder: "••••••",
                                   obscureText: true,

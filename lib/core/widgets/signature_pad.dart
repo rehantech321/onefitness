@@ -105,6 +105,9 @@ class _SignaturePadState extends State<SignaturePad> {
                     child: TextField(
                       controller: _typedController,
                       textAlign: TextAlign.center,
+                      keyboardType: TextInputType.name,
+                      textCapitalization: TextCapitalization.words,
+                      autocorrect: false,
                       onChanged: (_) {
                         setState(() {});
                         _capture();

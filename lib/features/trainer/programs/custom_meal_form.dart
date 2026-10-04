@@ -111,7 +111,7 @@ class _CustomMealFormState extends State<CustomMealForm> {
         children: [
           BackBar(onBack: widget.onCancel, title: "Create Custom Meal"),
           const SizedBox(height: 12),
-          FieldLabeled(label: "Meal name *", child: AppField(controller: _name, placeholder: "e.g. Protein Pancakes")),
+          FieldLabeled(label: "Meal name *", child: AppField(kind: FieldKind.name, controller: _name, placeholder: "e.g. Protein Pancakes")),
           const SizedBox(height: 14),
           const Text("INGREDIENTS *", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 8),
@@ -120,11 +120,11 @@ class _CustomMealFormState extends State<CustomMealForm> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Expanded(flex: 3, child: AppField(controller: row.item, placeholder: "Ingredient", onChanged: (_) => setState(() {}))),
+                    Expanded(flex: 3, child: AppField(kind: FieldKind.name, controller: row.item, placeholder: "Ingredient", onChanged: (_) => setState(() {}))),
                     const SizedBox(width: 5),
                     Expanded(child: AppField(controller: row.qty, placeholder: "Qty", keyboardType: const TextInputType.numberWithOptions(decimal: true), onChanged: (_) => setState(() {}))),
                     const SizedBox(width: 5),
-                    Expanded(child: AppField(controller: row.unit, placeholder: "Unit")),
+                    Expanded(child: AppField(kind: FieldKind.measure, controller: row.unit, placeholder: "Unit")),
                     IconButton(
                       onPressed: _rows.length == 1 ? null : () => setState(() {
                             row.dispose();

@@ -493,7 +493,7 @@ class _RecipientSetupState extends State<_RecipientSetup> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.txt),
           ),
           const SizedBox(height: 14),
-          AppField(
+          AppField(kind: FieldKind.search,
             controller: _searchController,
             placeholder: "Search clients by name or email…",
             onChanged: (v) => setState(() => _query = v),
@@ -805,6 +805,8 @@ class _ComposerState extends State<_Composer> {
                 constraints: const BoxConstraints(maxHeight: 110),
                 child: TextField(
                   controller: widget.controller,
+      keyboardType: TextInputType.multiline,
+      textCapitalization: TextCapitalization.sentences,
                   minLines: 1,
                   maxLines: 4,
                   style: const TextStyle(color: AppColors.txt, fontSize: 14),

@@ -354,7 +354,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 const SizedBox(height: 12),
                 FieldLabeled(
                   label: "Approval code",
-                  child: AppField(
+                  child: AppField(kind: FieldKind.digits,
                     controller: _code,
                     placeholder: "000000",
                     onChanged: (_) => setState(() => _codeError = null),
@@ -485,7 +485,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                   Expanded(
                     child: FieldLabeled(
                       label: "First name",
-                      child: AppField(
+                      child: AppField(kind: FieldKind.name,
                         controller: _firstName,
                         onChanged: (_) => setState(() => _error = null),
                       ),
@@ -495,7 +495,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                   Expanded(
                     child: FieldLabeled(
                       label: "Last name",
-                      child: AppField(
+                      child: AppField(kind: FieldKind.name,
                         controller: _lastName,
                         onChanged: (_) => setState(() => _error = null),
                       ),
@@ -506,7 +506,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Title",
-                child: AppField(
+                child: AppField(kind: FieldKind.name,
                   controller: _title,
                   placeholder: "Coach",
                   onChanged: (_) => setState(() => _error = null),
@@ -742,12 +742,12 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                         children: [
                           FieldLabeled(
                             label: "Location name",
-                            child: AppField(controller: _locationName),
+                            child: AppField(kind: FieldKind.name, controller: _locationName),
                           ),
                           const SizedBox(height: 8),
                           FieldLabeled(
                             label: "Address",
-                            child: AppField(controller: _locationAddress),
+                            child: AppField(kind: FieldKind.address, controller: _locationAddress),
                           ),
                           const SizedBox(height: 8),
                           Align(
@@ -817,7 +817,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              AppField(controller: _coachCode, placeholder: "e.g. JESS10"),
+              AppField(kind: FieldKind.code, controller: _coachCode, placeholder: "e.g. JESS10"),
               const Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text(
@@ -893,7 +893,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Create password",
-                child: AppField(
+                child: AppField(kind: FieldKind.password,
                   controller: _password,
                   placeholder: "At least 6 characters",
                   obscureText: true,
@@ -903,7 +903,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
               const SizedBox(height: 10),
               FieldLabeled(
                 label: "Confirm password",
-                child: AppField(
+                child: AppField(kind: FieldKind.password,
                   controller: _password2,
                   placeholder: "••••••",
                   obscureText: true,

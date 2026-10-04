@@ -157,7 +157,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                                 const SizedBox(height: 5),
                                 FieldLabeled(
                                   label: "Password",
-                                  child: AppField(controller: _password, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
+                                  child: AppField(kind: FieldKind.password, controller: _password, placeholder: "••••••", obscureText: true, onChanged: (_) => setState(() => _error = null)),
                                 ),
                                 if (_error != null) ...[
                                   const SizedBox(height: 5),
@@ -256,7 +256,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                                   const SizedBox(height: 5),
                                   FieldLabeled(
                                     label: "Password",
-                                    child: AppField(
+                                    child: AppField(kind: FieldKind.password,
                                       controller: _ownerPassword,
                                       placeholder: "••••••",
                                       obscureText: true,
