@@ -141,6 +141,8 @@ class AppField extends StatelessWidget {
     this.inputFormatters,
     this.textCapitalization,
     this.autocorrect,
+    this.textInputAction,
+    this.onSubmitted,
   });
 
   final TextEditingController? controller;
@@ -166,6 +168,12 @@ class AppField extends StatelessWidget {
   /// Overrides for the rare field that doesn't fit its kind.
   final TextCapitalization? textCapitalization;
   final bool? autocorrect;
+
+  /// e.g. a Search key on a search box. Single-line fields default to Done.
+  final TextInputAction? textInputAction;
+
+  /// Runs on the keyboard's action key, after the keyboard closes.
+  final ValueChanged<String>? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -206,8 +214,13 @@ class AppField extends StatelessWidget {
       // key on iOS: tapping anywhere outside the field closes it, and so
       // does the keyboard's own Done/return key on a single-line field.
       onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-      textInputAction: singleLine ? TextInputAction.done : null,
-      onSubmitted: singleLine ? (_) => FocusManager.instance.primaryFocus?.unfocus() : null,
+      textInputAction: textInputAction ?? (singleLine ? TextInputAction.done : null),
+      onSubmitted: singleLine || onSubmitted != null
+          ? (v) {
+              FocusManager.instance.primaryFocus?.unfocus();
+              onSubmitted?.call(v);
+            }
+          : null,
       buildCounter: maxLength == null ? null : (context, {required currentLength, required isFocused, maxLength}) => null,
       style: const TextStyle(color: AppColors.txt, fontSize: 14),
       cursorColor: AppColors.gold,

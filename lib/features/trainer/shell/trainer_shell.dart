@@ -75,8 +75,9 @@ const _titles = {
 /// Mirrors App.jsx's trainer-side chrome: top bar (hamburger + title),
 /// permission-gated hamburger drawer, and a bottom nav (Staff tab only for
 /// the owner). Each `trainerMode` destination routes to its own screen.
-/// "selfbook" has no drawer/bottom-nav entry of its own — it's reached only
-/// via the "Book session · Lead by example" strip below, same as the web.
+/// "selfbook" has no drawer/bottom-nav entry of its own; the dashboard's
+/// "Book session · Lead by example" strip that opened it has been removed,
+/// so it's currently unreachable (kept so it can be brought back).
 class TrainerShell extends ConsumerStatefulWidget {
   const TrainerShell({super.key});
 
@@ -305,70 +306,6 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // "Book session · Lead by example" — coach (non-owner) + dashboard
-                // only, mirrors the fixed strip App.jsx renders just above its
-                // own bottom toolbar.
-                if (!isOwner && mode == "dashboard")
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-                    child: InkWell(
-                      onTap: () => go("selfbook"),
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.bottomBarBg,
-                          border: Border.all(color: AppColors.goldDim),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              LucideIcons.dumbbell,
-                              size: 14,
-                              color: AppColors.gold,
-                            ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Book session",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.txt,
-                                      fontWeight: FontWeight.w700,
-                                      height: 1,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: EdgeInsets.only(top: 3),
-                                    child: Text(
-                                      "Lead by example",
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppColors.mute,
-                                        height: 1,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(
-                              LucideIcons.chevronRight,
-                              size: 13,
-                              color: AppColors.mute,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
                 SizedBox(
                   height: 58,
                   child: Row(

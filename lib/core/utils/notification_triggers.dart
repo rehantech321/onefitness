@@ -10,9 +10,13 @@ Future<void> notifyPlanAssigned({
   required String toEmail,
   required String toName,
   required String kind, // "workout" | "nutrition"
+  String? profileId,
 }) async {
-  if (toEmail.isEmpty) return;
   final label = kind == "workout" ? "workout" : "nutrition";
+  if (profileId != null) {
+    notifyPush(profileId: profileId, title: "New $label plan", body: "Your coach just assigned you a new $label plan. Open the app to check it out.", sms: true);
+  }
+  if (toEmail.isEmpty) return;
   try {
     await SupabaseService.sendEmail(
       to: toEmail,
@@ -30,15 +34,20 @@ const kSessionMilestones = [10, 25, 50, 100];
 /// longer per-event email copy. Silently a no-op end-to-end until the
 /// recipient has a registered device token (see SupabaseService.
 /// sendPushNotification's own doc comment).
+///
+/// [sms] also texts a client who opted in to texts — set for alerts about
+/// their bookings, plans and progress; left off for chat, which has its own
+/// SMS channel choice.
 Future<void> notifyPush({
   required String profileId,
   required String title,
   required String body,
   Map<String, String>? data,
+  bool sms = false,
 }) async {
   if (profileId.isEmpty) return;
   try {
-    await SupabaseService.sendPushNotification(profileId: profileId, title: title, body: body, data: data);
+    await SupabaseService.sendPushNotification(profileId: profileId, title: title, body: body, data: data, sms: sms);
   } catch (_) {}
 }
 
@@ -66,7 +75,7 @@ Future<void> notifySessionMilestoneIfCrossed({
     } catch (_) {}
   }
   if (profileId != null) {
-    notifyPush(profileId: profileId, title: "Milestone reached! 🎉", body: "You've completed $totalCheckedIn sessions at ONE Fitness.");
+    notifyPush(profileId: profileId, title: "Milestone reached! 🎉", body: "You've completed $totalCheckedIn sessions at ONE Fitness.", sms: true);
   }
 }
 
@@ -78,7 +87,11 @@ Future<void> notifyCoachComment({
   required String toEmail,
   required String toName,
   required String kind,
+  String? profileId,
 }) async {
+  if (profileId != null) {
+    notifyPush(profileId: profileId, title: "Your coach left you a comment", body: "Your coach commented on your $kind. Open the app to see it.", sms: true);
+  }
   if (toEmail.isEmpty) return;
   try {
     await SupabaseService.sendEmail(
@@ -109,8 +122,9 @@ Future<void> notifyGoalReachedIfCrossed({
   required List<Measurement> priorMeasurements,
   required Measurement latest,
   required double? goalWeight,
+  String? profileId,
 }) async {
-  if (toEmail.isEmpty || goalWeight == null) return;
+  if (goalWeight == null) return;
   final latestWeight = parseLeadingNum(latest.weight);
   if (latestWeight == null || (latestWeight - goalWeight).abs() > 0.5) return;
   final alreadyThereBefore = priorMeasurements
@@ -118,6 +132,10 @@ Future<void> notifyGoalReachedIfCrossed({
       .whereType<double>()
       .any((w) => (w - goalWeight).abs() <= 0.5);
   if (alreadyThereBefore) return;
+  if (profileId != null) {
+    notifyPush(profileId: profileId, title: "Goal reached! 🎉", body: "Your latest measurement shows you've reached your goal weight. Amazing work!", sms: true);
+  }
+  if (toEmail.isEmpty) return;
   try {
     await SupabaseService.sendEmail(
       to: toEmail,

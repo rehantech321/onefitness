@@ -46,7 +46,7 @@ class _PhotosTabState extends ConsumerState<PhotosTab> {
       if (text.isNotEmpty) {
         final info = ref.read(trainerRosterProvider).where((c) => c.id == widget.clientId);
         if (info.isNotEmpty) {
-          notifyCoachComment(toEmail: info.first.email ?? "", toName: info.first.name, kind: "progress photo");
+          notifyCoachComment(toEmail: info.first.email ?? "", toName: info.first.name, kind: "progress photo", profileId: info.first.id);
         }
       }
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Comment saved.")));

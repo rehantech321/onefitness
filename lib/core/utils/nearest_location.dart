@@ -1,6 +1,9 @@
 import "package:geocoding/geocoding.dart" as geo;
 import "package:geolocator/geolocator.dart";
 import "../../data/providers/platform_settings_provider.dart";
+import "address_utils.dart";
+
+export "address_utils.dart" show AddressParts;
 
 /// Finding the client's nearest gym, and how far away it is.
 ///
@@ -156,17 +159,37 @@ List<LocationDistance> distancesFrom(double lat, double lng, List<GymLocation> l
 /// The nearest street address to a point, for showing back what was picked
 /// on the map. Null when the platform geocoder can't name it.
 Future<String?> addressFor(double lat, double lng) async {
+  return (await placeFor(lat, lng))?.compose();
+}
+
+/// The street, city, state and ZIP at a point, for filling in the address
+/// fields after a map pick. Null when the platform geocoder can't name it.
+Future<AddressParts?> placeFor(double lat, double lng) async {
   try {
     final places = await geo.placemarkFromCoordinates(lat, lng);
     if (places.isEmpty) return null;
     final p = places.first;
-    final parts = [
-      [p.street, p.subThoroughfare].where((v) => (v ?? "").isNotEmpty).join(" ").trim(),
-      p.locality,
-      p.administrativeArea,
-      p.postalCode,
-    ].where((v) => (v ?? "").trim().isNotEmpty).cast<String>().toList();
-    return parts.isEmpty ? null : parts.join(", ");
+    String clean(String? v) => (v ?? "").trim();
+
+    // Number + street name when the geocoder splits them out. Otherwise
+    // `name`, or the first segment of `street` — on Android that's the
+    // whole formatted line ("2422 W Victory Blvd, Burbank, CA …"), which
+    // would repeat the city and state.
+    var street = [clean(p.subThoroughfare), clean(p.thoroughfare)].where((v) => v.isNotEmpty).join(" ");
+    if (clean(p.thoroughfare).isEmpty) {
+      final name = clean(p.name);
+      street = name.isNotEmpty && name != clean(p.postalCode) && name != clean(p.locality)
+          ? name
+          : clean(p.street).split(",").first.trim();
+    }
+    final city = clean(p.locality).isNotEmpty ? clean(p.locality) : clean(p.subLocality);
+    final parts = AddressParts(
+      street: street,
+      city: city,
+      state: stateCode(clean(p.administrativeArea)),
+      zip: clean(p.postalCode),
+    );
+    return parts.isEmpty ? null : parts;
   } catch (e) {
     return null;
   }

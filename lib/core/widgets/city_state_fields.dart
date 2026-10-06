@@ -1,6 +1,8 @@
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "../theme/app_colors.dart";
+import "address_fields.dart" show MapPickButton;
+import "map_location_picker.dart";
 import "widgets.dart";
 
 /// City and State side by side.
@@ -23,6 +25,7 @@ class CityStateFields extends StatelessWidget {
     this.helper = "Used to show you the gym nearest you.",
     this.cityLabel = "City",
     this.stateLabel = "State",
+    this.showMapButton = true,
   });
 
   final TextEditingController city;
@@ -33,6 +36,29 @@ class CityStateFields extends StatelessWidget {
   final String? helper;
   final String cityLabel;
   final String stateLabel;
+
+  /// "Set on map / search / use current location" — fills City and State
+  /// from wherever the pin lands.
+  final bool showMapButton;
+
+  Future<void> _pickOnMap(BuildContext context) async {
+    final picked = await showMapLocationPicker(
+      context,
+      title: "Where are you based?",
+      subtitle: "Search for your address or city, drag the map, or tap the crosshair to use where you are now.",
+    );
+    if (picked == null || !context.mounted) return;
+    final place = picked.place;
+    if (place == null || (place.city.isEmpty && place.state.isEmpty)) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
+        content: Text("Couldn't name that spot — type your city and state instead."),
+      ));
+      return;
+    }
+    if (place.city.isNotEmpty) city.text = place.city;
+    if (place.state.isNotEmpty) state.text = place.state;
+    onChanged?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +99,10 @@ class CityStateFields extends StatelessWidget {
             ),
           ],
         ),
+        if (showMapButton) ...[
+          const SizedBox(height: 8),
+          MapPickButton(onPressed: () => _pickOnMap(context)),
+        ],
         if (helper != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),

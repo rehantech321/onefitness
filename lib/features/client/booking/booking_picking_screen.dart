@@ -6,6 +6,7 @@ import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/trainer.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 
 class PendingPick {
   const PendingPick({required this.trainer, required this.sessionType, required this.discipline, required this.slot, this.locationName});
@@ -15,7 +16,7 @@ class PendingPick {
   final int slot;
 
   /// Where this particular session runs, when the owner created it at one of
-  /// the gym's other locations. Null falls back to the coach's location.
+  /// the gym's other locations. Null falls back to the gym's default.
   final String? locationName;
 }
 
@@ -26,6 +27,7 @@ class BookingPickingScreen extends StatelessWidget {
   const BookingPickingScreen({
     super.key,
     required this.pick,
+    this.location,
     required this.date,
     required this.onBack,
     required this.onConfirm,
@@ -34,6 +36,10 @@ class BookingPickingScreen extends StatelessWidget {
   });
 
   final PendingPick pick;
+
+  /// Where the session happens — resolved by the booking screen (the
+  /// session's own location, else the owner's default). Null hides the card.
+  final GymLocation? location;
   final String date;
   final VoidCallback onBack;
   final VoidCallback onConfirm;
@@ -80,7 +86,7 @@ class BookingPickingScreen extends StatelessWidget {
               ],
             ),
           ),
-          if (t.locationName != null) ...[
+          if (location != null) ...[
             const SectionLabel("Location"),
             AppCard(
               borderColor: AppColors.gold,
@@ -92,13 +98,18 @@ class BookingPickingScreen extends StatelessWidget {
                     children: [
                       const Icon(LucideIcons.mapPin, size: 13, color: AppColors.gold),
                       const SizedBox(width: 6),
-                      Text(t.locationName!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      Expanded(child: Text(location!.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
                     ],
                   ),
-                  if (t.locationAddress != null)
+                  if (location!.address.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 3),
-                      child: Text(t.locationAddress!, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                      child: Text(location!.address, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                    ),
+                  if (location!.hint.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(location!.hint, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
                     ),
                 ],
               ),

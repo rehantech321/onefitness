@@ -37,6 +37,26 @@ class DayView extends ConsumerWidget {
 
     final relevantTrainers = isOwner ? trainers : trainers.where((t) => t.id == trainerAuth).toList();
 
+    // Sessions the owner created for this date that nobody has booked yet —
+    // they exist only as availability, so the booking-driven list would
+    // never show them.
+    final openSessions = {
+      for (final t in relevantTrainers)
+        t.id: isPast
+            ? const <Offering>[]
+            : trainerOfferingsOn(t, date)
+                .where((o) => o.oneOff && !bookings.any((b) => b.trainerId == t.id && b.slot == o.slot))
+                .toList(),
+    };
+    // A session is one coach at one time slot, however many clients are in
+    // it — the same grouping the cards below use. Counting bookings instead
+    // showed one 4-person class as "4 sessions".
+    final sessionCount = bookings.map((b) => "${b.trainerId}|${b.slot}").toSet().length +
+        openSessions.values.fold<int>(0, (n, l) => n + l.length);
+    // Distinct people, so a client booked into two classes counts once; a
+    // cancelled booking doesn't count them as attending.
+    final clientCount = bookings.where((b) => b.status != "cancelled").map((b) => b.clientId).toSet().length;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -61,7 +81,7 @@ class DayView extends ConsumerWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("${bookings.length} session${bookings.length == 1 ? '' : 's'} · ${bookings.map((b) => b.clientId).toSet().length} clients", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  Text("$sessionCount session${sessionCount == 1 ? '' : 's'} · $clientCount client${clientCount == 1 ? '' : 's'}", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -88,14 +108,7 @@ class DayView extends ConsumerWidget {
               trainerId: trainer.id,
               trainerName: trainer.displayTitle,
               date: date,
-              // Sessions the owner created for this date that nobody has
-              // booked yet — they exist only as availability, so the
-              // booking-driven list below would never show them.
-              openSessions: isPast
-                  ? const []
-                  : trainerOfferingsOn(trainer, date)
-                      .where((o) => o.oneOff && !bookings.any((b) => b.trainerId == trainer.id && b.slot == o.slot))
-                      .toList(),
+              openSessions: openSessions[trainer.id]!,
               bookings: bookings.where((b) => b.trainerId == trainer.id).toList(),
               blocked: blocked.where((b) => b.trainerId == trainer.id).toList(),
               roster: roster,

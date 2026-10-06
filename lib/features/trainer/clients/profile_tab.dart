@@ -21,6 +21,7 @@ import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "billing_anchor_section.dart";
 import "purchase_for_client_section.dart";
+import "../../../core/utils/phone_guard.dart";
 
 /// Mirrors Profile.jsx (viewed from the coach side, via TrainerView). Trimmed
 /// vs. the web: Edit Profile is a simplified name/email/phone/city form here
@@ -1367,6 +1368,11 @@ class _EditSectionState extends State<_EditSection> {
   }
 
   Future<void> _submit() async {
+    final gymErr = gymNumberError(context, _phone.text.trim());
+    if (gymErr != null) {
+      setState(() => _err = gymErr);
+      return;
+    }
     setState(() {
       _busy = true;
       _err = null;

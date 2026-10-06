@@ -4,6 +4,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/nearest_location.dart";
+import "../../../core/widgets/address_fields.dart";
 import "../../../core/widgets/map_location_picker.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
@@ -383,10 +384,51 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     child: _StableTextField(value: s.locationName, placeholder: "e.g. ONE Fitness Studio", onChanged: (v) => _set((d) => d.copyWith(locationName: v))),
                   ),
                   const SizedBox(height: 10),
-                  FieldLabeled(
-                    label: "Address",
-                    child: _StableTextField(value: s.locationAddress, placeholder: "Street, city, state, ZIP", onChanged: (v) => _set((d) => d.copyWith(locationAddress: v))),
+                  AddressFields(
+                    address: s.locationAddress,
+                    onChanged: (v) => _set((d) => d.copyWith(locationAddress: v)),
                   ),
+                  const SizedBox(height: 10),
+                  // Search, drag the map, or use the phone's position; the
+                  // street, city, state and ZIP fill in from wherever the
+                  // pin lands, and the pin itself is kept for distances.
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showMapLocationPicker(
+                        context,
+                        title: "Where is the gym?",
+                        subtitle: "Search for the address, drag the map onto the gym, or tap the crosshair to use where you are now.",
+                        initial: s.locationLat != null && s.locationLng != null
+                            ? PickedPoint(lat: s.locationLat!, lng: s.locationLng!)
+                            : null,
+                      );
+                      if (picked == null) return;
+                      final address = picked.address;
+                      _set((d) => d.copyWith(
+                            locationLat: picked.lat,
+                            locationLng: picked.lng,
+                            locationAddress: (address ?? "").isNotEmpty ? address : null,
+                          ));
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.gold,
+                      side: const BorderSide(color: AppColors.goldDim),
+                      minimumSize: const Size.fromHeight(44),
+                    ),
+                    icon: const Icon(LucideIcons.map, size: 15),
+                    label: Text(
+                      s.locationLat != null ? "Change on map / search" : "Set on map / search / use current location",
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  if (s.locationLat != null && s.locationLng != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        "Pinned at ${s.locationLat!.toStringAsFixed(5)}, ${s.locationLng!.toStringAsFixed(5)}",
+                        style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                      ),
+                    ),
                   const SizedBox(height: 10),
                   FieldLabeled(
                     label: "Parking / arrival notes",
@@ -394,7 +436,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    "A coach can still set their own location on their profile; that wins for their sessions. This is the gym-wide default.",
+                    "Clients booking a session see the default location below (or the session's own location, if it was created at another site). A coach's profile location doesn't change this.",
                     style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
                   const SizedBox(height: 10),
@@ -1276,28 +1318,28 @@ class _ExtraLocationsEditor extends StatelessWidget {
     // Outside the builder so it survives the dialog's own rebuilds.
     final pinned = ValueNotifier<PickedPoint?>(null);
     final name = TextEditingController(text: existing?.name ?? "");
-    final address = TextEditingController(text: existing?.address ?? "");
+    var addressText = existing?.address ?? "";
     final hint = TextEditingController(text: existing?.hint ?? "");
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         title: Text(existing == null ? "Add a location" : "Edit location"),
-        content: SingleChildScrollView(
-          child: Column(
+        content: StatefulBuilder(
+          builder: (ctx2, setDialogState) => SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               FieldLabeled(label: "Name", child: AppField(kind: FieldKind.name, controller: name, placeholder: "e.g. ONE Fitness Burbank")),
               const SizedBox(height: 8),
-              FieldLabeled(label: "Address", child: AppField(kind: FieldKind.address, controller: address, placeholder: "Street, city, state, ZIP")),
+              AddressFields(address: addressText, onChanged: (v) => addressText = v),
               const SizedBox(height: 8),
               FieldLabeled(label: "Parking / arrival notes", child: AppField(controller: hint, placeholder: "e.g. Park in the rear lot")),
               const SizedBox(height: 10),
               // Placing the pin is the reliable path: an address that won't
               // geocode, or one that lands on the wrong side of the block,
               // leaves the location out of every distance calculation.
-              StatefulBuilder(
-                builder: (ctx2, setDialogState) => Column(
+              Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     OutlinedButton.icon(
@@ -1305,7 +1347,7 @@ class _ExtraLocationsEditor extends StatelessWidget {
                         final picked = await showMapLocationPicker(
                           ctx,
                           title: "Where is this location?",
-                          subtitle: "Drag the map onto the gym, or tap the crosshair to use where you are now.",
+                          subtitle: "Search for the address, drag the map onto the gym, or tap the crosshair to use where you are now.",
                           initial: pinned.value ??
                               (existing != null && existing.hasCoords
                                   ? PickedPoint(lat: existing.lat!, lng: existing.lng!)
@@ -1313,9 +1355,8 @@ class _ExtraLocationsEditor extends StatelessWidget {
                         );
                         if (picked == null) return;
                         pinned.value = picked;
-                        if ((picked.address ?? "").isNotEmpty && address.text.trim().isEmpty) {
-                          address.text = picked.address!;
-                        }
+                        // Fills street, city, state and ZIP from the pin.
+                        if ((picked.address ?? "").isNotEmpty) addressText = picked.address!;
                         setDialogState(() {});
                       },
                       style: OutlinedButton.styleFrom(
@@ -1349,8 +1390,8 @@ class _ExtraLocationsEditor extends StatelessWidget {
                       ),
                   ],
                 ),
-              ),
             ],
+          ),
           ),
         ),
         actions: [
@@ -1364,7 +1405,7 @@ class _ExtraLocationsEditor extends StatelessWidget {
     final pin = pinned.value;
     final entry = GymLocation(
       name: name.text.trim(),
-      address: address.text.trim(),
+      address: addressText.trim(),
       hint: hint.text.trim(),
       // A pin always wins over geocoding the address — it's the one the
       // owner actually looked at.

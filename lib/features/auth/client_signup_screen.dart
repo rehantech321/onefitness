@@ -12,6 +12,8 @@ import "../../core/widgets/city_state_fields.dart";
 import "../../core/widgets/widgets.dart";
 import "../../data/providers/client_providers.dart";
 import "../../data/providers/supabase_bootstrap_provider.dart";
+import "../../core/utils/phone_guard.dart";
+import "../../core/utils/notification_triggers.dart";
 
 /// Real self-signup — creates an actual Supabase Auth account + `clients`
 /// row + blank `client_records` row (mirrors signUpClient in
@@ -125,6 +127,11 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
       setState(() => _error = "Passwords don't match.");
       return;
     }
+    final gymErr = gymNumberError(context, phone);
+    if (gymErr != null) {
+      setState(() => _error = gymErr);
+      return;
+    }
     if (!_over18) {
       setState(() => _error = "You must confirm you are 18 or older to use ONE Fitness.");
       return;
@@ -156,6 +163,12 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
       // false, so doing nothing correctly leaves them opted out.
       if (_smsConsent) {
         await SupabaseService.updateSmsOptIn(userId, true);
+        notifyPush(
+          profileId: userId,
+          title: "Welcome to ONE Fitness",
+          body: "Your account is set up. You'll get booking confirmations, reminders and waitlist offers here. Reply STOP to opt out.",
+          sms: true,
+        );
       }
       await SupabaseService.recordTermsAcceptance(
         userId,

@@ -476,6 +476,16 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     }
   }
 
+  /// Where [pick] happens: the session's own location if it has one, else
+  /// the location the owner marked as default in Customize Platform.
+  GymLocation? _pickLocation(PendingPick pick) {
+    final settings = ref.read(platformSettingsProvider);
+    final name = pick.locationName ?? settings.defaultLocation?.name;
+    if (name == null || name.trim().isEmpty) return null;
+    final match = settings.allLocations.where((l) => l.name == name);
+    return match.isNotEmpty ? match.first : GymLocation(name: name);
+  }
+
   Future<void> _confirmBooking() async {
     if (_busy) return;
     final info = ref.read(clientInfoProvider);
@@ -488,10 +498,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       slot: pick.slot,
       sessionType: pick.sessionType,
       discipline: pick.discipline,
-      // Falls back to the gym default so every booking records where
-      // it happens, even when neither the session nor the coach says.
-      locationName: pick.locationName ??
-          ref.read(platformSettingsProvider).locationForCoach(pick.trainer.locationName),
+      // The session's own location when the owner created it at a
+      // specific site, otherwise the owner's default — the same place the
+      // confirm screen showed. A coach's profile location isn't used.
+      locationName: _pickLocation(pick)?.name,
       planId: _pickPlanId,
       // Marks the free first session: it belongs to no plan and is left out
       // of every session count (see sessionsUsedThisPeriod).
@@ -516,6 +526,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           profileId: info.id,
           title: "Session rescheduled",
           body: "Your session is now ${niceDate(_date)} at ${fmtSlot(pick.slot)}.",
+          sms: true,
         );
       } else {
         ref.read(clientBookingsProvider.notifier).addBooking(saved);
@@ -523,6 +534,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           profileId: info.id,
           title: "Booking confirmed",
           body: "You're booked for ${niceDate(_date)} at ${fmtSlot(pick.slot)}.",
+          sms: true,
         );
       }
       // Notifications spec — "Low session balance": fires once, right at
@@ -537,6 +549,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             profileId: info.id,
             title: "Low session balance",
             body: "You have $remaining session${remaining == 1 ? '' : 's'} left this period.",
+            sms: true,
           );
         }
       }
@@ -659,6 +672,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         }),
         child: BookingPickingScreen(
           pick: _picking!,
+          location: _pickLocation(_picking!),
           date: _date,
           onBack: () => setState(() {
             _picking = null;
@@ -1401,7 +1415,7 @@ class _StepThreeState extends State<_StepThree> {
           final mine = bookings.any((b) => b.clientId == info.id && b.trainerId == t.id && b.date == date && b.slot == o.slot);
           // Where this slot actually happens: the session's own
           // location, else the coach's, else the gym default.
-          final where = o.locationName ?? t.locationName ?? widget.gymLocationName;
+          final where = o.locationName ?? widget.gymLocationName;
           final wanted = widget.locationFilter;
           if (wanted != null && where != wanted) continue;
           bySlot.putIfAbsent(o.slot, () => []).add(_SlotAvailability(trainer: t, open: cap - used, cap: cap, mine: mine, locationName: o.locationName));
@@ -1411,7 +1425,7 @@ class _StepThreeState extends State<_StepThree> {
       final dist = widget.locationDistances;
       if (dist.isNotEmpty) {
         double away(_SlotAvailability a) =>
-            dist[a.locationName ?? a.trainer.locationName ?? widget.gymLocationName] ?? double.infinity;
+            dist[a.locationName ?? widget.gymLocationName] ?? double.infinity;
         for (final list in bySlot.values) {
           list.sort((a, b) => away(a).compareTo(away(b)));
         }
@@ -1562,7 +1576,7 @@ class _StepThreeState extends State<_StepThree> {
                                           // Where this session runs: the location
                                           // it was created at, else the coach's
                                           // own, else the gym's main one.
-                                          if ((a.locationName ?? a.trainer.locationName ?? widget.gymLocationName).isNotEmpty)
+                                          if ((a.locationName ?? widget.gymLocationName).isNotEmpty)
                                             Padding(
                                               padding: const EdgeInsets.only(top: 3),
                                               child: Row(
@@ -1570,7 +1584,7 @@ class _StepThreeState extends State<_StepThree> {
                                                   const Icon(LucideIcons.mapPin, size: 11, color: AppColors.mute),
                                                   const SizedBox(width: 3),
                                                   Text(
-                                                    a.locationName ?? a.trainer.locationName ?? widget.gymLocationName,
+                                                    a.locationName ?? widget.gymLocationName,
                                                     style: const TextStyle(fontSize: 11, color: AppColors.mute),
                                                   ),
                                                 ],

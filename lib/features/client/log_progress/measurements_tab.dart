@@ -79,6 +79,7 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
         priorMeasurements: client.measurements,
         latest: entry,
         goalWeight: goalWeight,
+        profileId: info.id,
       );
       for (final c in _fieldControllers.values) {
         c.clear();

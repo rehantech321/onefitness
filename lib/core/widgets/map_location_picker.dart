@@ -1,3 +1,4 @@
+import "dart:async";
 import "package:flutter/material.dart";
 import "package:flutter_map/flutter_map.dart";
 import "package:geolocator/geolocator.dart";
@@ -10,14 +11,20 @@ import "widgets.dart";
 /// A point chosen on the map, with the address it resolved to when one
 /// could be found.
 class PickedPoint {
-  const PickedPoint({required this.lat, required this.lng, this.address});
+  const PickedPoint({required this.lat, required this.lng, this.place});
   final double lat;
   final double lng;
-  final String? address;
+
+  /// Street, city, state and ZIP at the point — null when the geocoder
+  /// couldn't name it.
+  final AddressParts? place;
+
+  /// The same, as the one-line address the settings store.
+  String? get address => place?.compose();
 }
 
-/// Drop a pin to set a location — used by the owner to place a gym exactly
-/// where it is (when an address won't geocode, or the geocoded point lands
+/// Search for a place, drop a pin, or use where you are to set a location —
+/// used by the owner to place a gym exactly where it is (when an address won't geocode, or the geocoded point lands
 /// on the wrong side of the block), and by a client to say where they are
 /// without granting location permission.
 ///
@@ -66,6 +73,72 @@ class _MapPickerSheetState extends State<_MapPickerSheet> {
   bool _locating = false;
   String? _note;
 
+  final _search = TextEditingController();
+  bool _searching = false;
+
+  /// What's under the pin right now, looked up a moment after the map
+  /// stops moving so the owner sees the city/state/ZIP before confirming.
+  AddressParts? _place;
+  LatLng? _placeFor;
+  bool _lookingUp = false;
+  Timer? _lookupDebounce;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initial != null) _scheduleLookup();
+  }
+
+  @override
+  void dispose() {
+    _lookupDebounce?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _scheduleLookup() {
+    _lookupDebounce?.cancel();
+    _lookupDebounce = Timer(const Duration(milliseconds: 600), _lookup);
+  }
+
+  Future<void> _lookup() async {
+    final at = _centre;
+    if (_placeFor == at) return;
+    if (mounted) setState(() => _lookingUp = true);
+    final place = await placeFor(at.latitude, at.longitude);
+    // The map may have moved on while this was in flight.
+    if (!mounted || at != _centre) return;
+    setState(() {
+      _place = place;
+      _placeFor = at;
+      _lookingUp = false;
+    });
+  }
+
+  void _moveTo(LatLng to) {
+    setState(() => _centre = to);
+    _map.move(to, 16);
+    _scheduleLookup();
+  }
+
+  Future<void> _runSearch() async {
+    final query = _search.text.trim();
+    if (query.isEmpty) return;
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _searching = true;
+      _note = null;
+    });
+    final hit = await geocodeAddress(query);
+    if (!mounted) return;
+    setState(() => _searching = false);
+    if (hit == null) {
+      setState(() => _note = "Couldn't find \"$query\". Try adding the city or ZIP.");
+      return;
+    }
+    _moveTo(LatLng(hit.lat, hit.lng));
+  }
+
   Future<void> _goToMyLocation() async {
     setState(() {
       _locating = true;
@@ -89,12 +162,8 @@ class _MapPickerSheetState extends State<_MapPickerSheet> {
         ),
       );
       if (!mounted) return;
-      final here = LatLng(pos.latitude, pos.longitude);
-      setState(() {
-        _centre = here;
-        _locating = false;
-      });
-      _map.move(here, 16);
+      setState(() => _locating = false);
+      _moveTo(LatLng(pos.latitude, pos.longitude));
     } on _PickerNote catch (e) {
       if (mounted) setState(() { _locating = false; _note = e.message; });
     } catch (_) {
@@ -110,15 +179,14 @@ class _MapPickerSheetState extends State<_MapPickerSheet> {
   Future<void> _confirm() async {
     // Reverse-geocoding is a nicety: the point is what matters, and an
     // address that won't resolve must not block confirming.
-    String? address;
-    try {
-      address = await addressFor(_centre.latitude, _centre.longitude);
-    } catch (_) {}
+    _lookupDebounce?.cancel();
+    final at = _centre;
+    final place = _placeFor == at ? _place : await placeFor(at.latitude, at.longitude);
     if (!mounted) return;
     Navigator.of(context).pop(PickedPoint(
-      lat: _centre.latitude,
-      lng: _centre.longitude,
-      address: address,
+      lat: at.latitude,
+      lng: at.longitude,
+      place: place,
     ));
   }
 
@@ -159,6 +227,28 @@ class _MapPickerSheetState extends State<_MapPickerSheet> {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: AppField(
+                    kind: FieldKind.address,
+                    controller: _search,
+                    placeholder: "Search an address or place",
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => _runSearch(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _searching ? null : _runSearch,
+                  icon: Icon(_searching ? LucideIcons.loader : LucideIcons.search, size: 18, color: AppColors.gold),
+                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 10),
           Expanded(
             child: Stack(
@@ -169,7 +259,10 @@ class _MapPickerSheetState extends State<_MapPickerSheet> {
                   options: MapOptions(
                     initialCenter: _centre,
                     initialZoom: widget.initial != null ? 16 : 11,
-                    onPositionChanged: (pos, _) => _centre = pos.center,
+                    onPositionChanged: (pos, _) {
+                      _centre = pos.center;
+                      _scheduleLookup();
+                    },
                   ),
                   children: [
                     TileLayer(
@@ -201,6 +294,33 @@ class _MapPickerSheetState extends State<_MapPickerSheet> {
                     foregroundColor: AppColors.gold,
                     onPressed: _locating ? null : _goToMyLocation,
                     child: Icon(_locating ? LucideIcons.loader : LucideIcons.crosshair, size: 18),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // What "Use this spot" will fill in, so the city, state and ZIP
+          // can be checked before confirming.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(LucideIcons.mapPin, size: 14, color: AppColors.gold),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _lookingUp
+                        ? "Finding address…"
+                        : (_place?.compose().isNotEmpty ?? false)
+                            ? _place!.compose()
+                            : "Move the map to the location, search for it, or use the crosshair.",
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.4,
+                      color: _place != null && !_lookingUp ? AppColors.txt : AppColors.mute,
+                      fontWeight: _place != null && !_lookingUp ? FontWeight.w600 : FontWeight.w400,
+                    ),
                   ),
                 ),
               ],

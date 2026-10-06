@@ -9,6 +9,7 @@ import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/widgets/city_state_fields.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
+import "../../../core/utils/phone_guard.dart";
 
 /// Coach/owner adding a client in person — the desk-signup path for someone
 /// who isn't going to download the app and register themselves first.
@@ -115,6 +116,11 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
     }
     if (password != _password2.text) {
       setState(() => _error = "Passwords don't match.");
+      return;
+    }
+    final gymErr = gymNumberError(context, phone);
+    if (gymErr != null) {
+      setState(() => _error = gymErr);
       return;
     }
     setState(() {

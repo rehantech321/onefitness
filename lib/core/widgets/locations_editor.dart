@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../theme/app_colors.dart";
 import "../../data/models/trainer.dart";
+import "address_fields.dart";
 import "app_buttons.dart";
 import "app_text_field.dart";
 
@@ -87,7 +88,14 @@ class _LocationsEditorState extends State<LocationsEditor> {
           children: [
             FieldLabeled(label: "Gym / location name *", child: AppField(kind: FieldKind.name, controller: _name, placeholder: "e.g. Iron Athletics")),
             const SizedBox(height: 8),
-            FieldLabeled(label: "Address *", child: AppField(kind: FieldKind.address, controller: _address, placeholder: "Street, City, State ZIP")),
+            // Keyed per location so switching which one is being edited
+            // re-reads the address instead of keeping the last one's fields.
+            AddressFields(
+              key: ValueKey(_editingId),
+              address: _address.text,
+              onChanged: (v) => _address.text = v,
+              showMapButton: true,
+            ),
             const SizedBox(height: 8),
             FieldLabeled(
               label: "Arrival / parking / suite hints",

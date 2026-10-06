@@ -9,12 +9,14 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/photo_picker_utils.dart";
+import "../../../core/widgets/address_fields.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/availability_block.dart";
 import "../staff/availability_block_editor.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
+import "../../../core/utils/phone_guard.dart";
 
 /// Real coach self-signup — mirrors TrainerForm.jsx's account-creation
 /// fields (photo, name, email, phone, disciplines, a location, bio,
@@ -235,6 +237,11 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
     }
     if (_disciplines.isEmpty) {
       setState(() => _error = "Choose at least one discipline.");
+      return;
+    }
+    final gymErr = gymNumberError(context, phone);
+    if (gymErr != null) {
+      setState(() => _error = gymErr);
       return;
     }
     if (!_over18) {
@@ -745,9 +752,10 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                             child: AppField(kind: FieldKind.name, controller: _locationName),
                           ),
                           const SizedBox(height: 8),
-                          FieldLabeled(
-                            label: "Address",
-                            child: AppField(kind: FieldKind.address, controller: _locationAddress),
+                          AddressFields(
+                            address: _locationAddress.text,
+                            onChanged: (v) => _locationAddress.text = v,
+                            showMapButton: true,
                           ),
                           const SizedBox(height: 8),
                           Align(

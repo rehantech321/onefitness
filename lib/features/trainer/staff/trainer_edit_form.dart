@@ -14,6 +14,7 @@ import "../../../data/models/availability_block.dart";
 import "../../../data/models/trainer.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "availability_block_editor.dart";
+import "../../../core/utils/phone_guard.dart";
 
 const _largeGroupDisciplines = {"hike", "outdoor-hiit"};
 
@@ -199,6 +200,8 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
       return setState(() => _error = "A valid email is required.");
     if (phone.isEmpty)
       return setState(() => _error = "Phone number is required.");
+    final gymErr = gymNumberError(context, phone);
+    if (gymErr != null) return setState(() => _error = gymErr);
     if (_disciplines.isEmpty)
       return setState(() => _error = "Choose at least one discipline.");
     final hasRegular = _disciplines.any(_isRegularDiscipline);

@@ -10,6 +10,7 @@ import "../models/client_info.dart";
 import "../models/client_record.dart";
 import "../models/coach_merit_badge.dart";
 import "../models/coach_pr_event.dart";
+import "../models/comm_message.dart";
 import "../models/exercise_def.dart";
 import "../models/meal_def.dart";
 import "../models/nutrition_library_entry.dart";
@@ -64,6 +65,23 @@ class TrainerClientRecordsNotifier extends Notifier<Map<String, ClientRecord>> {
   void remove(String clientId) => state = {...state}..remove(clientId);
 
   void setAll(Map<String, ClientRecord> next) => state = next;
+
+  /// Folds chat threads (from the `messages` table) into the matching
+  /// records, newest first. Keyed by message id, so a message that's
+  /// already present — from the record's own older `comms`, or put there by
+  /// the realtime channel — isn't shown twice. Clients not in the map are
+  /// skipped rather than created.
+  void mergeComms(Map<String, List<CommMessage>> byClient) {
+    final next = {...state};
+    for (final entry in byClient.entries) {
+      final existing = next[entry.key];
+      if (existing == null) continue;
+      final byId = {for (final m in existing.comms) m.id: m, for (final m in entry.value) m.id: m};
+      final merged = byId.values.toList()..sort((a, b) => b.sentAt.compareTo(a.sentAt));
+      next[entry.key] = existing.copyWith(comms: merged);
+    }
+    state = next;
+  }
 }
 
 final trainerClientRecordsProvider =

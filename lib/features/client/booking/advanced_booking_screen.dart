@@ -419,7 +419,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
             const SizedBox(height: 10),
             const HintBox(
               text:
-                  "You need an active membership or package to use Advanced Booking.",
+                  "You need an active membership or package to use Recurring Booking.",
             ),
           ],
         ),
@@ -476,7 +476,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
             .toList();
         return _StepScaffold(
           breadcrumb: _breadcrumb(_back),
-          title: "Advanced Booking — session type",
+          title: "Recurring Booking — session type",
           hint: "Set a weekly pattern and book multiple sessions at once.",
           children: options
               .map(
@@ -800,7 +800,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
               const Icon(LucideIcons.check, size: 36, color: AppColors.gold),
               const SizedBox(height: 16),
               const Text(
-                "Advanced Booking complete",
+                "Recurring Booking complete",
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 20),

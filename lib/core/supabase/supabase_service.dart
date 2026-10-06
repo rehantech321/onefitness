@@ -2782,16 +2782,21 @@ class SupabaseService {
   /// authenticated caller" posture as sendEmail — see send-push/index.ts.
   /// Silently a no-op end-to-end until the recipient has a registered
   /// device token, which won't exist until Firebase is configured.
+  ///
+  /// [sms] also texts the recipient, but only a client who opted in to
+  /// texts — the server checks (see _shared/notifySms.ts).
   static Future<void> sendPushNotification({
     required String profileId,
     required String title,
     required String body,
     Map<String, String>? data,
+    bool sms = false,
   }) => _invokeFunction("send-push", {
     "profileId": profileId,
     "title": title,
     "body": body,
     if (data != null) "data": data,
+    if (sms) "sms": true,
   });
 
   /// LEGACY — the hosted-Checkout redirect, no longer used by any screen.

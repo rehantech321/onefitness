@@ -182,8 +182,8 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
           else
             ...bySlotKey.entries.map((g) => _QueuedSlotCard(entries: g.value)),
           const SizedBox(height: 22),
-          const SectionLabel("Advanced Booking requests"),
-          const HintBox(text: "Requests from clients' Advanced Booking, waiting on your approval before they become real bookings."),
+          const SectionLabel("Recurring Booking requests"),
+          const HintBox(text: "Requests from clients' Recurring Booking, waiting on your approval before they become real bookings."),
           if (_err != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),

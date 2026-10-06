@@ -4,6 +4,7 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../core/utils/phone_guard.dart";
 
 /// Saves a phone number onto the signed-in client's profile and keeps the
 /// in-memory copy in step. Shared by the full-screen prompt below and the
@@ -71,6 +72,11 @@ class _PhoneDialogState extends State<_PhoneDialog> {
     final phone = _controller.text.trim();
     if (!isUsablePhone(phone)) {
       setState(() => _error = "Enter a number your coach can reach you on.");
+      return;
+    }
+    final gymErr = gymNumberError(context, phone);
+    if (gymErr != null) {
+      setState(() => _error = gymErr);
       return;
     }
     setState(() => _busy = true);
@@ -195,6 +201,11 @@ class _AddPhoneScreenState extends ConsumerState<AddPhoneScreen> {
     final phone = _phone.text.trim();
     if (!isUsablePhone(phone)) {
       setState(() => _error = "Enter a phone number your coach can reach you on.");
+      return;
+    }
+    final gymErr = gymNumberError(context, phone);
+    if (gymErr != null) {
+      setState(() => _error = gymErr);
       return;
     }
     setState(() {

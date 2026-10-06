@@ -22,6 +22,7 @@ import "../shop/my_orders_section.dart";
 import "client_visits_section.dart";
 import "membership_hub_screen.dart";
 import "payment_details_section.dart";
+import "../../../core/utils/phone_guard.dart";
 
 /// Mirrors ProfileSettingsScreen.jsx, trimmed to the rows that don't need
 /// Stripe/2FA/the full intake questionnaire: Edit Profile (name/email/
@@ -631,6 +632,11 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
     final phone = _phone.text.trim();
     final city = _city.text.trim();
     final birthday = _birthday.text.trim();
+    final gymErr = gymNumberError(context, phone);
+    if (gymErr != null) {
+      setState(() => _error = gymErr);
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;

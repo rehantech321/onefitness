@@ -256,7 +256,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
     final matches = ref.read(trainerRosterProvider).where((c) => c.id == widget.clientId);
     if (matches.isEmpty) return;
     final info = matches.first;
-    notifyPlanAssigned(toEmail: info.email ?? "", toName: info.name, kind: kind);
+    notifyPlanAssigned(toEmail: info.email ?? "", toName: info.name, kind: kind, profileId: info.id);
   }
 
   Future<void> _writeSavedPrograms(List<SavedProgram> next) async {
@@ -400,7 +400,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
         createdAt: stamp(),
       );
       await SupabaseService.updateClientSavedPrograms(target.id, [...targetRecord.savedPrograms, copy]);
-      notifyPlanAssigned(toEmail: target.email ?? "", toName: target.name, kind: "workout");
+      notifyPlanAssigned(toEmail: target.email ?? "", toName: target.name, kind: "workout", profileId: target.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Assigned to ${target.name}.")));
       }
@@ -428,7 +428,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
         createdAt: stamp(),
       );
       await SupabaseService.updateClientSavedNutritionPrograms(target.id, [...targetRecord.savedNutritionPrograms, copy]);
-      notifyPlanAssigned(toEmail: target.email ?? "", toName: target.name, kind: "nutrition");
+      notifyPlanAssigned(toEmail: target.email ?? "", toName: target.name, kind: "nutrition", profileId: target.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Assigned to ${target.name}.")));
       }

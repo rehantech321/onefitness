@@ -156,6 +156,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                     profileId: c.id,
                     title: "Session booked",
                     body: "You're booked for ${niceDate(widget.date)} at ${fmtSlot(widget.slot)} with $trainerName.",
+                    sms: true,
                   );
                   if (planId == null && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -223,7 +224,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                                   try {
                                     await SupabaseService.deleteBooking(b.id);
                                     ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
-                                    notifyPush(profileId: b.clientId, title: "Appointment canceled", body: "Your session on ${niceDate(b.date)} at ${fmtSlot(b.slot)} was canceled.");
+                                    notifyPush(profileId: b.clientId, title: "Appointment canceled", body: "Your session on ${niceDate(b.date)} at ${fmtSlot(b.slot)} was canceled.", sms: true);
                                   } catch (e) {
                                     _showError();
                                   } finally {
@@ -300,7 +301,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                         for (final b in active) {
                           await SupabaseService.deleteBooking(b.id);
                           ref.read(allBookingsProvider.notifier).cancelBooking(b.id);
-                          notifyPush(profileId: b.clientId, title: "Appointment canceled", body: "Your session on ${niceDate(b.date)} at ${fmtSlot(b.slot)} was canceled.");
+                          notifyPush(profileId: b.clientId, title: "Appointment canceled", body: "Your session on ${niceDate(b.date)} at ${fmtSlot(b.slot)} was canceled.", sms: true);
                         }
                         if (context.mounted) Navigator.of(context).pop();
                       } catch (e) {
