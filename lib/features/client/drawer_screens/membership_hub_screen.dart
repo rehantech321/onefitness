@@ -837,7 +837,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               child: Text("⚠ $_error", style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12, fontWeight: FontWeight.w700)),
             ),
           if (plan != null && !_browsing) ...[
-            SessionsRemainingBadge(info: info, bookings: bookings),
+            SessionsRemainingBadge(info: info, bookings: bookings, showEndNotice: false),
             if (cancelPending)
               Container(
                 margin: const EdgeInsets.only(top: 10),

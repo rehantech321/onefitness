@@ -61,6 +61,14 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   late String _date = widget.initialReschedule?.date ?? widget.initialDate ?? isoToday();
   String? _chosenType;
   String? _chosenDisc;
+
+  /// Booking opens on Semi-Private › Personal Training when the client can
+  /// book it, rather than on the type/discipline questions. Cleared the
+  /// moment they tap "Change type" or "Change discipline", and restored
+  /// after each booking.
+  bool _useDefaults = true;
+  static const _defaultType = "semi-private";
+  static const _defaultDisc = "personal-training";
   PendingPick? _picking;
   Booking? _cancelTarget;
   Booking? _rescheduling;
@@ -135,6 +143,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         _setFreeAssessment(false);
         _chosenType = null;
         _chosenDisc = null;
+        _useDefaults = true;
       });
 
   /// The waiver being signed inside the booking flow, and what to pick back
@@ -562,6 +571,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         _setFreeAssessment(false);
         _chosenType = null;
         _chosenDisc = null;
+        _useDefaults = true;
       });
     } catch (e) {
       // ignore: avoid_print
@@ -834,8 +844,26 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               ? ["semi-private", "one-on-one"].where(offered.contains).toList()
               : _bookableTypes(plans: held, trainers: trainers, offeredTypes: offered);
           final onlyType = types.length == 1 ? types.first : null;
-          final chosenType = _chosenType ?? onlyType;
-          final changeType = onlyType == null ? () => _pickType(null) : null;
+          // The default only applies while nothing has been picked, outside
+          // the free-assessment flow, and when a coach actually runs
+          // Semi-Private Personal Training — otherwise the client would land
+          // on an empty schedule.
+          final defaultsFit = _useDefaults &&
+              !_freeAssessment &&
+              _chosenType == null &&
+              _chosenDisc == null &&
+              types.contains(_defaultType) &&
+              trainers.any((t) => t.offeredAvailability
+                  .any((b) => b.sessionType == _defaultType && b.discipline == _defaultDisc));
+          final chosenType = _chosenType ?? (defaultsFit ? _defaultType : onlyType);
+          final chosenDisc = _chosenDisc ?? (defaultsFit ? _defaultDisc : null);
+          final changeType = onlyType == null
+              ? () => setState(() {
+                    _useDefaults = false;
+                    _chosenType = null;
+                    _chosenDisc = null;
+                  })
+              : null;
           return LocalBackScope(
             // With step 1 skipped, step 2 is the start — nothing to go back to.
             isOpen: _chosenDisc != null || (_chosenType != null && onlyType == null),
@@ -854,7 +882,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                     offeredTypes: ref.watch(platformSettingsProvider).offeredSessionTypes,
                     onPick: _pickType,
                   )
-                : _chosenDisc == null
+                : chosenDisc == null
                     ? _StepTwo(
                         chosenType: chosenType,
                         trainers: trainers,
@@ -867,7 +895,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                     : _StepThree(
                         date: _date,
                         chosenType: chosenType,
-                        chosenDisc: _chosenDisc!,
+                        chosenDisc: chosenDisc,
                         info: info,
                         trainers: trainers,
                         // Gym-wide, not clientBookingsProvider's self-scoped `bookings`
@@ -883,13 +911,14 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         gymLocationName: ref.watch(platformSettingsProvider).defaultLocation?.name ??
                             ref.watch(platformSettingsProvider).locationName,
                         onDateChange: (d) => setState(() => _date = d),
-                        onChangeType: changeType == null
-                            ? null
-                            : () => setState(() {
-                                  _chosenType = null;
-                                  _chosenDisc = null;
-                                }),
-                        onChangeDisc: () => setState(() => _chosenDisc = null),
+                        onChangeType: changeType,
+                        // Keeps the type (default or picked) and asks only
+                        // for the discipline.
+                        onChangeDisc: () => setState(() {
+                          _useDefaults = false;
+                          _chosenType = chosenType;
+                          _chosenDisc = null;
+                        }),
                         onSlotTap: _onSlotTap,
                         onJoinWaitlist: _joinWaitlist,
                         onLeaveWaitlist: _leaveWaitlist,

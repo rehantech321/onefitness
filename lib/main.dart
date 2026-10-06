@@ -69,6 +69,16 @@ class _RootGateState extends ConsumerState<_RootGate> {
   final AppLinks _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSub;
 
+  /// Coming back to the app re-reads membership state, so a cancellation
+  /// or freeze made on another device (staff cancelling a client's
+  /// membership, say) shows without signing out and in again.
+  late final AppLifecycleListener _lifecycle = AppLifecycleListener(
+    onResume: () => refreshClientInfos(ref).catchError((Object e) {
+      // ignore: avoid_print
+      print("[resume] membership refresh failed: $e");
+    }),
+  );
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +88,7 @@ class _RootGateState extends ConsumerState<_RootGate> {
     // deep link instead — see membership_hub_screen.dart's returnUrl and
     // the matching intent-filter/CFBundleURLTypes entries.
     if (!kIsWeb) _initDeepLinks();
+    _lifecycle; // created now so it's listening from the first frame
   }
 
   Future<void> _initDeepLinks() async {
@@ -138,6 +149,7 @@ class _RootGateState extends ConsumerState<_RootGate> {
   @override
   void dispose() {
     _linkSub?.cancel();
+    _lifecycle.dispose();
     super.dispose();
   }
 

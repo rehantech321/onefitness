@@ -8,11 +8,14 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/membership_utils.dart";
+import "../../../core/utils/merge_token_utils.dart" show outstandingWaivers;
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/tour_step.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
+import "../../../data/providers/trainer_providers.dart" show waiversProvider;
 import "../badges/badge_gallery_screen.dart";
 import "../booking/advanced_booking_screen.dart";
 import "../booking/booking_screen.dart";
@@ -191,9 +194,86 @@ class _ClientShellState extends ConsumerState<ClientShell> {
   /// session, on top of the stored tourSeen flag.
   bool _dashboardTourArmed = true;
 
+  /// "Sign your waiver" — asked once per app session, on Dashboard, while a
+  /// required waiver is unsigned (a brand-new client always has one). They
+  /// can skip it; booking still asks again before the first session.
+  bool _waiverPromptArmed = true;
+  bool _waiverPromptOpen = false;
+
+  /// True while the prompt is still due this session — keeps the tour from
+  /// opening underneath it in the very frame it's about to appear.
+  bool get _waiverPromptPending {
+    if (!_waiverPromptArmed) return false;
+    if (!ref.read(platformSettingsProvider).requireWaiverAtSignup) return false;
+    final info = ref.read(clientInfoProvider);
+    if (info.isStaff) return false;
+    return outstandingWaivers(
+      allDocs: ref.read(waiversProvider),
+      signatures: ref.read(clientRecordProvider).signatures,
+      clientPlanId: info.membershipPlanId,
+    ).isNotEmpty;
+  }
+
+  Future<void> _maybePromptWaiver(String screen, void Function(String) go) async {
+    if (!_waiverPromptArmed || _waiverPromptOpen || screen != "dashboard") return;
+    if (!ref.read(platformSettingsProvider).requireWaiverAtSignup) return;
+    final info = ref.read(clientInfoProvider);
+    if (info.isStaff) return;
+    final outstanding = outstandingWaivers(
+      allDocs: ref.read(waiversProvider),
+      signatures: ref.read(clientRecordProvider).signatures,
+      clientPlanId: info.membershipPlanId,
+    );
+    if (outstanding.isEmpty) return;
+    _waiverPromptArmed = false;
+    _waiverPromptOpen = true;
+    final names = outstanding.map((d) => d.title).join(", ");
+    final signNow = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Row(
+          children: [
+            Icon(LucideIcons.fileSignature, size: 18, color: AppColors.gold),
+            SizedBox(width: 8),
+            Expanded(child: Text("Sign your waiver", style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800))),
+          ],
+        ),
+        content: Text(
+          "Before your first session, please read and sign: $names.\n\nIt only takes a minute, and you'll need it to book.",
+          style: const TextStyle(fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: TextButton.styleFrom(foregroundColor: AppColors.mute),
+            child: const Text("Skip for now"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.gold),
+            child: const Text("Sign now", style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    _waiverPromptOpen = false;
+    if (signNow == true) {
+      // Leaving Dashboard also stands the tour down until it's next shown.
+      go("signatures");
+    } else {
+      // Rebuild so the Dashboard tour, held back while this was open, runs.
+      setState(() {});
+    }
+  }
+
   void _syncDashboardTour(String screen, bool tourSeenDashboard) {
-    final shouldShow =
-        screen == "dashboard" && !tourSeenDashboard && _dashboardTourArmed;
+    final shouldShow = screen == "dashboard" &&
+        !tourSeenDashboard &&
+        _dashboardTourArmed &&
+        !_waiverPromptOpen &&
+        !_waiverPromptPending;
     if (shouldShow && _dashboardTourEntry == null) {
       final entry = OverlayEntry(
         builder: (ctx) => CoachmarkOverlay(
@@ -243,14 +323,17 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     final plan = ref
         .watch(membershipPlansProvider.notifier)
         .byId(info.membershipPlanId);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncDashboardTour(screen, client.tourSeenDashboard);
-    });
-
     void go(String key) {
       ref.read(clientScreenProvider.notifier).go(key);
       _scaffoldKey.currentState?.closeDrawer();
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // The waiver question comes first; the tour waits until it's answered.
+      _maybePromptWaiver(screen, go);
+      _syncDashboardTour(screen, client.tourSeenDashboard);
+    });
 
     // Plain nav into Booking (bottom bar / menu) — no stale target left over
     // from a previous calendar-pick or reschedule.

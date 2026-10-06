@@ -159,6 +159,31 @@ void _subscribeRealtimeUpdates(Ref ref) {
       )
       .subscribe();
 
+  // A client's membership, freeze and cancellation live on their `clients`
+  // row. When staff cancel or freeze it, every open app — the client's own
+  // and other staff — picks the change up here. Only delivers once `clients`
+  // is in the supabase_realtime publication; until then the on-resume
+  // refresh (refreshClientInfos) covers it.
+  SupabaseService.client
+      .channel("clients_live")
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: "public",
+        table: "clients",
+        callback: (payload) async {
+          final row = payload.newRecord.isNotEmpty ? payload.newRecord : payload.oldRecord;
+          final id = row["profile_id"] as String?;
+          if (id == null) return;
+          try {
+            await refreshClientInfos(ref, onlyId: id);
+          } catch (e) {
+            // ignore: avoid_print
+            print("[realtime clients] reload failed: $e");
+          }
+        },
+      )
+      .subscribe();
+
   SupabaseService.client
       .channel("platform_settings_live")
       .onPostgresChanges(
@@ -404,6 +429,29 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
 
 /// Bumped by every [loadAndSeedCoreData] call; see `later` inside it.
 int _loadGeneration = 0;
+
+/// Re-reads membership state — plan, freeze, cancellation — from the
+/// server so a change made on another device shows here. A signed-in
+/// client refreshes their own row; staff refresh the roster ([onlyId]
+/// limits that to one client). Called when the app comes back to the
+/// foreground and by the `clients` realtime channel.
+Future<void> refreshClientInfos(dynamic ref, {String? onlyId}) async {
+  if (SupabaseService.currentUser == null) return;
+  if (ref.read(clientSignedInProvider) == true) {
+    final ownId = ref.read(clientInfoProvider).id as String;
+    if (ownId.isEmpty || (onlyId != null && onlyId != ownId)) return;
+    final fresh = await SupabaseService.loadClientById(ownId);
+    if (fresh != null) ref.read(clientInfoProvider.notifier).update((_) => fresh);
+    return;
+  }
+  if (ref.read(trainerAuthProvider) == null) return;
+  if (onlyId != null) {
+    final fresh = await SupabaseService.loadClientById(onlyId);
+    if (fresh != null) ref.read(trainerRosterProvider.notifier).update(onlyId, (_) => fresh);
+  } else {
+    ref.read(trainerRosterProvider.notifier).setAll(await SupabaseService.loadRoster());
+  }
+}
 
 /// Shared by squad_dashboard_screen.dart (client) and squad_tab.dart (coach)
 /// — every Squad mutation in both follows this same compute-then-persist-

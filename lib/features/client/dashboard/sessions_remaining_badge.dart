@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
@@ -13,13 +14,42 @@ import "../../../data/providers/client_providers.dart";
 /// (SizedBox.shrink) if the client has no membership plan, matching the
 /// React component's `return null`.
 class SessionsRemainingBadge extends ConsumerWidget {
-  const SessionsRemainingBadge({super.key, required this.info, required this.bookings});
+  const SessionsRemainingBadge({super.key, required this.info, required this.bookings, this.showEndNotice = true});
 
   final ClientInfo info;
   final List<Booking> bookings;
 
+  /// Adds "Membership cancelled — ends …" under the card once it's been
+  /// cancelled. Off in the Membership Hub, which has its own fuller notice.
+  final bool showEndNotice;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final card = _card(context, ref);
+    final endsAt = info.membershipCancelsAt;
+    if (!showEndNotice || endsAt == null || card is SizedBox) return card;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        card,
+        Container(
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: const Color(0x1AC97F7F),
+            border: Border.all(color: const Color(0xFFA8632F)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            "Membership cancelled. You can keep booking until ${niceDate(endsAt)}, then it ends.",
+            style: const TextStyle(fontSize: 12, color: Color(0xFFC97F7F), fontWeight: FontWeight.w700, height: 1.4),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _card(BuildContext context, WidgetRef ref) {
     // The slot plan leads; every other held package follows as a compact
     // row so a client with a membership and a package sees both balances.
     // If the membership was cancelled but packages remain, the first

@@ -320,6 +320,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          if (info.membershipCancelsAt != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 3),
+                              child: Text(
+                                "Cancelled · access ends ${niceDate(info.membershipCancelsAt!)}",
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.errorText,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
                           if (info.membershipPaused)
                             Padding(
                               padding: const EdgeInsets.only(top: 3),
@@ -365,6 +377,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         ],
                       ),
                     )
+                  else if (info.membershipCancelsAt != null)
+                    // Already cancelled — nothing left to freeze or cancel.
+                    // It runs out on its own on the date shown above.
+                    const SizedBox.shrink()
                   else if (_freezing)
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -449,7 +465,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     ),
                   // Ending the membership outright, with an explicit choice
                   // about when access stops. Separate from freeze, and
-                  // deliberately the last action in this block.
+                  // deliberately the last action in this block. Hidden once
+                  // a cancellation is already in place.
+                  if (info.membershipCancelsAt == null) ...[
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -466,6 +484,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       ),
                     ),
                   ),
+                  ],
                 ],
                 if (plan != null && plan.kind != PlanKind.program) ...[
                   Padding(
@@ -807,9 +826,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
         update((c) => c.copyWith(membershipCancelsAt: cancelsAt));
       } else {
         update((c) => c.copyWith(
-              membershipPlanId: null,
-              stripeSubscriptionId: null,
-              membershipCancelsAt: null,
+              clearMembershipPlanId: true,
+              clearStripeSubscriptionId: true,
+              clearMembershipCancelsAt: true,
             ));
       }
     } catch (e) {

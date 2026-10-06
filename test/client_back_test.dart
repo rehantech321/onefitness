@@ -5,6 +5,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 
 import "package:onefitness/core/navigation/local_back_stack.dart";
 import "package:onefitness/data/providers/client_providers.dart";
+import "package:onefitness/data/providers/trainer_providers.dart" show waiversProvider;
 import "package:onefitness/features/client/shell/client_shell.dart";
 import "package:onefitness/features/client/shell/client_shell_state.dart";
 
@@ -31,6 +32,9 @@ void main() {
     ignoreOverflow();
     container = ProviderContainer();
     addTearDown(container.dispose);
+    // No unsigned waiver, so the "Sign your waiver" pop-up stays out of
+    // the way — it has its own test (waiver_prompt_test.dart).
+    container.read(waiversProvider.notifier).setAll(const []);
     tester.view.physicalSize = const Size(1200, 2400);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
