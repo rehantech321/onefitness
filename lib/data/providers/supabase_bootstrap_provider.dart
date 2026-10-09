@@ -184,6 +184,37 @@ void _subscribeRealtimeUpdates(Ref ref) {
       )
       .subscribe();
 
+  // Merit Badges are otherwise fetched once, at bootstrap. The ONE Fitness
+  // badge is awarded the instant a plan is bought (migration 18's trigger
+  // on clients.membership_plan_id), so without this a client who just
+  // bought a membership would see no badge until they next restarted the
+  // app — indistinguishable, from their side, from it not being awarded at
+  // all. The same applies to a coach awarding a PR badge while the client
+  // is looking at their gallery.
+  SupabaseService.client
+      .channel("merit_badges_live")
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: "public",
+        table: "merit_badges",
+        callback: (payload) async {
+          final row = payload.newRecord.isNotEmpty ? payload.newRecord : payload.oldRecord;
+          final clientId = row["client_id"] as String?;
+          if (clientId == null) return;
+          try {
+            // Re-fetch rather than patch from the payload: RLS decides what
+            // this viewer may see, and a revoke arrives as an update whose
+            // old row is the one worth replacing.
+            final fresh = await SupabaseService.loadMeritBadgesFor(clientId);
+            ref.read(earnedBadgesProvider.notifier).replaceForClient(clientId, fresh);
+          } catch (e) {
+            // ignore: avoid_print
+            print("[realtime merit_badges] reload failed: $e");
+          }
+        },
+      )
+      .subscribe();
+
   SupabaseService.client
       .channel("platform_settings_live")
       .onPostgresChanges(

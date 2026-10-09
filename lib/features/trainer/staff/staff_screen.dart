@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
+import "../../../core/utils/save_error.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
@@ -59,7 +60,8 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                   sessionTypes: t.sessionTypes,
                   locations: t.locations,
                   bio: t.bio ?? "",
-                  beforeAfters: t.beforeAfters,
+                  // Only when they changed — they're most of the request.
+                  beforeAfters: sameBeforeAfters(_editing!.beforeAfters, t.beforeAfters) ? null : t.beforeAfters,
                   availability: t.availability,
                   commissionRate: t.commissionRate,
                   payoutMode: t.payoutMode,
@@ -97,7 +99,7 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                   SnackBar(
                     content: Text(
                       _editing != null
-                          ? "Couldn't save — check your connection and try again."
+                          ? saveErrorMessage(e)
                           : "Couldn't create that trainer — ${e.toString().replaceFirst('Exception: ', '').replaceFirst('AuthException: ', '')}",
                     ),
                   ),

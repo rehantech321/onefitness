@@ -22,6 +22,17 @@ class TrainerBeforeAfter {
   final String? right;
 }
 
+/// Whether two before/after lists hold the same photos in the same order —
+/// a profile save skips re-uploading them (the bulk of the request) when
+/// nothing about them changed.
+bool sameBeforeAfters(List<TrainerBeforeAfter> a, List<TrainerBeforeAfter> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i].id != b[i].id || a[i].left != b[i].left || a[i].right != b[i].right) return false;
+  }
+  return true;
+}
+
 /// A block of time this coach won't be working — a single day
 /// (startDate == endDate) or a range, with an optional note. Stored on the
 /// trainer's `unavailability` jsonb column. Doesn't affect existing

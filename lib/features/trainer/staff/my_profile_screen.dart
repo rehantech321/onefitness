@@ -4,6 +4,8 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/legal/terms_screen.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
+import "../../../core/utils/save_error.dart";
+import "../../../data/models/trainer.dart" show sameBeforeAfters;
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/blocked_users_screen.dart";
 import "../../../core/widgets/delete_account_screen.dart";
@@ -89,14 +91,17 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                   sessionTypes: t.sessionTypes,
                   locations: t.locations,
                   bio: t.bio ?? "",
-                  beforeAfters: t.beforeAfters,
+                  // Only when they changed — they're most of the request.
+                  beforeAfters: sameBeforeAfters(matches.first.beforeAfters, t.beforeAfters) ? null : t.beforeAfters,
                   availability: t.availability,
                   unavailability: t.unavailability,
                 );
               } catch (e) {
+                // ignore: avoid_print
+                print("[my profile] save failed: $e");
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Couldn't save — check your connection and try again.")),
+                    SnackBar(content: Text(saveErrorMessage(e)), duration: const Duration(seconds: 6)),
                   );
                 }
                 return;

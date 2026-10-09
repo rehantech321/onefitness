@@ -2,6 +2,7 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:supabase_flutter/supabase_flutter.dart";
 import "../utils/coach_merit_badge_utils.dart";
+import "../utils/image_shrink.dart";
 import "../utils/date_utils.dart";
 import "../../data/models/availability_block.dart";
 import "../../data/models/saved_payment_method.dart";
@@ -1532,6 +1533,18 @@ class SupabaseService {
     List<TrainerUnavailability>? unavailability,
       String? title,
   }) async {
+    // Oversized (older, 1600px) photos made this request too big to upload
+    // reliably from a phone — re-encode those before sending.
+    if (beforeAfters != null) {
+      beforeAfters = [
+        for (final ba in beforeAfters)
+          TrainerBeforeAfter(
+            id: ba.id,
+            left: ba.left == null ? null : await shrinkDataUrlImage(ba.left!),
+            right: ba.right == null ? null : await shrinkDataUrlImage(ba.right!),
+          ),
+      ];
+    }
     final profileFields = <String, dynamic>{
       if (name != null) "name": name,
       if (email != null) "email": email,
