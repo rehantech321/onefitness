@@ -22,6 +22,7 @@ class AddressFields extends StatefulWidget {
     required this.address,
     required this.onChanged,
     this.showMapButton = false,
+    this.onPoint,
   });
 
   final String address;
@@ -31,6 +32,13 @@ class AddressFields extends StatefulWidget {
   /// four fields from wherever the pin lands. Off where the screen has its
   /// own map button that also keeps the pin (the gym's locations).
   final bool showMapButton;
+
+  /// Hands back where the pin actually landed, so a caller can keep it.
+  ///
+  /// Without this the map button filled in the text and threw the
+  /// coordinates away — which is why a coach could set their location on
+  /// the map and clients still saw no distance to it.
+  final void Function(double lat, double lng)? onPoint;
 
   @override
   State<AddressFields> createState() => _AddressFieldsState();
@@ -103,6 +111,7 @@ class _AddressFieldsState extends State<AddressFields> {
       _state.text = place.state;
       _zip.text = place.zip;
     });
+    widget.onPoint?.call(picked.lat, picked.lng);
     _changed();
   }
 

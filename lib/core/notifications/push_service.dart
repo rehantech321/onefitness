@@ -28,6 +28,43 @@ Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
 class PushService {
   static bool _initialised = false;
 
+  /// Where a tapped notification should take the person.
+  ///
+  /// Set by the app shell, which is the only part that knows how to navigate.
+  /// A notification that opens the app on the dashboard and leaves them to
+  /// find the thing it was about is barely a notification at all — a beep
+  /// from a client has to land the coach on the session screen.
+  static void Function(Map<String, dynamic> data)? onOpenRoute;
+
+  /// Called for a push that arrives while the app is open. The OS shows
+  /// nothing in that case, so without this a coach looking at another screen
+  /// would get no indication at all.
+  static void Function(Map<String, dynamic> data)? onForegroundMessage;
+
+  static void _handle(RemoteMessage m, {required bool opened}) {
+    final data = Map<String, dynamic>.from(m.data);
+    if (opened) {
+      onOpenRoute?.call(data);
+    } else {
+      onForegroundMessage?.call(data);
+    }
+  }
+
+  /// Wires the two handlers and replays a notification that launched the app
+  /// from cold — `getInitialMessage` is the only place that one appears, and
+  /// missing it is why a tap can seem to do nothing.
+  static Future<void> attachHandlers() async {
+    if (!_initialised || kIsWeb) return;
+    try {
+      FirebaseMessaging.onMessage.listen((m) => _handle(m, opened: false));
+      FirebaseMessaging.onMessageOpenedApp.listen((m) => _handle(m, opened: true));
+      final initial = await FirebaseMessaging.instance.getInitialMessage();
+      if (initial != null) _handle(initial, opened: true);
+    } catch (e) {
+      debugPrint("PushService.attachHandlers failed: $e");
+    }
+  }
+
   /// Safe to call before sign-in and safe to call twice. Initialises
   /// Firebase and registers the background handler, but does NOT ask for
   /// permission — that's [registerForCurrentUser], so the OS prompt appears

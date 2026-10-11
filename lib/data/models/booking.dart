@@ -10,6 +10,7 @@ class Booking {
     required this.discipline,
     this.status = "confirmed",
     this.attendanceStatus,
+    this.clientStartedAt,
     this.locationName,
     this.isPhysicalAssessment = false,
     this.overriddenBy,
@@ -28,6 +29,17 @@ class Booking {
   final String discipline;
   final String status;
   final String? attendanceStatus; // checked-in | no-show | ...
+
+  /// Set only when the CLIENT started this session themselves, early, from
+  /// their own dashboard.
+  ///
+  /// Deliberately separate from [attendanceStatus]: a coach marking someone
+  /// present writes "checked-in" too, and keying anything on that made an
+  /// ordinary attendance tick at 6pm unlock starting a 9pm session. Nothing
+  /// a coach does sets this.
+  final String? clientStartedAt;
+
+  bool get clientStartedEarly => clientStartedAt != null;
   final String? locationName;
   final bool isPhysicalAssessment;
 
@@ -59,6 +71,7 @@ class Booking {
         discipline: discipline,
         status: status,
         attendanceStatus: attendanceStatus,
+        clientStartedAt: clientStartedAt,
         locationName: locationName,
         isPhysicalAssessment: isPhysicalAssessment,
         overriddenBy: overriddenBy,

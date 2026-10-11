@@ -19,6 +19,8 @@ import "../models/waiver_doc.dart";
 import "client_providers.dart";
 import "platform_settings_provider.dart";
 import "role_provider.dart";
+import "beep_providers.dart";
+import "../../features/trainer/shell/trainer_shell_state.dart";
 import "trainer_providers.dart";
 
 /// Runs once at app startup: restores the Supabase Auth session (if any),
@@ -227,6 +229,12 @@ void _subscribeRealtimeUpdates(Ref ref) {
         },
       )
       .subscribe();
+
+  // Live sessions and Beep Your Coach. These have their own subscriber
+  // because they carry state as well as a stream — which session is running,
+  // and which beeps are still outstanding — and because the coach's alert
+  // has to fire the moment a row lands, not on the next screen build.
+  unawaited(ref.read(beepRealtimeProvider).start());
 }
 
 /// Fetches what the app needs as *whoever Supabase currently considers the
@@ -407,6 +415,17 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
     // PushService). Not awaited: it can sit on the OS permission prompt and
     // a token round trip, and the app shouldn't wait on either.
     unawaited(PushService.registerForCurrentUser());
+
+    // Tapping a notification has to land on the thing it was about — a
+    // beep from a client opens the coach's session screen, not the
+    // dashboard. Also picks up a notification that launched the app from
+    // cold, which is the case most easily missed.
+    unawaited(PushService.attachHandlers());
+    PushService.onOpenRoute = (data) {
+      if (data["type"] == "beep") {
+        ref.read(trainerModeProvider.notifier).go("dashboard");
+      }
+    };
   }
 
   // ── Background phase ──

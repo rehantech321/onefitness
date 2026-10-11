@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
@@ -13,13 +15,17 @@ import "../../../core/utils/notification_triggers.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
+import "../../../data/models/live_session.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/workout_log.dart";
+import "../../../data/providers/beep_providers.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "../../client/booking/date_strip.dart";
 import "../../shared/session_logger_view.dart";
+import "../beep/coach_beep_alerts.dart";
+import "../../../core/widgets/session_timer.dart";
 import "../shell/trainer_shell_state.dart";
 
 /// Mirrors TrainerHome.jsx — the coach/owner dashboard: greeting header,
@@ -42,6 +48,78 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
   bool _calendarOpen = false;
   int? _sessionSlot;
   String? _sessionClientId;
+
+  /// The row in `session_runs` this screen started, if any. Its existence
+  /// is what switches Beep Your Coach on for the clients booked into this
+  /// slot — before this, "Start Session" never left the device.
+  LiveSession? _run;
+  bool _startingRun = false;
+
+  /// Starting a session the coach is already running returns the existing
+  /// row rather than a second one, so backing out of this screen and
+  /// coming back doesn't split the beeps in two.
+  Future<void> _beginRun(int slot, List<Booking> group) async {
+    if (_startingRun) return;
+    setState(() {
+      _startingRun = true;
+      _sessionSlot = slot;
+      _sessionClientId = null;
+    });
+    try {
+      final trainerId = ref.read(trainerAuthProvider);
+      final first = group.isEmpty ? null : group.first;
+      final run = await SupabaseService.startSessionRun(
+        trainerId: trainerId ?? "",
+        date: _viewDate,
+        slotMin: slot,
+        sessionType: first?.sessionType ?? "semi-private",
+        durationMin: first?.durationMin ?? 60,
+        location: first?.locationName,
+      );
+      if (!mounted) return;
+      setState(() => _run = run);
+      if (run != null) ref.read(liveSessionsProvider.notifier).apply(run);
+    } catch (e) {
+      // The coach can still log the session; only Beep Your Coach is lost,
+      // so this says what was lost rather than blocking the session.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Session started, but Beep Your Coach couldn't be switched on.")),
+      );
+    } finally {
+      if (mounted) setState(() => _startingRun = false);
+    }
+  }
+
+  /// The session ran its full length. Closes it off without asking — the
+  /// hour is simply up, and the coach has not been presented with a
+  /// decision to make.
+  ///
+  /// The screen stays open: the coach may still be saving the last sets,
+  /// and yanking them out of the logging grid at the stroke of the hour
+  /// would lose work. Only the clock and Beep Your Coach stop.
+  Future<void> _autoEndRun() async {
+    await _endRun();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Session time is up — your clients can no longer beep you.")),
+    );
+  }
+
+  /// Ending the session is what turns Beep Your Coach off for everyone in
+  /// it, so it happens whenever the coach leaves this screen.
+  Future<void> _endRun() async {
+    final run = _run;
+    _run = null;
+    if (run == null) return;
+    try {
+      await SupabaseService.endSessionRun(run.id);
+      ref.read(liveSessionsProvider.notifier).remove(run.id);
+    } catch (_) {
+      // Left live server-side; the next start reuses it rather than
+      // stacking a second run.
+    }
+  }
   bool _noShowSweepDone = false;
 
   @override
@@ -96,6 +174,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
     final roster = ref.watch(trainerRosterProvider);
     final trainers = ref.watch(trainersProvider);
     final bookings = ref.watch(allBookingsProvider);
+    final liveRuns = ref.watch(liveSessionsProvider);
     final clientRecords = ref.watch(trainerClientRecordsProvider);
     final todayCharges = ref
         .watch(chargesProvider)
@@ -149,10 +228,45 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
           _sessionClientId ??
           (loggable.length == 1 ? loggable.first.clientId : null);
 
+      // Leaving the screen is not ending the session. A coach steps out to
+      // check the schedule or another client constantly; ending the run on
+      // the way out meant the clock restarted from zero every time, the
+      // dashboard offered "Start Session" again as though nothing had
+      // happened, and Beep Your Coach switched off under the clients still
+      // training. Eleven separate runs were recorded for one slot that way.
       void closeSession() => setState(() {
         _sessionSlot = null;
         _sessionClientId = null;
       });
+
+      // Ending it is its own, deliberate act — and it asks first, because
+      // it takes Beep Your Coach away from everyone in the session.
+      Future<void> endSession() async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.card,
+            title: const Text("End this session?", style: TextStyle(fontSize: 15)),
+            content: const Text(
+              "The clock stops and your clients can no longer beep you. You can start it again if you need to.",
+              style: TextStyle(fontSize: 13),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text("Keep it running"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text("End session", style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
+        await _endRun();
+        if (mounted) closeSession();
+      }
 
       Widget sessionContent;
       if (loggable.isEmpty) {
@@ -174,11 +288,29 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              BackBar(onBack: closeSession, title: "Start Session"),
+              BackBar(onBack: closeSession, title: "Session"),
               const SizedBox(height: 4),
-              Text(
-                fmtSlot(slot),
-                style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              Row(
+                children: [
+                  Text(
+                    fmtSlot(slot),
+                    style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                  ),
+                  if (_run != null) ...[
+                    const SizedBox(width: 10),
+                    SessionTimer(run: _run!, onRanOut: _autoEndRun),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: endSession,
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.danger,
+                        minimumSize: const Size(44, 36),
+                      ),
+                      child: const Text("End session",
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 12),
               const SectionLabel("Choose a client"),
@@ -219,9 +351,33 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 0),
-              child: BackBar(
-                onBack: closeSession,
-                title: attendee.name,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: BackBar(
+                      onBack: closeSession,
+                      title: attendee.name,
+                    ),
+                  ),
+                  // How long the session has been running, counted from when
+                  // the coach actually started it rather than from when this
+                  // screen was built — so moving between clients in a
+                  // semi-private session doesn't look like a restart.
+                  if (_run != null) ...[
+                    SessionTimer(run: _run!, compact: true, onRanOut: _autoEndRun),
+                    const SizedBox(width: 6),
+                    TextButton(
+                      onPressed: endSession,
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.danger,
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        minimumSize: const Size(44, 36),
+                      ),
+                      child: const Text("End",
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ],
               ),
             ),
             // Semi-private: flip between everyone in the slot without
@@ -305,16 +461,22 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
         );
       }
 
-      return LocalBackScope(
-        isOpen: true,
-        onBack: closeSession,
-        child: activeClientId != null && loggable.length > 1
-            ? LocalBackScope(
-                isOpen: true,
-                onBack: () => setState(() => _sessionClientId = null),
-                child: sessionContent,
-              )
-            : sessionContent,
+      // Beeps are overlaid on the session screen rather than pushed as a
+      // route: the coach is mid-set with someone else, and an alert that
+      // took over the screen would be worse than the problem it reports.
+      return CoachBeepAlerts(
+        trainerId: trainerAuth ?? "",
+        child: LocalBackScope(
+          isOpen: true,
+          onBack: closeSession,
+          child: activeClientId != null && loggable.length > 1
+              ? LocalBackScope(
+                  isOpen: true,
+                  onBack: () => setState(() => _sessionClientId = null),
+                  child: sessionContent,
+                )
+              : sessionContent,
+        ),
       );
     }
 
@@ -566,6 +728,32 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
               // hidden (still visible for context, just not actionable).
               final isPastDate = _viewDate.compareTo(isoToday()) < 0;
               final group = byTime[slot]!;
+
+              // A session can't be started before it's due. The 9pm slot was
+              // startable at 9:52 in the morning, which is how a coach ends
+              // up logging sets against a session that hasn't happened.
+              //
+              // The one exception is a client who turned up early and
+              // checked themselves in: their arrival is exactly the thing
+              // that makes starting early legitimate, so the coach can join
+              // them rather than being locked out of a session already
+              // happening on the gym floor.
+              final nowMin = DateTime.now().hour * 60 + DateTime.now().minute;
+              final isFutureDate = _viewDate.compareTo(isoToday()) > 0;
+              // Only the client's own "I'm here — start my session" counts.
+              // attendance_status is no use here: the coach's own Check In
+              // button writes exactly the same value, so ticking someone
+              // present at 6pm unlocked starting a 9pm session.
+              final someoneArrivedEarly = group.any((b) => b.clientStartedEarly);
+              final tooEarly = isFutureDate ||
+                  (_viewDate == isoToday() && nowMin < slot && !someoneArrivedEarly);
+
+              // A session this coach already has running — including one
+              // left open on another device. Starting it again reuses the
+              // same run rather than opening a second, so this is a rejoin.
+              final alreadyLive = liveRuns.any(
+                (r) => r.date == _viewDate && r.slotMin == slot && r.trainerId == trainerAuth,
+              );
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Column(
@@ -585,12 +773,9 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                           ),
                         ),
                         ElevatedButton(
-                          onPressed: isPastDate
+                          onPressed: (isPastDate || tooEarly)
                               ? null
-                              : () => setState(() {
-                                  _sessionSlot = slot;
-                                  _sessionClientId = null;
-                                }),
+                              : () => _beginRun(slot, group),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.gold,
                             disabledBackgroundColor: AppColors.gold.withValues(alpha: 0.35),
@@ -605,9 +790,9 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                               borderRadius: BorderRadius.circular(7),
                             ),
                           ),
-                          child: const Text(
-                            "▶ Start Session",
-                            style: TextStyle(
+                          child: Text(
+                            alreadyLive ? "● Live — rejoin" : "▶ Start Session",
+                            style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                             ),
@@ -615,6 +800,18 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                         ),
                       ],
                     ),
+                    // A disabled button with no reason beside it reads as a
+                    // broken button, so it says what it's waiting for.
+                    if (tooEarly)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          isFutureDate
+                              ? "Starts on ${dayLabel(_viewDate)}"
+                              : "Can be started at ${fmtSlot(slot)}, or as soon as someone checks in",
+                          style: const TextStyle(fontSize: 10.5, color: AppColors.mute),
+                        ),
+                      ),
                     const SizedBox(height: 8),
                     ...group.map((b) {
                       final attendee = resolveAttendee(

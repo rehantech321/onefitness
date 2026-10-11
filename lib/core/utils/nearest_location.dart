@@ -84,9 +84,14 @@ String nearestErrorMessage(NearestError e) {
 }
 
 class NearestResult {
-  const NearestResult({this.sorted = const [], this.error});
+  const NearestResult({this.sorted = const [], this.error, this.origin});
   final List<LocationDistance> sorted;
   final NearestError? error;
+
+  /// Where the distances were measured from. Handed back so a caller can
+  /// keep it — without it the position was read, used once, and thrown
+  /// away, leaving the next screen to geocode the client's city instead.
+  final ({double lat, double lng})? origin;
 
   bool get ok => error == null && sorted.isNotEmpty;
   LocationDistance? get nearest => sorted.isEmpty ? null : sorted.first;
@@ -135,7 +140,7 @@ Future<NearestResult> sortByDistance(List<GymLocation> locations) async {
             ))
         .toList()
       ..sort((a, b) => a.metres.compareTo(b.metres));
-    return NearestResult(sorted: out);
+    return NearestResult(sorted: out, origin: (lat: pos.latitude, lng: pos.longitude));
   } catch (e) {
     return const NearestResult(error: NearestError.failed);
   }

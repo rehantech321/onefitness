@@ -4,12 +4,46 @@ import "availability_block.dart";
 /// A single entry in a trainer's `locations` jsonb list (real schema —
 /// see supabaseData.js `trainerRowToApp`/`trainerFieldsToRow`).
 class TrainerLocation {
-  const TrainerLocation({required this.id, required this.name, this.address, this.hint});
+  const TrainerLocation({
+    required this.id,
+    required this.name,
+    this.address,
+    this.hint,
+    this.lat,
+    this.lng,
+  });
 
   final String id;
   final String name;
   final String? address;
   final String? hint;
+
+  /// Coordinates for [address], the same role they play on GymLocation.
+  ///
+  /// Without these a coach's own location could be shown to a client but
+  /// never measured, so a session run from it sorted last and showed no
+  /// distance — the one case where "sessions near me" quietly stopped
+  /// working. Set by the map picker, or geocoded from the address.
+  final double? lat;
+  final double? lng;
+
+  bool get hasCoords => lat != null && lng != null;
+
+  TrainerLocation copyWith({
+    String? name,
+    String? address,
+    String? hint,
+    double? lat,
+    double? lng,
+  }) =>
+      TrainerLocation(
+        id: id,
+        name: name ?? this.name,
+        address: address ?? this.address,
+        hint: hint ?? this.hint,
+        lat: lat ?? this.lat,
+        lng: lng ?? this.lng,
+      );
 }
 
 /// One before/after transformation-photo pair, as stored in the trainer's

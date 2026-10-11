@@ -14,6 +14,7 @@ import "../../../data/models/saved_program.dart";
 import "../../../data/models/workout_log.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../shared/session_logger_view.dart";
+import "../beep/beep_bar.dart";
 
 /// Mirrors ClientWorkoutWithNotes.jsx: overview day list -> active logging
 /// session -> saved confirmation (SessionLoggerView, shared with the
@@ -338,6 +339,14 @@ class _WorkoutTabState extends ConsumerState<WorkoutTab> {
             client: client,
             onSave: _saveSession,
             exerciseFooterBuilder: _exerciseFooter,
+            // Only appears while the client's coach actually has the
+            // semi-private session running; BeepBar renders nothing
+            // otherwise.
+            beepBarBuilder: (names, focusIndex, fullView) => BeepBar(
+              exerciseNames: names,
+              focusIndex: focusIndex,
+              fullView: fullView,
+            ),
             // Guideline 1.4.1 again: a training program is health guidance,
             // so it carries its sources and the same stop-if-you-feel-unwell
             // warning, on the screen rather than in a legal page.

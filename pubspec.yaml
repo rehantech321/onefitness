@@ -62,6 +62,24 @@ dependencies:
   # need a billed API key per platform for what is one small picker.
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
+  # Beep Your Coach: the coach's alert has to be audible across a gym
+  # floor, so it plays a real sound rather than relying on the system
+  # notification tone, which the OS silences while the app is in front.
+  audioplayers: ^6.1.0
+  # Only ever used as a command-line generator
+  # (`dart run flutter_native_splash:create`) — no Dart code imports it, and
+  # the splash images it produces are real files already committed under
+  # android/app/src/main/res and ios/Runner/Assets.xcassets.
+  #
+  # It nonetheless has to live here rather than in dev_dependencies, because
+  # Flutter strips dev-dependency plugins from RELEASE builds but not from
+  # debug ones, while GeneratedPluginRegistrant.java is shared between them.
+  # So any debug build wrote a registrant referencing this plugin, and the
+  # next release build failed to compile against it:
+  #   "package net.jonhanson.flutter_native_splash does not exist".
+  # Listed as a normal dependency, both modes agree and the build stops
+  # breaking. The cost is one no-op plugin registered at runtime.
+  flutter_native_splash: ^2.4.6
 
 dev_dependencies:
   flutter_test:
@@ -74,7 +92,6 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
-  flutter_native_splash: ^2.4.6
 
 # Native launch-screen config for `dart run flutter_native_splash:create` —
 # generates the actual iOS/Android splash shown before Flutter's first frame.
@@ -125,6 +142,9 @@ flutter:
     - assets/images/habits.png
     - assets/images/challenge.png
     - assets/images/coach_of_the_month.png
+    # Beep Your Coach alert tones — five options per alert type, chosen
+    # by the owner in Customize Platform.
+    - assets/sounds/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

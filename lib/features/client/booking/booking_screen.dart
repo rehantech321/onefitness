@@ -5,6 +5,7 @@ import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_location.dart";
+import "../../../core/utils/session_places.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
@@ -926,6 +927,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                         semiPrivateCap: ref.watch(platformSettingsProvider).semiPrivateCap,
                         locationFilter: effectiveBookingLocation(ref, info),
                         locationDistances: bookingLocationDistances(ref, info),
+                        placeDistances: ref.watch(placeDistancesProvider),
                         onLocationChange: _changeBookingLocation,
                       ),
           );
@@ -1357,6 +1359,7 @@ class _StepThree extends StatefulWidget {
     required this.gymLocationName,
     required this.locationFilter,
     required this.locationDistances,
+    required this.placeDistances,
     required this.onLocationChange,
   });
 
@@ -1370,6 +1373,11 @@ class _StepThree extends StatefulWidget {
   /// Metres from the client's booking location to each gym location, by
   /// name — orders each time's sessions nearest first.
   final Map<String, double> locationDistances;
+
+  /// Metres from the CLIENT to each place, keyed by place name — what the
+  /// slot row shows. Distinct from [locationDistances], which measures
+  /// between the gym's own sites and only orders the list.
+  final Map<String, double> placeDistances;
   final ValueChanged<String?> onLocationChange;
   final String date;
   final String chosenType;
@@ -1451,7 +1459,15 @@ class _StepThreeState extends State<_StepThree> {
         }
       }
       // Nearest first within each time; locations we can't measure go last.
-      final dist = widget.locationDistances;
+      //
+      // Distance from the client themselves is the better answer when we
+      // have it, and it covers places a coach set as well as the gym's own.
+      // The older gym-to-gym figures stay as the fallback, so a client who
+      // refused location permission and gave no city still gets a sensible
+      // order rather than an arbitrary one.
+      final dist = widget.placeDistances.isNotEmpty
+          ? widget.placeDistances
+          : widget.locationDistances;
       if (dist.isNotEmpty) {
         double away(_SlotAvailability a) =>
             dist[a.locationName ?? widget.gymLocationName] ?? double.infinity;
@@ -1612,10 +1628,35 @@ class _StepThreeState extends State<_StepThree> {
                                                 children: [
                                                   const Icon(LucideIcons.mapPin, size: 11, color: AppColors.mute),
                                                   const SizedBox(width: 3),
-                                                  Text(
-                                                    a.locationName ?? widget.gymLocationName,
-                                                    style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                                  Flexible(
+                                                    child: Text(
+                                                      a.locationName ?? widget.gymLocationName,
+                                                      style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
                                                   ),
+                                                  // How far this session is from
+                                                  // the client, not from another
+                                                  // gym. Absent rather than
+                                                  // guessed when the place has no
+                                                  // coordinates or we don't know
+                                                  // where the client is.
+                                                  Builder(builder: (context) {
+                                                    final metres = widget.placeDistances[
+                                                        a.locationName ?? widget.gymLocationName];
+                                                    if (metres == null) return const SizedBox.shrink();
+                                                    return Padding(
+                                                      padding: const EdgeInsets.only(left: 5),
+                                                      child: Text(
+                                                        "· ${formatDistance(metres)} away",
+                                                        style: const TextStyle(
+                                                          fontSize: 11,
+                                                          color: AppColors.gold,
+                                                          fontWeight: FontWeight.w700,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }),
                                                 ],
                                               ),
                                             ),

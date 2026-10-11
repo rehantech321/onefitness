@@ -13,8 +13,14 @@ import "../../data/models/workout_log.dart";
 import "../client/plans/exercise_set_grid.dart";
 
 /// The session-logging state machine — active-programs list -> day list
-/// with "Start Session" -> active-day ExerciseSetGrids -> Save -> "Session
-/// logged!" confirmation. Extracted out of what used to be
+/// with "Start workout" -> active-day ExerciseSetGrids -> Save -> "Session
+/// logged!" confirmation.
+///
+/// That button picks which DAY of the program is being logged; it is not a
+/// second "start the session". The coach's own Start Session, on the
+/// dashboard, is what opens the session and switches Beep Your Coach on —
+/// the two were both labelled "Start Session", which read as the first one
+/// having failed. Extracted out of what used to be
 /// `WorkoutTab`'s private state so a coach logging a session *for* a
 /// client (trainer_home_screen.dart's Start Session) runs through the
 /// exact same logic a client logging their own session does
@@ -38,6 +44,7 @@ class SessionLoggerView extends StatefulWidget {
         "No active workout program yet. Your coach will assign one to your profile.",
     this.exerciseFooterBuilder,
     this.footer,
+    this.beepBarBuilder,
   });
 
   final ClientRecord client;
@@ -56,6 +63,14 @@ class SessionLoggerView extends StatefulWidget {
   final Future<void> Function(WorkoutLogEntry entry) onSave;
 
   final String emptyProgramText;
+
+  /// Beep Your Coach, rendered directly under the view toggle and above
+  /// the first exercise. Only the client's own view supplies one — a
+  /// coach logging on someone's behalf has no one to beep. Given the
+  /// day's exercises and where the client is in them, so "Done" can name
+  /// the right one.
+  final Widget Function(List<String> exerciseNames, int focusIndex, bool fullView)?
+      beepBarBuilder;
 
   /// Optional extra content rendered under each exercise's set grid — used
   /// by the client's own view to show/edit a per-exercise note to their
@@ -226,10 +241,17 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
     return LocalBackScope(
       isOpen: _sessionStarted,
       onBack: () => setState(() => _sessionStarted = false),
-      child: SingleChildScrollView(
+      // In Full view the Beep bar is pinned over the scrolling content, so
+      // a client part-way down a long day can still reach their coach
+      // without scrolling back to the top.
+      child: Stack(
+        children: [
+      SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (widget.beepBarBuilder != null && _fullView)
+            const SizedBox(height: 58),
           if (programs.length > 1)
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
@@ -340,7 +362,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                                   ),
                                 ),
                                 child: const Text(
-                                  "Start Session",
+                                  "Start workout",
                                   style: TextStyle(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w700,
@@ -467,6 +489,18 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  // In the focused view the bar sits in the flow, directly
+                  // under the toggle. In Full view it is pinned instead (see
+                  // the Stack below), so it must not also appear here.
+                  if (widget.beepBarBuilder != null && !_fullView)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: widget.beepBarBuilder!(
+                        [for (final e in activeDay.exercises) e.name],
+                        _focusIndex,
+                        false,
                       ),
                     ),
                   if (_fullView)
@@ -612,6 +646,23 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
           if (widget.footer != null) widget.footer!,
         ],
       ),
+      ),
+          if (widget.beepBarBuilder != null && _fullView)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                color: AppColors.bg,
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
+                child: widget.beepBarBuilder!(
+                  [for (final e in activeDay.exercises) e.name],
+                  _focusIndex,
+                  true,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

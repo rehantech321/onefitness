@@ -7,10 +7,13 @@ import "../../../core/utils/nearest_location.dart";
 import "../../../core/widgets/address_fields.dart";
 import "../../../core/widgets/map_location_picker.dart";
 import "../../../core/supabase/supabase_service.dart";
+import "../../../core/notifications/beep_sounds.dart";
+import "../../../core/utils/session_places.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/waiver_doc.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/models/live_session.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 import "../../../data/providers/trainer_providers.dart";
 import "manage_coupons_screen.dart";
@@ -463,6 +466,12 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     onChange: (v) => _set((d) => d.copyWith(locations: v)),
                   ),
                   const SizedBox(height: 14),
+                  // Places the gym doesn't list, but a coach has set on
+                  // their own profile and is running sessions from. The
+                  // owner had no way to see these at all, so a coach could
+                  // move site and nothing here would show it.
+                  const _CoachSetLocations(),
+                  const SizedBox(height: 14),
                   // Which site a coach without their own location runs at,
                   // and what a client sees pre-selected when booking.
                   _DefaultLocationPicker(
@@ -650,6 +659,18 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                   _MoneyRow(label: "Habit Coach", badgeKey: "habit_coach", cents: s.badgeHabitCoachCents, onChange: (v) => _set((d) => d.copyWith(badgeHabitCoachCents: v))),
                   _MoneyRow(label: "Challenge Coach", badgeKey: "challenge_coach", cents: s.badgeChallengeCoachCents, onChange: (v) => _set((d) => d.copyWith(badgeChallengeCoachCents: v))),
                   _MoneyRow(label: "Coach of the Month", badgeKey: "coach_of_month", cents: s.badgeCoachOfMonthCents, onChange: (v) => _set((d) => d.copyWith(badgeCoachOfMonthCents: v))),
+
+                  const SizedBox(height: 10),
+                  const SectionLabel("Beep Your Coach — alert sounds"),
+                  const HintBox(text: "What a coach's phone plays when a client beeps during a semi-private session. One choice per request type, applied to every coach. Tap a sound to hear it."),
+                  for (final kind in BeepKind.values)
+                    _BeepSoundRow(
+                      kind: kind,
+                      selectedId: s.beepSounds[kind.key] ?? defaultSoundId(kind),
+                      onChange: (id) => _set((d) => d.copyWith(
+                            beepSounds: {...d.beepSounds, kind.key: id},
+                          )),
+                    ),
                 ],
                 if (_saveError != null) ...[
                   const SizedBox(height: 14),
@@ -1828,6 +1849,170 @@ class _SignupWaiverEditorState extends ConsumerState<_SignupWaiverEditor> {
           BtnGhost(onPressed: _saving ? null : _save, child: Text(_saving ? "Saving…" : "Save Waiver Document")),
         ],
       ),
+    );
+  }
+}
+
+/// One alert type's sound picker, with a preview on every option.
+///
+/// The owner is choosing a sound they will not themselves hear in use — it
+/// plays on the coaches' phones — so being able to audition each one before
+/// committing is the whole point of the preview.
+class _BeepSoundRow extends StatelessWidget {
+  const _BeepSoundRow({
+    required this.kind,
+    required this.selectedId,
+    required this.onChange,
+  });
+
+  final BeepKind kind;
+  final String selectedId;
+  final ValueChanged<String> onChange;
+
+  String get _blurb => switch (kind) {
+        BeepKind.help => "A client is stuck or unsure.",
+        BeepKind.spot => "A client needs someone on the bar. Always cuts through.",
+        BeepKind.done => "A client finished an exercise.",
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(kind.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(_blurb, style: const TextStyle(fontSize: 11.5, color: AppColors.mute)),
+          const SizedBox(height: 7),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              for (final sound in soundsFor(kind))
+                _SoundChip(
+                  label: sound.name,
+                  selected: sound.id == selectedId,
+                  onTap: () {
+                    onChange(sound.id);
+                    // Play it on selection too — choosing and hearing are the
+                    // same action for anyone picking by ear.
+                    BeepPlayer.instance.preview(kind, sound.id);
+                  },
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SoundChip extends StatelessWidget {
+  const _SoundChip({required this.label, required this.selected, required this.onTap});
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 36),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.gold : AppColors.card,
+          border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              selected ? LucideIcons.volume2 : LucideIcons.play,
+              size: 12,
+              color: selected ? AppColors.onGold : AppColors.mute,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: selected ? AppColors.onGold : AppColors.txt,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Read-only list of locations a coach set for themselves.
+///
+/// Not editable here on purpose: it belongs to that coach's profile, and
+/// quietly rewriting it from the admin screen would move their sessions
+/// without telling them. This answers "where are my coaches actually
+/// running sessions", and flags any that can't be measured — a location
+/// with no coordinates still works, but no client will ever be told how
+/// far away it is.
+class _CoachSetLocations extends ConsumerWidget {
+  const _CoachSetLocations();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final places = ref.watch(coachSetPlacesProvider);
+    if (places.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionLabel("Set by coaches"),
+        const HintBox(text: "Locations your coaches set on their own profiles. Their sessions run from these instead of the gym's. Edit one on that coach's profile."),
+        for (final p in places)
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.all(11),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              border: Border.all(color: AppColors.line),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(LucideIcons.mapPin, size: 13, color: AppColors.gold),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(p.name,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    ),
+                    if (p.coachName != null)
+                      Text(p.coachName!,
+                          style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                  ],
+                ),
+                if (p.address.trim().isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(p.address, style: const TextStyle(fontSize: 11.5, color: AppColors.mute)),
+                ],
+                if (!p.hasCoords) ...[
+                  const SizedBox(height: 5),
+                  const Text(
+                    "⚠ No map pin — clients won't see a distance for sessions here. Ask the coach to set it on the map.",
+                    style: TextStyle(fontSize: 11, color: AppColors.warning, height: 1.35),
+                  ),
+                ],
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

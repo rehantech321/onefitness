@@ -1,12 +1,14 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/habit_utils.dart";
 import "../../../core/utils/intake_entitlements.dart";
 import "../../../core/utils/onboarding_utils.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/trainer_providers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
@@ -74,6 +76,45 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
 
   bool get _loggedToday => client.loggedOn(isoToday());
   bool get _hasSessionToday => bookings.any((b) => b.clientId == info.id && b.date == isoToday());
+
+  /// True while the client is in the gym ahead of a session they've booked
+  /// for later today. A 9pm booking is no reason to send someone home at
+  /// six — they can start now against the same booking.
+  bool get _canStartEarly {
+    final n = _next;
+    if (n == null || n.date != isoToday()) return false;
+    if (n.attendanceStatus != null) return false; // already checked in or settled
+    final now = DateTime.now();
+    return now.hour * 60 + now.minute < n.slot;
+  }
+
+  bool _startingEarly = false;
+
+  /// Checks the client in against their own booking and opens the session.
+  /// Deliberately the same booking rather than a new one: it's the slot they
+  /// paid for, just taken earlier, so their session balance and their
+  /// coach's roster both stay right.
+  Future<void> _startEarly(Booking booking) async {
+    setState(() => _startingEarly = true);
+    try {
+      await SupabaseService.checkInToBooking(booking.id);
+      // The booking changed server-side, so re-read rather than guessing
+      // at the new state (same pattern as the waitlist banner).
+      final fresh = await SupabaseService.loadBookings();
+      ref.read(allBookingsProvider.notifier).setAll(fresh);
+      ref.read(clientBookingsProvider.notifier)
+          .setAll(fresh.where((b) => b.clientId == info.id).toList());
+      if (!mounted) return;
+      widget.onLogWorkout();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't start your session — check your connection and try again.")),
+      );
+    } finally {
+      if (mounted) setState(() => _startingEarly = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -223,6 +264,26 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                         const SizedBox(width: 4),
                         Text(_next!.locationName!, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
                       ],
+                    ),
+                  ],
+                  // Turning up early is normal: the gym is open, the client
+                  // is here, and their slot is later tonight. This starts
+                  // that same booking now rather than making them wait or
+                  // rebook.
+                  if (_canStartEarly) ...[
+                    const SizedBox(height: 10),
+                    BtnGold(
+                      full: true,
+                      onPressed: _startingEarly ? null : () => _startEarly(_next!),
+                      child: Text(
+                        _startingEarly ? "Starting…" : "I'm here — start my session",
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      "Starts now against tonight's booking.",
+                      style: TextStyle(fontSize: 11, color: AppColors.mute),
                     ),
                   ],
                   const SizedBox(height: 10),

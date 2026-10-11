@@ -1,5 +1,8 @@
 import "package:flutter/material.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "../../../core/supabase/supabase_service.dart";
+import "../../../data/providers/client_providers.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/nearest_location.dart";
@@ -90,6 +93,7 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
     });
     final nearest = result.nearest;
     if (result.error == null && nearest != null) _choose(nearest.location.name);
+    if (result.origin != null) _rememberOrigin(result.origin!.lat, result.origin!.lng);
   }
 
   Future<void> _openSettings() async {
@@ -117,6 +121,26 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
       _distances = {for (final d in sorted) d.location.name: d};
     });
     if (sorted.isNotEmpty) _choose(sorted.first.location.name);
+    _rememberOrigin(picked.lat, picked.lng);
+  }
+
+  /// Keeps the point so every later screen measures from it too.
+  ///
+  /// Until now this lived in this widget's own state and died with it, so
+  /// the booking list fell back to geocoding the client's city — the centre
+  /// of it, which in a large city is further out than most of the distances
+  /// being reported.
+  Future<void> _rememberOrigin(double lat, double lng) async {
+    final id = ref.read(clientInfoProvider).id;
+    if (id.isEmpty) return;
+    ref.read(clientInfoProvider.notifier).update((c) => c.copyWith(homeLat: lat, homeLng: lng));
+    try {
+      await SupabaseService.updateClientHomePoint(id, lat, lng);
+    } catch (e) {
+      // Distances still work for this session from the local value; it just
+      // won't survive a restart. Not worth interrupting them over.
+      debugPrint("Couldn't save home point: $e");
+    }
   }
 
   @override

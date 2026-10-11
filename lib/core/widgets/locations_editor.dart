@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../theme/app_colors.dart";
+import "../utils/nearest_location.dart";
 import "../../data/models/trainer.dart";
 import "address_fields.dart";
 import "app_buttons.dart";
@@ -33,6 +34,14 @@ class _LocationsEditorState extends State<LocationsEditor> {
   final _address = TextEditingController();
   final _hint = TextEditingController();
 
+  /// Where the pin landed for the location being edited. Kept so the
+  /// coordinates survive the save — a location with no pin can be shown to
+  /// a client but never measured, so no distance is ever offered for
+  /// sessions run from it.
+  double? _lat;
+  double? _lng;
+  bool _saving = false;
+
   @override
   void dispose() {
     _name.dispose();
@@ -45,6 +54,8 @@ class _LocationsEditorState extends State<LocationsEditor> {
     _name.clear();
     _address.clear();
     _hint.clear();
+    _lat = null;
+    _lng = null;
     setState(() => _editingId = "new");
   }
 
@@ -52,6 +63,8 @@ class _LocationsEditorState extends State<LocationsEditor> {
     _name.text = loc.name;
     _address.text = loc.address ?? "";
     _hint.text = loc.hint ?? "";
+    _lat = loc.lat;
+    _lng = loc.lng;
     setState(() => _editingId = loc.id);
   }
 
@@ -59,22 +72,54 @@ class _LocationsEditorState extends State<LocationsEditor> {
 
   void _remove(String id) => widget.onChange(widget.value.where((l) => l.id != id).toList());
 
-  void _save() {
+  Future<void> _save() async {
     final name = _name.text.trim();
     final address = _address.text.trim();
-    if (name.isEmpty || address.isEmpty) return;
+    if (name.isEmpty || address.isEmpty || _saving) return;
     final hint = _hint.text.trim();
+
+    // No pin — either the address was typed rather than picked, or it was
+    // edited afterwards. Geocode it rather than saving a location that can
+    // never be measured. A failure here is not fatal: the location still
+    // saves, it just carries no distance until someone sets it on the map.
+    var lat = _lat;
+    var lng = _lng;
+    if (lat == null || lng == null) {
+      setState(() => _saving = true);
+      final point = await geocodeAddress(address);
+      if (!mounted) return;
+      lat = point?.lat;
+      lng = point?.lng;
+      setState(() => _saving = false);
+    }
+
     if (_editingId == "new") {
       widget.onChange([
         ...widget.value,
-        TrainerLocation(id: "loc-${DateTime.now().microsecondsSinceEpoch}", name: name, address: address, hint: hint.isEmpty ? null : hint),
+        TrainerLocation(
+          id: "loc-${DateTime.now().microsecondsSinceEpoch}",
+          name: name,
+          address: address,
+          hint: hint.isEmpty ? null : hint,
+          lat: lat,
+          lng: lng,
+        ),
       ]);
     } else {
       widget.onChange(widget.value
-          .map((l) => l.id == _editingId ? TrainerLocation(id: l.id, name: name, address: address, hint: hint.isEmpty ? null : hint) : l)
+          .map((l) => l.id == _editingId
+              ? TrainerLocation(
+                  id: l.id,
+                  name: name,
+                  address: address,
+                  hint: hint.isEmpty ? null : hint,
+                  lat: lat,
+                  lng: lng,
+                )
+              : l)
           .toList());
     }
-    setState(() => _editingId = null);
+    if (mounted) setState(() => _editingId = null);
   }
 
   @override
@@ -93,7 +138,20 @@ class _LocationsEditorState extends State<LocationsEditor> {
             AddressFields(
               key: ValueKey(_editingId),
               address: _address.text,
-              onChanged: (v) => _address.text = v,
+              onChanged: (v) {
+                // A hand-edited address invalidates the pin that came with
+                // the old one; _save re-geocodes rather than keeping a pin
+                // that points somewhere else.
+                if (v.trim() != _address.text.trim()) {
+                  _lat = null;
+                  _lng = null;
+                }
+                _address.text = v;
+              },
+              onPoint: (lat, lng) {
+                _lat = lat;
+                _lng = lng;
+              },
               showMapButton: true,
             ),
             const SizedBox(height: 8),
@@ -106,10 +164,14 @@ class _LocationsEditorState extends State<LocationsEditor> {
               children: [
                 Expanded(
                   child: BtnGold(
-                    onPressed: _save,
-                    child: const Row(
+                    onPressed: _saving ? null : _save,
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: [Icon(LucideIcons.check, size: 14), SizedBox(width: 6), Text("Save location")],
+                      children: [
+                        const Icon(LucideIcons.check, size: 14),
+                        const SizedBox(width: 6),
+                        Text(_saving ? "Finding on map…" : "Save location"),
+                      ],
                     ),
                   ),
                 ),

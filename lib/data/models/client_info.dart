@@ -11,6 +11,8 @@ class ClientInfo {
     this.photo,
     this.city,
     this.state,
+    this.homeLat,
+    this.homeLng,
     this.birthday,
     this.membershipPlanId,
     this.plans = const [],
@@ -48,6 +50,20 @@ class ClientInfo {
   /// Geocoded together with [city] to find the gym nearest this client —
   /// a bare city name is ambiguous across states.
   final String? state;
+
+  /// The point this client set for themselves, by dropping a pin or using
+  /// their position once.
+  ///
+  /// Kept because geocoding [city] and [state] answers with the centre of
+  /// the city, which in a place the size of Los Angeles can be ten miles
+  /// from where someone actually lives — a worse error than the distances
+  /// it was being used to report. The live device position still wins when
+  /// it is available; this is what the app falls back to before resorting
+  /// to the city.
+  final double? homeLat;
+  final double? homeLng;
+
+  bool get hasHomePoint => homeLat != null && homeLng != null;
   final String? birthday;
   final String? membershipPlanId;
   final List<ClientPlanEnrollment> plans;
@@ -141,6 +157,8 @@ class ClientInfo {
     String? photo,
     String? city,
     String? state,
+    double? homeLat,
+    double? homeLng,
     String? birthday,
     String? membershipPlanId,
     bool? membershipPaused,
@@ -176,6 +194,8 @@ class ClientInfo {
         photo: photo ?? this.photo,
         city: city ?? this.city,
         state: state ?? this.state,
+        homeLat: homeLat ?? this.homeLat,
+        homeLng: homeLng ?? this.homeLng,
         birthday: birthday ?? this.birthday,
         membershipPlanId: clearMembershipPlanId ? null : (membershipPlanId ?? this.membershipPlanId),
         plans: plans ?? this.plans,

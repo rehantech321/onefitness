@@ -5,6 +5,7 @@ import "../utils/coach_merit_badge_utils.dart";
 import "../utils/image_shrink.dart";
 import "../utils/date_utils.dart";
 import "../../data/models/availability_block.dart";
+import "../../data/models/live_session.dart";
 import "../../data/models/saved_payment_method.dart";
 import "../../data/models/blocked_time.dart";
 import "../../data/models/billing_anchor_history_entry.dart";
@@ -1347,6 +1348,10 @@ class SupabaseService {
       badgePrFactoryCents:
           _asInt(workouts["badgePrFactoryCents"]) ??
           defaults.badgePrFactoryCents,
+      beepSounds: {
+        for (final e in ((workouts["beepSounds"] as Map?) ?? const {}).entries)
+          e.key.toString(): e.value.toString(),
+      },
       badgeCheckInCents:
           _asInt(workouts["badgeCheckInCents"]) ?? defaults.badgeCheckInCents,
       badgeComebackCents:
@@ -1619,6 +1624,10 @@ class SupabaseService {
     "name": l.name,
     if (l.address != null) "address": l.address,
     if (l.hint != null) "hint": l.hint,
+    // Kept so a client can be told how far a coach's own location is. A
+    // location with no coordinates can be shown but never measured.
+    if (l.lat != null) "lat": l.lat,
+    if (l.lng != null) "lng": l.lng,
   };
 
   static Map<String, dynamic> _beforeAfterToJson(TrainerBeforeAfter b) => {
@@ -2426,6 +2435,168 @@ class SupabaseService {
         .eq("id", id);
   }
 
+  /// Remembers where a client said they are, so distances survive leaving
+  /// the screen.
+  ///
+  /// Their own row, their own position — no elevated path needed. Geocoding
+  /// their city instead answers with the city centre, which is the error
+  /// this removes.
+  static Future<void> updateClientHomePoint(
+    String profileId,
+    double lat,
+    double lng,
+  ) async {
+    await client
+        .from("clients")
+        .update({"home_lat": lat, "home_lng": lng})
+        .eq("profile_id", profileId);
+  }
+
+  /// A client arriving before their booked time and starting anyway.
+  ///
+  /// Their session is at 9pm but they're standing in the gym at six, so
+  /// this checks them in against that same booking rather than inventing a
+  /// new one — the slot they paid for is the slot they're using, just
+  /// earlier. [attendance_marked_at] records when they actually turned up,
+  /// which is what makes an early arrival visible to the coach rather than
+  /// silently rewriting the schedule.
+  static Future<void> checkInToBooking(String bookingId) async {
+    await client
+        .from("bookings")
+        .update({
+          "attendance_status": "checked-in",
+          "attendance_marked_at": DateTime.now().toUtc().toIso8601String(),
+          // What tells this apart from a coach ticking someone present.
+          // Only the client's own early start writes it, and it is what
+          // lets their coach start the session ahead of its time.
+          "client_started_at": DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq("id", bookingId);
+  }
+
+  // ── Live sessions and Beep Your Coach ──────────────────────────────────
+
+  /// Every session currently running. Small by nature — a gym has a handful
+  /// of coaches — and RLS already narrows it to the caller's own sessions
+  /// plus any they're booked into.
+  static Future<List<LiveSession>> loadLiveSessions() async {
+    final rows = await client.from("session_runs").select().isFilter("ended_at", null);
+    return rows
+        .map((r) => LiveSession.fromJson(r.cast<String, dynamic>()))
+        .whereType<LiveSession>()
+        .toList();
+  }
+
+  /// The coach starting a session, which is what switches Beep Your Coach on
+  /// for everyone booked into it.
+  ///
+  /// Re-starting a session already running returns the existing one rather
+  /// than failing: a coach who backs out of the screen and comes back in
+  /// hasn't ended anything, and a second row would split the beeps in two.
+  static Future<LiveSession?> startSessionRun({
+    required String trainerId,
+    required String date,
+    required int slotMin,
+    required String sessionType,
+    int durationMin = 60,
+    String? location,
+  }) async {
+    final existing = await client
+        .from("session_runs")
+        .select()
+        .eq("trainer_id", trainerId)
+        .eq("date", date)
+        .eq("slot_min", slotMin)
+        .isFilter("ended_at", null)
+        .maybeSingle();
+    if (existing != null) {
+      return LiveSession.fromJson(existing.cast<String, dynamic>());
+    }
+
+    final row = await client
+        .from("session_runs")
+        .insert({
+          "trainer_id": trainerId,
+          "date": date,
+          "slot_min": slotMin,
+          "session_type": sessionType,
+          // From the booking, so a 30- or 90-minute session counts down
+          // from its own length rather than an assumed hour.
+          "duration_min": durationMin,
+          "location": location,
+        })
+        .select()
+        .single();
+    return LiveSession.fromJson(row.cast<String, dynamic>());
+  }
+
+  /// Ending the session turns Beep Your Coach off for everyone in it.
+  static Future<void> endSessionRun(String id) async {
+    await client
+        .from("session_runs")
+        .update({"ended_at": DateTime.now().toUtc().toIso8601String()})
+        .eq("id", id);
+  }
+
+  /// Beeps for one running session — the coach's queue, and the client's own
+  /// outstanding requests.
+  static Future<List<Beep>> loadBeepsForRun(String sessionRunId) async {
+    final rows = await client
+        .from("beeps")
+        .select()
+        .eq("session_run_id", sessionRunId)
+        .order("created_at");
+    return rows
+        .map((r) => Beep.fromJson(r.cast<String, dynamic>()))
+        .whereType<Beep>()
+        .toList();
+  }
+
+  /// A client asking for the coach. The insert is direct rather than through
+  /// an Edge Function on purpose: the alert has to be instant, and a row
+  /// landing in `beeps` is what realtime pushes to the coach's open session
+  /// screen. Who may insert what is enforced by RLS, which re-checks that
+  /// the session is live, semi-private, and one this client is booked into.
+  static Future<Beep?> sendBeep({
+    required String sessionRunId,
+    required String trainerId,
+    required BeepKind kind,
+    String? exercise,
+  }) async {
+    final row = await client
+        .from("beeps")
+        .insert({
+          "session_run_id": sessionRunId,
+          "client_id": currentUser?.id,
+          "trainer_id": trainerId,
+          "kind": kind.key,
+          if (exercise != null && exercise.trim().isNotEmpty) "exercise": exercise.trim(),
+        })
+        .select()
+        .single();
+    return Beep.fromJson(row.cast<String, dynamic>());
+  }
+
+  /// The coach's one tap. A database trigger refuses this from anyone but
+  /// the coach it's addressed to, so the client can never make their own
+  /// beep read "Coach is coming".
+  static Future<void> acknowledgeBeep(String id) async {
+    await client
+        .from("beeps")
+        .update({"acknowledged_at": DateTime.now().toUtc().toIso8601String()})
+        .eq("id", id);
+  }
+
+  /// The client taking it back — including an accidental Done, and including
+  /// after the coach has already acknowledged. It clears on the coach's side
+  /// either way.
+  static Future<void> cancelBeep(String id) async {
+    await client
+        .from("beeps")
+        .update({"cancelled_at": DateTime.now().toUtc().toIso8601String()})
+        .eq("id", id);
+  }
+
   /// Opportunistic no-cron sweep (same shape as [checkGymCitizenExpiry] —
   /// safe to call speculatively on coach dashboard load, a no-op when
   /// `bookingIds` is empty) that auto-resolves past bookings nobody ever
@@ -2936,6 +3107,7 @@ class SupabaseService {
       "meritBadgeHabitWeeks": s.meritBadgeHabitWeeks,
       "badgeFullHouseCents": s.badgeFullHouseCents,
       "badgePrFactoryCents": s.badgePrFactoryCents,
+      "beepSounds": s.beepSounds,
       "badgeCheckInCents": s.badgeCheckInCents,
       "badgeComebackCents": s.badgeComebackCents,
       "badgeHabitCoachCents": s.badgeHabitCoachCents,
@@ -3652,6 +3824,8 @@ class SupabaseService {
       photo: profile["photo_url"] as String?,
       city: c["city"] as String?,
       state: c["state"] as String?,
+      homeLat: (c["home_lat"] as num?)?.toDouble(),
+      homeLng: (c["home_lng"] as num?)?.toDouble(),
       birthday: c["birthday"] as String?,
       membershipPlanId: c["membership_plan_id"] as String?,
       plans: _safeMap(
@@ -3833,6 +4007,8 @@ class SupabaseService {
             name: (e["name"] as String?) ?? "",
             address: e["address"] as String?,
             hint: e["hint"] as String?,
+            lat: (e["lat"] as num?)?.toDouble(),
+            lng: (e["lng"] as num?)?.toDouble(),
           ),
         )
         .toList();
@@ -3934,6 +4110,7 @@ class SupabaseService {
       sessionType: row["session_type"] as String? ?? "",
       discipline: row["discipline"] as String? ?? "",
       attendanceStatus: row["attendance_status"] as String?,
+      clientStartedAt: row["client_started_at"]?.toString(),
       locationName: _locationNameFrom(row["location"]),
       isPhysicalAssessment: row["is_physical_assessment"] as bool? ?? false,
       overriddenBy: row["overridden_by"] as String?,

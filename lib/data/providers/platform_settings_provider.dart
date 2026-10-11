@@ -132,6 +132,7 @@ class PlatformSettings {
     this.badgeHabitCoachCents = 2500,
     this.badgeChallengeCoachCents = 2500,
     this.badgeCoachOfMonthCents = 5000,
+    this.beepSounds = const {},
   });
 
   final int lateCancellationHours;
@@ -276,6 +277,13 @@ class PlatformSettings {
   final int badgeChallengeCoachCents;
   final int badgeCoachOfMonthCents;
 
+  /// Which alert tone each Beep Your Coach request plays on the coach's
+  /// phone, keyed by request type ("help" | "spot" | "done"). Set by the
+  /// owner and applied to every coach, so the gym sounds the same whoever
+  /// is running the floor. A missing or unknown id falls back to that
+  /// type's first option — see resolveSound.
+  final Map<String, String> beepSounds;
+
   PlatformSettings copyWith({
     int? lateCancellationHours,
     bool? blockRescheduleInWindow,
@@ -328,6 +336,7 @@ class PlatformSettings {
     int? badgeHabitCoachCents,
     int? badgeChallengeCoachCents,
     int? badgeCoachOfMonthCents,
+    Map<String, String>? beepSounds,
   }) =>
       PlatformSettings(
         lateCancellationHours: lateCancellationHours ?? this.lateCancellationHours,
@@ -375,6 +384,7 @@ class PlatformSettings {
         meritBadgeHabitWeeks: meritBadgeHabitWeeks ?? this.meritBadgeHabitWeeks,
         badgeFullHouseCents: badgeFullHouseCents ?? this.badgeFullHouseCents,
         badgePrFactoryCents: badgePrFactoryCents ?? this.badgePrFactoryCents,
+        beepSounds: beepSounds ?? this.beepSounds,
         badgeCheckInCents: badgeCheckInCents ?? this.badgeCheckInCents,
         badgeComebackCents: badgeComebackCents ?? this.badgeComebackCents,
         badgeHabitCoachCents: badgeHabitCoachCents ?? this.badgeHabitCoachCents,
