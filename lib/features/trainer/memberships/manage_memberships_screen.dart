@@ -4,6 +4,8 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../shell/trainer_shell_state.dart";
+import "../../../core/utils/plan_members.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/membership_plan.dart";
@@ -57,13 +59,7 @@ class _ManageMembershipsScreenState
 
   int _membersOn(String planId) {
     final roster = ref.watch(trainerRosterProvider);
-    return roster
-        .where(
-          (c) =>
-              c.membershipPlanId == planId ||
-              c.plans.any((pl) => pl.planId == planId && pl.status == "active"),
-        )
-        .length;
+    return membersOnPlan(roster, planId).length;
   }
 
   void _move(String id, int dir) {
@@ -1205,6 +1201,12 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
               ],
             ),
           ),
+
+          // Who actually holds this plan. The archive dialog already knew
+          // the number; the owner could see that one person was on a plan
+          // and had no way to find out who.
+          if (widget.initial != null) _PlanMembers(planId: widget.initial!.id),
+
           const SizedBox(height: 16),
           BtnGold(
             full: true,
@@ -1553,4 +1555,91 @@ class _CategoryManagerState extends State<_CategoryManager> {
 String _ordinal(int d) {
   if (d >= 11 && d <= 13) return "${d}th";
   return switch (d % 10) { 1 => "${d}st", 2 => "${d}nd", 3 => "${d}rd", _ => "${d}th" };
+}
+
+/// The clients holding a plan, listed under its settings.
+///
+/// Read-only and tappable through to the client — changing someone's plan
+/// belongs on their own profile, where the consequences (sessions, billing,
+/// freezes) are in front of whoever is making the change.
+class _PlanMembers extends ConsumerWidget {
+  const _PlanMembers({required this.planId});
+  final String planId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final members = membersOnPlan(ref.watch(trainerRosterProvider), planId);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 18),
+        SectionLabel(
+          members.isEmpty
+              ? "Members on this plan"
+              : "Members on this plan (${members.length})",
+        ),
+        if (members.isEmpty)
+          const HintBox(text: "Nobody is on this plan yet. It can be deleted outright rather than archived.")
+        else ...[
+          const Text(
+            "Tap a name to open their profile.",
+            style: TextStyle(fontSize: 11, color: AppColors.mute),
+          ),
+          const SizedBox(height: 8),
+          for (final m in members)
+            InkWell(
+              onTap: () => ref.read(trainerModeProvider.notifier).openClient(m.id),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  border: Border.all(color: AppColors.line),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            m.name,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Builder(builder: (context) {
+                            final bits = <String>[
+                              // Only the primary plan is what freezing and
+                              // cancelling act on, so it's worth marking.
+                              if (isPrimaryPlan(m, planId)) "Primary plan" else "Additional plan",
+                              if (planStartDate(m, planId) != null) "since ${planStartDate(m, planId)}",
+                            ];
+                            return Text(
+                              bits.join(" · "),
+                              style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                            );
+                          }),
+                          // A plan they've cancelled but are still running
+                          // out — they're on it today and won't be soon.
+                          if (planEndsOn(m, planId) != null)
+                            Text(
+                              "Ends ${planEndsOn(m, planId)}",
+                              style: const TextStyle(
+                                  fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w700),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
 }

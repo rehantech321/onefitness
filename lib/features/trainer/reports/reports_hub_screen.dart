@@ -9,6 +9,7 @@ import "../../../data/models/report_range.dart";
 import "attendance_reports.dart";
 import "date_range_filter.dart";
 import "financial_reports.dart";
+import "items_sold_report.dart";
 import "payroll_reports.dart";
 import "profitability_report.dart";
 import "rewards_report.dart";
@@ -45,6 +46,14 @@ final _catalog = [
       LucideIcons.receipt,
       "month",
       (r) => ItemizedSalesReport(range: r),
+    ),
+    _ReportDef(
+      "items-sold",
+      "Items Sold",
+      "Memberships, packages and products — counts and previous months",
+      LucideIcons.package,
+      "month",
+      (r) => ItemsSoldReport(range: r),
     ),
     _ReportDef(
       "realtime",
