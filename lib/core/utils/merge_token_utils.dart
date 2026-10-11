@@ -2,6 +2,7 @@ import "dart:convert";
 import "package:crypto/crypto.dart";
 import "../../data/models/client_info.dart";
 import "../../data/models/client_record.dart";
+import "../../data/models/membership_plan.dart";
 import "../../data/models/signature.dart";
 import "../../data/models/trainer.dart";
 import "../../data/models/waiver_doc.dart";
@@ -22,6 +23,8 @@ Map<String, String> buildMergeTokenValues({
   required ClientInfo info,
   ClientRecord? record,
   Trainer? coach,
+  String? businessName,
+  MembershipPlan? plan,
 }) {
   final parts = info.name.trim().split(RegExp(r"\s+"));
   final first = parts.isNotEmpty ? parts.first : info.name;
@@ -40,7 +43,52 @@ Map<String, String> buildMergeTokenValues({
     "coach_name": coach?.name ?? "",
     "signature_date": isoToday(),
     "guardian_name": record?.guardianName ?? "",
+
+    // ── The gym, and the plan this document is attached to ──────────────
+    // A membership agreement has to state what the client is actually
+    // being charged. Without these the price had to be typed into the
+    // contract by hand, which goes stale the moment a plan's price changes
+    // and leaves already-signed agreements disagreeing with what is
+    // actually billed.
+    "business_name": businessName ?? "",
+    "plan_name": plan?.name ?? "",
+    "sessions_per_month": plan?.maxSessions?.toString() ?? "",
+    "billing_amount": plan == null ? "" : _money(plan.priceCents),
+    // Price divided by the monthly allowance. Blank rather than a division
+    // by zero for a plan with no session count (an unlimited membership or
+    // a program), so the sentence reads oddly rather than showing "\$0.00"
+    // as though sessions were free.
+    "session_rate": (plan == null || (plan.maxSessions ?? 0) <= 0)
+        ? ""
+        : _money((plan.priceCents / plan.maxSessions!).round()),
+    // "the 14th" — the day of the month their card is charged.
+    "billing_anchor_date": info.billingAnchorDay == null ? "" : _ordinalDay(info.billingAnchorDay!),
+    "membership_start_date": _planStart(info, plan?.id),
   };
+}
+
+String _money(int cents) => "\$${(cents / 100).toStringAsFixed(2)}";
+
+/// "1st", "2nd", "3rd", "11th"… — the ordinals a billing date is spoken as.
+String _ordinalDay(int day) {
+  if (day >= 11 && day <= 13) return "${day}th";
+  return switch (day % 10) {
+    1 => "${day}st",
+    2 => "${day}nd",
+    3 => "${day}rd",
+    _ => "${day}th",
+  };
+}
+
+/// When this client started on this plan. Blank when it is not recorded —
+/// a contract signed before the plan is bought has no start date yet, and
+/// an invented one would be worse than a gap.
+String _planStart(ClientInfo info, String? planId) {
+  if (planId == null) return "";
+  for (final pl in info.plans) {
+    if (pl.planId == planId && pl.status == "active") return pl.startDate;
+  }
+  return "";
 }
 
 final _tokenPattern = RegExp(r"\{\{\s*([a-zA-Z_]+)\s*\}\}");

@@ -9,6 +9,7 @@ import "../../../core/utils/merge_token_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/waiver_doc.dart";
 import "../../../data/providers/client_providers.dart";
+import "../../../data/providers/platform_settings_provider.dart";
 
 /// Signing a waiver: read the document, initial each of the five clauses,
 /// tick the electronic-signing consent, then sign — or, for a client under
@@ -189,7 +190,18 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
     final record = ref.watch(clientRecordProvider);
     final trainers = ref.watch(trainersProvider);
     final coach = trainers.where((t) => t.id == info.primaryTrainerId).firstOrNull;
-    final values = buildMergeTokenValues(info: info, record: record, coach: coach);
+    // A plan-scoped document is a contract for that specific plan, so its
+    // price and session count are what the agreement is about; a general
+    // waiver has no plan and those tokens resolve to blank.
+    final plans = ref.watch(membershipPlansProvider);
+    final plan = plans.where((p) => p.id == widget.doc.planId).firstOrNull;
+    final values = buildMergeTokenValues(
+      info: info,
+      record: record,
+      coach: coach,
+      businessName: ref.watch(platformSettingsProvider).businessName,
+      plan: plan,
+    );
     final text = readableWaiverText(widget.doc.body, values);
     final age = ageFromBirthday(info.birthday);
     final isMinor = age != null && age < 18;
