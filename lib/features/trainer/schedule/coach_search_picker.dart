@@ -71,7 +71,7 @@ class _CoachSearchPickerState extends State<CoachSearchPicker> {
                             onTap: () => widget.onSelect(t),
                             child: Row(
                               children: [
-                                Avatar(name: t.name, size: 34),
+                                Avatar(src: t.photo, name: t.name, size: 34),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(

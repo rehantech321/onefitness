@@ -1286,7 +1286,7 @@ class _AddChargeFormState extends State<_AddChargeForm> {
             child: AppField(
               controller: _amount,
               placeholder: "0.00",
-              keyboardType: TextInputType.number,
+              kind: FieldKind.decimal,
             ),
           ),
           if (_err != null)

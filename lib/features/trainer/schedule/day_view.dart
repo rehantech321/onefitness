@@ -91,7 +91,7 @@ class DayView extends ConsumerWidget {
                 padding: const EdgeInsets.only(top: 10, bottom: 8),
                 child: Row(
                   children: [
-                    Avatar(name: trainer.name, size: 28),
+                    Avatar(src: trainer.photo, name: trainer.name, size: 28),
                     const SizedBox(width: 10),
                     Expanded(child: Text(trainer.displayTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
                     if (!isPast)

@@ -221,7 +221,7 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                 children: [
                   Row(
                     children: [
-                      Avatar(name: t.name, size: 40),
+                      Avatar(src: t.photo, name: t.name, size: 40),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(

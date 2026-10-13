@@ -1,34 +1,29 @@
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../theme/app_colors.dart";
+import "../utils/gym_location_link.dart";
 import "../utils/nearest_location.dart";
+import "../../data/providers/platform_settings_provider.dart";
 import "../../data/models/trainer.dart";
 import "address_fields.dart";
 import "app_buttons.dart";
 import "app_text_field.dart";
 
-const _kHqLocationId = "onefitness-hq";
-const _kHqLocation = TrainerLocation(
-  id: _kHqLocationId,
-  name: "ONE Fitness",
-  address: "11300 Magnolia Blvd., North Hollywood, CA 91601",
-  hint: "Free parking in the corner plaza, plus free parking on both sides of the street. ONE Fitness is located in the corner unit of the plaza.",
-);
-
 /// Mirrors StaffManager.jsx's `LocationsEditor` — a trainer's `locations`
 /// list: add/edit/remove, plus a one-tap "+ONE Fitness" quick-add for the
 /// gym's own HQ location (DEFAULT_LOCATION in domain.js).
-class LocationsEditor extends StatefulWidget {
+class LocationsEditor extends ConsumerStatefulWidget {
   const LocationsEditor({super.key, required this.value, required this.onChange});
 
   final List<TrainerLocation> value;
   final ValueChanged<List<TrainerLocation>> onChange;
 
   @override
-  State<LocationsEditor> createState() => _LocationsEditorState();
+  ConsumerState<LocationsEditor> createState() => _LocationsEditorState();
 }
 
-class _LocationsEditorState extends State<LocationsEditor> {
+class _LocationsEditorState extends ConsumerState<LocationsEditor> {
   String? _editingId; // "new" | an existing location's id | null
   final _name = TextEditingController();
   final _address = TextEditingController();
@@ -68,7 +63,14 @@ class _LocationsEditorState extends State<LocationsEditor> {
     setState(() => _editingId = loc.id);
   }
 
-  void _addHq() => widget.onChange([...widget.value, _kHqLocation]);
+  /// Adds the gym's own location, taken from Customize Platform rather
+  /// than from a constant in this file. The entry keeps a fixed id so its
+  /// details can be re-read from settings every time it's shown — change
+  /// the address in Customize Platform and every coach's follows.
+  void _addGym() => widget.onChange([
+        ...widget.value,
+        gymLocationEntry(ref.read(platformSettingsProvider)),
+      ]);
 
   void _remove(String id) => widget.onChange(widget.value.where((l) => l.id != id).toList());
 
@@ -184,12 +186,17 @@ class _LocationsEditorState extends State<LocationsEditor> {
       );
     }
 
-    final hasHq = widget.value.any((l) => l.id == _kHqLocationId);
+    final settings = ref.watch(platformSettingsProvider);
+    // The gym's entry shows its CURRENT details, not whatever was copied in
+    // when it was added.
+    final shown = resolveTrainerLocations(widget.value, settings);
+    final hasGym = hasGymLocation(widget.value, settings);
+    final gymName = settings.defaultLocation?.name ?? settings.locationName;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.value.isEmpty) const Padding(padding: EdgeInsets.only(bottom: 8), child: Text("No locations yet.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic))),
-        ...widget.value.map((loc) => Padding(
+        ...shown.map((loc) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Container(
                 padding: const EdgeInsets.all(11),
@@ -215,7 +222,8 @@ class _LocationsEditorState extends State<LocationsEditor> {
                         ],
                       ),
                     ),
-                    IconButton(onPressed: () => _startEdit(loc), icon: const Icon(LucideIcons.pencil, size: 14, color: AppColors.mute), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 30, minHeight: 30)),
+                    if (!isGymLocation(loc))
+                      IconButton(onPressed: () => _startEdit(loc), icon: const Icon(LucideIcons.pencil, size: 14, color: AppColors.mute), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 30, minHeight: 30)),
                     IconButton(onPressed: () => _remove(loc.id), icon: const Icon(LucideIcons.trash2, size: 14, color: Color(0xFF6B3B3B)), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 30, minHeight: 30)),
                   ],
                 ),
@@ -225,11 +233,11 @@ class _LocationsEditorState extends State<LocationsEditor> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            if (!hasHq)
+            if (!hasGym && gymName.trim().isNotEmpty)
               OutlinedButton(
-                onPressed: _addHq,
+                onPressed: _addGym,
                 style: OutlinedButton.styleFrom(foregroundColor: AppColors.txt, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-                child: const Text("+ ONE Fitness", style: TextStyle(fontSize: 12)),
+                child: Text("+ $gymName", style: const TextStyle(fontSize: 12)),
               ),
             OutlinedButton(
               onPressed: _startNew,

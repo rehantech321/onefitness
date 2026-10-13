@@ -311,7 +311,7 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                 children: [
                   Row(
                     children: [
-                      Avatar(name: t.name, size: 36),
+                      Avatar(src: t.photo, name: t.name, size: 36),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(

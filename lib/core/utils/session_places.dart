@@ -5,6 +5,7 @@ import "../../data/models/trainer.dart";
 import "../../data/providers/platform_settings_provider.dart";
 import "../../data/providers/client_providers.dart";
 import "booking_location.dart";
+import "gym_location_link.dart";
 import "nearest_location.dart";
 
 /// Everywhere a session can actually happen, from either side.
@@ -65,7 +66,10 @@ List<SessionPlace> allSessionPlaces(PlatformSettings settings, List<Trainer> tra
   final seen = {for (final p in places) p.name.trim().toLowerCase()};
 
   for (final t in trainers) {
-    for (final l in t.locations) {
+    // A coach's entry for the gym's own site is linked, not copied, so its
+    // address and pin come from Customize Platform rather than from
+    // whatever was stored on their profile when they added it.
+    for (final l in resolveTrainerLocations(t.locations, settings)) {
       final key = l.name.trim().toLowerCase();
       if (key.isEmpty || seen.contains(key)) continue;
       seen.add(key);

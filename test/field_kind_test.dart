@@ -323,4 +323,66 @@ void main() {
       }
     });
   });
+
+  group("money fields can hold the amounts they exist for", () {
+    // A coach paid $12.50 a session could only type 12 or 13: the field
+    // raised a keypad with no decimal point, while the code behind it has
+    // always parsed with double and stored cents. The keyboard was the only
+    // thing in the way.
+    testWidgets("a decimal field offers a decimal keyboard", (tester) async {
+      await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(body: AppField(kind: FieldKind.decimal)),
+      ));
+      final f = tester.widget<TextField>(find.byType(TextField));
+      expect(f.keyboardType, const TextInputType.numberWithOptions(decimal: true));
+    });
+
+    testWidgets("a plain number keyboard has no decimal point", (tester) async {
+      // Why the money fields had to change: this is what they were using.
+      await tester.pumpWidget(const MaterialApp(
+        home: Scaffold(body: AppField(keyboardType: TextInputType.number)),
+      ));
+      final f = tester.widget<TextField>(find.byType(TextField));
+      expect(f.keyboardType, TextInputType.number);
+      expect(f.keyboardType, isNot(const TextInputType.numberWithOptions(decimal: true)));
+    });
+
+    testWidgets("12.50 can be typed and survives to cents", (tester) async {
+      final c = TextEditingController();
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: AppField(kind: FieldKind.decimal, controller: c)),
+      ));
+      await tester.enterText(find.byType(TextField), "12.50");
+      expect(c.text, "12.50");
+      // The same arithmetic the save does.
+      expect(((double.tryParse(c.text) ?? 0) * 100).round(), 1250);
+    });
+
+    testWidgets("a whole amount still works", (tester) async {
+      final c = TextEditingController();
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: AppField(kind: FieldKind.decimal, controller: c)),
+      ));
+      await tester.enterText(find.byType(TextField), "12");
+      expect(((double.tryParse(c.text) ?? 0) * 100).round(), 1200);
+    });
+
+    testWidgets("a half-cent rounds rather than truncating", (tester) async {
+      final c = TextEditingController();
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: AppField(kind: FieldKind.decimal, controller: c)),
+      ));
+      await tester.enterText(find.byType(TextField), "12.505");
+      expect(((double.tryParse(c.text) ?? 0) * 100).round(), 1251);
+    });
+
+    testWidgets("letters still cannot be typed into a money field", (tester) async {
+      final c = TextEditingController();
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: AppField(kind: FieldKind.decimal, controller: c)),
+      ));
+      await tester.enterText(find.byType(TextField), r"$12.50 USD");
+      expect(c.text, "12.50");
+    });
+  });
 }

@@ -8,6 +8,7 @@ import "../../../core/widgets/address_fields.dart";
 import "../../../core/widgets/map_location_picker.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/notifications/beep_sounds.dart";
+import "../../../core/utils/gym_location_link.dart";
 import "../../../core/utils/session_places.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
@@ -1258,7 +1259,7 @@ class _CoachLocationsList extends ConsumerWidget {
     // Location name -> the coaches who train there.
     final byName = <String, List<String>>{};
     for (final t in ref.watch(trainersProvider)) {
-      for (final l in t.locations) {
+      for (final l in resolveTrainerLocations(t.locations, settings)) {
         final name = l.name.trim();
         if (name.isEmpty) continue;
         (byName[name] ??= []).add(t.name);

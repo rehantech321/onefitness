@@ -839,7 +839,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                   label: "Price (\$)",
                   child: AppField(
                     controller: _price,
-                    keyboardType: TextInputType.number,
+                    kind: FieldKind.decimal,
                   ),
                 ),
               ),
@@ -1057,7 +1057,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                   label: "Guest fee (\$ per visit)",
                   child: AppField(
                     controller: _guestFee,
-                    keyboardType: TextInputType.number,
+                    kind: FieldKind.decimal,
                   ),
                 ),
               ],
@@ -1091,7 +1091,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                   label: "Early termination fee (\$)",
                   child: AppField(
                     controller: _terminationFee,
-                    keyboardType: TextInputType.number,
+                    kind: FieldKind.decimal,
                   ),
                 ),
               ] else ...[

@@ -436,7 +436,7 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
             label: "Price (\$)",
             child: AppField(
               controller: _price,
-              keyboardType: TextInputType.number,
+              kind: FieldKind.decimal,
             ),
           ),
           const SizedBox(height: 14),

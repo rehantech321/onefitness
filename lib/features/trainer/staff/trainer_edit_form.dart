@@ -791,12 +791,12 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                 "perHour" => "Rate per hour (\$)",
                 _ => "Base rate per session (\$)",
               },
-              child: AppField(controller: _payoutRate, keyboardType: TextInputType.number),
+              child: AppField(controller: _payoutRate, kind: FieldKind.decimal),
             ),
             const SizedBox(height: 10),
             FieldLabeled(
               label: "Referral commission (%)",
-              child: AppField(controller: _referralPercent, keyboardType: TextInputType.number),
+              child: AppField(controller: _referralPercent, kind: FieldKind.decimal),
             ),
             const Padding(
               padding: EdgeInsets.only(top: 4),

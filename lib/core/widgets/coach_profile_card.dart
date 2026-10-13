@@ -1,8 +1,11 @@
 import "dart:convert";
 import "dart:io";
 import "package:flutter/material.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../theme/app_colors.dart";
+import "../utils/gym_location_link.dart";
+import "../../data/providers/platform_settings_provider.dart";
 import "../utils/domain_labels.dart";
 import "../../data/models/trainer.dart";
 import "avatar.dart";
@@ -12,7 +15,7 @@ import "tag.dart";
 /// opened from a "Meet the Coach ›" cue in the booking flow: photo,
 /// disciplines, locations, bio, and any before/after transformation
 /// photos the coach has added.
-class CoachProfileCard extends StatelessWidget {
+class CoachProfileCard extends ConsumerWidget {
   const CoachProfileCard({super.key, required this.trainer, required this.onClose});
 
   final Trainer trainer;
@@ -27,7 +30,7 @@ class CoachProfileCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Assessment blocks are a staff tool, not a service — they never show as
     // something this coach offers ("programmer" is the legacy key for them).
     final disciplines = trainer.offeredAvailability
@@ -98,7 +101,9 @@ class CoachProfileCard extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              trainer.locations.map((l) => l.name).join(" · "),
+                              resolveTrainerLocations(trainer.locations, ref.watch(platformSettingsProvider))
+                                  .map((l) => l.name)
+                                  .join(" · "),
                               style: const TextStyle(fontSize: 12, color: AppColors.mute),
                             ),
                           ),
