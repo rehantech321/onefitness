@@ -35,11 +35,25 @@ List<MembershipPlan> heldAccessPlans(ClientInfo info, List<MembershipPlan> allPl
     held.add(p);
   }
 
-  add(info.membershipPlanId);
+  final today = isoToday();
+
+  // The plan in the subscription slot, unless its own enrolment says it has
+  // expired.
+  //
+  // This used to be added unconditionally, which meant an expiry date set on
+  // the client's main plan did nothing at all — staff could give someone
+  // access "until March" and they would keep booking indefinitely. The
+  // enrolment list below was already checked; the slot was the hole.
+  final slotEnrolment = info.plans
+      .where((e) => e.planId == info.membershipPlanId && e.status == "active");
+  final slotExpiry = slotEnrolment.isEmpty ? null : slotEnrolment.first.endsAt;
+  if (slotExpiry == null || today.compareTo(slotExpiry) <= 0) {
+    add(info.membershipPlanId);
+  }
+
   // A plan the client switched away from keeps its remaining sessions until
   // the period they already paid for runs out (endsAt) — after that it's
   // spent, and only whatever rolled over lives on under the new plan.
-  final today = isoToday();
   final enrolled = [
     ...info.plans.where((e) => e.status == "active" && (e.endsAt == null || today.compareTo(e.endsAt!) <= 0)),
   ]..sort((a, b) => a.startDate.compareTo(b.startDate));

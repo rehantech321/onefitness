@@ -37,6 +37,70 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
   bool _busy = false;
   String? _error;
 
+  /// What the client will actually be charged, in dollars. Starts at the
+  /// plan's own price and is editable — a coach agreeing a different rate
+  /// with a client shouldn't have to create a whole plan for it. For a
+  /// membership this becomes the recurring amount too, so the client pays
+  /// the agreed rate every month rather than only the first.
+  final _price = TextEditingController();
+
+  /// When this access stops. Memberships default to a month out; anything
+  /// else starts with no expiry unless the plan sets one, and staff can
+  /// change any of it.
+  DateTime? _expiresAt;
+
+  /// So re-picking the same plan doesn't wipe an edit the coach just made.
+  String? _defaultsFor;
+
+  @override
+  void dispose() {
+    _price.dispose();
+    super.dispose();
+  }
+
+  /// Fills the price and expiry from a newly-picked plan.
+  void _applyPlanDefaults(MembershipPlan plan) {
+    if (_defaultsFor == plan.id) return;
+    _defaultsFor = plan.id;
+    _price.text = (plan.priceCents / 100).toStringAsFixed(2);
+    _expiresAt = _defaultExpiryFor(plan);
+  }
+
+  /// A monthly membership runs a month; a plan with its own expiry window
+  /// uses that; everything else has none until someone sets one.
+  DateTime? _defaultExpiryFor(MembershipPlan plan) {
+    final now = DateTime.now();
+    if (plan.kind == PlanKind.membership) {
+      return DateTime(now.year, now.month + 1, now.day);
+    }
+    if (plan.expirationEnabled && (plan.expirationDays ?? 0) > 0) {
+      return now.add(Duration(days: plan.expirationDays!));
+    }
+    return null;
+  }
+
+  String? get _expiryIso =>
+      _expiresAt == null ? null : _expiresAt!.toIso8601String().substring(0, 10);
+
+  int? get _priceOverrideCents {
+    final typed = double.tryParse(_price.text.trim());
+    if (typed == null) return null;
+    return (typed * 100).round();
+  }
+
+  Future<void> _pickExpiry() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _expiresAt ?? DateTime(now.year, now.month + 1, now.day),
+      // Access can't expire before it starts; five years is further ahead
+      // than any membership this gym sells.
+      firstDate: now,
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) setState(() => _expiresAt = picked);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Programs included: a coach selling a client a personalized or nutrition
@@ -75,7 +139,8 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
                 borderColor: selected ? AppColors.gold : null,
                 onTap: () => setState(() {
                   _planId = p.id;
-                              _error = null;
+                  _applyPlanDefaults(p);
+                  _error = null;
                 }),
                 child: Row(
                   children: [
@@ -93,7 +158,81 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
               ),
             );
           }),
-          if (plan != null && plan.priceCents > 0) ...[
+          if (plan != null) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: FieldLabeled(
+                    label: plan.kind == PlanKind.membership ? "Price (\$ / month)" : "Price (\$)",
+                    child: AppField(
+                      kind: FieldKind.decimal,
+                      controller: _price,
+                      onChanged: (_) => setState(() => _error = null),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FieldLabeled(
+                    label: "Access expires",
+                    child: InkWell(
+                      onTap: _pickExpiry,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        alignment: Alignment.centerLeft,
+                        decoration: BoxDecoration(
+                          color: AppColors.bg,
+                          border: Border.all(color: AppColors.line),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _expiresAt == null ? "No expiry" : _expiryIso!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: _expiresAt == null ? AppColors.mute : AppColors.txt,
+                                ),
+                              ),
+                            ),
+                            const Icon(LucideIcons.calendar, size: 14, color: AppColors.mute),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _expiresAt == null
+                        ? "Access doesn't run out. Set a date to give it a limit."
+                        : "Sessions can't be booked against this plan after this date.",
+                    style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3),
+                  ),
+                ),
+                if (_expiresAt != null)
+                  TextButton(
+                    onPressed: () => setState(() => _expiresAt = null),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.mute,
+                      minimumSize: const Size(44, 32),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    child: const Text("Clear", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                  ),
+              ],
+            ),
+          ],
+          if (plan != null && (_priceOverrideCents ?? plan.priceCents) > 0) ...[
             const SizedBox(height: 10),
             const Text("COUPON (OPTIONAL)", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 8),
@@ -127,7 +266,9 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
             child: Text(
               _busy
                   ? "Working…"
-                  : (plan != null && plan.priceCents > 0 ? "Take payment" : "Assign plan"),
+                  : (plan != null && (_priceOverrideCents ?? plan.priceCents) > 0
+                      ? "Take payment"
+                      : "Assign plan"),
             ),
           ),
         ],
@@ -141,10 +282,18 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
       _error = null;
     });
     try {
-      if (plan.priceCents <= 0) {
+      // The typed price decides this, not the plan's own: a coach can sell a
+      // normally-paid plan for nothing (a comp, a make-good) and a free plan
+      // for a price, and either should do the right thing.
+      final chargeCents = _priceOverrideCents ?? plan.priceCents;
+      if (chargeCents <= 0) {
         // Server-side: `plans` is a grant (it unlocks intake forms), and this
         // also keeps a program from overwriting the client's membership.
-        await SupabaseService.enrollFreePlan(plan.id, clientId: widget.info.id);
+        await SupabaseService.enrollFreePlan(
+          plan.id,
+          clientId: widget.info.id,
+          accessExpiresAt: _expiryIso,
+        );
         if (!isProgramKind(plan.kind)) widget.onPlanAssigned(plan.id);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${plan.name} assigned to ${widget.info.name}.")));
@@ -168,6 +317,11 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
         targetClientId: widget.info.id,
         paymentMethod: tender == PayTender.ach ? "ach" : "card",
         businessName: ref.read(platformSettingsProvider).businessName,
+        // Only sent when it differs from the plan, so an ordinary sale is
+        // still priced entirely server-side. Either way the server re-checks
+        // that whoever asked for it is staff.
+        priceOverrideCents: chargeCents == plan.priceCents ? null : chargeCents,
+        accessExpiresAt: _expiryIso,
       );
       if (result.cancelled) return;
       if (!result.ok && !result.noPaymentNeeded) {

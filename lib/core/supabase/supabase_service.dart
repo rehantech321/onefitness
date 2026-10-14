@@ -4,6 +4,7 @@ import "package:supabase_flutter/supabase_flutter.dart";
 import "../utils/coach_merit_badge_utils.dart";
 import "../utils/image_shrink.dart";
 import "../utils/date_utils.dart";
+import "../../data/models/activity_entry.dart";
 import "../../data/models/availability_block.dart";
 import "../../data/models/live_session.dart";
 import "../../data/models/saved_payment_method.dart";
@@ -2435,6 +2436,24 @@ class SupabaseService {
         .eq("id", id);
   }
 
+  /// The owner's activity feed, newest first.
+  ///
+  /// Capped rather than paged: this answers "what happened recently", and a
+  /// gym generates a few hundred entries a month. RLS already refuses it to
+  /// anyone who isn't the owner, so an empty list is the correct answer for
+  /// a coach rather than an error.
+  static Future<List<ActivityEntry>> loadActivityLog({int limit = 300}) async {
+    final rows = await client
+        .from("activity_log")
+        .select()
+        .order("at", ascending: false)
+        .limit(limit);
+    return rows
+        .map((r) => ActivityEntry.fromJson(r.cast<String, dynamic>()))
+        .whereType<ActivityEntry>()
+        .toList();
+  }
+
   /// Remembers where a client said they are, so distances survive leaving
   /// the screen.
   ///
@@ -2836,10 +2855,17 @@ class SupabaseService {
   /// unlocked — so prevent_membership_self_grant reverts any client-side
   /// write to it. [clientId] enrolls someone else and is staff-only,
   /// enforced by the function.
-  static Future<void> enrollFreePlan(String planId, {String? clientId}) =>
+  static Future<void> enrollFreePlan(
+    String planId, {
+    String? clientId,
+    /// ISO yyyy-MM-dd the access stops. Staff only — the server refuses it
+    /// from a client enrolling themselves.
+    String? accessExpiresAt,
+  }) =>
       _invokeFunction("enroll-free-plan", {
         "planId": planId,
         if (clientId != null) "clientId": clientId,
+        if (accessExpiresAt != null) "accessExpiresAt": accessExpiresAt,
       });
 
   /// In-app payment — everything Stripe's native Payment Sheet needs to
@@ -2855,12 +2881,20 @@ class SupabaseService {
     String? couponCode,
     String? targetClientId,
     String paymentMethod = "card",
+    /// A staff-set price in cents, replacing the plan's own. For a
+    /// membership this becomes the recurring amount too, not just the first
+    /// charge. The server refuses it from anyone who isn't a coach or owner.
+    int? priceOverrideCents,
+    /// ISO yyyy-MM-dd the access stops. Staff only, same as above.
+    String? accessExpiresAt,
   }) =>
       _invokeFunction("create-payment-intent", {
         "planId": planId,
         "paymentMethod": paymentMethod,
         if (couponCode != null && couponCode.trim().isNotEmpty) "couponCode": couponCode.trim(),
         if (targetClientId != null) "targetClientId": targetClientId,
+        if (priceOverrideCents != null) "priceOverrideCents": priceOverrideCents,
+        if (accessExpiresAt != null) "accessExpiresAt": accessExpiresAt,
       });
 
   /// Coach/owner creates a client account in person. Returns the new

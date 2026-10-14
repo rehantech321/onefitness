@@ -122,6 +122,8 @@ class PaymentSheetService {
     String? targetClientId,
     String paymentMethod = "card",
     required String businessName,
+    int? priceOverrideCents,
+    String? accessExpiresAt,
   }) async {
     // The native sheet is iOS/Android only. Web would need Stripe Elements,
     // which this app doesn't ship — failing loudly beats silently doing
@@ -137,6 +139,8 @@ class PaymentSheetService {
         couponCode: couponCode,
         targetClientId: targetClientId,
         paymentMethod: paymentMethod,
+        priceOverrideCents: priceOverrideCents,
+        accessExpiresAt: accessExpiresAt,
       );
     } catch (e) {
       return PaymentResult.failed(e.toString().replaceFirst("Exception: ", ""));

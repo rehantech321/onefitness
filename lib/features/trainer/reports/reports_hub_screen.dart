@@ -9,6 +9,7 @@ import "../../../data/models/report_range.dart";
 import "attendance_reports.dart";
 import "date_range_filter.dart";
 import "financial_reports.dart";
+import "activity_log_report.dart";
 import "items_sold_report.dart";
 import "payroll_reports.dart";
 import "profitability_report.dart";
@@ -134,6 +135,16 @@ final _catalog = [
       LucideIcons.scale,
       "month",
       (r) => RevenueVsPayrollReport(range: r),
+    ),
+  ]),
+  _Category("Oversight", [
+    _ReportDef(
+      "activity",
+      "Activity Log",
+      "Who changed what — sales, edits, sessions moved or cancelled",
+      LucideIcons.history,
+      "month",
+      (r) => ActivityLogReport(range: r),
     ),
   ]),
   _Category("Rewards", [
