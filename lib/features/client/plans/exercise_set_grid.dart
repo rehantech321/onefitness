@@ -112,6 +112,7 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
             padding: const EdgeInsets.only(top: 6, bottom: 2),
             child: Wrap(
               spacing: 10,
+              runSpacing: 10,
               children: [
                 if (exercise.weight != null)
                   Text("@ ${exercise.weight} $_unit", style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600)),

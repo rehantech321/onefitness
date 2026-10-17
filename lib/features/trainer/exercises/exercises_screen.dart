@@ -158,6 +158,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                         const SizedBox(height: 3),
                         Wrap(
                           spacing: 5,
+                          runSpacing: 5,
                           children: [
                             Tag(text: e.primaryMuscle, gold: true),
                             Tag(text: e.movementPattern),

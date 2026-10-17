@@ -528,6 +528,7 @@ class _MembersTab extends ConsumerWidget {
                 Row(
                   children: [
                     Avatar(
+                      src: c.photo,
                       name: c.name,
                       size: 44,
                       active: m.status != "inactive",
@@ -540,6 +541,7 @@ class _MembersTab extends ConsumerWidget {
                           Wrap(
                             crossAxisAlignment: WrapCrossAlignment.center,
                             spacing: 6,
+                            runSpacing: 6,
                             children: [
                               Text(
                                 c.name,
@@ -661,15 +663,13 @@ class _MembersTab extends ConsumerWidget {
             return AppCard(
               child: Row(
                 children: [
-                  Avatar(
-                    name: roster
-                        .firstWhere(
-                          (m) => m.id == inv.clientId,
-                          orElse: () => const RosterClient(id: "", name: "?"),
-                        )
-                        .name,
-                    size: 38,
-                  ),
+                  Builder(builder: (context) {
+                    final invitee = roster.firstWhere(
+                      (m) => m.id == inv.clientId,
+                      orElse: () => const RosterClient(id: "", name: "?"),
+                    );
+                    return Avatar(src: invitee.photo, name: invitee.name, size: 38);
+                  }),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -923,7 +923,7 @@ class _PaymentsTab extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Avatar(name: c.name, size: 36),
+                    Avatar(src: c.photo, name: c.name, size: 36),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(

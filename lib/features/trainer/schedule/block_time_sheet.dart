@@ -75,6 +75,7 @@ class _BlockTimeBodyState extends ConsumerState<_BlockTimeBody> {
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
+              runSpacing: 6,
               children: trainers.map((t) {
                 final selected = _trainerId == t.id;
                 return InkWell(

@@ -764,6 +764,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
+              runSpacing: 6,
               children: const [
                 ("perClient", "Per client"),
                 ("perHour", "Per hour"),

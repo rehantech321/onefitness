@@ -320,7 +320,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                   onTap: () => setState(() => _sessionClientId = b.clientId),
                   child: Row(
                     children: [
-                      Avatar(name: attendee.name, size: 36),
+                      Avatar(src: attendee.photo, name: attendee.name, size: 36),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -414,7 +414,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Avatar(name: person.name, size: 26, active: active),
+                              Avatar(src: person.photo, name: person.name, size: 26, active: active),
                               const SizedBox(height: 3),
                               Text(
                                 person.name.split(" ").first,
@@ -499,7 +499,12 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
         children: [
           stag(Row(
             children: [
-              Avatar(name: isOwner ? "Owner" : myName, size: 48, active: true),
+              Avatar(
+                src: me.isNotEmpty ? me.first.photo : null,
+                name: isOwner ? "Owner" : myName,
+                size: 48,
+                active: true,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -611,7 +616,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                         },
                         child: Row(
                           children: [
-                            Avatar(name: c.name, size: 30),
+                            Avatar(src: c.photo, name: c.name, size: 30),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
@@ -848,7 +853,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                     child: Stack(
                                       clipBehavior: Clip.none,
                                       children: [
-                                        Avatar(name: attendee.name, size: 32),
+                                        Avatar(src: attendee.photo, name: attendee.name, size: 32),
                                         if (status != null)
                                           Positioned(
                                             bottom: -1,

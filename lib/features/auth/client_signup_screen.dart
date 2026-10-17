@@ -364,6 +364,8 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                   _error = null;
                 }),
                 child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     const Text("I agree to the ", style: TextStyle(fontSize: 13, height: 1.4)),

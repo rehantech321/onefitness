@@ -172,6 +172,7 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
         child: Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 6,
+          runSpacing: 6,
           children: [
             const Text("My Location:", style: TextStyle(fontSize: 13, color: AppColors.mute)),
             Text(widget.selected ?? "Any location",

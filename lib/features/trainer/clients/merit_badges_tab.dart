@@ -615,6 +615,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                       children: [
                         Wrap(
                           spacing: 6,
+                          runSpacing: 6,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(

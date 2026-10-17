@@ -254,7 +254,7 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
               decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
               child: Row(
                 children: [
-                  if (_trainer != null) ...[Avatar(name: _trainer!.name, size: 26), const SizedBox(width: 8)],
+                  if (_trainer != null) ...[Avatar(src: _trainer!.photo, name: _trainer!.name, size: 26), const SizedBox(width: 8)],
                   Expanded(
                     child: Text(
                       _trainer?.displayTitle ?? "Search for a coach…",

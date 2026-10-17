@@ -199,7 +199,7 @@ class _SquadTabState extends ConsumerState<SquadTab> {
               return AppCard(
                 child: Row(
                   children: [
-                    Avatar(name: c.name, size: 40, active: m.status != "inactive"),
+                    Avatar(src: c.photo, name: c.name, size: 40, active: m.status != "inactive"),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -208,6 +208,7 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                           Wrap(
                             crossAxisAlignment: WrapCrossAlignment.center,
                             spacing: 6,
+                            runSpacing: 6,
                             children: [
                               Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                               if (lead)
@@ -245,11 +246,12 @@ class _SquadTabState extends ConsumerState<SquadTab> {
             if (squad.pendingCount > 0) ...[
               const SectionLabel("Pending Invites"),
               ...squad.pendingInvites.where((i) => i.status == "pending").map((inv) {
-                final name = clientRoster.firstWhere((m) => m.id == inv.clientId, orElse: () => const RosterClient(id: "", name: "Client")).name;
+                final invitee = clientRoster.firstWhere((m) => m.id == inv.clientId, orElse: () => const RosterClient(id: "", name: "Client"));
+                final name = invitee.name;
                 return AppCard(
                   child: Row(
                     children: [
-                      Avatar(name: name, size: 34),
+                      Avatar(src: invitee.photo, name: name, size: 34),
                       const SizedBox(width: 12),
                       Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
                       OutlinedButton(

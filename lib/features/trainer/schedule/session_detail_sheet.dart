@@ -202,7 +202,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                 children: [
                   Row(
                     children: [
-                      Avatar(name: client?.name ?? "Removed", size: 34),
+                      Avatar(src: client?.photo, name: client?.name ?? "Removed", size: 34),
                       const SizedBox(width: 10),
                       Expanded(
                         child: InkWell(

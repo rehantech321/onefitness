@@ -73,7 +73,7 @@ class _SquadMemberSearchScreenState extends State<SquadMemberSearchScreen> {
                   onTap: () => widget.onSelect(c),
                   child: Row(
                     children: [
-                      Avatar(name: c.name, size: 38),
+                      Avatar(src: c.photo, name: c.name, size: 38),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(

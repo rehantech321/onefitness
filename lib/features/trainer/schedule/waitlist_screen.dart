@@ -202,7 +202,17 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
                   children: [
                     Row(
                       children: [
-                        Avatar(src: null, name: first.clientName, size: 30),
+                        // A waitlist row stores only the client's name, so the photo
+                      // comes from the roster this screen already has.
+                      Avatar(
+                        src: ref
+                            .watch(trainerRosterProvider)
+                            .where((c) => c.id == first.clientId)
+                            .map((c) => c.photo)
+                            .firstOrNull,
+                        name: first.clientName,
+                        size: 30,
+                      ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(

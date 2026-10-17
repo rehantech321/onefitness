@@ -232,6 +232,7 @@ class _CouponEditFormState extends State<_CouponEditForm> {
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
+            runSpacing: 6,
             children: [
               for (final t in const [("percent", "Percent off"), ("flat", "Flat amount off")])
                 InkWell(

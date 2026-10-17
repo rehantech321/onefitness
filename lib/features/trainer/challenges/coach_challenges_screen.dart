@@ -480,7 +480,14 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
                           ),
                         ),
                       ),
-                      Avatar(name: e.name, size: 32),
+                      Avatar(
+                              src: roster
+                                  .where((c) => c.id == e.clientId)
+                                  .map((c) => c.photo)
+                                  .firstOrNull,
+                              name: e.name,
+                              size: 32,
+                            ),
                       const SizedBox(width: 10),
                       Expanded(child: Text(e.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
                       if (e.isWinner)

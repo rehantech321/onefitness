@@ -193,6 +193,7 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
 
     final trainerMatches = trainers.where((t) => t.id == _trainerId);
     final trainerName = trainerMatches.isNotEmpty ? trainerMatches.first.displayTitle : null;
+    final trainerPhoto = trainerMatches.isNotEmpty ? trainerMatches.first.photo : null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
@@ -202,7 +203,7 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
         children: [
           Row(
             children: [
-              Avatar(name: _client!.name, size: 32),
+              Avatar(src: _client!.photo, name: _client!.name, size: 32),
               const SizedBox(width: 10),
               Expanded(child: Text(_client!.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
               TextButton(onPressed: () => setState(() => _picking = true), child: const Text("Change", style: TextStyle(fontSize: 12))),
@@ -220,7 +221,7 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
                 decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
                 child: Row(
                   children: [
-                    if (trainerName != null) ...[Avatar(name: trainerName, size: 26), const SizedBox(width: 8)],
+                    if (trainerName != null) ...[Avatar(src: trainerPhoto, name: trainerName, size: 26), const SizedBox(width: 8)],
                     Expanded(
                       child: Text(
                         trainerName ?? "Search for a coach…",

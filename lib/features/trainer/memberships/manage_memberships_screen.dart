@@ -802,6 +802,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
+            runSpacing: 6,
             children: PlanKind.values.map((k) {
               final selected = _kind == k;
               return InkWell(
@@ -878,6 +879,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
+              runSpacing: 6,
               // The gym's own list, so a plan can cover a session type the
               // owner added (Customize Platform → Services).
               children: ref.watch(platformSettingsProvider).offeredSessionTypes.map((t) {

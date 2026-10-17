@@ -1488,6 +1488,7 @@ class _StepThreeState extends State<_StepThree> {
         Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
           spacing: 6,
+          runSpacing: 6,
           children: [
             Text(sessionTypeLabel(chosenType), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
             const Text("›", style: TextStyle(fontSize: 13, color: AppColors.mute)),

@@ -46,7 +46,7 @@ class _ClientSearchPickerState extends State<ClientSearchPicker> {
                             onTap: () => widget.onSelect(c),
                             child: Row(
                               children: [
-                                Avatar(name: c.name, size: 34),
+                                Avatar(src: c.photo, name: c.name, size: 34),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
