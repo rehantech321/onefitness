@@ -5,7 +5,11 @@ import "../theme/app_colors.dart";
 class BackBar extends StatelessWidget {
   const BackBar({super.key, required this.onBack, this.title});
 
-  final VoidCallback onBack;
+  /// Null disables the button rather than hiding it, so a screen that is
+  /// mid-way through something irreversible — creating an account, say —
+  /// can stop someone leaving without the row jumping around as it
+  /// appears and disappears.
+  final VoidCallback? onBack;
   final String? title;
 
   @override

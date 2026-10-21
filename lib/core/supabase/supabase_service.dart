@@ -3309,9 +3309,40 @@ class SupabaseService {
     final rows = await client
         .from("package_categories")
         .select("name")
-        .order("created_at");
+        // The owner's own order, not when each row happened to be written.
+        // Name breaks a tie so two categories added in the same breath
+        // can't swap places between loads.
+        .order("sort_order")
+        .order("name");
     return rows.map((r) => r["name"] as String).toList();
   }
+
+  /// Writes the whole list's positions in one go, in the order given.
+  ///
+  /// Spaced by 10 so a later insert between two of them doesn't need the
+  /// rest renumbering. Sent as one upsert rather than a write per row, so a
+  /// half-applied order can't survive a dropped connection.
+  static Future<void> savePackageCategoryOrder(List<String> namesInOrder) async {
+    if (namesInOrder.isEmpty) return;
+    await client.from("package_categories").upsert(
+      [
+        for (var i = 0; i < namesInOrder.length; i++)
+          {"name": namesInOrder[i], "sort_order": (i + 1) * 10},
+      ],
+      onConflict: "name",
+    );
+  }
+
+  /// Renames a category and re-tags everything that referenced it.
+  ///
+  /// A plan stores its category as text, not an id, so a plain rename would
+  /// leave every plan in that category pointing at a name that no longer
+  /// exists. The database does both together — see migration 28.
+  static Future<void> renamePackageCategory(String oldName, String newName) =>
+      client.rpc("rename_package_category", params: {
+        "p_old": oldName,
+        "p_new": newName,
+      });
 
   /// Add-only — a duplicate name is a no-op (unique constraint), matching
   /// the web's own "23505 = unique_violation, ignore" handling.

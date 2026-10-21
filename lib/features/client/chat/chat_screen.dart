@@ -7,8 +7,10 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/report_block_sheet.dart";
 import "../drawer_screens/add_phone_screen.dart";
+import "../../../core/utils/chat_channels.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
+import "../../../core/utils/notification_triggers.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_info.dart";
 import "../../../data/models/client_record.dart";
@@ -17,15 +19,8 @@ import "../../../data/models/trainer.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/platform_settings_provider.dart";
 
-// Every message is stored in the app thread regardless; the channel says
-// what else happens to it. Email = also emailed. In App / SMS = also texted.
-// Both = emailed and texted.
-enum _Channel { email, inappSms, both }
-
 /// The three things the Chat tab can be showing.
 enum _ChatView { list, thread, picker }
-
-const _channelLabels = {_Channel.email: "Email", _Channel.inappSms: "In App / SMS", _Channel.both: "Both"};
 
 const _prefRecipientKey = "chat_recipient_id";
 const _prefChannelKey = "chat_channel";
@@ -48,7 +43,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
   bool _prefsLoaded = false;
   String? _recipientId; // coach id or "business"
-  _Channel? _channel;
+
+  /// Never empty once a thread is open — the picker won't let it be, and a
+  /// remembered value that decodes to nothing falls back to the default.
+  Set<ChatChannel> _channels = defaultChatChannels;
+
+  /// Whether a recipient has been chosen. The channels are never unset (a
+  /// new chat starts on In app), so only the recipient gates the picker.
+  bool get _isSetUp => _recipientId != null;
 
   /// Chat opens on the recents list; a thread sits on top of it, and the
   /// picker is only reached deliberately via "New message".
@@ -71,26 +73,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final savedRecipient = prefs.getString(_prefRecipientKey);
-    final savedChannelName = prefs.getString(_prefChannelKey);
-    final savedChannel = _Channel.values.where((c) => c.name == savedChannelName);
+    // A value saved by an older build decodes through the legacy spellings
+    // — "inappSms" becomes In app + SMS, so nobody's remembered choice
+    // changes under them. Anything unreadable falls back to the default
+    // rather than leaving the thread with nothing selected.
+    final saved = decodeChannels(prefs.getString(_prefChannelKey));
     if (!mounted) return;
     setState(() {
       _recipientId = savedRecipient;
-      _channel = savedChannel.isNotEmpty ? savedChannel.first : null;
+      _channels = saved.isEmpty ? defaultChatChannels : saved;
       _prefsLoaded = true;
     });
-    if (_recipientId != null && _channel != null) {
+    if (_isSetUp) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(animate: false));
     }
   }
 
-  Future<void> _confirmSetup(String recipientId, _Channel channel) async {
-    // In App / SMS sends a text, so it needs a number. Signup no longer
-    // collects one (Apple guideline 5.1.1 — don't demand what isn't
-    // essential), so it's asked for here, at the moment it becomes
-    // essential, and saved straight onto the profile.
-    final needsSms = channel == _Channel.inappSms || channel == _Channel.both;
-    if (needsSms && clientNeedsPhone(ref)) {
+  Future<void> _confirmSetup(String recipientId, Set<ChatChannel> channels) async {
+    var chosen = channels;
+    // SMS is the one channel that needs a number. Signup no longer collects
+    // one (Apple guideline 5.1.1 — don't demand what isn't essential), so
+    // it's asked for here, at the moment it becomes essential, and saved
+    // straight onto the profile.
+    if (channelsNeedPhone(chosen) && clientNeedsPhone(ref)) {
       final saved = await promptForPhoneDialog(
         context,
         ref,
@@ -98,25 +103,29 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             "It's saved to your profile so you only enter it once.",
       );
       if (!saved) {
-        // They backed out — don't switch to a channel that can't deliver.
+        // Backing out used to abandon the whole setup, which is what left
+        // a client with no phone number unable to open a chat at all. Now
+        // it just drops SMS and opens the thread on what's left — and In
+        // app is always left, because the picker can't be emptied.
+        chosen = toggleChannel(chosen, ChatChannel.sms);
+        if (chosen.contains(ChatChannel.sms)) chosen = defaultChatChannels;
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Add a phone number to use In App / SMS. You can still message in the app by choosing Email."),
+              content: Text("SMS is off — your messages still go through the app. Turn SMS on any time by adding a number."),
               duration: Duration(seconds: 5),
             ),
           );
         }
-        return;
       }
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefRecipientKey, recipientId);
-    await prefs.setString(_prefChannelKey, channel.name);
+    await prefs.setString(_prefChannelKey, encodeChannels(chosen));
     if (!mounted) return;
     setState(() {
       _recipientId = recipientId;
-      _channel = channel;
+      _channels = chosen;
       _view = _ChatView.thread;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -157,12 +166,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           realCandidates: realCandidates,
           businessName: businessName,
           initialRecipientId: _recipientId,
-          initialChannel: _channel,
+          initialChannels: _channels,
+          needsPhone: clientNeedsPhone(ref),
           confirmLabel: "Save",
           onCancel: () => Navigator.of(ctx).pop(),
-          onConfirm: (recipientId, channel) {
+          onConfirm: (recipientId, channels) {
             Navigator.of(ctx).pop();
-            _confirmSetup(recipientId, channel);
+            _confirmSetup(recipientId, channels);
           },
         ),
       ),
@@ -173,7 +183,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     required Trainer selectedCoach,
     required ClientInfo info,
     required PlatformSettings settings,
-    required _Channel channel,
+    required Set<ChatChannel> channels,
   }) async {
     final text = _msgController.text.trim();
     if (text.isEmpty) return;
@@ -187,7 +197,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       text: text,
       at: stamp(),
       trainerId: selectedCoach.id,
-      channel: channel.name,
+      channel: encodeChannels(channels),
       createdAt: DateTime.now(),
     );
     _msgController.clear();
@@ -200,7 +210,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         trainerId: selectedCoach.id,
         who: "client",
         text: text,
-        channel: channel.name,
+        channel: encodeChannels(channels),
       );
       // Swap the placeholder for the stored row.
       ref.read(clientRecordProvider.notifier).update(
@@ -228,10 +238,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } finally {
       if (mounted) setState(() => _pendingIds.remove(tempId));
     }
-    // "In App" nudges the recipient's phone via a native SMS composer in
-    // the source app — a device-integration feature, not a backend one,
-    // so it's left as a no-op here; "Email"/"Both" are real.
-    if ((channel == _Channel.email || channel == _Channel.both) && selectedCoach.email != null) {
+    // In app: the message is in the thread either way, so what this adds
+    // is the push. Without it an in-app-only message would sit unseen
+    // until the coach happened to open the tab, which is what made the
+    // old "In App" option feel like it did nothing.
+    //
+    // "business" is the picker's pseudo-coach for messaging the gym itself,
+    // not a profile id — there's no single device to push to, and the
+    // message is in the thread for whoever reads it. (sendMessage already
+    // drops the same sentinel rather than writing it as a trainer_id.)
+    if (channels.contains(ChatChannel.inapp) && selectedCoach.id != "business") {
+      notifyPush(
+        profileId: selectedCoach.id,
+        title: "New message from ${info.name}",
+        body: text,
+      );
+    }
+    if (channels.contains(ChatChannel.email) && selectedCoach.email != null) {
       SupabaseService.sendEmail(
         to: selectedCoach.email!,
         subject: "New message from ${info.name} — ${settings.businessName}",
@@ -244,12 +267,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         }
       });
     }
-    if (channel == _Channel.inappSms || channel == _Channel.both) {
+    if (channels.contains(ChatChannel.sms)) {
       final phone = (selectedCoach.phone ?? "").trim();
       if (phone.isEmpty) {
+        // The recipient's missing number, not the sender's. The message is
+        // already in their thread, so this is a note, not a failure.
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("${selectedCoach.name} has no phone number on file — sent in-app only.")),
+            SnackBar(content: Text("${selectedCoach.name} has no phone number on file — sent in the app instead.")),
           );
         }
       } else {
@@ -303,9 +328,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final candidates = _candidateCoaches(info, trainers, settings);
     final realCandidates = candidates.where((t) => t.id != "business").toList();
 
-    final hasSelection = _recipientId != null && _channel != null;
-
-    if (_view == _ChatView.picker || (_view == _ChatView.thread && !hasSelection)) {
+    if (_view == _ChatView.picker || (_view == _ChatView.thread && !_isSetUp)) {
       return LocalBackScope(
         isOpen: true,
         onBack: () => setState(() => _view = _ChatView.list),
@@ -315,7 +338,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             realCandidates: realCandidates,
             businessName: settings.businessName,
             initialRecipientId: _recipientId,
-            initialChannel: _channel,
+            initialChannels: _channels,
+            needsPhone: clientNeedsPhone(ref),
             confirmLabel: "Start chat",
             onConfirm: _confirmSetup,
           ),
@@ -340,7 +364,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               newChatLabel: "New message",
               onOpen: (coachId) => setState(() {
                 _recipientId = coachId;
-                _channel ??= _Channel.inappSms;
                 _view = _ChatView.thread;
               }),
               onNewChat: () => setState(() => _view = _ChatView.picker),
@@ -354,7 +377,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       (t) => t.id == _recipientId,
       orElse: () => candidates.first,
     );
-    final channel = _channel!;
     final thread = client.comms
         .where((c) => c.trainerId == null || c.trainerId == selectedCoach.id)
         .toList()
@@ -367,7 +389,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       children: [
         _ContextBar(
           coach: selectedCoach,
-          channelLabel: _channelLabels[channel]!,
+          channelLabel: chatChannelsLabel(_channels),
           onChange: () => _openChangeSheet(realCandidates: realCandidates, businessName: settings.businessName),
         ),
         Expanded(
@@ -391,7 +413,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         _Composer(
           controller: _msgController,
           recipientName: selectedCoach.displayTitle,
-          onSend: () => _send(selectedCoach: selectedCoach, info: info, settings: settings, channel: channel),
+          onSend: () => _send(selectedCoach: selectedCoach, info: info, settings: settings, channels: _channels),
         ),
       ],
       ),
@@ -477,9 +499,10 @@ void showChatInfoSheet(BuildContext context) {
           ),
           const SizedBox(height: 10),
           const Text(
-            "Every message is logged below, timestamped — a record you control. In App also nudges "
-            "the recipient's phone via a text composer. Email actually emails them the message. "
-            "Both does both.",
+            "Every message is logged below, timestamped — a record you control.\n\n"
+            "Pick any combination of the three ways to send. In app notifies them in ONE Fitness. "
+            "SMS also texts them, and is the only one that needs a phone number. Email also emails "
+            "them. In app on its own is fine — you never have to give a number to use the chat.",
             style: TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5),
           ),
         ],
@@ -495,7 +518,8 @@ class _RecipientSetup extends StatefulWidget {
     required this.realCandidates,
     required this.businessName,
     required this.initialRecipientId,
-    required this.initialChannel,
+    required this.initialChannels,
+    required this.needsPhone,
     required this.confirmLabel,
     required this.onConfirm,
     this.onCancel,
@@ -504,9 +528,14 @@ class _RecipientSetup extends StatefulWidget {
   final List<Trainer> realCandidates;
   final String businessName;
   final String? initialRecipientId;
-  final _Channel? initialChannel;
+  final Set<ChatChannel> initialChannels;
+
+  /// Whether this client still has no number on file — so the SMS hint can
+  /// say "we'll ask" rather than promising to ask someone who has already
+  /// given one.
+  final bool needsPhone;
   final String confirmLabel;
-  final void Function(String recipientId, _Channel channel) onConfirm;
+  final void Function(String recipientId, Set<ChatChannel> channels) onConfirm;
   final VoidCallback? onCancel;
 
   @override
@@ -515,11 +544,13 @@ class _RecipientSetup extends StatefulWidget {
 
 class _RecipientSetupState extends State<_RecipientSetup> {
   late String? _recipientId = widget.initialRecipientId;
-  late _Channel? _channel = widget.initialChannel;
+  late Set<ChatChannel> _channels =
+      widget.initialChannels.isEmpty ? defaultChatChannels : widget.initialChannels;
 
   @override
   Widget build(BuildContext context) {
-    final canConfirm = _recipientId != null && _channel != null;
+    // The channels can't be emptied, so only the recipient gates Confirm.
+    final canConfirm = _recipientId != null && canSendOn(_channels);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -538,26 +569,36 @@ class _RecipientSetupState extends State<_RecipientSetup> {
           ],
           _businessCard(),
           const SizedBox(height: 20),
-          const Text("Send via", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+          const Text("Send via — pick any", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
           const SizedBox(height: 8),
           Row(
             children: [
-              for (final ch in _Channel.values) ...[
-                if (ch != _Channel.email) const SizedBox(width: 8),
+              for (final ch in chatChannelOrder) ...[
+                if (ch != chatChannelOrder.first) const SizedBox(width: 8),
                 _SegOption(
-                  label: _channelLabels[ch]!,
-                  selected: _channel == ch,
-                  onTap: () => setState(() => _channel = ch),
+                  label: chatChannelLabels[ch]!,
+                  selected: _channels.contains(ch),
+                  multi: true,
+                  onTap: () => setState(() => _channels = toggleChannel(_channels, ch)),
                 ),
               ],
             ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            !_channels.contains(ChatChannel.sms)
+                ? "No phone number needed."
+                : widget.needsPhone
+                    ? "SMS needs a phone number — we'll ask for yours once."
+                    : "Texts go to the number on your profile.",
+            style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
           const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
                 child: BtnGold(
-                  onPressed: canConfirm ? () => widget.onConfirm(_recipientId!, _channel!) : null,
+                  onPressed: canConfirm ? () => widget.onConfirm(_recipientId!, _channels) : null,
                   child: Text(widget.confirmLabel),
                 ),
               ),
@@ -792,28 +833,52 @@ class _CoachSearchSheetState extends State<_CoachSearchSheet> {
 }
 
 class _SegOption extends StatelessWidget {
-  const _SegOption({required this.label, required this.selected, required this.onTap});
+  const _SegOption({required this.label, required this.selected, required this.onTap, this.multi = false});
   final String label;
   final bool selected;
   final VoidCallback onTap;
 
+  /// Several of these can be on at once. Without a tick, three lit segments
+  /// read as a radio group that has gone wrong rather than as a set of
+  /// choices — and the whole point of the row is that they combine.
+  final bool multi;
+
   @override
   Widget build(BuildContext context) {
+    final fg = selected ? AppColors.onGold : AppColors.mute;
     return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? AppColors.gold : AppColors.card,
-            border: Border.all(color: selected ? AppColors.gold : AppColors.line),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: selected ? AppColors.onGold : AppColors.mute),
+      child: Semantics(
+        checked: multi ? selected : null,
+        selected: multi ? null : selected,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? AppColors.gold : AppColors.card,
+              border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (multi) ...[
+                  Icon(selected ? LucideIcons.check : LucideIcons.plus, size: 12, color: fg),
+                  const SizedBox(width: 4),
+                ],
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: fg),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -954,16 +1019,21 @@ class _Bubble extends StatelessWidget {
 
 class _ChannelBadge extends StatelessWidget {
   const _ChannelBadge({required this.channel});
-  final String channel; // "email" | "inapp" | "both"
+
+  /// As stored on the row — the comma-joined form, or one of the older
+  /// single values. [decodeChannels] handles both, which is also what fixed
+  /// the old badge: it compared against "inapp" while the enum wrote
+  /// "inappSms", so texted messages carried no icon at all.
+  final String channel;
 
   @override
   Widget build(BuildContext context) {
-    final icons = switch (channel) {
-      "email" => const [LucideIcons.mail],
-      "inapp" => const [LucideIcons.phone],
-      "both" => const [LucideIcons.mail, LucideIcons.phone],
-      _ => const <IconData>[],
-    };
+    final channels = decodeChannels(channel);
+    final icons = <IconData>[
+      if (channels.contains(ChatChannel.inapp)) LucideIcons.smartphone,
+      if (channels.contains(ChatChannel.sms)) LucideIcons.messageSquare,
+      if (channels.contains(ChatChannel.email)) LucideIcons.mail,
+    ];
     if (icons.isEmpty) return const SizedBox.shrink();
     return Row(
       mainAxisSize: MainAxisSize.min,

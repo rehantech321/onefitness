@@ -214,7 +214,10 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) widget.onBack();
+        // Ignored while the account is being created: the system back
+        // button would otherwise drop them on the login screen part-way
+        // through, for an account that may already exist.
+        if (!didPop && !_busy) widget.onBack();
       },
       child: Scaffold(
       backgroundColor: AppColors.bg,
@@ -224,7 +227,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              BackBar(onBack: widget.onBack, title: "Create my profile"),
+              BackBar(onBack: _busy ? null : widget.onBack, title: "Create my profile"),
               const SizedBox(height: 10),
               const Text(
                 "Set up your account to start booking sessions and tracking your progress.",
@@ -432,7 +435,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                       ),
               ),
               const SizedBox(height: 10),
-              BtnGhost(onPressed: widget.onBack, full: true, child: const Text("Back to sign in")),
+              BtnGhost(onPressed: _busy ? null : widget.onBack, full: true, child: const Text("Back to sign in")),
             ],
           ),
         ),

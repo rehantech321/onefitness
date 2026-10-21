@@ -62,6 +62,54 @@ class _ManageMembershipsScreenState
     return membersOnPlan(roster, planId).length;
   }
 
+  /// Moves a category one place. The list order is what clients see in the
+  /// Access Hub, so this writes the whole run of positions rather than just
+  /// the pair that swapped — cheaper to reason about than patching two rows
+  /// and hoping the rest still line up.
+  Future<void> _moveCategory(String name, int direction) async {
+    final current = [...ref.read(packageCategoriesProvider)];
+    final i = current.indexOf(name);
+    final j = i + direction;
+    if (i < 0 || j < 0 || j >= current.length) return;
+    current[i] = current[j];
+    current[j] = name;
+    // Shown immediately; the write follows. A failure re-reads the server's
+    // order rather than leaving the screen showing something that isn't so.
+    ref.read(packageCategoriesProvider.notifier).setAll(current);
+    try {
+      await SupabaseService.savePackageCategoryOrder(current);
+    } catch (e) {
+      final fresh = await SupabaseService.loadPackageCategories();
+      if (!mounted) return;
+      ref.read(packageCategoriesProvider.notifier).setAll(fresh);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't save the new order — check your connection and try again.")),
+      );
+    }
+  }
+
+  /// Renames a category, carrying every plan and product tagged with it.
+  /// The server does both together, so a rename can't leave plans pointing
+  /// at a name that no longer exists.
+  Future<void> _renameCategory(String oldName, String newName) async {
+    try {
+      await SupabaseService.renamePackageCategory(oldName, newName);
+      final fresh = await SupabaseService.loadPackageCategories();
+      final plans = await SupabaseService.loadMembershipPlans();
+      if (!mounted) return;
+      ref.read(packageCategoriesProvider.notifier).setAll(fresh);
+      ref.read(membershipPlansProvider.notifier).setAll(plans);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Renamed to "$newName".')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
+      );
+    }
+  }
+
   void _move(String id, int dir) {
     final plans = ref.read(membershipPlansProvider);
     final i = plans.indexWhere((p) => p.id == id);
@@ -339,6 +387,8 @@ class _ManageMembershipsScreenState
               _creatingInCategory = c;
               _creating = true;
             }),
+            onMove: _moveCategory,
+            onRename: _renameCategory,
           ),
           const SizedBox(height: 18),
           // Grouped by category, in the gym's own category order — the same
@@ -1346,6 +1396,8 @@ class _CategoryManager extends StatefulWidget {
     required this.onAdd,
     required this.onDelete,
     required this.onAddPlanIn,
+    required this.onMove,
+    required this.onRename,
   });
 
   final List<String> categories;
@@ -1356,6 +1408,13 @@ class _CategoryManager extends StatefulWidget {
   final Future<bool> Function(String) onAdd;
   final void Function(String, int) onDelete;
   final ValueChanged<String> onAddPlanIn;
+
+  /// Moves a category one place in the list. The order is what clients see
+  /// in the Access Hub, so it is the owner's to arrange.
+  final void Function(String name, int direction) onMove;
+
+  /// Renames it, carrying every plan and product tagged with it along.
+  final Future<void> Function(String oldName, String newName) onRename;
 
   @override
   State<_CategoryManager> createState() => _CategoryManagerState();
@@ -1369,6 +1428,41 @@ class _CategoryManagerState extends State<_CategoryManager> {
   void dispose() {
     _custom.dispose();
     super.dispose();
+  }
+
+  /// Asks for the new name, then hands it to the server, which renames the
+  /// category and re-tags everything pointing at it in one go.
+  Future<void> _rename(String current) async {
+    final controller = TextEditingController(text: current);
+    final next = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text("Rename category", style: TextStyle(fontSize: 15)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AppField(kind: FieldKind.name, controller: controller),
+            const SizedBox(height: 8),
+            const Text(
+              "Every plan and product in this category moves with it.",
+              style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.35),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text("Rename", style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (next == null || next.isEmpty || next == current) return;
+    await widget.onRename(current, next);
   }
 
   Future<void> _createCustom() async {
@@ -1419,7 +1513,9 @@ class _CategoryManagerState extends State<_CategoryManager> {
           if (categories.isEmpty)
             const HintBox(text: "No categories yet — add one below.", bordered: false)
           else
-            ...categories.map((c) {
+            ...categories.asMap().entries.map((entry) {
+              final i = entry.key;
+              final c = entry.value;
               final count = planCountFor(c);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -1444,6 +1540,27 @@ class _CategoryManagerState extends State<_CategoryManager> {
                             ),
                           ],
                         ),
+                      ),
+                      // Up/down rather than drag: a drag handle inside a
+                      // scrolling form fights the scroll on a phone.
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _MoveButton(
+                            icon: LucideIcons.chevronUp,
+                            onTap: i == 0 ? null : () => widget.onMove(c, -1),
+                          ),
+                          _MoveButton(
+                            icon: LucideIcons.chevronDown,
+                            onTap: i == categories.length - 1 ? null : () => widget.onMove(c, 1),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () => _rename(c),
+                        icon: const Icon(LucideIcons.pencil, size: 14, color: AppColors.mute),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       ),
                       TextButton(
                         onPressed: () => onAddPlanIn(c),
@@ -1642,6 +1759,30 @@ class _PlanMembers extends ConsumerWidget {
             ),
         ],
       ],
+    );
+  }
+}
+
+/// One arrow in the reorder control. Disabled at the ends rather than
+/// hidden, so the two buttons don't shift position row to row.
+class _MoveButton extends StatelessWidget {
+  const _MoveButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        child: Icon(
+          icon,
+          size: 14,
+          color: onTap == null ? AppColors.line : AppColors.mute,
+        ),
+      ),
     );
   }
 }

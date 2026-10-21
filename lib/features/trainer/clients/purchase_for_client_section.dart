@@ -109,6 +109,10 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
     // it (see enroll-free-plan / stripe-webhook, which keep the two apart).
     final plans = ref.watch(membershipPlansProvider).where((p) => !p.archived).toList()
       ..sort((a, b) => a.kind.index.compareTo(b.kind.index));
+    // Grouped the same way, and in the same order, as the client's own
+    // Access Hub — a coach picking a plan for someone should be looking at
+    // the same catalogue the client would.
+    final grouped = _groupPlans(plans, ref.watch(packageCategoriesProvider));
     final coupons = ref.watch(couponsProvider).where((c) => !c.archived).toList();
     final plan = plans.where((p) => p.id == _planId).firstOrNull;
     final coupon = coupons.where((c) => c.id == _couponId).firstOrNull;
@@ -124,14 +128,30 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
           const Padding(
             padding: EdgeInsets.only(top: 4, bottom: 14),
             child: Text(
-              "Pick a plan and, if you'd like, a coupon code. For a paid plan you'll take payment right here — hand the client your phone to enter their card. A free plan is assigned right away, with nothing to pay.",
+              "Pick a plan and, if you'd like, a coupon code. For a paid plan you'll take payment right here — hand the client your phone to enter their card. Set the price to 0 to give a plan away without charging for it.",
               style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ),
           const Text("PLAN", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 8),
           if (plans.isEmpty) const HintBox(text: "No plans set up yet — create one under Access/Memberships first."),
-          ...plans.map((p) {
+          for (final group in grouped) ...[
+            // No heading when everything is in one bucket — a single
+            // heading over the whole list says nothing.
+            if (grouped.length > 1)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, bottom: 6),
+                child: Text(
+                  group.key.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+            ...group.value.map((p) {
             final selected = p.id == _planId;
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -157,7 +177,8 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
                 ),
               ),
             );
-          }),
+            }),
+          ],
           if (plan != null) ...[
             const SizedBox(height: 14),
             Row(
@@ -286,6 +307,37 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
       // normally-paid plan for nothing (a comp, a make-good) and a free plan
       // for a price, and either should do the right thing.
       final chargeCents = _priceOverrideCents ?? plan.priceCents;
+
+      // Giving away a plan that normally costs money is worth a second
+      // look — it's one keystroke away from taking payment for it, and
+      // there's no "undo" once the client holds it.
+      if (chargeCents <= 0 && plan.priceCents > 0) {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.card,
+            title: const Text("Give this plan for free?", style: TextStyle(fontSize: 15)),
+            content: Text(
+              "${plan.name} normally costs "
+              "\$${(plan.priceCents / 100).toStringAsFixed(2)}. "
+              "${widget.info.name} will get it at no charge and nothing will be billed.",
+              style: const TextStyle(fontSize: 13, height: 1.4),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text("Give it free", style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) {
+          if (mounted) setState(() => _busy = false);
+          return;
+        }
+      }
+
       if (chargeCents <= 0) {
         // Server-side: `plans` is a grant (it unlocks intake forms), and this
         // also keeps a program from overwriting the client's membership.
@@ -296,7 +348,11 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
         );
         if (!isProgramKind(plan.kind)) widget.onPlanAssigned(plan.id);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("${plan.name} assigned to ${widget.info.name}.")));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(plan.priceCents > 0
+                ? "${plan.name} given to ${widget.info.name} free of charge."
+                : "${plan.name} assigned to ${widget.info.name}."),
+          ));
           widget.onBack();
         }
         return;
@@ -340,4 +396,36 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
       if (mounted) setState(() => _busy = false);
     }
   }
+}
+
+/// Plans bucketed by category, in the gym's own category order.
+///
+/// Same rule as the client's Access Hub: the gym's order first, then any
+/// category the list doesn't mention (one deleted while plans still point
+/// at it) by name, then anything uncategorised last. Ordering the leftovers
+/// by name rather than by plan order matters — the plan list is sorted by
+/// kind, so letting it decide would group them in an order nobody chose.
+List<MapEntry<String, List<MembershipPlan>>> _groupPlans(
+  List<MembershipPlan> plans,
+  List<String> categoryOrder,
+) {
+  const uncategorised = "Other";
+  final buckets = <String, List<MembershipPlan>>{};
+  for (final p in plans) {
+    final c = (p.category ?? "").trim();
+    buckets.putIfAbsent(c.isEmpty ? uncategorised : c, () => []).add(p);
+  }
+
+  final leftovers = <String>[
+    for (final c in buckets.keys)
+      if (c != uncategorised && !categoryOrder.contains(c)) c,
+  ]..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+  final names = <String>[
+    for (final c in categoryOrder)
+      if (buckets.containsKey(c)) c,
+    ...leftovers,
+    if (buckets.containsKey(uncategorised)) uncategorised,
+  ];
+  return [for (final n in names) MapEntry(n, buckets[n]!)];
 }

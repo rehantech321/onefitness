@@ -6,6 +6,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "package:path_provider/path_provider.dart";
 import "package:share_plus/share_plus.dart";
 import "../theme/app_colors.dart";
+import "../utils/share_origin.dart";
 
 /// Same pattern as DownloadCsvButton — writes a `data:application/pdf;
 /// base64,...` payload to a temp file and hands it to the OS share sheet
@@ -47,8 +48,14 @@ class _DownloadPdfButtonState extends State<DownloadPdfButton> {
       final dir = await getTemporaryDirectory();
       final file = File("${dir.path}/${safeFileName(widget.filename)}");
       await file.writeAsBytes(bytes);
+      if (!mounted) return;
       final result = await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path, mimeType: "application/pdf")], subject: widget.filename),
+        ShareParams(
+          files: [XFile(file.path, mimeType: "application/pdf")],
+          subject: widget.filename,
+          // iOS refuses to show the sheet without this — see shareOriginFrom.
+          sharePositionOrigin: shareOriginFrom(context),
+        ),
       );
       // Nothing was picked (the sheet was dismissed) — say so rather than
       // leaving the tap looking like it did nothing at all.

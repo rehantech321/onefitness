@@ -6,6 +6,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "package:path_provider/path_provider.dart";
 import "package:share_plus/share_plus.dart";
 import "../theme/app_colors.dart";
+import "../utils/share_origin.dart";
 import "../utils/csv_utils.dart";
 
 /// Mirrors every ReportTable.jsx instance's "Download CSV" button — writes
@@ -32,7 +33,14 @@ class _DownloadCsvButtonState extends State<DownloadCsvButton> {
       final dir = await getTemporaryDirectory();
       final file = File("${dir.path}/${widget.filename}");
       await file.writeAsString(csv, encoding: utf8);
-      await SharePlus.instance.share(ShareParams(files: [XFile(file.path, mimeType: "text/csv")], subject: widget.filename));
+      if (!mounted) return;
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(file.path, mimeType: "text/csv")],
+        subject: widget.filename,
+        // Same reason as the PDF button: without this, every CSV export in
+        // Reports throws on iPhone instead of opening the share sheet.
+        sharePositionOrigin: shareOriginFrom(context),
+      ));
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -200,6 +200,11 @@ class _ClientShellState extends ConsumerState<ClientShell> {
   bool _waiverPromptArmed = true;
   bool _waiverPromptOpen = false;
 
+  /// The waiver "Sign now" asked for, handed to the Signatures screen so it
+  /// opens that document rather than its list. Cleared when the client
+  /// navigates anywhere else, so it can't reopen on a later visit.
+  String? _waiverToOpen;
+
   /// True while the prompt is still due this session — keeps the tour from
   /// opening underneath it in the very frame it's about to appear.
   bool get _waiverPromptPending {
@@ -260,6 +265,11 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     if (!mounted) return;
     _waiverPromptOpen = false;
     if (signNow == true) {
+      // Straight into the document itself. Sending them to the Signatures
+      // list meant finding the waiver they had just said yes to, which is
+      // a step nobody asked for. The first outstanding one is the one the
+      // prompt named first.
+      _waiverToOpen = outstanding.first.id;
       // Leaving Dashboard also stands the tour down until it's next shown.
       go("signatures");
     } else {
@@ -324,6 +334,10 @@ class _ClientShellState extends ConsumerState<ClientShell> {
         .watch(membershipPlansProvider.notifier)
         .byId(info.membershipPlanId);
     void go(String key) {
+      // A waiver asked for by "Sign now" is for that one trip to Signatures
+      // only. Without this it would reopen every later visit, so a client
+      // who already signed it couldn't reach their own list of signatures.
+      if (key != "signatures") _waiverToOpen = null;
       ref.read(clientScreenProvider.notifier).go(key);
       _scaffoldKey.currentState?.closeDrawer();
     }
@@ -557,7 +571,11 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                         "nutrition" => const NutritionTab(),
                         "habits" => const HabitTrackerScreen(),
                         "history" => const HistoryScreen(),
-                        "signatures" => SignaturesScreen(onGoBooking: goBooking),
+                        "signatures" => SignaturesScreen(
+                          onGoBooking: goBooking,
+                          openDocId: _waiverToOpen,
+                          onOpened: () => _waiverToOpen = null,
+                        ),
                         "support" => const SupportScreen(),
                         "memberships" => const MembershipHubScreen(),
                         "shop" => const ShopScreen(),

@@ -16,11 +16,24 @@ import "waiver_signing_screen.dart";
 /// listing whatever the client still needs to sign, since a document
 /// they've never seen can't very well appear in their own signed-docs list.
 class SignaturesScreen extends ConsumerStatefulWidget {
-  const SignaturesScreen({super.key, this.onGoBooking});
+  const SignaturesScreen({super.key, this.onGoBooking, this.openDocId, this.onOpened});
 
   /// Where the client lands once they've signed — Booking, since signing is
   /// what stood between them and booking a session.
   final VoidCallback? onGoBooking;
+
+  /// Open this waiver straight away instead of showing the list.
+  ///
+  /// Set when the client has already said they want to sign — from the
+  /// "Sign now" prompt, say — so they aren't put in front of a list and
+  /// asked to find the document they just agreed to.
+  final String? openDocId;
+
+  /// Told once [openDocId] has been acted on, so the caller can forget it.
+  /// Without this the request would outlive the trip that made it and the
+  /// waiver would spring open again on a later visit — including after it
+  /// had been signed.
+  final VoidCallback? onOpened;
 
   @override
   ConsumerState<SignaturesScreen> createState() => _SignaturesScreenState();
@@ -29,12 +42,43 @@ class SignaturesScreen extends ConsumerStatefulWidget {
 class _SignaturesScreenState extends ConsumerState<SignaturesScreen> {
   WaiverDoc? _signing;
 
+  /// Set once, on arrival, when the caller asked for a particular waiver to
+  /// be opened — the "Sign now" prompt does, because landing someone on a
+  /// list after they've just said yes makes them hunt for the thing they
+  /// already agreed to do.
+  bool _openedRequested = false;
+
   @override
   Widget build(BuildContext context) {
     final client = ref.watch(clientRecordProvider);
     final info = ref.watch(clientInfoProvider);
     final allDocs = ref.watch(waiversProvider);
     final outstanding = outstandingWaivers(allDocs: allDocs, signatures: client.signatures, clientPlanId: info.membershipPlanId);
+
+    // Opening it here rather than in initState: the waiver list is loaded
+    // with everything else, so on a cold start it can still be empty when
+    // this screen is first built. Waiting for it to arrive means "Sign now"
+    // works whether the data was ready or not.
+    if (!_openedRequested && _signing == null) {
+      final wanted = widget.openDocId;
+      if (wanted != null) {
+        final match = allDocs.where((d) => d.id == wanted);
+        if (match.isNotEmpty) {
+          _openedRequested = true;
+          _signing = match.first;
+          // After this frame: the caller clearing it now would rebuild the
+          // tree we are in the middle of building.
+          WidgetsBinding.instance.addPostFrameCallback((_) => widget.onOpened?.call());
+        } else if (allDocs.isNotEmpty) {
+          // The list arrived and that document isn't in it — it was
+          // archived or deleted between the prompt and here. Stop waiting
+          // and show the list rather than hanging on a document that is
+          // never coming.
+          _openedRequested = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) => widget.onOpened?.call());
+        }
+      }
+    }
 
     if (_signing != null) {
       return LocalBackScope(

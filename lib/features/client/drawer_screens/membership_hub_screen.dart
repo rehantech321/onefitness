@@ -1308,11 +1308,20 @@ List<MapEntry<String, List<MembershipPlan>>> _groupByCategory(
     final c = (p.category ?? "").trim();
     buckets.putIfAbsent(c.isEmpty ? _uncategorised : c, () => []).add(p);
   }
+  // Anything not in the gym's list — a category deleted while plans still
+  // point at it, or the list not having loaded yet — is sorted by name.
+  // It used to fall through in whatever order the plans happened to arrive
+  // in, which is how the hub showed categories reversed: the plan list is
+  // newest-first, so the sections were too.
+  final leftovers = <String>[
+    for (final c in buckets.keys)
+      if (c != _uncategorised && !order.contains(c)) c,
+  ]..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
   final names = <String>[
     for (final c in order)
       if (buckets.containsKey(c)) c,
-    for (final c in buckets.keys)
-      if (c != _uncategorised && !order.contains(c)) c,
+    ...leftovers,
     if (buckets.containsKey(_uncategorised)) _uncategorised,
   ];
   return [for (final n in names) MapEntry(n, buckets[n]!)];

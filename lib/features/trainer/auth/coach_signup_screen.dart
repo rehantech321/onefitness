@@ -3,6 +3,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/supabase/supabase_service.dart";
+import "../../../data/providers/trainer_providers.dart";
 import "../../../core/legal/terms_screen.dart";
 import "../../../core/legal/terms_text.dart";
 import "../../../core/theme/app_colors.dart";
@@ -298,7 +299,26 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
         version: kTermsVersion,
         confirmedOver18: true,
       );
+      // Open the new account while this page is still showing, exactly as
+      // the client signup does. Without this a coach who had just created
+      // their profile was left sitting on the signup form, and the only way
+      // out was "Back to sign in" — which is the login screen, for an
+      // account they had just made.
       await loadAndSeedCoreData(ref);
+      if (ref.read(trainerAuthProvider) == null) {
+        // The signup didn't leave a session behind, or it hadn't settled
+        // yet: sign in with what they just typed and load again.
+        await SupabaseService.signIn(email, password);
+        await loadAndSeedCoreData(ref);
+      }
+      if (ref.read(trainerAuthProvider) == null) {
+        throw Exception(
+          "Your profile was created, but we couldn't open it just now. Please sign in with the email and password you chose.",
+        );
+      }
+      // Nothing else to do: main.dart swaps the auth screen for the
+      // dashboard the moment trainerAuth is set, so there is no longer a
+      // signup page to go back from.
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -381,7 +401,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 Row(
                   children: [
                     BtnGhost(
-                      onPressed: widget.onBack,
+                      onPressed: _busy ? null : widget.onBack,
                       child: const Text("Back"),
                     ),
                     const SizedBox(width: 8),
@@ -415,7 +435,8 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) setState(() => _codeVerified = false);
+        // Not while the profile is being created — see the client signup.
+        if (!didPop && !_busy) setState(() => _codeVerified = false);
       },
       child: Scaffold(
       backgroundColor: AppColors.bg,
@@ -426,7 +447,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               BackBar(
-                onBack: () => setState(() => _codeVerified = false),
+                onBack: _busy ? null : () => setState(() => _codeVerified = false),
                 title: "Create coach profile",
               ),
               const SizedBox(height: 10),
@@ -996,7 +1017,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
               ),
               const SizedBox(height: 10),
               BtnGhost(
-                onPressed: widget.onBack,
+                onPressed: _busy ? null : widget.onBack,
                 full: true,
                 child: const Text("Back to sign in"),
               ),
