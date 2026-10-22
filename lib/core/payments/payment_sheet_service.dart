@@ -34,11 +34,59 @@ class PaymentResult {
 /// Which tender types appear is decided per product type by the server (see
 /// create-payment-intent): memberships get card + ACH, packages additionally
 /// get Apple Pay. Cash is not a Stripe method and is handled separately.
+/// The Apple Pay merchant identifier this build is entitled to use, or ""
+/// when Apple Pay isn't set up.
+///
+/// Unlike the publishable key this CANNOT come from the server: it has to
+/// match the `com.apple.developer.in-app-payments` entitlement compiled
+/// into the binary, so a value the app wasn't signed for is worse than no
+/// value at all. Supply it at build time:
+///
+///   flutter build ipa --dart-define=APPLE_PAY_MERCHANT_ID=merchant.com.onefitness.onefitness
+///
+/// Turning Apple Pay on takes three things, all of them outside this file:
+///   1. A Merchant ID registered at developer.apple.com, and Apple Pay
+///      enabled for it on the Stripe dashboard.
+///   2. The Apple Pay capability added to the Runner target in Xcode, which
+///      writes that same id into ios/Runner/Runner.entitlements.
+///   3. This define, set to the same id, at build time.
+///
+/// Until all three are done this stays empty and the sheet offers cards and
+/// ACH only — which is what it did anyway, since an unentitled Apple Pay
+/// request can't succeed.
+const kApplePayMerchantId = String.fromEnvironment("APPLE_PAY_MERCHANT_ID");
+
+/// Whether this build can offer Apple Pay at all.
+///
+/// Asking the sheet for Apple Pay without a merchant identifier doesn't
+/// just drop the Apple Pay button — iOS throws out of `initPaymentSheet`
+/// before the sheet opens, so the whole payment dies, cards included:
+///
+///   `merchantIdentifier` is required, but none was found. Ensure you are
+///   passing this to initStripe your StripeProvider.
+///
+/// which is what a coach saw instead of a "Take payment" sheet. Anything
+/// that offers Apple Pay has to check this first.
+bool get applePayConfigured => kApplePayMerchantId.isNotEmpty;
+
 class PaymentSheetService {
   /// Set once per process, the first time a sheet is opened. The key comes
   /// from the backend rather than being compiled in, so rotating it or
   /// moving between test and live keys needs no app release.
   static String? _configuredKey;
+
+  /// Points the SDK at the right account, once per key.
+  ///
+  /// The merchant identifier has to be set BEFORE applySettings(), and both
+  /// sheet entry points go through here so neither can configure the SDK
+  /// differently from the other.
+  static Future<void> _configureStripe(String publishableKey) async {
+    if (_configuredKey == publishableKey) return;
+    Stripe.publishableKey = publishableKey;
+    if (applePayConfigured) Stripe.merchantIdentifier = kApplePayMerchantId;
+    await Stripe.instance.applySettings();
+    _configuredKey = publishableKey;
+  }
 
   /// Merchandise checkout. Same sheet and the same PCI posture as [purchase];
   /// it just resolves against the product catalogue instead of plans, and the
@@ -90,11 +138,7 @@ class PaymentSheetService {
         "Payments aren't configured yet — the Stripe publishable key is missing on the server.",
       );
     }
-    if (_configuredKey != publishableKey) {
-      Stripe.publishableKey = publishableKey;
-      await Stripe.instance.applySettings();
-      _configuredKey = publishableKey;
-    }
+    await _configureStripe(publishableKey);
 
     try {
       await Stripe.instance.initPaymentSheet(
@@ -166,14 +210,12 @@ class PaymentSheetService {
       );
     }
 
-    if (_configuredKey != publishableKey) {
-      Stripe.publishableKey = publishableKey;
-      await Stripe.instance.applySettings();
-      _configuredKey = publishableKey;
-    }
+    await _configureStripe(publishableKey);
 
     final allowed = (intent["allowedMethods"] as Map?)?.cast<String, dynamic>() ?? const {};
-    final applePayAllowed = allowed["applePay"] == true;
+    // The server's flag says whether this PRODUCT may offer Apple Pay;
+    // [applePayConfigured] says whether this BUILD can. Both must hold.
+    final applePayAllowed = allowed["applePay"] == true && applePayConfigured;
 
     try {
       await Stripe.instance.initPaymentSheet(
@@ -184,7 +226,8 @@ class PaymentSheetService {
           merchantDisplayName: businessName,
           // Apple Pay is a card wallet layered on top of the sheet, so it's
           // switched on here rather than in the server's method list — and
-          // only for packages, per the product-type rules.
+          // only for packages, per the product-type rules, and only when
+          // this build carries a merchant identifier.
           applePay: applePayAllowed
               ? const PaymentSheetApplePay(merchantCountryCode: "US")
               : null,

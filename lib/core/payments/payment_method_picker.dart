@@ -4,6 +4,7 @@ import "package:flutter/material.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../theme/app_colors.dart";
 import "../../data/models/membership_plan.dart";
+import "payment_sheet_service.dart" show applePayConfigured;
 
 /// How a purchase is being paid for. Card and ACH both run through Stripe's
 /// Payment Sheet (they only differ in which processing-fee profile applies);
@@ -23,7 +24,10 @@ List<PayTender> tendersFor(MembershipPlan plan) {
     PayTender.ach,
     // Apple Pay is iOS-only hardware; offering it anywhere else is a dead
     // button, so it's filtered by platform as well as by product type.
-    if (isPackage && !kIsWeb && Platform.isIOS) PayTender.applePay,
+    // A build with no merchant identifier is a dead button for the same
+    // reason — the sheet can't show the wallet, so picking it here would
+    // land on a plain card form.
+    if (isPackage && !kIsWeb && Platform.isIOS && applePayConfigured) PayTender.applePay,
   ];
 }
 
