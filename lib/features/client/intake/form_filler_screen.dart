@@ -67,12 +67,7 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
         _answers[id] = cur;
       });
 
-  bool _shouldShow(IntakeQuestion q) {
-    if (q.showIfId == null) return true;
-    final dep = _answers[q.showIfId];
-    if (dep is List) return dep.contains(q.showIfValue);
-    return dep == q.showIfValue;
-  }
+  bool _shouldShow(IntakeQuestion q) => intakeQuestionVisible(q, _answers);
 
   Future<void> _save() async {
     if (_saving) return;

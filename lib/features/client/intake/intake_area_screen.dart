@@ -12,6 +12,7 @@ import "../../../data/models/client_record.dart";
 import "../../../data/models/intake_schema.dart";
 import "../shell/client_shell_state.dart";
 import "form_filler_screen.dart";
+import "intake_answers_screen.dart";
 
 const _groupIcons = {
   "training": LucideIcons.clipboardCheck,
@@ -25,6 +26,14 @@ String _unlockHint(String assessmentKey) => switch (assessmentKey) {
   "physical" => "Included with a membership or package.",
   _ => "Unlocks with a purchase.",
 };
+
+/// The same lock, said to the person it doesn't stop. Staff can open any
+/// assessment regardless of what the client has bought, so their version
+/// states what the lock actually means — that this isn't part of the plan the
+/// client is paying for — rather than reading as a refusal.
+String _staffLockNote(AssessmentDef a) => a.physical
+    ? "Not included in this client's plan — there's no session to conduct until they buy a membership or package."
+    : "Not included in this client's plan — you can still open it to read or record their answers.";
 
 const _assessmentIcons = {
   "personalTraining": LucideIcons.clipboardList,
@@ -63,6 +72,15 @@ class IntakeAreaScreen extends ConsumerStatefulWidget {
 class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
   AssessmentDef? _open;
 
+  /// Whether the open assessment is showing as an editable form rather than
+  /// as the client's saved answers. Always true for the client (this is their
+  /// own form to fill in) and for staff opening an assessment nobody has
+  /// completed yet; staff opening a completed one start on the answers and
+  /// opt into editing. Decided when the assessment opens, not re-derived each
+  /// build, so that saving — which marks the record complete and rebuilds
+  /// this screen — can't swap the editor out from under the coach mid-save.
+  bool _editing = true;
+
   @override
   void initState() {
     super.initState();
@@ -81,8 +99,24 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
           if (a.key == key) _open = a;
         }
       }
+      if (_open != null) _editing = _opensAsEditor(_open!);
     }
   }
+
+  /// A deep link or a tap lands on the editor only where there is nothing to
+  /// read back: see [_editing].
+  bool _opensAsEditor(AssessmentDef a) =>
+      widget.who == "client" || !(widget.client.intake[a.key]?.completed ?? false);
+
+  void _openAssessment(AssessmentDef a) => setState(() {
+        _open = a;
+        _editing = _opensAsEditor(a);
+      });
+
+  void _closeAssessment() => setState(() {
+        _open = null;
+        _editing = true;
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +139,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
       // purchase that lapsed between tap and build) would otherwise drop them
       // into a form they're not entitled to fill in.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _open = null);
+        if (mounted) _closeAssessment();
       });
       return const SizedBox.shrink();
     }
@@ -115,32 +149,57 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
       if (a.physical) {
         return LocalBackScope(
           isOpen: true,
-          onBack: () => setState(() => _open = null),
+          onBack: _closeAssessment,
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                BackBar(onBack: () => setState(() => _open = null)),
+                BackBar(onBack: _closeAssessment),
                 const SizedBox(height: 10),
                 const SectionLabel("Free Physical Assessment Session"),
-                const HintBox(
-                  text:
-                      "This is a hands-on movement assessment conducted by your coach during your first training "
-                      "session — there's nothing to fill out here yourself. Book it from the Dashboard or Booking tab.",
+                HintBox(
+                  text: isClientView
+                      ? "This is a hands-on movement assessment conducted by your coach during your first training "
+                            "session — there's nothing to fill out here yourself. Book it from the Dashboard or Booking tab."
+                      : "A hands-on movement assessment you conduct in person during the client's first training "
+                            "session. There's no form behind it — record what you find in Notes or Measurements.",
                 ),
               ],
             ),
           ),
         );
       }
+
+      final record = client.intake[a.key];
+      if (!_editing && record != null) {
+        // Staff reading a completed intake. Backing out goes to the list;
+        // "Edit answers" swaps in the form below, which backs out to here.
+        return LocalBackScope(
+          isOpen: true,
+          onBack: _closeAssessment,
+          child: IntakeAnswersScreen(
+            schema: a.schema!,
+            record: record,
+            onBack: _closeAssessment,
+            onEdit: () => setState(() => _editing = true),
+          ),
+        );
+      }
+
+      // Back from the editor returns to the answers whenever there are any to
+      // return to — which, after a save, there now are: the coach sees what
+      // they just recorded rather than being dropped back to the list.
+      final hasAnswersBehind = !isClientView && (record?.completed ?? false);
+      final leaveEditor =
+          hasAnswersBehind ? () => setState(() => _editing = false) : _closeAssessment;
       return LocalBackScope(
         isOpen: true,
-        onBack: () => setState(() => _open = null),
+        onBack: leaveEditor,
         child: FormFillerScreen(
           assessmentKey: a.key,
           schema: a.schema!,
-          onBack: () => setState(() => _open = null),
+          onBack: leaveEditor,
           profileId: widget.profileId,
           client: client,
           who: widget.who,
@@ -192,7 +251,11 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
               // The coach-run physical assessment comes with a membership or
               // package; with only a program (or nothing) there's no session
               // to conduct, so it isn't part of this client's intake at all.
-              .where((a) => !a.physical || entitlements.physical)
+              // Staff still see it listed: hiding a whole assessment from the
+              // person who conducts it makes their roster look inconsistent
+              // from one client to the next, with nothing on screen to
+              // explain why. They get it greyed out with the reason instead.
+              .where((a) => !a.physical || entitlements.physical || !isClientView)
               .toList();
           if (visible.isEmpty) return const SizedBox.shrink();
           return Padding(
@@ -236,13 +299,17 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                     // and the answer ("buy a plan") is one tap away.
                     onTap: blocked
                         ? () => ref.read(clientScreenProvider.notifier).go("memberships")
-                        : () => setState(() => _open = a),
+                        : () => _openAssessment(a),
                     child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Row(
                         children: [
                           Icon(
-                            locked
+                            // The padlock is for the person it actually stops.
+                            // Staff can open any of these, so showing them a
+                            // padlock and a LOCKED badge sends them away from
+                            // a form they were free to read all along.
+                            blocked
                                 ? LucideIcons.lock
                                 : (_assessmentIcons[a.key] ?? LucideIcons.clipboardList),
                             size: 16,
@@ -290,7 +357,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                                           // Hub, so say so — otherwise the
                                           // row looks like a dead end.
                                           ? "${_unlockHint(a.key)} Tap to choose a plan."
-                                          : "Not unlocked by this client's purchases yet.",
+                                          : _staffLockNote(a),
                                       style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.35),
                                     ),
                                   ),
@@ -314,7 +381,10 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                               borderRadius: BorderRadius.circular(5),
                             ),
                             child: Text(
-                              locked ? "LOCKED" : (done ? "COMPLETE" : "OPEN"),
+                              // Staff get the status that tells them whether
+                              // there is anything to read; "LOCKED" would
+                              // hide that a completed form is sitting there.
+                              blocked ? "LOCKED" : (done ? "COMPLETE" : "OPEN"),
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,

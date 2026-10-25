@@ -39,6 +39,20 @@ class IntakeSection {
   final List<IntakeQuestion> questions;
 }
 
+/// Whether [q] should appear, given the answers given so far. A question
+/// carrying `showIf` only surfaces once its controlling answer matches —
+/// for a multi-select controller, once that option is among those picked.
+///
+/// Lives here rather than in either renderer because both the form filler
+/// and the read-only answers view have to agree: if the two drifted, a coach
+/// could read back a question the client was never actually shown.
+bool intakeQuestionVisible(IntakeQuestion q, Map<String, dynamic> answers) {
+  if (q.showIfId == null) return true;
+  final dep = answers[q.showIfId];
+  if (dep is List) return dep.contains(q.showIfValue);
+  return dep == q.showIfValue;
+}
+
 /// Mirrors TRAINING_INTAKE_SCHEMA / NUTRITION_SCHEMA — a full multi-section
 /// questionnaire, rendered generically by FormFillerScreen.
 class IntakeSchema {

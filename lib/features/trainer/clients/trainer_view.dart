@@ -32,6 +32,12 @@ const _primary = [
 ];
 
 const _moreTabs = [
+  // Until this was listed, the only way into a client's intake was tapping a
+  // row in the Profile tab's onboarding summary — so a coach who wanted to
+  // read what a client had answered had no way to find it. (The web app has
+  // the same gap; this is a deliberate divergence from TrainerView.jsx, as
+  // Documents/Photos/Measurements already are.)
+  _TabDef("intake", "Assessments", LucideIcons.clipboardCheck),
   _TabDef("documents", "Documents", LucideIcons.fileSignature),
   _TabDef("habits", "Habits", LucideIcons.flame),
   _TabDef("notes", "Notes", LucideIcons.flag),
