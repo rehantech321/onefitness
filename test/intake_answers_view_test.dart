@@ -91,6 +91,8 @@ void main() {
             body: IntakeAnswersScreen(
               schema: schema,
               record: record,
+              profileId: "client-1",
+              assessmentKey: "nutritional",
               onBack: () {},
               onEdit: onEdit ?? () {},
             ),

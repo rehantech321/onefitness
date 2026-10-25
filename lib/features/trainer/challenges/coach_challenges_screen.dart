@@ -136,14 +136,14 @@ class _ChallengeSection extends StatelessWidget {
   }
 }
 
-class _ChallengeRow extends StatelessWidget {
+class _ChallengeRow extends ConsumerWidget {
   const _ChallengeRow({required this.challenge, required this.onTap});
   final Challenge challenge;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final tpl = templateMeta(challenge.template);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tpl = challengeDisplay(challenge, ref.watch(challengeTemplatesProvider));
     final end = DateTime.parse("${challenge.endDate}T00:00:00");
     final daysLeft = (end.difference(DateTime.now()).inMilliseconds / 86400000).ceil();
     return AppCard(
@@ -160,7 +160,7 @@ class _ChallengeRow extends StatelessWidget {
                 Text(challenge.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                 const SizedBox(height: 2),
                 Text(
-                  "${tpl.label} · ${challenge.participantIds.length} registered",
+                  "${tpl.typeLabel} · ${challenge.participantIds.length} registered",
                   style: const TextStyle(fontSize: 11, color: AppColors.mute),
                 ),
                 Text(
@@ -310,14 +310,13 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
     final records = ref.watch(trainerClientRecordsProvider);
     final bookings = ref.watch(allBookingsProvider);
 
-    final tpl = templateMeta(challenge.template);
+    final tpl = challengeDisplay(challenge, ref.watch(challengeTemplatesProvider));
     final now = isoToday();
     final isEnded = challenge.endDate.compareTo(now) < 0;
     final isActive = challenge.startDate.compareTo(now) <= 0 && !isEnded;
     final ranked = rankChallengeParticipants(challenge, roster, records, bookings);
     final showPickWinner = (isEnded || isActive) && challenge.winnerMode == "coach";
-    final showPercent =
-        challenge.template == "30-day" || challenge.template == "community" || challenge.template == "body-fat";
+    final showPercent = scoreIsPercent(challenge);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
@@ -337,7 +336,7 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
                   children: [
                     Text(challenge.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                     Text(
-                      "${tpl.label} · ${isEnded ? "Ended" : isActive ? "Active" : "Upcoming"}",
+                      "${tpl.typeLabel} · ${isEnded ? "Ended" : isActive ? "Active" : "Upcoming"}",
                       style: const TextStyle(fontSize: 12, color: AppColors.mute),
                     ),
                   ],
@@ -558,6 +557,15 @@ class _CreateChallengeForm extends ConsumerStatefulWidget {
 
 class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
   String? _templateKey;
+
+  /// Set when the chosen type is one the gym defined rather than one of the
+  /// eight built in. Its emoji and scorer are copied onto the challenge at
+  /// save time, so the challenge never needs this type to exist again.
+  ChallengeTemplate? _customType;
+
+  /// Whether the "new challenge type" form is showing instead of the picker.
+  bool _definingType = false;
+
   final _name = TextEditingController();
   final _description = TextEditingController();
   final _prize = TextEditingController();
@@ -584,10 +592,61 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
     final tpl = templateMeta(key);
     setState(() {
       _templateKey = key;
+      _customType = null;
       _name.text = tpl.label;
       _description.text = tpl.description;
       _winnerMode = tpl.winnerMode;
     });
+  }
+
+  void _selectCustomType(ChallengeTemplate t) {
+    setState(() {
+      _templateKey = t.key;
+      _customType = t;
+      _name.text = t.label;
+      _description.text = t.description;
+      // A gym-defined type always has a scorer behind it, so there is always
+      // a leaderboard and the top of it wins. Coach-judging is Transformation's
+      // alone — it is the one type with nothing to measure.
+      _winnerMode = "auto";
+    });
+  }
+
+  /// Deleting a type only takes it out of this list. Challenges already built
+  /// from it copied its emoji and scorer, so they are untouched — which is
+  /// what the confirmation says, because "delete" next to a challenge type
+  /// otherwise reads as though it would take the challenges with it.
+  Future<void> _deleteType(ChallengeTemplate t) async {
+    final inUse = ref.read(challengesProvider).where((c) => c.template == t.key).length;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        content: Text(
+          inUse == 0
+              ? "Remove “${t.label}” from the list of challenge types?"
+              : "Remove “${t.label}” from the list of challenge types?\n\n"
+                    "The $inUse challenge${inUse == 1 ? "" : "s"} already created from it will keep running and keep their leaderboards. "
+                    "You just won't be able to start new ones from this type.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Remove")),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await SupabaseService.deleteChallengeTemplate(t.key);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't remove — check your connection and try again.")),
+        );
+      }
+      return;
+    }
+    ref.read(challengeTemplatesProvider.notifier).remove(t.key);
   }
 
   Future<void> _pickDate({required bool isStart}) async {
@@ -634,6 +693,7 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
       return;
     }
     setState(() => _error = null);
+    final custom = _customType;
     widget.onSave(
       Challenge(
         id: "challenge-${DateTime.now().microsecondsSinceEpoch}",
@@ -641,15 +701,20 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
         name: _name.text.trim(),
         description: _description.text.trim().isEmpty ? null : _description.text.trim(),
         prize: _prize.text.trim().isEmpty ? null : _prize.text.trim(),
-        metric: templateMeta(tplKey).metric,
-        // Only Transformation is judged — every other template has a
-        // measurable score, so the winner is always the top of the board.
-        winnerMode: tplKey == "transformation" ? _winnerMode : "auto",
+        metric: custom?.metric ?? templateMeta(tplKey).metric,
+        // Only Transformation is judged — every other type, built-in or
+        // gym-defined, has a measurable score, so the winner is always the
+        // top of the board.
+        winnerMode: custom == null && tplKey == "transformation" ? _winnerMode : "auto",
         startDate: startIso,
         endDate: endIso,
         rewardPoints: _rewardPoints,
         rewardProductId: _rewardProductId,
         trainerId: ref.read(trainerAuthProvider) == "owner" ? _trainerId : ref.read(trainerAuthProvider),
+        // Copied, not referenced: this challenge must keep its icon and its
+        // leaderboard even if the type it came from is deleted later.
+        emoji: custom?.emoji,
+        scoringBasis: custom?.basis,
       ),
     );
   }
@@ -658,7 +723,25 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
   Widget build(BuildContext context) {
     final tplKey = _templateKey;
 
+    if (_definingType) {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _definingType = false),
+        child: _CreateChallengeTypeForm(
+          onCancel: () => setState(() => _definingType = false),
+          onCreated: (t) {
+            setState(() => _definingType = false);
+            // Straight into setting it up — defining a type is nearly always
+            // the first step of creating a challenge with it.
+            _selectCustomType(t);
+          },
+        ),
+      );
+    }
+
     if (tplKey == null) {
+      final trainerAuth = ref.watch(trainerAuthProvider);
+      final customTypes = visibleChallengeTypes(ref.watch(challengeTemplatesProvider), trainerAuth);
       return SingleChildScrollView(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -671,35 +754,46 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
             ...kChallengeTemplates.entries.map(
               (e) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: AppCard(
+                child: _TypeCard(
+                  emoji: e.value.emoji,
+                  label: e.value.label,
+                  description: e.value.description,
+                  footer: "Tracked: ${e.value.metric} · Winner: ${e.value.winnerMode == "auto" ? "Auto" : "Coach picks"}",
                   onTap: () => _selectTemplate(e.key),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(e.value.emoji, style: const TextStyle(fontSize: 32)),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(e.value.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                            const SizedBox(height: 3),
-                            Text(
-                              e.value.description,
-                              style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Tracked: ${e.value.metric} · Winner: ${e.value.winnerMode == "auto" ? "Auto" : "Coach picks"}",
-                              style: const TextStyle(fontSize: 11, color: AppColors.gold),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
-                    ],
+                ),
+              ),
+            ),
+            if (customTypes.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const SectionLabel("Your gym's own types"),
+              const SizedBox(height: 10),
+              ...customTypes.map(
+                (t) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _TypeCard(
+                    emoji: t.emoji,
+                    label: t.label,
+                    description: t.description,
+                    footer: "Tracked: ${t.metric.isEmpty ? scoringBasisFor(t.basis)?.label ?? "" : t.metric}"
+                        "${t.trainerId == null ? " · Gym-wide" : " · Yours only"}",
+                    onTap: () => _selectCustomType(t),
+                    onDelete: canManageChallengeType(t, trainerAuth) ? () => _deleteType(t) : null,
                   ),
                 ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            BtnGhost(
+              full: true,
+              onPressed: () => setState(() => _definingType = true),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.plus, size: 15, color: AppColors.mute),
+                  SizedBox(width: 7),
+                  Text("New challenge type"),
+                ],
               ),
             ),
           ],
@@ -707,14 +801,20 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
       );
     }
 
-    final tpl = templateMeta(tplKey);
+    final custom = _customType;
+    final tplEmoji = custom?.emoji ?? templateMeta(tplKey).emoji;
+    final tplLabel = custom?.label ?? templateMeta(tplKey).label;
+    final tplMetric = custom?.metric ?? templateMeta(tplKey).metric;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextButton.icon(
-            onPressed: () => setState(() => _templateKey = null),
+            onPressed: () => setState(() {
+              _templateKey = null;
+              _customType = null;
+            }),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.mute,
               padding: EdgeInsets.zero,
@@ -727,9 +827,9 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
           const SizedBox(height: 14),
           Row(
             children: [
-              Text(tpl.emoji, style: const TextStyle(fontSize: 32)),
+              Text(tplEmoji, style: const TextStyle(fontSize: 32)),
               const SizedBox(width: 10),
-              Expanded(child: SectionLabel("Set up ${tpl.label}")),
+              Expanded(child: SectionLabel("Set up $tplLabel")),
             ],
           ),
           const SizedBox(height: 16),
@@ -855,7 +955,10 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
           // Transformation is the one challenge with nothing to measure —
           // it's judged from photos, so the coach picks. Every other
           // template has a score, and the highest score wins, full stop.
-          if (_templateKey == "transformation") ...[
+          // `custom == null` guards the case of a gym-defined type that
+          // happens to be named Transformation: it has a real scorer, so it
+          // must not be offered coach-judging on the strength of its name.
+          if (custom == null && _templateKey == "transformation") ...[
             FieldLabeled(
               label: "Winner determination",
               child: Row(
@@ -882,7 +985,7 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
               padding: const EdgeInsets.only(top: 6),
               child: Text(
                 _winnerMode == "auto"
-                    ? 'Auto: highest "${tpl.metric}" at end date wins.'
+                    ? 'Auto: highest "$tplMetric" at end date wins.'
                     : "Coach picks winner manually after the challenge ends.",
                 style: const TextStyle(fontSize: 11, color: AppColors.mute),
               ),
@@ -891,7 +994,12 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                'Winner: highest "${tpl.metric}" at the end date. Only Transformation challenges are judged by the coach.',
+                custom == null
+                    ? 'Winner: highest "$tplMetric" at the end date. Only Transformation challenges are judged by the coach.'
+                    // For a gym-defined type, naming the scorer behind it is
+                    // the useful thing to say — the metric is the gym's own
+                    // wording and doesn't reveal how the ranking is produced.
+                    : 'Winner: highest "$tplMetric" at the end date, from ${scoringBasisFor(custom.basis)?.label.toLowerCase() ?? "the tracking you chose"}.',
                 style: const TextStyle(fontSize: 11, color: AppColors.mute),
               ),
             ),
@@ -902,6 +1010,337 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
             ),
           const SizedBox(height: 16),
           BtnGold(full: true, onPressed: _save, child: const Text("Create Challenge")),
+        ],
+      ),
+    );
+  }
+}
+
+/// One row in the "choose a challenge type" list. Shared by the eight built
+/// in and the gym's own so the two read as one list rather than as a
+/// first-class set and an afterthought — the only difference a coach sees is
+/// that their own carry a remove button.
+class _TypeCard extends StatelessWidget {
+  const _TypeCard({
+    required this.emoji,
+    required this.label,
+    required this.description,
+    required this.footer,
+    required this.onTap,
+    this.onDelete,
+  });
+
+  final String emoji;
+  final String label;
+  final String description;
+  final String footer;
+  final VoidCallback onTap;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      onTap: onTap,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 32)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                if (description.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(description, style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4)),
+                ],
+                const SizedBox(height: 4),
+                Text(footer, style: const TextStyle(fontSize: 11, color: AppColors.gold)),
+              ],
+            ),
+          ),
+          if (onDelete != null)
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(LucideIcons.trash2, size: 15, color: AppColors.mute),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+              tooltip: "Remove this type",
+            )
+          else
+            const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+        ],
+      ),
+    );
+  }
+}
+
+/// Defining a new challenge type.
+///
+/// The one field that isn't cosmetic is the tracking basis. Every leaderboard
+/// in the app is produced by `calcChallengeScore`, which only knows the
+/// scorers it has branches for, so a type has to adopt one of them — pick how
+/// it's measured, then name and describe it however the gym likes.
+class _CreateChallengeTypeForm extends ConsumerStatefulWidget {
+  const _CreateChallengeTypeForm({required this.onCancel, required this.onCreated});
+  final VoidCallback onCancel;
+  final ValueChanged<ChallengeTemplate> onCreated;
+
+  @override
+  ConsumerState<_CreateChallengeTypeForm> createState() => _CreateChallengeTypeFormState();
+}
+
+class _CreateChallengeTypeFormState extends ConsumerState<_CreateChallengeTypeForm> {
+  final _label = TextEditingController();
+  final _metric = TextEditingController();
+  final _description = TextEditingController();
+  String _emoji = "\u{1F3C6}";
+  String? _basis;
+
+  /// Owner only: whether this type is offered to every coach or kept to the
+  /// owner. A coach's type is always their own — the table's RLS enforces
+  /// that too, so this is never the only thing standing in the way.
+  bool _gymWide = true;
+
+  bool _saving = false;
+  String? _error;
+
+  /// A small spread rather than a text field: a keyboard-entered emoji is
+  /// fiddly on mobile and easy to get wrong (a multi-codepoint sequence that
+  /// renders as tofu), and the icon only has to be recognisable in a list.
+  static const _emojiChoices = [
+    "\u{1F3C6}", "\u{1F525}", "\u{1F4AA}", "\u{26A1}", "\u{1F3C3}", "\u{1F6B4}",
+    "\u{1F3CB}\u{FE0F}", "\u{1F9D8}", "\u{1F457}", "\u{1F34E}", "\u{1F4A7}", "\u{1F634}",
+    "\u{1F4C5}", "\u{1F4CF}", "\u{2696}\u{FE0F}", "\u{2728}", "\u{1F31F}", "\u{1F3AF}",
+  ];
+
+  @override
+  void dispose() {
+    _label.dispose();
+    _metric.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    final label = _label.text.trim();
+    final basis = _basis;
+    if (label.isEmpty) {
+      setState(() => _error = "Give the type a name.");
+      return;
+    }
+    if (basis == null) {
+      setState(() => _error = "Choose how it's tracked — that's what ranks the leaderboard.");
+      return;
+    }
+    final trainerAuth = ref.read(trainerAuthProvider);
+    final isOwner = trainerAuth == "owner";
+    final template = ChallengeTemplate(
+      // Prefixed so it can never collide with one of the eight built-in keys,
+      // which would silently route scoring down the built-in's branch.
+      key: "custom-${DateTime.now().microsecondsSinceEpoch}",
+      emoji: _emoji,
+      label: label,
+      metric: _metric.text.trim().isEmpty ? scoringBasisFor(basis)?.label ?? "" : _metric.text.trim(),
+      description: _description.text.trim(),
+      basis: basis,
+      // An owner's gym-wide type has no coach; everything else belongs to
+      // whoever made it.
+      trainerId: isOwner && _gymWide ? null : trainerAuth,
+    );
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await SupabaseService.insertChallengeTemplate(template, createdBy: trainerAuth ?? "");
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = "Couldn't save this type — check your connection and try again.";
+      });
+      return;
+    }
+    ref.read(challengeTemplatesProvider.notifier).add(template);
+    if (!mounted) return;
+    setState(() => _saving = false);
+    widget.onCreated(template);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isOwner = ref.watch(trainerAuthProvider) == "owner";
+    final basis = _basis;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          BackBar(onBack: widget.onCancel),
+          const SizedBox(height: 10),
+          const SectionLabel("New challenge type"),
+          const SizedBox(height: 6),
+          const Text(
+            "Define a type once and build as many challenges from it as you like, the same way you would from the built-in ones.",
+            style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.45),
+          ),
+          const SizedBox(height: 16),
+          FieldLabeled(
+            label: "Type name *",
+            child: AppField(kind: FieldKind.name, controller: _label, placeholder: "e.g. Step Count Challenge"),
+          ),
+          const SizedBox(height: 12),
+          FieldLabeled(
+            label: "Icon",
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _emojiChoices.map((e) {
+                final selected = _emoji == e;
+                return InkWell(
+                  onTap: () => setState(() => _emoji = e),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 42,
+                    height: 42,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.gold.withValues(alpha: 0.15) : AppColors.bg,
+                      border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(e, style: const TextStyle(fontSize: 21)),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 14),
+          FieldLabeled(
+            label: "How is it tracked? *",
+            child: Column(
+              children: kScoringBases.map((b) {
+                final selected = basis == b.key;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: () => setState(() => _basis = b.key),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: selected ? AppColors.gold.withValues(alpha: 0.08) : AppColors.bg,
+                        border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            selected ? LucideIcons.checkCircle2 : LucideIcons.circle,
+                            size: 16,
+                            color: selected ? AppColors.gold : AppColors.mute,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  b.label,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: selected ? AppColors.gold : AppColors.txt,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  b.detail,
+                                  style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 4),
+          FieldLabeled(
+            label: "What the score is called",
+            child: AppField(
+              controller: _metric,
+              placeholder: basis == null ? "Pick how it's tracked first" : scoringBasisFor(basis)!.label,
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 5),
+            child: Text(
+              "Wording only — it's the label clients see above the leaderboard. Leave it blank to use the tracking name.",
+              style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+            ),
+          ),
+          const SizedBox(height: 12),
+          FieldLabeled(
+            label: "Description — the starting text for challenges of this type",
+            child: AppField(
+              controller: _description,
+              minLines: 3,
+              maxLines: 4,
+              placeholder: "Describe what the challenge is and what clients need to do to win…",
+            ),
+          ),
+          if (isOwner) ...[
+            const SizedBox(height: 14),
+            FieldLabeled(
+              label: "Who can build challenges from this type",
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _WinnerModeOption(
+                      label: "Every coach",
+                      selected: _gymWide,
+                      onTap: () => setState(() => _gymWide = true),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _WinnerModeOption(
+                      label: "Only me",
+                      selected: !_gymWide,
+                      onTap: () => setState(() => _gymWide = false),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else
+            const Padding(
+              padding: EdgeInsets.only(top: 14),
+              child: Text(
+                "This type will be yours — it won't appear for other coaches.",
+                style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+              ),
+            ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(_error!, style: const TextStyle(color: Color(0xFFE05555), fontSize: 13)),
+            ),
+          const SizedBox(height: 16),
+          BtnGold(
+            full: true,
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? "Saving…" : "Create type"),
+          ),
         ],
       ),
     );

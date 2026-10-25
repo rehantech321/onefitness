@@ -28,6 +28,43 @@ class LeaderboardEntry {
   final double score;
 }
 
+/// A challenge type the gym defined itself, offered in the "choose a type"
+/// list alongside the eight built into the app.
+///
+/// A custom type chooses an existing scorer rather than defining one: every
+/// leaderboard comes from `calcChallengeScore`, which only knows the engines
+/// it has branches for, so a type that invented its own scoring would rank
+/// every participant at zero. [basis] names the engine; everything else is
+/// presentation.
+class ChallengeTemplate {
+  const ChallengeTemplate({
+    required this.key,
+    required this.emoji,
+    required this.label,
+    required this.metric,
+    required this.description,
+    required this.basis,
+    this.trainerId,
+  });
+
+  final String key;
+  final String emoji;
+  final String label;
+
+  /// What the leaderboard number means, in the gym's own words ("Steps
+  /// logged"). Wording only — [basis] is what actually produces the number.
+  final String metric;
+
+  final String description;
+
+  /// Which built-in scorer ranks this type. One of [kScoringBases].
+  final String basis;
+
+  /// Null for a gym-wide type every coach can build from; a coach id for one
+  /// only that coach sees. Same scoping rule as `Challenge.trainerId`.
+  final String? trainerId;
+}
+
 /// Mirrors a challenge record (App.jsx `challenges`) — trimmed to the
 /// client-facing fields.
 class Challenge {
@@ -47,6 +84,8 @@ class Challenge {
     this.rewardPoints,
     this.rewardProductId,
     this.trainerId,
+    this.emoji,
+    this.scoringBasis,
   });
 
   /// Rewards points offered to the winner (1, 2, 3 or 5), on top of any
@@ -61,9 +100,26 @@ class Challenge {
   /// Scopes the challenge to one coach's clients. Null means everyone.
   final String? trainerId;
 
+  /// The icon, copied from the type when this challenge was created rather
+  /// than looked up through it. A gym-defined type can be deleted; a
+  /// challenge built from one — especially a finished one, whose leaderboard
+  /// is a record of what happened — must keep rendering and ranking exactly
+  /// as it did. Null means a built-in type, which supplies its own.
+  final String? emoji;
+
+  /// Which scorer ranks this challenge, for one built from a gym-defined
+  /// type. Null for the eight built-in types, which score from [template] as
+  /// they always have. Copied at creation for the same reason as [emoji].
+  final String? scoringBasis;
+
   final String id;
   final String name;
-  final String template; // key into kChallengeTemplates
+
+  /// For a built-in challenge, a key into `kChallengeTemplates`. For one
+  /// built from a gym-defined type, that type's key — which is why nothing
+  /// may assume this resolves to a built-in.
+  final String template;
+
   final String metric;
   final String startDate;
   final String endDate;
@@ -90,5 +146,7 @@ class Challenge {
         rewardPoints: rewardPoints,
         rewardProductId: rewardProductId,
         trainerId: trainerId,
+        emoji: emoji,
+        scoringBasis: scoringBasis,
       );
 }

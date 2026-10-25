@@ -3,6 +3,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/intake_schema.dart";
+import "intake_attachments.dart";
 
 /// A client's completed intake, laid out for reading rather than filling in.
 ///
@@ -24,12 +25,20 @@ class IntakeAnswersScreen extends StatelessWidget {
     super.key,
     required this.schema,
     required this.record,
+    required this.profileId,
+    required this.assessmentKey,
     required this.onBack,
     required this.onEdit,
   });
 
   final IntakeSchema schema;
   final IntakeRecord record;
+
+  /// Whose record this is, and which form — needed to open the attachments,
+  /// which live in storage rather than in the record itself.
+  final String profileId;
+  final String assessmentKey;
+
   final VoidCallback onBack;
   final VoidCallback onEdit;
 
@@ -87,6 +96,18 @@ class IntakeAnswersScreen extends StatelessWidget {
               ),
             );
           }),
+          if (record.attachments.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 22),
+              child: IntakeAttachmentsField(
+                profileId: profileId,
+                assessmentKey: assessmentKey,
+                attachments: record.attachments,
+                readOnly: true,
+                // Read-only, so nothing here can change the list.
+                onChanged: (_) {},
+              ),
+            ),
           const HintBox(
             text:
                 "Editing this re-files the form under your name and today's date, "

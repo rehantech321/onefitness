@@ -155,6 +155,23 @@ class ChallengesNotifier extends Notifier<List<Challenge>> {
 
 final challengesProvider = NotifierProvider<ChallengesNotifier, List<Challenge>>(ChallengesNotifier.new);
 
+/// The gym's own challenge types, offered alongside the eight built into the
+/// app. Starts empty — a gym that has never defined one has none, and the
+/// built-ins live in code, not here.
+class ChallengeTemplatesNotifier extends Notifier<List<ChallengeTemplate>> {
+  @override
+  List<ChallengeTemplate> build() => const [];
+
+  void add(ChallengeTemplate t) => state = [...state, t];
+
+  void remove(String key) => state = state.where((t) => t.key != key).toList();
+
+  void setAll(List<ChallengeTemplate> next) => state = next;
+}
+
+final challengeTemplatesProvider =
+    NotifierProvider<ChallengeTemplatesNotifier, List<ChallengeTemplate>>(ChallengeTemplatesNotifier.new);
+
 /// Other clients at the gym, for Squad member search (App.jsx `roster`).
 /// Derived from trainerRosterProvider — the one place the full gym roster
 /// actually gets loaded from Supabase (loadAndSeedCoreData seeds it

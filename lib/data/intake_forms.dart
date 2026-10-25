@@ -184,7 +184,28 @@ const kIntakeForms = [
     key: "nutrition",
     title: "Nutrition Intake",
     assessments: [
-      AssessmentDef(key: "nutritional", title: "Nutrition Program Intake", by: "Client or Coach", schema: kNutritionIntakeSchema),
+      AssessmentDef(
+        key: "nutritional",
+        title: "Nutrition Program Intake",
+        by: "Client or Coach",
+        schema: kNutritionIntakeSchema,
+        // Bloodwork, a dietitian's letter, a plan they're already on — the
+        // things a coach would otherwise ask them to email over.
+        allowsAttachments: true,
+      ),
     ],
   ),
 ];
+
+/// The catalogue entry for [key], or null if nothing defines it. Lets a
+/// screen holding only an assessment key (FormFillerScreen does) read the
+/// rest of its definition without the key's properties having to be threaded
+/// through every caller.
+AssessmentDef? assessmentDefFor(String key) {
+  for (final group in kIntakeForms) {
+    for (final a in group.assessments) {
+      if (a.key == key) return a;
+    }
+  }
+  return null;
+}

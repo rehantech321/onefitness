@@ -61,14 +61,100 @@ class IntakeSchema {
   final List<IntakeSection> sections;
 }
 
-/// One entry in client.intake — mirrors {answers, completed, at, by}.
+/// A file a client attached to an intake form — bloodwork, a doctor's note,
+/// a meal plan they already follow.
+///
+/// Only the pointer is kept here. The bytes live in the private
+/// `intake-files` storage bucket, because an intake record is part of
+/// `client_records.data`, which is bulk-loaded for the whole roster at
+/// sign-in; inlining the files would make every coach download all of them
+/// to open the app. [path] is the object name inside that bucket, and is
+/// only ever exchanged for a short-lived signed URL when someone opens it.
+class IntakeAttachment {
+  const IntakeAttachment({
+    required this.id,
+    required this.name,
+    required this.path,
+    required this.size,
+    required this.contentType,
+    this.uploadedAt,
+  });
+
+  final String id;
+
+  /// The file's original name, as the client picked it — the only label a
+  /// coach has to go on, since [path] is a uuid.
+  final String name;
+
+  final String path;
+  final int size;
+  final String contentType; // "application/pdf" | "image/jpeg"
+  final String? uploadedAt;
+
+  bool get isPdf => contentType == "application/pdf";
+
+  Map<String, dynamic> toJson() => {
+        "id": id,
+        "name": name,
+        "path": path,
+        "size": size,
+        "contentType": contentType,
+        "uploadedAt": uploadedAt,
+      };
+
+  static IntakeAttachment? fromJson(Map<String, dynamic> j) {
+    final path = j["path"];
+    final id = j["id"];
+    // A row with no path points at nothing — dropping it is better than
+    // showing a file that can never open.
+    if (path is! String || path.isEmpty || id is! String) return null;
+    return IntakeAttachment(
+      id: id,
+      name: j["name"] as String? ?? "Attachment",
+      path: path,
+      size: (j["size"] as num?)?.toInt() ?? 0,
+      contentType: j["contentType"] as String? ?? "application/pdf",
+      uploadedAt: j["uploadedAt"] as String?,
+    );
+  }
+}
+
+/// One entry in client.intake — mirrors {answers, completed, at, by}, plus
+/// the files attached to it.
 class IntakeRecord {
-  const IntakeRecord({this.answers = const {}, this.completed = false, this.at, this.by});
+  const IntakeRecord({
+    this.answers = const {},
+    this.completed = false,
+    this.at,
+    this.by,
+    this.attachments = const [],
+  });
   final Map<String, dynamic> answers;
   final bool completed;
   final String? at;
   final String? by;
+  final List<IntakeAttachment> attachments;
+
+  IntakeRecord copyWith({
+    Map<String, dynamic>? answers,
+    bool? completed,
+    String? at,
+    String? by,
+    List<IntakeAttachment>? attachments,
+  }) =>
+      IntakeRecord(
+        answers: answers ?? this.answers,
+        completed: completed ?? this.completed,
+        at: at ?? this.at,
+        by: by ?? this.by,
+        attachments: attachments ?? this.attachments,
+      );
 }
+
+/// How many files one intake form accepts. A cap at all because these are
+/// supporting documents, not an album; six because that is what was asked
+/// for and it comfortably covers a full blood panel.
+const kMaxIntakeAttachments = 6;
 
 /// One row in the Assessments list — mirrors an entry in INTAKE_FORMS'
 /// `assessments` array.
@@ -80,6 +166,7 @@ class AssessmentDef {
     this.clientCanFill = true,
     this.physical = false,
     this.schema,
+    this.allowsAttachments = false,
   });
 
   final String key;
@@ -88,6 +175,12 @@ class AssessmentDef {
   final bool clientCanFill;
   final bool physical;
   final IntakeSchema? schema;
+
+  /// Whether this form takes supporting files. Opt-in per assessment rather
+  /// than on every form: the training intake asks about goals and injuries
+  /// and has nothing to attach, while a nutrition intake routinely comes
+  /// with bloodwork or a plan a client is already following.
+  final bool allowsAttachments;
 }
 
 class IntakeFormGroup {

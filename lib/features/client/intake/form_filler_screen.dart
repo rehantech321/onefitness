@@ -5,9 +5,11 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/widgets/widgets.dart";
+import "../../../data/intake_forms.dart";
 import "../../../data/models/client_record.dart";
 import "../../../data/models/intake_schema.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "intake_attachments.dart";
 
 /// Mirrors FormFiller.jsx — a generic schema-driven questionnaire renderer:
 /// text/textarea/single/multi/scale question types, with `showIf`
@@ -45,6 +47,13 @@ class FormFillerScreen extends ConsumerStatefulWidget {
 
 class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
   late Map<String, dynamic> _answers;
+
+  /// Kept in step with the record as files are added and removed — each
+  /// change is already saved by the time it lands here (see
+  /// IntakeAttachmentsField), so this is the list [_save] must write back
+  /// rather than the stale one the form opened with.
+  late List<IntakeAttachment> _attachments;
+
   bool _saving = false;
   String? _error;
 
@@ -53,6 +62,7 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
     super.initState();
     final existing = widget.client.intake[widget.assessmentKey];
     _answers = Map<String, dynamic>.from(existing?.answers ?? {});
+    _attachments = [...?existing?.attachments];
   }
 
   void _setText(String id, dynamic v) => setState(() => _answers[id] = v);
@@ -75,7 +85,13 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
       _saving = true;
       _error = null;
     });
-    final record = IntakeRecord(answers: _answers, completed: true, at: stamp(), by: widget.who == "client" ? "Client" : "Trainer/Coach");
+    final record = IntakeRecord(
+      answers: _answers,
+      completed: true,
+      at: stamp(),
+      by: widget.who == "client" ? "Client" : "Trainer/Coach",
+      attachments: _attachments,
+    );
     try {
       await SupabaseService.updateClientIntake(widget.profileId, widget.assessmentKey, record);
       widget.onSaved(record);
@@ -148,6 +164,24 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
                   ],
                 ),
               )),
+          if (assessmentDefFor(widget.assessmentKey)?.allowsAttachments ?? false) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 22),
+              child: IntakeAttachmentsField(
+                profileId: widget.profileId,
+                assessmentKey: widget.assessmentKey,
+                attachments: _attachments,
+                onChanged: (next) {
+                  setState(() => _attachments = next);
+                  // The file is already saved against the record; this keeps
+                  // whichever provider owns this client in step, so backing
+                  // out without finishing the form doesn't lose sight of it.
+                  final existing = widget.client.intake[widget.assessmentKey] ?? const IntakeRecord();
+                  widget.onSaved(existing.copyWith(attachments: next));
+                },
+              ),
+            ),
+          ],
           if (_error != null) ...[
             Container(
               padding: const EdgeInsets.all(10),

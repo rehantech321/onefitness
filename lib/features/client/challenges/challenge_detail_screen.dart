@@ -35,7 +35,7 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
     final info = ref.watch(clientInfoProvider);
     final client = ref.watch(clientRecordProvider);
     final bookings = ref.watch(clientBookingsProvider);
-    final tpl = templateMeta(challenge.template);
+    final tpl = challengeDisplay(challenge, ref.watch(challengeTemplatesProvider));
 
     final myScore = calcChallengeScore(info.id, challenge, client, bookings);
     final registered = isClientRegistered(challenge, info.id);
@@ -43,7 +43,7 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
     final regOpen = registrationOpensDate(challenge);
     final canJoin = !registered && now.compareTo(regOpen) >= 0 && now.compareTo(challenge.startDate) <= 0;
     final isEnded = challenge.endDate.compareTo(now) < 0;
-    final needsManualLog = challenge.template == "progressive-overload" || challenge.template == "fat-loss";
+    final needsManualLog = needsClientLoggedScore(challenge);
 
     final leaderboard = [
       LeaderboardEntry(clientId: info.id, name: info.name, score: myScore),
@@ -93,7 +93,7 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        "${tpl.label} · ${challenge.startDate} → ${challenge.endDate}",
+                        "${tpl.typeLabel} · ${challenge.startDate} → ${challenge.endDate}",
                         style: const TextStyle(fontSize: 12, color: AppColors.mute),
                       ),
                     ),

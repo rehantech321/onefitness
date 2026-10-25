@@ -296,6 +296,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final customMealsF = SupabaseService.loadCustomMeals()..ignore();
   final exercisesF = SupabaseService.loadExercises()..ignore();
   final challengesF = SupabaseService.loadChallenges()..ignore();
+  final challengeTemplatesF = SupabaseService.loadChallengeTemplates()..ignore();
   final squadsF = SupabaseService.loadSquads()..ignore();
   final chargesF = SupabaseService.loadCharges()..ignore();
   final waitlistF = SupabaseService.loadWaitlist()..ignore();
@@ -357,6 +358,8 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final PointsLedgerNotifier pointsLedgerN = ref.read(pointsLedgerProvider.notifier)..setAll(const <PointsLedgerEntry>[]);
   final EarnedBadgesNotifier badgesN = ref.read(earnedBadgesProvider.notifier)..setAll(const <EarnedBadge>[]);
   final ChallengesNotifier challengesN = ref.read(challengesProvider.notifier)..setAll(const <Challenge>[]);
+  // No sample data to clear — this one starts empty either way.
+  final ChallengeTemplatesNotifier challengeTemplatesN = ref.read(challengeTemplatesProvider.notifier);
   final ChargesNotifier chargesN = ref.read(chargesProvider.notifier)..setAll(const <Charge>[]);
   // Read now, used after this function returns — see the note on `ref`.
   final BlockedTimesNotifier blockedTimesN = ref.read(blockedTimesProvider.notifier);
@@ -444,6 +447,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   later(pointsLedgerF, "points", pointsLedgerN.setAll);
   later(badgesF, "badges", badgesN.setAll);
   later(challengesF, "challenges", challengesN.setAll);
+  later(challengeTemplatesF, "challenge_templates", challengeTemplatesN.setAll);
   later(chargesF, "charges", chargesN.setAll);
   later(blockedTimeF, "blocked time", blockedTimesN.setAll);
   later(productsF, "products", productsN.setAll);

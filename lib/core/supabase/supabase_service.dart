@@ -1,6 +1,8 @@
 import "dart:convert";
+import "dart:typed_data";
 import "package:http/http.dart" as http;
 import "package:supabase_flutter/supabase_flutter.dart";
+import "package:uuid/uuid.dart";
 import "../utils/coach_merit_badge_utils.dart";
 import "../utils/image_shrink.dart";
 import "../utils/date_utils.dart";
@@ -1062,7 +1064,50 @@ class SupabaseService {
     rewardPoints: _asInt(row["reward_points"]),
     rewardProductId: _emptyToNull(row["reward_product_id"]),
     trainerId: row["trainer_id"] as String?,
+    emoji: _emptyToNull(row["emoji"]),
+    scoringBasis: _emptyToNull(row["scoring_basis"]),
   );
+
+  /// The gym's own challenge types. Only staff screens read these — a
+  /// challenge carries everything a client needs to see it rendered and
+  /// ranked, so nothing on the client side depends on this list.
+  static Future<List<ChallengeTemplate>> loadChallengeTemplates() async {
+    final rows = await client.from("challenge_templates").select();
+    return _safeMap(rows, _challengeTemplateFromRow);
+  }
+
+  static ChallengeTemplate _challengeTemplateFromRow(Map<String, dynamic> row) => ChallengeTemplate(
+    key: row["key"] as String,
+    emoji: _emptyToNull(row["emoji"]) ?? "\u{1F3C6}",
+    label: row["label"] as String? ?? "",
+    metric: row["metric"] as String? ?? "",
+    description: row["description"] as String? ?? "",
+    basis: row["basis"] as String? ?? "attendance",
+    trainerId: row["trainer_id"] as String?,
+  );
+
+  static Future<void> insertChallengeTemplate(
+    ChallengeTemplate t, {
+    required String createdBy,
+  }) async {
+    await client.from("challenge_templates").insert({
+      "key": t.key,
+      "emoji": t.emoji,
+      "label": t.label,
+      "metric": t.metric,
+      "description": t.description,
+      "basis": t.basis,
+      "trainer_id": t.trainerId,
+      "created_by": createdBy,
+    });
+  }
+
+  /// Removing a type takes it out of the "choose a type" list and nothing
+  /// else: challenges built from it copied its emoji and scorer at creation,
+  /// so they keep rendering and ranking untouched.
+  static Future<void> deleteChallengeTemplate(String key) async {
+    await client.from("challenge_templates").delete().eq("key", key);
+  }
 
   static Future<List<Squad>> loadSquads() async {
     final rows = await client.from("squads").select();
@@ -2080,6 +2125,92 @@ class SupabaseService {
   /// the current nested map, merges just the one key, and writes the full
   /// blob back (same fetch-then-merge shape as upsertClientRecordPatch
   /// itself, one level deeper).
+  /// The private bucket holding intake attachments. Object names are
+  /// `<profile id>/<assessment key>/<uuid>.<ext>` — the first segment is what
+  /// migration 31's policies match on to keep a client inside their own
+  /// folder, so nothing here may write a path shaped any other way.
+  static const kIntakeFilesBucket = "intake-files";
+
+  /// Per-file ceiling. The bucket enforces 10MB itself (migration 31); this
+  /// is the same number said earlier, so a client learns their file is too
+  /// big before waiting for the whole upload to be rejected.
+  static const kIntakeFileMaxBytes = 10 * 1024 * 1024;
+
+  /// Uploads one file and returns the pointer to record on the intake. The
+  /// bytes never touch `client_records`; see [IntakeAttachment].
+  static Future<IntakeAttachment> uploadIntakeFile({
+    required String profileId,
+    required String assessmentKey,
+    required String name,
+    required Uint8List bytes,
+    required String contentType,
+  }) async {
+    final id = const Uuid().v4();
+    final ext = contentType == "application/pdf" ? "pdf" : "jpg";
+    final path = "$profileId/$assessmentKey/$id.$ext";
+    await client.storage.from(kIntakeFilesBucket).uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType),
+        );
+    return IntakeAttachment(
+      id: id,
+      name: name,
+      path: path,
+      size: bytes.length,
+      contentType: contentType,
+      uploadedAt: DateTime.now().toIso8601String(),
+    );
+  }
+
+  /// A short-lived URL for opening one attachment. Minted per view rather
+  /// than stored: the bucket is private precisely so that a link to someone's
+  /// bloodwork stops working, and a URL kept in the record would not.
+  static Future<String> signedIntakeFileUrl(String path) =>
+      client.storage.from(kIntakeFilesBucket).createSignedUrl(path, 600);
+
+  static Future<void> deleteIntakeFile(String path) async {
+    await client.storage.from(kIntakeFilesBucket).remove([path]);
+  }
+
+  /// Records the attachment list without touching answers or completion.
+  ///
+  /// Attachments save the moment they're added, rather than waiting for
+  /// "Save & mark complete". A client who uploads a blood panel and then
+  /// closes the app has uploaded it — the bytes are already in the bucket,
+  /// and leaving the record not knowing about them would strand the file
+  /// where nothing could ever reach it or clean it up.
+  static Future<void> updateClientIntakeAttachments(
+    String profileId,
+    String assessmentKey,
+    List<IntakeAttachment> attachments,
+  ) async {
+    final row = await client
+        .from("client_records")
+        .select("data")
+        .eq("profile_id", profileId)
+        .maybeSingle();
+    final current = (row?["data"] as Map?)?.cast<String, dynamic>() ?? const {};
+    final intakeField = current["intake"];
+    final currentIntake =
+        intakeField is Map ? intakeField.cast<String, dynamic>() : const <String, dynamic>{};
+    final existing = currentIntake[assessmentKey];
+    final entry = existing is Map ? existing.cast<String, dynamic>() : <String, dynamic>{};
+    await client.from("client_records").upsert({
+      "profile_id": profileId,
+      "data": {
+        ...current,
+        "intake": {
+          ...currentIntake,
+          assessmentKey: {
+            ...entry,
+            "attachments": [for (final a in attachments) a.toJson()],
+          },
+        },
+      },
+    });
+  }
+
   static Future<void> updateClientIntake(
     String profileId,
     String assessmentKey,
@@ -2104,6 +2235,7 @@ class SupabaseService {
         "completed": record.completed,
         "at": record.at,
         "by": record.by,
+        "attachments": [for (final a in record.attachments) a.toJson()],
       },
     };
     await client.from("client_records").upsert({
@@ -3735,6 +3867,11 @@ class SupabaseService {
       "reward_points": c.rewardPoints,
       "reward_product_id": c.rewardProductId,
       "trainer_id": c.trainerId,
+      // Copied from the type rather than referenced, so deleting a type
+      // can't change how a challenge renders or ranks. Null for the eight
+      // built-in types, which supply both from code.
+      "emoji": c.emoji,
+      "scoring_basis": c.scoringBasis,
     };
     await client.from("challenges").insert(row);
   }
@@ -4291,6 +4428,11 @@ class SupabaseService {
               completed: m["completed"] as bool? ?? false,
               at: m["at"] as String?,
               by: m["by"] as String?,
+              attachments: ((m["attachments"] as List?) ?? const [])
+                  .whereType<Map>()
+                  .map((a) => IntakeAttachment.fromJson(a.cast<String, dynamic>()))
+                  .whereType<IntakeAttachment>()
+                  .toList(),
             ),
           );
         }),

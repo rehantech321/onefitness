@@ -155,7 +155,7 @@ class _ChallengeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tpl = templateMeta(challenge.template);
+    final tpl = challengeDisplay(challenge, ref.watch(challengeTemplatesProvider));
     final now = isoToday();
     final daysLeft =
         DateTime.parse(
@@ -192,7 +192,7 @@ class _ChallengeCard extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        "${tpl.label} · ${challenge.participantIds.length} registered",
+                        "${tpl.typeLabel} · ${challenge.participantIds.length} registered",
                         style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.mute,

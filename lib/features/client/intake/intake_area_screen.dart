@@ -181,6 +181,8 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
           child: IntakeAnswersScreen(
             schema: a.schema!,
             record: record,
+            profileId: widget.profileId,
+            assessmentKey: a.key,
             onBack: _closeAssessment,
             onEdit: () => setState(() => _editing = true),
           ),

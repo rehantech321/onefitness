@@ -85,6 +85,118 @@ ChallengeTemplateMeta templateMeta(String key) =>
     kChallengeTemplates[key] ??
     const ChallengeTemplateMeta(emoji: "\u{1F3C6}", label: "Challenge", metric: "", winnerMode: "auto", description: "");
 
+/// One of the leaderboards a gym-defined challenge type can be ranked by.
+///
+/// The [key] is deliberately an existing template key: [calcChallengeScore]
+/// is a switch over those keys, and reusing them means a custom type runs the
+/// same scorer that has been ranking that built-in challenge all along — no
+/// new branch, no second implementation to keep in step. [label] is what a
+/// coach picks from, which is why it describes the measurement rather than
+/// naming the challenge it came from.
+class ScoringBasis {
+  const ScoringBasis({required this.key, required this.label, required this.detail});
+  final String key;
+  final String label;
+  final String detail;
+}
+
+const kScoringBases = [
+  ScoringBasis(
+    key: "attendance",
+    label: "Sessions attended",
+    detail: "Counts every session the client checked in to between the start and end dates.",
+  ),
+  ScoringBasis(
+    key: "weight-loss",
+    label: "Weight lost (lbs)",
+    detail: "Biggest drop from the client's first logged weight in the window. Read from their measurements — nothing to enter by hand.",
+  ),
+  ScoringBasis(
+    key: "body-fat",
+    label: "Body fat % lost",
+    detail: "Biggest drop from the client's first logged body fat % in the window. Read from their measurements.",
+  ),
+  ScoringBasis(
+    key: "inches-lost",
+    label: "Inches lost",
+    detail: "Total inches off chest, waist, hips, arms and thighs, from the client's logged measurements.",
+  ),
+  ScoringBasis(
+    key: "30-day",
+    label: "Habit consistency %",
+    detail: "Average daily habit completion across the window — perfect habits every day scores 100.",
+  ),
+  ScoringBasis(
+    key: "fat-loss",
+    label: "A number the client logs",
+    detail: "Clients log their own figure against the challenge (a lift, a distance, a weigh-in) and their best entry is their score.",
+  ),
+];
+
+ScoringBasis? scoringBasisFor(String key) =>
+    kScoringBases.where((b) => b.key == key).firstOrNull;
+
+/// Which scorer ranks [c]. A gym-defined type copies its basis onto the
+/// challenge at creation; a built-in scores from its own template key, as it
+/// always has.
+String scoringKey(Challenge c) => c.scoringBasis ?? c.template;
+
+/// Whether [c]'s score is a percentage, and so wants a "%" after it.
+bool scoreIsPercent(Challenge c) {
+  final key = scoringKey(c);
+  return key == "30-day" || key == "community" || key == "body-fat";
+}
+
+/// Whether clients have to enter their own figure for [c], rather than it
+/// being read from their bookings or measurements.
+///
+/// Routed through [scoringKey] rather than the template, because a
+/// gym-defined type scored this way has its own key: checking the template
+/// would leave its participants with a leaderboard they have no way to enter
+/// a number for, permanently stuck at zero.
+bool needsClientLoggedScore(Challenge c) {
+  final key = scoringKey(c);
+  return key == "progressive-overload" || key == "fat-loss";
+}
+
+/// How a challenge should be presented, wherever it came from.
+///
+/// Resolved from the challenge row first and the type catalogue second, so a
+/// challenge still renders correctly once its gym-defined type is deleted —
+/// which is allowed, and must never reach back into challenges already run.
+class ChallengeDisplay {
+  const ChallengeDisplay({required this.emoji, required this.typeLabel, required this.metric});
+  final String emoji;
+  final String typeLabel;
+  final String metric;
+}
+
+ChallengeDisplay challengeDisplay(Challenge c, List<ChallengeTemplate> customTypes) {
+  final builtIn = kChallengeTemplates[c.template];
+  if (builtIn != null && c.scoringBasis == null) {
+    return ChallengeDisplay(emoji: builtIn.emoji, typeLabel: builtIn.label, metric: c.metric);
+  }
+  final custom = customTypes.where((t) => t.key == c.template).firstOrNull;
+  return ChallengeDisplay(
+    emoji: c.emoji ?? custom?.emoji ?? "\u{1F3C6}",
+    // The type is gone and the challenge never stored its label, so say what
+    // is actually known rather than inventing a type name.
+    typeLabel: custom?.label ?? "Custom challenge",
+    metric: c.metric,
+  );
+}
+
+/// The types this coach or owner may build a challenge from: every gym-wide
+/// one, plus their own. Mirrors how challenges themselves are scoped.
+List<ChallengeTemplate> visibleChallengeTypes(List<ChallengeTemplate> all, String? trainerAuth) =>
+    all.where((t) => trainerAuth == "owner" || t.trainerId == null || t.trainerId == trainerAuth).toList();
+
+/// Whether [trainerAuth] may delete [t]. The owner manages everything; a
+/// coach manages only their own. Mirrors the table's RLS exactly, so the UI
+/// never offers an action the database will refuse.
+bool canManageChallengeType(ChallengeTemplate t, String? trainerAuth) =>
+    trainerAuth == "owner" || (trainerAuth != null && t.trainerId == trainerAuth);
+
 bool isClientRegistered(Challenge c, String clientId) => c.participantIds.contains(clientId);
 
 /// Mirrors helpers.js `parseLeadingNum` — measurement fields are free text
@@ -137,9 +249,12 @@ double _measurementDrop(ClientRecord? record, String field, String startDate, St
   return drop > 0 ? drop : 0;
 }
 
-/// Mirrors challengeHelpers.js `calcChallengeScore` for all 8 templates.
+/// Mirrors challengeHelpers.js `calcChallengeScore` for all 8 templates, and
+/// ranks gym-defined types too — they carry the key of whichever of these
+/// scorers they chose, so they arrive here as one of the cases below rather
+/// than falling through to 0. See [scoringKey].
 double calcChallengeScore(String clientId, Challenge challenge, ClientRecord? clientRecord, List<Booking> bookings) {
-  switch (challenge.template) {
+  switch (scoringKey(challenge)) {
     case "attendance":
       return bookings
           .where((b) =>
