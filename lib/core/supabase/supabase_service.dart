@@ -1420,10 +1420,17 @@ class SupabaseService {
   /// the message names the index rather than a column — unreadable as-is.
   static Never _rethrowContactClash(Object e) {
     final raw = e.toString();
+    // Both role-scoped phone indexes start with this name (…_client,
+    // …_coach), so one check still covers them. The wording no longer says
+    // "each person needs their own number" — an owner may now share one
+    // with a coach, so that would be wrong as often as it was right.
+    if (raw.contains("profiles_unique_phone_digits_coach")) {
+      throw Exception("That phone number is already on another coach's account.");
+    }
     if (raw.contains("profiles_unique_phone_digits")) {
       throw Exception(
-        "That phone number is already on another account. "
-        "Each person needs their own number.",
+        "That phone number is already on another client's account. "
+        "Texts to it would reach the wrong person.",
       );
     }
     if (raw.contains("profiles_unique_email")) {
