@@ -302,10 +302,27 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                       ),
                       if (days.isEmpty)
                         const HintBox(text: "No days in this program yet."),
-                      ...days.map((d) {
+                      // Committed days first, then the suggested ones under
+                      // their own heading. Interleaving them would bury the
+                      // distinction the client most needs to see: which days
+                      // they committed to, and which are extra.
+                      ...[
+                        for (final d in days.where((d) => !d.suggested)) d,
+                        for (final d in days.where((d) => d.suggested)) d,
+                      ].map((d) {
                         final completed = cycleCompleted.contains(d.id);
                         final exCount = d.exercises.length;
-                        return AppCard(
+                        final firstSuggested = d.suggested &&
+                            days.where((x) => x.suggested).firstOrNull?.id == d.id;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (firstSuggested)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 6, bottom: 10),
+                                child: _SuggestedHeading(),
+                              ),
+                            AppCard(
                           child: Row(
                             children: [
                               Expanded(
@@ -325,6 +342,10 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
+                                        if (d.suggested) ...[
+                                          const SizedBox(width: 6),
+                                          const Tag(text: "Suggested"),
+                                        ],
                                         if (completed) ...[
                                           const SizedBox(width: 6),
                                           const Icon(
@@ -343,6 +364,19 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                                         color: AppColors.mute,
                                       ),
                                     ),
+                                    if (d.rationale != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          d.rationale!,
+                                          style: const TextStyle(
+                                            fontSize: 11.5,
+                                            color: AppColors.mute,
+                                            height: 1.4,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -361,9 +395,9 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
-                                child: const Text(
-                                  "Start workout",
-                                  style: TextStyle(
+                                child: Text(
+                                  d.suggested ? "Start" : "Start workout",
+                                  style: const TextStyle(
                                     fontSize: 12.5,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -371,6 +405,8 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                               ),
                             ],
                           ),
+                            ),
+                          ],
                         );
                       }),
                     ],
@@ -789,6 +825,43 @@ class _ViewToggleOption extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Separates the suggested days from the committed ones in the day list.
+///
+/// A client's committed days are what they signed up for; suggested days are
+/// optional conditioning that shows what reaching the goal actually takes.
+/// Saying that once, above the group, beats repeating it on every card — and
+/// without it a suggested day reads as another session they've fallen behind
+/// on.
+class _SuggestedHeading extends StatelessWidget {
+  const _SuggestedHeading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(LucideIcons.sparkles, size: 14, color: AppColors.gold),
+            const SizedBox(width: 7),
+            const Text(
+              "Suggested",
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+            ),
+          ],
+        ),
+        const Padding(
+          padding: EdgeInsets.only(top: 3),
+          child: Text(
+            "Optional movement days that support your goal. Do them when you can — your committed sessions come first.",
+            style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -42,6 +42,15 @@ Set<String> getCurrentCycleCompletedDays(
   if (dayIds.isEmpty) return {};
   final dayIdSet = dayIds.toSet();
 
+  // The cycle turns over on the COMMITTED days alone. Suggested days are
+  // optional by design — "up to 2", added only when they help — so counting
+  // them here would mean a client who completes every session they committed
+  // to never finishes a cycle, and their ticks pile up indefinitely for the
+  // offence of skipping an optional walk. Logging a suggested day still
+  // registers below, so it still shows its tick; it just isn't a gate.
+  final gateIds = programDays.where((d) => !d.suggested).map((d) => d.id).toSet();
+  final effectiveGate = gateIds.isEmpty ? dayIdSet : gateIds;
+
   final sessions =
       client.workoutLogs
           .where((log) => dayIdSet.contains(log.dayId))
@@ -52,8 +61,8 @@ Set<String> getCurrentCycleCompletedDays(
   var completedThisCycle = <String>{};
   for (final s in sessions) {
     completedThisCycle.add(s.dayId);
-    if (completedThisCycle.length >= dayIds.length) {
-      completedThisCycle = {}; // every day hit — cycle complete, start fresh
+    if (completedThisCycle.containsAll(effectiveGate)) {
+      completedThisCycle = {}; // every committed day hit — start fresh
     }
   }
   return completedThisCycle;

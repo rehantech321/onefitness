@@ -906,6 +906,8 @@ class SupabaseService {
         modifiedAt: j["modifiedAt"] as String?,
         assignedClientId: j["assignedClientId"] as String?,
         assignedClientName: j["assignedClientName"] as String?,
+        programNote: j["programNote"] as String?,
+        suggestedNote: j["suggestedNote"] as String?,
       );
 
   static ProgramDay _programDayFromJson(Map<String, dynamic> j) => ProgramDay(
@@ -915,6 +917,10 @@ class SupabaseService {
       ((j["exercises"] as List?) ?? const []).whereType<Map>(),
       _exercisePrescriptionFromJson,
     ),
+    // Anything that isn't explicitly "suggested" is a committed day, which
+    // is how every program written before suggested days existed reads back.
+    suggested: j["kind"] == "suggested",
+    rationale: j["rationale"] as String?,
   );
 
   static ExercisePrescription _exercisePrescriptionFromJson(
@@ -3671,12 +3677,21 @@ class SupabaseService {
     "modifiedAt": p.modifiedAt,
     "assignedClientId": p.assignedClientId,
     "assignedClientName": p.assignedClientName,
+    // Carried back through every save, so a coach approving or editing an AI
+    // draft doesn't strip the explanation of how it was built.
+    if (p.programNote != null) "programNote": p.programNote,
+    if (p.suggestedNote != null) "suggestedNote": p.suggestedNote,
   };
 
   static Map<String, dynamic> _programDayToJson(ProgramDay d) => {
     "id": d.id,
     "title": d.title,
     "exercises": d.exercises.map(_exercisePrescriptionToJson).toList(),
+    // Written on every day, not just suggested ones, so a coach editing and
+    // re-saving an AI draft can't quietly turn its suggested days into
+    // committed ones by round-tripping them through the builder.
+    "kind": d.suggested ? "suggested" : "committed",
+    if (d.rationale != null) "rationale": d.rationale,
   };
 
   static Map<String, dynamic> _exercisePrescriptionToJson(

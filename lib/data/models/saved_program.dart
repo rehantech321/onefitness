@@ -13,6 +13,8 @@ class SavedProgram {
     this.modifiedAt,
     this.assignedClientId,
     this.assignedClientName,
+    this.programNote,
+    this.suggestedNote,
   });
 
   final String id;
@@ -32,6 +34,18 @@ class SavedProgram {
   final String? assignedClientId;
   final String? assignedClientName;
 
+  /// On an AI draft, why the split had to prioritise one muscle group over
+  /// full 2x/week coverage. Written by generate-ai-workout-program only when
+  /// that tradeoff was actually forced; null otherwise.
+  final String? programNote;
+
+  /// On an AI draft, why this client got the number of suggested days they
+  /// did — including, importantly, why they got none. The count is decided by
+  /// a fixed ladder (goal demand capped by a recovery budget), so a coach
+  /// looking at a program with no suggested days can read the reason rather
+  /// than assume the generator forgot.
+  final String? suggestedNote;
+
   SavedProgram copyWith({String? name, String? status, List<ProgramDay>? programDays}) => SavedProgram(
         id: id,
         name: name ?? this.name,
@@ -43,5 +57,7 @@ class SavedProgram {
         modifiedAt: modifiedAt,
         assignedClientId: assignedClientId,
         assignedClientName: assignedClientName,
+        programNote: programNote,
+        suggestedNote: suggestedNote,
       );
 }

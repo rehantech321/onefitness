@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
@@ -531,7 +532,28 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
               children: [
                 Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 const SizedBox(height: 6),
-                Text("${p.programDays.length} day split${p.createdAt != null ? " · generated ${p.createdAt}" : ""}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                Builder(builder: (context) {
+                  // Counted separately: a "5 day split" that is really 3
+                  // committed days plus 2 optional ones misrepresents what
+                  // the client agreed to at the only glance most coaches
+                  // give this card.
+                  final committed = p.programDays.where((d) => !d.suggested).length;
+                  final suggested = p.programDays.length - committed;
+                  return Text(
+                    "$committed day split"
+                    "${suggested > 0 ? " · $suggested suggested day${suggested == 1 ? "" : "s"}" : ""}"
+                    "${p.createdAt != null ? " · generated ${p.createdAt}" : ""}",
+                    style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                  );
+                }),
+                if (p.programNote != null) ...[
+                  const SizedBox(height: 8),
+                  _DraftNote(icon: LucideIcons.info, text: p.programNote!),
+                ],
+                if (p.suggestedNote != null) ...[
+                  const SizedBox(height: 8),
+                  _DraftNote(icon: LucideIcons.sparkles, text: p.suggestedNote!),
+                ],
                 const SizedBox(height: 8),
                 const HintBox(text: "Not visible to this client until you approve it. Review the days, edit anything that needs a coach's touch, then approve to assign it."),
                 const SizedBox(height: 10),
@@ -925,6 +947,39 @@ class _ActionChip extends StatelessWidget {
         ),
         child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: onTap == null ? AppColors.mute : color)),
       ),
+    );
+  }
+}
+
+/// One line of the generator's own reasoning on an AI draft card.
+///
+/// These exist so a coach can read why a draft looks the way it does instead
+/// of guessing — most usefully when a program came back with no suggested
+/// days at all, which otherwise looks like the feature failing rather than
+/// the recovery rules doing their job.
+class _DraftNote extends StatelessWidget {
+  const _DraftNote({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(icon, size: 13, color: AppColors.gold),
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.45),
+          ),
+        ),
+      ],
     );
   }
 }
