@@ -104,15 +104,20 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
     if (_activeDayId == id) setState(() => _activeDayId = null);
   }
 
+  /// Drops a day at an absolute position. The arrows below step one place
+  /// at a time through this same path, so the two agree on what they save.
+  void _reorderDays(int oldIndex, int newIndex) {
+    final target = newIndex.clamp(0, _days.length - 1);
+    if (oldIndex < 0 || oldIndex >= _days.length || target == oldIndex) return;
+    final next = [..._days];
+    next.insert(target, next.removeAt(oldIndex));
+    _saveDays(next);
+  }
+
   void _moveDay(String id, int dir) {
     final i = _days.indexWhere((d) => d.id == id);
-    final j = i + dir;
-    if (j < 0 || j >= _days.length) return;
-    final next = [..._days];
-    final tmp = next[i];
-    next[i] = next[j];
-    next[j] = tmp;
-    _saveDays(next);
+    if (i < 0) return;
+    _reorderDays(i, i + dir);
   }
 
   void _updateExercises(List<ExercisePrescription> exercises) {
@@ -157,17 +162,23 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
   void _resolveFlag(String id) =>
       _updateItem(id, (e) => e.copyWith(clearClientNote: true));
 
-  void _moveExercise(int idx, int dir) {
+  /// Same arrangement as [_reorderDays], for the exercises inside a day.
+  ///
+  /// Superset grouping rides along untouched: `supersetId` lives on each
+  /// exercise, and ProgramBuilder only treats CONSECUTIVE matching ids as a
+  /// real pairing — so dragging one half of a superset away from the other
+  /// breaks the pair, which is exactly what the coach just asked for.
+  void _reorderExercises(int oldIndex, int newIndex) {
     final day = _activeDay;
     if (day == null) return;
-    final j = idx + dir;
-    if (j < 0 || j >= day.exercises.length) return;
+    final target = newIndex.clamp(0, day.exercises.length - 1);
+    if (oldIndex < 0 || oldIndex >= day.exercises.length || target == oldIndex) return;
     final next = [...day.exercises];
-    final tmp = next[idx];
-    next[idx] = next[j];
-    next[j] = tmp;
+    next.insert(target, next.removeAt(oldIndex));
     _updateExercises(next);
   }
+
+  void _moveExercise(int idx, int dir) => _reorderExercises(idx, idx + dir);
 
   void _coupleWithNext(int idx) {
     final day = _activeDay;
@@ -223,9 +234,21 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                     text:
                         "No days yet. Add Day 1 to start building this client's split (e.g. Push / Pull / Legs).",
                   ),
-                ..._days.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final day = entry.value;
+                if (_days.length > 1)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      "Press and hold a day to drag it into place.",
+                      style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                ReorderableColumn(
+                  itemCount: _days.length,
+                  keyOf: (i) => _days[i].id,
+                  enabled: _days.length > 1 && _confirmDeleteDayId == null,
+                  onReorder: _reorderDays,
+                  itemBuilder: (context, i) {
+                  final day = _days[i];
                   return AppCard(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: _confirmDeleteDayId == day.id
@@ -309,7 +332,8 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                             ],
                           ),
                   );
-                }),
+                  },
+                ),
                 BtnGold(
                   full: true,
                   onPressed: _addDay,
@@ -554,9 +578,21 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                 text:
                     'No exercises yet for ${activeDay.title}. Tap "Add exercise" to pull from the library.',
               ),
-            ...activeDay.exercises.asMap().entries.map((entry) {
-              final i = entry.key;
-              final ex = entry.value;
+            if (activeDay.exercises.length > 1)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text(
+                  "Press and hold an exercise to drag it into place.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
+                ),
+              ),
+            ReorderableColumn(
+              itemCount: activeDay.exercises.length,
+              keyOf: (i) => activeDay.exercises[i].id,
+              enabled: activeDay.exercises.length > 1,
+              onReorder: _reorderExercises,
+              itemBuilder: (context, i) {
+              final ex = activeDay.exercises[i];
               final isSuperset = ex.supersetId != null;
               final groupContinues =
                   isSuperset &&
@@ -861,7 +897,8 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                   ],
                 ),
               );
-            }),
+              },
+            ),
             BtnGold(
               full: true,
               onPressed: _addExercise,

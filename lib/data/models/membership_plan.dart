@@ -38,6 +38,7 @@ class MembershipPlan {
     this.paymentType,
     this.feeItemProductId,
     this.category,
+    this.sortOrder,
     this.allowGuests = false,
     this.guestFeeCents = 0,
     this.rolloverEnabled = false,
@@ -77,6 +78,16 @@ class MembershipPlan {
   /// package_categories entry this plan is grouped under (Products/plan
   /// pickers share the same catalog — see packageCategoriesProvider).
   final String? category;
+
+  /// Where this plan sits in the owner's chosen order, within its category.
+  ///
+  /// Carried on the plan itself because `membership_plans` is an id/jsonb
+  /// table with nothing else to hang order on, and `loadMembershipPlans`
+  /// selects with no `order by` — so before this field the Access Hub's
+  /// up/down arrows rearranged the list in memory and the next load came
+  /// back in whatever order Postgres felt like. Null on plans saved before
+  /// this existed; those sort after the ordered ones, by name.
+  final int? sortOrder;
 
   /// What the client is actually buying, in their words rather than a
   /// feature list — shown on the plan card and the detail view.

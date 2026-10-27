@@ -157,7 +157,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     return outstandingWaivers(
       allDocs: ref.read(waiversProvider),
       signatures: ref.read(clientRecordProvider).signatures,
-      clientPlanId: info.membershipPlanId,
+      clientPlanIds: info.heldPlanIds,
     );
   }
 

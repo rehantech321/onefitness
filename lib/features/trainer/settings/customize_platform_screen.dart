@@ -1623,15 +1623,15 @@ class _CustomFieldsEditorState extends State<_CustomFieldsEditor> {
     });
   }
 
-  void _move(int i, int dir) {
-    final j = i + dir;
-    if (j < 0 || j >= widget.fields.length) return;
+  void _reorder(int oldIndex, int newIndex) {
+    final target = newIndex.clamp(0, widget.fields.length - 1);
+    if (oldIndex < 0 || oldIndex >= widget.fields.length || target == oldIndex) return;
     final next = [...widget.fields];
-    final tmp = next[i];
-    next[i] = next[j];
-    next[j] = tmp;
+    next.insert(target, next.removeAt(oldIndex));
     widget.onChange(next);
   }
+
+  void _move(int i, int dir) => _reorder(i, i + dir);
 
   @override
   Widget build(BuildContext context) {
@@ -1642,9 +1642,13 @@ class _CustomFieldsEditorState extends State<_CustomFieldsEditor> {
           const Text("Custom profile fields", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           if (widget.fields.isEmpty) const Text("None yet — added fields show up on every client intake and edit-profile form.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
-          ...widget.fields.asMap().entries.map((entry) {
-            final i = entry.key;
-            final f = entry.value;
+          ReorderableColumn(
+            itemCount: widget.fields.length,
+            keyOf: (i) => widget.fields[i].id,
+            enabled: widget.fields.length > 1,
+            onReorder: _reorder,
+            itemBuilder: (context, i) {
+            final f = widget.fields[i];
             return Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
@@ -1672,7 +1676,8 @@ class _CustomFieldsEditorState extends State<_CustomFieldsEditor> {
                 ],
               ),
             );
-          }),
+            },
+          ),
           Row(
             children: [
               Expanded(child: AppField(kind: FieldKind.name, controller: _newLabel, placeholder: "New field label…")),

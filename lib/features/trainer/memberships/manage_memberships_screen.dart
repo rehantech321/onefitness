@@ -66,13 +66,15 @@ class _ManageMembershipsScreenState
   /// Access Hub, so this writes the whole run of positions rather than just
   /// the pair that swapped — cheaper to reason about than patching two rows
   /// and hoping the rest still line up.
-  Future<void> _moveCategory(String name, int direction) async {
+  /// Moves one category to an absolute position. Both ways of reordering —
+  /// dragging it there, or stepping it with the arrows — land here, so the
+  /// two can't drift apart in what they save.
+  Future<void> _reorderCategories(int oldIndex, int newIndex) async {
     final current = [...ref.read(packageCategoriesProvider)];
-    final i = current.indexOf(name);
-    final j = i + direction;
-    if (i < 0 || j < 0 || j >= current.length) return;
-    current[i] = current[j];
-    current[j] = name;
+    if (oldIndex < 0 || oldIndex >= current.length) return;
+    final target = newIndex.clamp(0, current.length - 1);
+    if (target == oldIndex) return;
+    current.insert(target, current.removeAt(oldIndex));
     // Shown immediately; the write follows. A failure re-reads the server's
     // order rather than leaving the screen showing something that isn't so.
     ref.read(packageCategoriesProvider.notifier).setAll(current);
@@ -86,6 +88,13 @@ class _ManageMembershipsScreenState
         const SnackBar(content: Text("Couldn't save the new order — check your connection and try again.")),
       );
     }
+  }
+
+  /// The arrows' one-step version, expressed in terms of the move above.
+  Future<void> _moveCategory(String name, int direction) {
+    final i = ref.read(packageCategoriesProvider).indexOf(name);
+    if (i < 0) return Future.value();
+    return _reorderCategories(i, i + direction);
   }
 
   /// Renames a category, carrying every plan and product tagged with it.
@@ -110,18 +119,56 @@ class _ManageMembershipsScreenState
     }
   }
 
+  /// Reorders one category's plans among themselves.
+  ///
+  /// The plans are displayed grouped by category but held in a single flat
+  /// list, so a group's members can sit at non-adjacent positions in it.
+  /// Rather than guess at a global index, this takes the slots that group
+  /// already occupies and writes the regrouped order back into them — every
+  /// other plan keeps exactly the position it had.
+  Future<void> _reorderPlansInCategory(List<MembershipPlan> group, int oldIndex, int newIndex) async {
+    final plans = [...ref.read(membershipPlansProvider)];
+    final slots = [
+      for (final p in group) plans.indexWhere((x) => x.id == p.id),
+    ]..sort();
+    if (slots.length != group.length || slots.any((s) => s < 0)) return;
+    final target = newIndex.clamp(0, group.length - 1);
+    if (oldIndex < 0 || oldIndex >= group.length || target == oldIndex) return;
+
+    final regrouped = [...group];
+    regrouped.insert(target, regrouped.removeAt(oldIndex));
+    for (var k = 0; k < slots.length; k++) {
+      plans[slots[k]] = regrouped[k];
+    }
+    ref.read(membershipPlansProvider.notifier).setAll(plans);
+    try {
+      // The whole list, not just this group: sortOrder is a single sequence
+      // across every plan, so renumbering one group in isolation would leave
+      // it interleaved with the others on the next load.
+      await SupabaseService.saveMembershipPlanOrder([for (final p in plans) p.id]);
+    } catch (e) {
+      final fresh = await SupabaseService.loadMembershipPlans();
+      if (!mounted) return;
+      ref.read(membershipPlansProvider.notifier).setAll(fresh);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't save the new order — check your connection and try again.")),
+      );
+    }
+  }
+
+  /// The arrows' one-step version, within the plan's own category.
   void _move(String id, int dir) {
     final plans = ref.read(membershipPlansProvider);
-    final i = plans.indexWhere((p) => p.id == id);
-    final j = i + dir;
-    if (i < 0 || j < 0 || j >= plans.length) return;
-    final next = [...plans];
-    final tmp = next[i];
-    next[i] = next[j];
-    next[j] = tmp;
-    ref.read(membershipPlansProvider.notifier).setAll(next);
-    SupabaseService.upsertMembershipPlan(next[i]).catchError((_) {});
-    SupabaseService.upsertMembershipPlan(next[j]).catchError((_) {});
+    final plan = plans.where((p) => p.id == id).firstOrNull;
+    if (plan == null) return;
+    final group = _plansByCategory(plans, ref.read(packageCategoriesProvider))
+        .where((g) => g.value.any((p) => p.id == id))
+        .map((g) => g.value)
+        .firstOrNull;
+    if (group == null) return;
+    final i = group.indexWhere((p) => p.id == id);
+    if (i < 0) return;
+    _reorderPlansInCategory(group, i, i + dir);
   }
 
   Future<void> _removeOrArchive(MembershipPlan p) async {
@@ -388,18 +435,28 @@ class _ManageMembershipsScreenState
               _creating = true;
             }),
             onMove: _moveCategory,
+            onReorder: _reorderCategories,
             onRename: _renameCategory,
           ),
           const SizedBox(height: 18),
           // Grouped by category, in the gym's own category order — the same
-          // way clients see plans, so both sides read alike. Reordering still
-          // works on the full list, so a plan can move between groups.
+          // way clients see plans, so both sides read alike. Reordering is
+          // within a category: dragging a plan out of its own group would be
+          // a recategorisation, which is what the plan editor is for.
           ...(() {
             final grouped = _plansByCategory(plans, ref.watch(packageCategoriesProvider));
             return [
               for (final group in grouped) ...[
                 SectionLabel(group.key),
-                ...group.value.map((p) => _planCard(p, plans.indexOf(p), plans.length)),
+                ReorderableColumn(
+                  itemCount: group.value.length,
+                  keyOf: (i) => group.value[i].id,
+                  enabled: group.value.length > 1,
+                  onReorder: (oldIndex, newIndex) =>
+                      _reorderPlansInCategory(group.value, oldIndex, newIndex),
+                  itemBuilder: (context, i) =>
+                      _planCard(group.value[i], i, group.value.length),
+                ),
               ],
             ];
           })(),
@@ -1397,6 +1454,7 @@ class _CategoryManager extends StatefulWidget {
     required this.onDelete,
     required this.onAddPlanIn,
     required this.onMove,
+    required this.onReorder,
     required this.onRename,
   });
 
@@ -1412,6 +1470,10 @@ class _CategoryManager extends StatefulWidget {
   /// Moves a category one place in the list. The order is what clients see
   /// in the Access Hub, so it is the owner's to arrange.
   final void Function(String name, int direction) onMove;
+
+  /// Drag-to-position. [onMove] steps one place at a time; this lands a
+  /// category wherever it was dropped.
+  final void Function(int oldIndex, int newIndex) onReorder;
 
   /// Renames it, carrying every plan and product tagged with it along.
   final Future<void> Function(String oldName, String newName) onRename;
@@ -1512,10 +1574,22 @@ class _CategoryManagerState extends State<_CategoryManager> {
           const SizedBox(height: 12),
           if (categories.isEmpty)
             const HintBox(text: "No categories yet — add one below.", bordered: false)
-          else
-            ...categories.asMap().entries.map((entry) {
-              final i = entry.key;
-              final c = entry.value;
+          else ...[
+            if (categories.length > 1)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text(
+                  "Press and hold a category to drag it into place.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
+                ),
+              ),
+            ReorderableColumn(
+              itemCount: categories.length,
+              keyOf: (i) => categories[i],
+              enabled: categories.length > 1,
+              onReorder: widget.onReorder,
+              itemBuilder: (context, i) {
+              final c = categories[i];
               final count = planCountFor(c);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -1587,7 +1661,9 @@ class _CategoryManagerState extends State<_CategoryManager> {
                   ),
                 ),
               );
-            }),
+              },
+            ),
+          ],
           if (available.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 4, bottom: 4),

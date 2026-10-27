@@ -34,6 +34,7 @@ export "merit_badge_shield.dart";
 export "mini_field.dart";
 export "placeholder_screen.dart";
 export "pressable_scale.dart";
+export "reorderable_column.dart";
 export "section_label.dart";
 export "signature_pad.dart";
 export "status_dot.dart";

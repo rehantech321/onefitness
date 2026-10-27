@@ -53,7 +53,7 @@ class _SignaturesScreenState extends ConsumerState<SignaturesScreen> {
     final client = ref.watch(clientRecordProvider);
     final info = ref.watch(clientInfoProvider);
     final allDocs = ref.watch(waiversProvider);
-    final outstanding = outstandingWaivers(allDocs: allDocs, signatures: client.signatures, clientPlanId: info.membershipPlanId);
+    final outstanding = outstandingWaivers(allDocs: allDocs, signatures: client.signatures, clientPlanIds: info.heldPlanIds);
 
     // Opening it here rather than in initState: the waiver list is loaded
     // with everything else, so on a cold start it can still be empty when

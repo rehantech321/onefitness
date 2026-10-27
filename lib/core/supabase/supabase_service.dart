@@ -565,11 +565,54 @@ class SupabaseService {
   /// blob whose keys are already camelCase, unlike the normalized tables).
   static Future<List<MembershipPlan>> loadMembershipPlans() async {
     final rows = await client.from("membership_plans").select();
-    return _safeMap(
+    final plans = _safeMap(
       rows,
       (r) =>
           _membershipPlanFromJson((r["data"] as Map).cast<String, dynamic>()),
     );
+    // Sorted here rather than in the query: order lives inside the jsonb
+    // blob (see MembershipPlan.sortOrder), and without this the rows come
+    // back in whatever order Postgres hands them over, which is why the
+    // Access Hub's arrows used to rearrange the list and then forget.
+    // Plans saved before ordering existed have no sortOrder and sit after
+    // the ordered ones, alphabetically, instead of in an arbitrary order
+    // that changes between loads.
+    plans.sort((a, b) {
+      final ao = a.sortOrder, bo = b.sortOrder;
+      if (ao != null && bo != null && ao != bo) return ao.compareTo(bo);
+      if (ao != null && bo == null) return -1;
+      if (ao == null && bo != null) return 1;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return plans;
+  }
+
+  /// Writes the owner's chosen plan order, as a `sortOrder` on each plan.
+  ///
+  /// Gapped by ten so a single plan can later be slotted between two others
+  /// without renumbering the rest. Reads every row first and merges, for the
+  /// same reason as [_mergeJsonbUpsert]: these rows carry Stripe ids and
+  /// other fields this app doesn't model, and a blind write would erase them.
+  static Future<void> saveMembershipPlanOrder(List<String> idsInOrder) async {
+    if (idsInOrder.isEmpty) return;
+    final rows = await client
+        .from("membership_plans")
+        .select("id, data")
+        .inFilter("id", idsInOrder);
+    final byId = {
+      for (final r in rows)
+        r["id"] as String: ((r["data"] as Map?) ?? const {}).cast<String, dynamic>(),
+    };
+    final payload = [
+      for (var i = 0; i < idsInOrder.length; i++)
+        if (byId.containsKey(idsInOrder[i]))
+          {
+            "id": idsInOrder[i],
+            "data": {...byId[idsInOrder[i]]!, "sortOrder": (i + 1) * 10},
+          },
+    ];
+    if (payload.isEmpty) return;
+    await client.from("membership_plans").upsert(payload);
   }
 
   /// Roster-wide — RLS (points_ledger_select_self_or_staff) scopes what
@@ -3637,6 +3680,7 @@ class SupabaseService {
     "archived": p.archived,
     "feeItemProductId": p.feeItemProductId,
     "category": p.category,
+    "sortOrder": p.sortOrder,
     "allowGuests": p.allowGuests,
     "guestFeeCents": p.guestFeeCents,
     "rollover": {
@@ -4743,6 +4787,7 @@ class SupabaseService {
       paymentType: j["paymentType"] as String?,
       feeItemProductId: j["feeItemProductId"] as String?,
       category: j["category"] as String?,
+      sortOrder: _asInt(j["sortOrder"]),
       allowGuests: j["allowGuests"] as bool? ?? false,
       guestFeeCents: _asInt(j["guestFeeCents"]) ?? 0,
       rolloverEnabled: (j["rollover"] as Map?)?["enabled"] as bool? ?? false,

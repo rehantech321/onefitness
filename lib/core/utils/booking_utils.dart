@@ -379,7 +379,7 @@ BookingCheck? waiverGateCheck({
   required List<WaiverDoc> waiverDocs,
 }) {
   if (info.isStaff) return null; // a coach booking themselves needs no waiver, same as the membership bypass above
-  final outstanding = outstandingWaivers(allDocs: waiverDocs, signatures: record.signatures, clientPlanId: info.membershipPlanId);
+  final outstanding = outstandingWaivers(allDocs: waiverDocs, signatures: record.signatures, clientPlanIds: info.heldPlanIds);
   if (outstanding.isEmpty) return null;
   return BookingCheck(
     ok: false,

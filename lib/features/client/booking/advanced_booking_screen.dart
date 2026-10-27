@@ -445,7 +445,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
     final record = ref.watch(clientRecordProvider);
     final waiverCheck = waiverGateCheck(info: info, record: record, waiverDocs: ref.watch(waiversProvider));
     if (waiverCheck != null) {
-      final outstanding = outstandingWaivers(allDocs: ref.watch(waiversProvider), signatures: record.signatures, clientPlanId: info.membershipPlanId);
+      final outstanding = outstandingWaivers(allDocs: ref.watch(waiversProvider), signatures: record.signatures, clientPlanIds: info.heldPlanIds);
       return Padding(
         padding: const EdgeInsets.all(18),
         child: Column(

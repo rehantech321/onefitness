@@ -67,6 +67,22 @@ class ClientInfo {
   final String? birthday;
   final String? membershipPlanId;
   final List<ClientPlanEnrollment> plans;
+
+  /// Every plan this client currently holds: the membership slot plus every
+  /// active enrolment.
+  ///
+  /// Both, because they genuinely differ. `membershipPlanId` is a single slot
+  /// that only a membership always claims — a package bought on top of one
+  /// never takes it (see enroll-free-plan's `takesSlot`) and lives in [plans]
+  /// alone. Anything asking "does this client hold plan X" from the slot by
+  /// itself therefore answers no for most packages, which is how a package's
+  /// signed contract came to be required nowhere at all.
+  Set<String> get heldPlanIds => {
+    if (membershipPlanId != null) membershipPlanId!,
+    for (final e in plans)
+      if (e.status == "active") e.planId,
+  };
+
   final bool membershipPaused;
   final String? membershipPausedAt;
   final String? membershipFreezeEndsAt;

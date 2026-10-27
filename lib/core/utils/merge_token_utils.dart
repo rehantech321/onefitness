@@ -206,17 +206,22 @@ bool isCurrentSignature(SignedDocument sig, WaiverDoc doc) => sig.docId == doc.i
 
 /// Every non-archived, currently-applicable [WaiverDoc] the client hasn't
 /// (currently) signed yet — "general" scope always applies; "plan" scope
-/// only applies if it matches the client's own plan. Used both to gate
-/// booking and to build the "needs your signature" list on the Signatures
-/// screen.
+/// only applies if it matches a plan the client actually holds. Used both to
+/// gate booking and to build the "needs your signature" list on the
+/// Signatures screen.
+///
+/// [clientPlanIds] is every held plan (`ClientInfo.heldPlanIds`), not just
+/// the membership slot: a package bought alongside a membership never takes
+/// that slot, so checking it alone silently excused that package's contract
+/// from both the prompt and the booking gate.
 List<WaiverDoc> outstandingWaivers({
   required List<WaiverDoc> allDocs,
   required List<SignedDocument> signatures,
-  required String? clientPlanId,
+  required Set<String> clientPlanIds,
 }) =>
     allDocs.where((d) {
       if (d.archived || !d.required) return false;
-      if (d.scope == "plan" && d.planId != clientPlanId) return false;
+      if (d.scope == "plan" && !clientPlanIds.contains(d.planId)) return false;
       final signed = signatures.where((s) => s.docId == d.id);
       return signed.isEmpty || !isCurrentSignature(signed.first, d);
     }).toList();

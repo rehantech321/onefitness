@@ -215,7 +215,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     return outstandingWaivers(
       allDocs: ref.read(waiversProvider),
       signatures: ref.read(clientRecordProvider).signatures,
-      clientPlanId: info.membershipPlanId,
+      clientPlanIds: info.heldPlanIds,
     ).isNotEmpty;
   }
 
@@ -227,7 +227,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
     final outstanding = outstandingWaivers(
       allDocs: ref.read(waiversProvider),
       signatures: ref.read(clientRecordProvider).signatures,
-      clientPlanId: info.membershipPlanId,
+      clientPlanIds: info.heldPlanIds,
     );
     if (outstanding.isEmpty) return;
     _waiverPromptArmed = false;
