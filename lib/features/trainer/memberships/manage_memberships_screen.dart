@@ -4,6 +4,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/write_failure.dart";
 import "../shell/trainer_shell_state.dart";
 import "../../../core/utils/plan_members.dart";
 import "../../../core/utils/domain_labels.dart";
@@ -85,7 +86,7 @@ class _ManageMembershipsScreenState
       if (!mounted) return;
       ref.read(packageCategoriesProvider.notifier).setAll(fresh);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Couldn't save the new order — check your connection and try again.")),
+        SnackBar(content: Text(writeFailureMessage(e, whatFailed: "Couldn't save the new order"))),
       );
     }
   }
@@ -151,7 +152,7 @@ class _ManageMembershipsScreenState
       if (!mounted) return;
       ref.read(membershipPlansProvider.notifier).setAll(fresh);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Couldn't save the new order — check your connection and try again.")),
+        SnackBar(content: Text(writeFailureMessage(e, whatFailed: "Couldn't save the new order"))),
       );
     }
   }
