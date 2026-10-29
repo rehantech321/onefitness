@@ -12,6 +12,7 @@ import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/utils/merge_token_utils.dart";
 import "../../../core/utils/notification_triggers.dart";
+import "../../../core/utils/onboarding_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/blocked_time.dart";
 import "../../../data/models/booking.dart";
@@ -546,6 +547,20 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           body: "You're booked for ${niceDate(_date)} at ${fmtSlot(pick.slot)}.",
           sms: true,
         );
+      }
+      // The coach is told now, while there's still time to chase the forms
+      // before the session. Only for a client who holds a plan — see
+      // notifyCoachIncompleteIntake.
+      if (info.heldPlanIds.isNotEmpty) {
+        final missing = incompleteIntakeTitles(ref.read(clientRecordProvider));
+        if (missing.isNotEmpty) {
+          notifyCoachIncompleteIntake(
+            trainerId: saved.trainerId,
+            clientName: info.name,
+            missingTitles: missing,
+            sessionDate: niceDate(_date),
+          );
+        }
       }
       // Notifications spec — "Low session balance": fires once, right at
       // the exact booking that brings a client down to their last 1 or 2

@@ -205,7 +205,16 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
           profileId: widget.profileId,
           client: client,
           who: widget.who,
-          onSaved: (record) => widget.onSaved(a.key, record),
+          onSaved: (record) {
+            widget.onSaved(a.key, record);
+            // A client who has bought nothing has just told the gym what they
+            // want out of training. Choosing a plan is the next thing they
+            // came to do, so take them there rather than returning them to a
+            // list of forms they've now finished.
+            if (isClientView && !entitlements.hasAnyPurchase && record.completed) {
+              ref.read(clientScreenProvider.notifier).go("memberships");
+            }
+          },
         ),
       );
     }

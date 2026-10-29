@@ -183,28 +183,24 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
           )),
 
           if (showOnboarding)
-            stag(hasPurchase
-                ? _OnboardingSection(
-                    alerts: onboardingAlerts,
-                    showIntakeButtons: !assessmentBooked && !intakeFormsDone,
-                    onBookIntake: widget.onGoBooking,
-                    onGoToForm: widget.onGoToForm,
-                    onGoBookAssessment: widget.onGoBooking,
-                    onSkip: () => setState(() => _skipOnboarding = true),
-                  )
-                : _OnboardingSection(
-                    // Nothing bought yet: the two intake forms need a plan,
-                    // so they lead to the Access Hub — but the free physical
-                    // assessment doesn't, so it stays on the list and leads
-                    // straight to Booking, where it's offered free.
-                    alerts: lockedAlerts,
-                    showIntakeButtons: !intakeFormsDone,
-                    locked: true,
-                    onBookIntake: widget.onGoMemberships,
-                    onGoToForm: (_) => widget.onGoMemberships(),
-                    onGoBookAssessment: widget.onGoBooking,
-                    onSkip: () => setState(() => _skipOnboarding = true),
-                  )),
+            stag(_OnboardingSection(
+              alerts: onboardingAlerts,
+              showIntakeButtons:
+                  !intakeFormsDone && (hasPurchase ? !assessmentBooked : true),
+              onBookIntake: hasPurchase ? widget.onGoBooking : widget.onGoMemberships,
+              // Opens the form, whether or not anything has been bought. The
+              // two questionnaires are no longer behind a purchase, so
+              // bouncing the client to the Access Hub here would send them
+              // away from the one thing this card is asking them to do.
+              onGoToForm: widget.onGoToForm,
+              onGoBookAssessment: widget.onGoBooking,
+              noPurchaseYet: !hasPurchase,
+              // No way out while a questionnaire is outstanding: these stay
+              // on the dashboard until they're filled in. Dismissing is still
+              // allowed once the only thing left is booking a session, which
+              // is a decision rather than an unfinished task.
+              onSkip: intakeFormsDone ? () => setState(() => _skipOnboarding = true) : null,
+            )),
 
           stag(SessionsRemainingBadge(info: info, bookings: bookings)),
 
@@ -344,22 +340,26 @@ class _OnboardingSection extends StatelessWidget {
     required this.alerts,
     required this.showIntakeButtons,
     required this.onBookIntake,
-    this.locked = false,
     required this.onGoToForm,
     required this.onGoBookAssessment,
-    required this.onSkip,
+    this.noPurchaseYet = false,
+    this.onSkip,
   });
+
+  /// Nothing bought yet. The questionnaires are still open — only the line
+  /// explaining what happens after them changes.
+  final bool noPurchaseYet;
 
   final List<OnboardingStep> alerts;
   final bool showIntakeButtons;
   final VoidCallback onBookIntake;
 
-  /// No plan yet: everything is shown but leads to the Access Hub, with a
-  /// line saying why.
-  final bool locked;
   final ValueChanged<String> onGoToForm;
   final VoidCallback onGoBookAssessment;
-  final VoidCallback onSkip;
+
+  /// Null while a questionnaire is still outstanding — those stay on the
+  /// dashboard until they're done, so there is nothing to skip to.
+  final VoidCallback? onSkip;
 
   static const _formKeys = {"personalizedIntake": "personalTraining", "nutritionIntake": "nutritional"};
 
@@ -377,16 +377,16 @@ class _OnboardingSection extends StatelessWidget {
             "COMPLETE YOUR ONBOARDING",
             style: TextStyle(fontSize: 12, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5),
           ),
-          if (locked)
+          if (noPurchaseYet)
             const Padding(
               padding: EdgeInsets.only(top: 4),
               child: Row(
                 children: [
-                  Icon(LucideIcons.lock, size: 12, color: AppColors.gold),
+                  Icon(LucideIcons.clipboardList, size: 12, color: AppColors.gold),
                   SizedBox(width: 5),
                   Expanded(
                     child: Text(
-                      "Your free physical assessment is ready to book. The intake forms open up once you choose a membership or package.",
+                      "Fill these in now — your answers are what your coach builds your plan from. You'll choose a membership or package once they're done.",
                       style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -412,14 +412,15 @@ class _OnboardingSection extends StatelessWidget {
             _OnboardingStepCard(step: step, onTap: () => onGoToForm(_formKeys[step.key]!)),
           for (final step in assessmentStep)
             _OnboardingStepCard(step: step, onTap: onGoBookAssessment),
-          TextButton(
-            onPressed: onSkip,
-            style: TextButton.styleFrom(foregroundColor: AppColors.mute, padding: EdgeInsets.zero, minimumSize: Size.zero, alignment: Alignment.centerLeft),
-            child: const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text("Skip for now", style: TextStyle(fontSize: 11)),
+          if (onSkip != null)
+            TextButton(
+              onPressed: onSkip,
+              style: TextButton.styleFrom(foregroundColor: AppColors.mute, padding: EdgeInsets.zero, minimumSize: Size.zero, alignment: Alignment.centerLeft),
+              child: const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text("Skip for now", style: TextStyle(fontSize: 11)),
+              ),
             ),
-          ),
         ],
       ),
     );

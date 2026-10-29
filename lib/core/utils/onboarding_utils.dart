@@ -60,6 +60,31 @@ bool onboardingStepDone(ClientRecord client, List<Booking> bookings, String clie
 /// memberships/packages (maxSessions > 0) prompt for the physical assessment.
 bool hasSessionPlan(MembershipPlan? plan) => plan != null && (plan.maxSessions ?? 0) > 0;
 
+/// The two questionnaires every client is asked to fill in, whatever they
+/// have bought. Keyed as the form catalogue keys them, not as the dashboard's
+/// onboarding steps are keyed — see [_stepToAssessment] for the translation.
+const kClientIntakeKeys = ["personalTraining", "nutritional"];
+
+const _intakeTitles = {
+  "personalTraining": "Personalized Training Intake",
+  "nutritional": "Nutrition Program Intake",
+};
+
+/// Which of the two questionnaires [record] still hasn't completed, by title.
+///
+/// Shared by the client's own dashboard prompt, the alert a coach gets when
+/// such a client books, and the marker on that client's name in the session
+/// roster — so all three agree on what "incomplete" means. The physical
+/// assessment is deliberately not counted: it's a session a coach conducts,
+/// not something the client can go and finish.
+List<String> incompleteIntakeTitles(ClientRecord record) => [
+  for (final key in kClientIntakeKeys)
+    if (!(record.intake[key]?.completed ?? false)) _intakeTitles[key] ?? key,
+];
+
+bool hasIncompleteIntake(ClientRecord record) =>
+    kClientIntakeKeys.any((key) => !(record.intake[key]?.completed ?? false));
+
 /// Which onboarding step corresponds to which intake assessment — the two
 /// vocabularies differ (the dashboard's step keys vs. the form catalogue's
 /// assessment keys), and entitlements are expressed in the latter.

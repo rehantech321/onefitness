@@ -3,53 +3,43 @@ import "../../data/models/membership_plan.dart";
 
 /// Which intake forms a client has unlocked, and why.
 ///
-/// Intake forms are always *visible* — a client can see what the gym offers
-/// before buying anything — but they only become fillable once a purchase
-/// entitles them. The mapping, per spec:
+/// The two questionnaires — Personalized Training Intake and Nutrition
+/// Program Intake — are open to every client, whether they have bought
+/// anything or not. They were previously gated behind a purchase, which had
+/// it backwards: the answers are what a coach needs in order to sell the
+/// right plan, and a client willing to fill them in before buying is the best
+/// possible lead. Someone who finishes them with nothing purchased is sent
+/// straight to the Access Hub, so the purchase follows the form rather than
+/// blocking it.
 ///
-///   Membership or Package → training + nutrition intake, and the coach-run
-///                           physical assessment
-///   Personalized Program  → training + nutrition intake
-///   Nutrition Program     → nutrition intake only
-///   Nothing purchased     → none; the client is pointed at Membership Hub
-///
-/// Entitlements are additive: someone holding a nutrition program who later
-/// buys a personalized program ends up with both, which is exactly the case
-/// the spec calls out ("if a client buys only a nutrition program, they will
-/// also be allowed to buy a personalized program").
+/// What a purchase still decides is the coach-run physical assessment, which
+/// is a session someone has to attend and conduct — not a form — and so only
+/// exists when a membership or package pays for it.
 class IntakeEntitlements {
   const IntakeEntitlements({
-    required this.training,
-    required this.nutrition,
     required this.physical,
     required this.hasAnyPurchase,
   });
-
-  /// "Personalized Training Intake" (assessment key `personalTraining`).
-  final bool training;
-
-  /// "Nutrition Program Intake" (assessment key `nutritional`).
-  final bool nutrition;
 
   /// The coach-conducted physical assessment (`physical`). Only ever unlocked
   /// by a membership or package — it's a session the client attends, not a
   /// form they fill in, so it has no meaning attached to a program purchase.
   final bool physical;
 
-  /// False only when the client owns nothing at all, which is what drives the
-  /// "purchase something to get started" prompt rather than a per-form lock.
+  /// False only when the client owns nothing at all, which is what drives
+  /// both the "choose a plan to get started" card and the hand-off to the
+  /// Access Hub once the questionnaires are done.
   final bool hasAnyPurchase;
 
-  static const none = IntakeEntitlements(
-    training: false, nutrition: false, physical: false, hasAnyPurchase: false,
-  );
+  static const none = IntakeEntitlements(physical: false, hasAnyPurchase: false);
 
   /// Whether [assessmentKey] (as defined in data/intake_forms.dart) is
   /// unlocked. Unknown keys default to unlocked so that adding a form to the
   /// catalogue can never silently lock clients out of it.
   bool allows(String assessmentKey) => switch (assessmentKey) {
-    "personalTraining" => training,
-    "nutritional" => nutrition,
+    // Open to everyone — see the note above.
+    "personalTraining" => true,
+    "nutritional" => true,
     "physical" => physical,
     _ => true,
   };
@@ -77,24 +67,8 @@ IntakeEntitlements computeIntakeEntitlements({
 
   if (held.isEmpty) return IntakeEntitlements.none;
 
-  var training = false;
-  var nutrition = false;
-  var physical = false;
-  for (final p in held) {
-    switch (p.kind) {
-      case PlanKind.membership:
-      case PlanKind.package:
-        training = true;
-        nutrition = true;
-        physical = true;
-      case PlanKind.program:
-        training = true;
-        nutrition = true;
-      case PlanKind.nutritionProgram:
-        nutrition = true;
-    }
-  }
-  return IntakeEntitlements(
-    training: training, nutrition: nutrition, physical: physical, hasAnyPurchase: true,
-  );
+  // Only a membership or package pays for the coach-run assessment session.
+  // A program of either kind grants programming, not gym time, so it can't.
+  final physical = held.any((p) => p.kind == PlanKind.membership || p.kind == PlanKind.package);
+  return IntakeEntitlements(physical: physical, hasAnyPurchase: true);
 }

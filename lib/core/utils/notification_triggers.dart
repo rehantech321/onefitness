@@ -51,6 +51,37 @@ Future<void> notifyPush({
   } catch (_) {}
 }
 
+/// Tells the coach, as the booking lands, that this client is coming in with
+/// unanswered intake questions.
+///
+/// Sent at booking rather than before the session because this is the moment
+/// the coach can still act on it — there's time to chase the forms, and the
+/// answers are what the session should be built from. Only for clients who
+/// hold a plan: someone who hasn't bought anything is still being asked for
+/// the same forms on their own dashboard, and a coach can't chase a client
+/// who isn't theirs yet.
+///
+/// Push only, never SMS. A coach may take several bookings a day, and a
+/// text per booking for a form that isn't urgent is how people turn
+/// notifications off.
+Future<void> notifyCoachIncompleteIntake({
+  required String trainerId,
+  required String clientName,
+  required List<String> missingTitles,
+  required String sessionDate,
+}) async {
+  if (trainerId.isEmpty || missingTitles.isEmpty) return;
+  final what = missingTitles.length == 1
+      ? missingTitles.first
+      : "${missingTitles.length} intake forms";
+  await notifyPush(
+    profileId: trainerId,
+    title: "Incomplete intake",
+    body: "$clientName booked $sessionDate and hasn't finished $what.",
+    data: {"type": "incomplete-intake"},
+  );
+}
+
 /// Fires once when [totalCheckedIn] (this client's total checked-in session
 /// count, AFTER the attendance mark that triggered this call) lands exactly
 /// on one of [kSessionMilestones] — called right after a booking is marked

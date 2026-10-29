@@ -7,6 +7,8 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/booking_utils.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/onboarding_utils.dart";
+import "../../../core/utils/notification_triggers.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/utils/merge_token_utils.dart";
@@ -322,6 +324,11 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
     setState(() => _busy = true);
     final seriesId = const Uuid().v4();
     var booked = 0, waitlisted = 0;
+    // The first session actually booked, so the coach's intake alert below
+    // names a real date — and fires once for the whole series rather than
+    // once per occurrence, which for a 12-week recurring booking would be
+    // twelve identical notifications.
+    Booking? firstBooked;
     var skipped = _occurrences.where((o) => o.status == "skipped").length;
     for (final o in _occurrences) {
       if (o.status == "bookable" && o.trainerId != null) {
@@ -339,6 +346,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
           final saved = await SupabaseService.insertBooking(draft);
           ref.read(clientBookingsProvider.notifier).addBooking(saved);
           ref.read(allBookingsProvider.notifier).addBooking(saved);
+          firstBooked ??= saved;
           booked++;
         } catch (_) {
           skipped++;
@@ -388,6 +396,18 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
         }
       } else if (o.status == "full") {
         skipped++;
+      }
+    }
+    final first = firstBooked;
+    if (first != null && info.heldPlanIds.isNotEmpty) {
+      final missing = incompleteIntakeTitles(ref.read(clientRecordProvider));
+      if (missing.isNotEmpty) {
+        notifyCoachIncompleteIntake(
+          trainerId: first.trainerId,
+          clientName: info.name,
+          missingTitles: missing,
+          sessionDate: niceDate(first.date),
+        );
       }
     }
     if (!mounted) return;

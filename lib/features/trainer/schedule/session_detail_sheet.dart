@@ -8,6 +8,7 @@ import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/utils/notification_triggers.dart";
+import "../../../core/utils/onboarding_utils.dart";
 import "../../../core/utils/scheduling_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
@@ -196,6 +197,13 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
           ...active.map((b) {
             final matches = roster.where((c) => c.id == b.clientId);
             final client = matches.isNotEmpty ? matches.first : null;
+            // Which intake answers this client is still missing, if any.
+            // Read here rather than passed in because the roster is the one
+            // place a coach sees who is actually turning up, and that's when
+            // a missing questionnaire is worth knowing about.
+            final clientRecord = ref.watch(trainerClientRecordsProvider)[b.clientId];
+            final missingIntake =
+                clientRecord == null ? const <String>[] : incompleteIntakeTitles(clientRecord);
             return AppCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,6 +223,22 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                           child: Text(client?.name ?? "Removed client", style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                         ),
                       ),
+                      if (missingIntake.isNotEmpty)
+                        Tooltip(
+                          message: missingIntake.length == 1
+                              ? "Hasn't completed their ${missingIntake.first}"
+                              : "Hasn't completed: ${missingIntake.join(", ")}",
+                          triggerMode: TooltipTriggerMode.tap,
+                          child: const Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: Icon(
+                              LucideIcons.clipboardX,
+                              size: 16,
+                              color: AppColors.gold,
+                              semanticLabel: "Incomplete intake",
+                            ),
+                          ),
+                        ),
                       if (!isPast)
                         IconButton(
                           onPressed: _busy
