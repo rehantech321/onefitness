@@ -23,6 +23,32 @@ class ChallengeDetailScreen extends ConsumerStatefulWidget {
 class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
   final _progressController = TextEditingController();
 
+  /// The standings, fetched from the server — a client may only read their
+  /// own record, so everyone else's score has to be worked out there. Null
+  /// while loading, so the board doesn't flash "no one has joined" first.
+  List<LeaderboardEntry>? _board;
+  bool _boardFailed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBoard();
+  }
+
+  Future<void> _loadBoard() async {
+    try {
+      final entries = await SupabaseService.loadChallengeLeaderboard(widget.challenge.id);
+      if (!mounted) return;
+      setState(() {
+        _board = entries;
+        _boardFailed = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _boardFailed = true);
+    }
+  }
+
   @override
   void dispose() {
     _progressController.dispose();
@@ -40,20 +66,26 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
     final myScore = calcChallengeScore(info.id, challenge, client, bookings);
     final registered = isClientRegistered(challenge, info.id);
     final now = isoToday();
-    final regOpen = registrationOpensDate(challenge);
-    final canJoin = !registered && now.compareTo(regOpen) >= 0 && now.compareTo(challenge.startDate) <= 0;
+    final canJoin = !registered && canJoinChallenge(challenge, now);
     final isEnded = challenge.endDate.compareTo(now) < 0;
     final needsManualLog = needsClientLoggedScore(challenge);
 
-    final leaderboard = [
-      LeaderboardEntry(clientId: info.id, name: info.name, score: myScore),
-      ...challenge.otherLeaderboard,
-    ]..sort((a, b) => b.score.compareTo(a.score));
+    // The server's standings when they arrive. The old board was "me, plus
+    // challenge.otherLeaderboard" — a field nothing but sample data ever
+    // filled — so a real challenge always showed one person, and showed them
+    // even when they hadn't joined: a leaderboard of one, ranked #1, under a
+    // heading saying 0 participants.
+    //
+    // While it loads, fall back to the client's own score if they're in the
+    // challenge, so their number is there immediately rather than appearing
+    // a beat later.
+    final board = _board ??
+        (registered ? [LeaderboardEntry(clientId: info.id, name: info.name, score: myScore)] : const <LeaderboardEntry>[]);
     var rank = 1;
     final ranked = <(LeaderboardEntry, int)>[];
-    for (var i = 0; i < leaderboard.length; i++) {
-      if (i > 0 && leaderboard[i].score < leaderboard[i - 1].score) rank = i + 1;
-      ranked.add((leaderboard[i], rank));
+    for (var i = 0; i < board.length; i++) {
+      if (i > 0 && board[i].score < board[i - 1].score) rank = i + 1;
+      ranked.add((board[i], rank));
     }
 
     void logEntry() async {
@@ -71,6 +103,9 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
       }
       ref.read(clientRecordProvider.notifier).update((r) => r.copyWith(challengeProgress: nextMap));
       _progressController.clear();
+      // The logged number is this client's score, so their place on the
+      // board may have just changed.
+      _loadBoard();
     }
 
     return SingleChildScrollView(
@@ -122,9 +157,8 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
               padding: const EdgeInsets.only(bottom: 14),
               child: BtnGold(
                 onPressed: () async {
-                  final nextParticipants = [...challenge.participantIds, info.id];
                   try {
-                    await SupabaseService.updateChallengeRow(challenge.id, participantIds: nextParticipants);
+                    await SupabaseService.joinChallenge(challenge.id);
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Couldn't join — check your connection and try again.")));
@@ -132,6 +166,10 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
                     return;
                   }
                   ref.read(challengesProvider.notifier).join(challenge.id, info.id);
+                  // Joining is what entitles them to see the standings, so
+                  // fetch them now rather than leaving the board empty until
+                  // the screen is reopened.
+                  _loadBoard();
                 },
                 full: true,
                 child: const Text("Join Challenge"),
@@ -193,9 +231,22 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
                 ],
               ),
             ),
-          SectionLabel("Leaderboard (${challenge.participantIds.length} participants)"),
+          SectionLabel(
+            "Leaderboard (${challenge.participantIds.length} participant${challenge.participantIds.length == 1 ? "" : "s"})",
+          ),
           if (ranked.isEmpty)
-            const HintBox(text: "Be the first to join!")
+            // Four different reasons for an empty board, and "Be the first to
+            // join!" was shown for all of them — including to someone looking
+            // at a challenge eleven people had already joined.
+            HintBox(
+              text: _boardFailed
+                  ? "Couldn't load the standings just now. Pull back and open the challenge again."
+                  : _board == null
+                      ? "Loading the standings…"
+                      : challenge.participantIds.isEmpty
+                          ? "Be the first to join!"
+                          : "Join this challenge to see how you compare.",
+            )
           else
             ...ranked.map((entry) {
               final (e, r) = entry;

@@ -5,6 +5,7 @@ import "../../../core/payments/payment_method_picker.dart";
 import "../../../core/payments/payment_sheet_service.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/membership_utils.dart";
 import "../../../core/widgets/widgets.dart";
@@ -903,22 +904,22 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _DetailRow(label: "Plan", value: plan.name),
+                  PlanDetailRow(label: "Plan", value: plan.name),
                   if ((plan.category ?? "").isNotEmpty)
-                    _DetailRow(label: "Category", value: plan.category!),
+                    PlanDetailRow(label: "Category", value: plan.category!),
                   if ((plan.startDate ?? "").isNotEmpty)
-                    _DetailRow(label: "Starts", value: plan.startDate!),
+                    PlanDetailRow(label: "Starts", value: plan.startDate!),
                   if (plan.renewalDay != null)
-                    _DetailRow(label: "Renews", value: "${_ordinalDay(plan.renewalDay!)} of every month"),
-                  _DetailRow(label: "Type", value: plan.kind == PlanKind.membership ? "Membership" : (plan.kind == PlanKind.package ? "Package" : "Program")),
+                    PlanDetailRow(label: "Renews", value: "${_ordinalDay(plan.renewalDay!)} of every month"),
+                  PlanDetailRow(label: "Type", value: plan.kind == PlanKind.membership ? "Membership" : (plan.kind == PlanKind.package ? "Package" : "Program")),
                   if (plan.maxSessions != null && plan.maxSessions! > 0)
-                    _DetailRow(
+                    PlanDetailRow(
                       label: "Sessions",
                       value: "${plan.maxSessions} ${plan.kind == PlanKind.membership ? "per month" : "total"}",
                     ),
                   if (plan.allowedTypes.isNotEmpty)
-                    _DetailRow(label: "Covers", value: plan.allowedTypes.map((t) => t == "semi-private" ? "Semi-Private" : "One-on-One").join(", ")),
-                  if (plan.termMonths != null) _DetailRow(label: "Term", value: "${plan.termMonths} months, auto-renews"),
+                    PlanDetailRow(label: "Covers", value: coversLabel(plan)),
+                  if (plan.termMonths != null) PlanDetailRow(label: "Term", value: "${plan.termMonths} months, auto-renews"),
                   if ((plan.description ?? "").isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -1111,7 +1112,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
                                 [
-                                  if (p.allowedTypes.isNotEmpty) "Covers ${_coversLabel(p)}",
+                                  if (p.allowedTypes.isNotEmpty) "Covers ${coversLabel(p)}",
                                   if (p.maxSessions != null && p.maxSessions! > 0)
                                     "${p.maxSessions} sessions ${p.kind == PlanKind.membership ? "per month" : "total"}",
                                   if ((p.startDate ?? "").isNotEmpty) "Starts ${p.startDate}",
@@ -1248,7 +1249,7 @@ class _HeldPackages extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           [
-                            if (p.allowedTypes.isNotEmpty) "Covers ${_coversLabel(p)}",
+                            if (p.allowedTypes.isNotEmpty) "Covers ${coversLabel(p)}",
                             p.kind == PlanKind.membership ? "resets monthly" : "sessions never expire on their own",
                           ].join(" · "),
                           style: const TextStyle(fontSize: 12, color: AppColors.mute),
@@ -1332,9 +1333,27 @@ List<MembershipPlan> applyPlanFilter(List<MembershipPlan> plans, String filter) 
 /// half of a plan card, and the thing `canBookOffering` checks at the moment
 /// a client taps a slot (see its "wrong-type" refusal). Empty when a plan
 /// grants no session access at all, which is normal for a program.
-String _coversLabel(MembershipPlan p) => p.allowedTypes
-    .map((t) => t == "semi-private" ? "Semi-Private" : "One-on-One")
-    .join(", ");
+/// The session types a plan covers, named properly and listed once each.
+///
+/// This used to read `t == "semi-private" ? "Semi-Private" : "One-on-One"`,
+/// which gave every other type the same name: a plan covering semi-private,
+/// one-on-one, large group and an intake call displayed as "Semi-Private,
+/// One-on-One, One-on-One, One-on-One". Three types were misnamed and the
+/// repetition made it look like a data fault rather than a labelling one.
+///
+/// [sessionTypeLabel] is the gym-wide mapping, and it falls back to
+/// prettifying the key — so a service the owner adds themselves gets its own
+/// name here instead of being absorbed into "One-on-One". The de-duplication
+/// is belt and braces: two keys can legitimately prettify to the same label,
+/// and the same type appearing twice in a plan shouldn't show twice.
+String coversLabel(MembershipPlan p) {
+  final labels = <String>[];
+  for (final t in p.allowedTypes) {
+    final label = sessionTypeLabel(t);
+    if (!labels.contains(label)) labels.add(label);
+  }
+  return labels.join(", ");
+}
 
 /// Buckets [plans] by category for the section headings and the tiles above
 /// them.
@@ -1489,7 +1508,7 @@ class _CatalogCard extends StatelessWidget {
               kindLabel,
               if ((plan.maxSessions ?? 0) > 0)
                 "${plan.maxSessions} sessions ${plan.kind == PlanKind.membership ? "per month" : "total"}",
-              if (plan.allowedTypes.isNotEmpty) "Covers ${_coversLabel(plan)}",
+              if (plan.allowedTypes.isNotEmpty) "Covers ${coversLabel(plan)}",
               if ((plan.startDate ?? "").isNotEmpty) "Starts ${plan.startDate}",
               if (plan.renewalDay != null) "Renews ${_ordinalDay(plan.renewalDay!)} monthly",
             ].join(" · "),
@@ -1536,20 +1555,37 @@ class _CatalogCard extends StatelessWidget {
   }
 }
 
-class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
+class PlanDetailRow extends StatelessWidget {
+  const PlanDetailRow({required this.label, required this.value});
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
+    // The value is Expanded and wraps; it used to be a bare Text in a
+    // spaceBetween Row, which has no width to overflow into and no gap to
+    // give up. A long value ("Semi-Private, One-on-One, Large Group…") ran
+    // straight off the screen edge AND pushed itself flush against the
+    // label, so the row read as "CoversSemi-Private, One-on-One…".
+    //
+    // The gap is a real SizedBox rather than spaceBetween's leftover room,
+    // which is zero once the children fill the line — exactly when a gap
+    // matters most. Top-aligned so a wrapped value's first line still sits
+    // level with its label.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: const TextStyle(fontSize: 13, color: AppColors.mute)),
-          Text(value, style: const TextStyle(fontSize: 13, color: AppColors.txt, fontWeight: FontWeight.w600)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontSize: 13, color: AppColors.txt, fontWeight: FontWeight.w600, height: 1.35),
+            ),
+          ),
         ],
       ),
     );

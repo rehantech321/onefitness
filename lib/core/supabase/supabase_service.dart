@@ -2443,6 +2443,42 @@ class SupabaseService {
   /// app's own refreshClient — nothing here reflects it locally.
   /// Response is `{ok:true, programId}` or, for an expected non-error
   /// condition, `{ok:false, reason: "nutrition-intake-incomplete"|"program-exists"}`.
+  /// Adds the signed-in client to a challenge.
+  ///
+  /// Goes through `join_challenge` (migration 34) rather than writing the
+  /// participant list back wholesale: the old read-append-write meant two
+  /// clients joining at once each sent the list as they last saw it, and the
+  /// second write dropped the first one back out again — silently, with
+  /// their Join button simply reappearing.
+  ///
+  /// The function takes the id from `auth.uid()`, so it can only ever enrol
+  /// the caller, and it refuses a challenge that has already ended.
+  static Future<void> joinChallenge(String challengeId) async {
+    await client.rpc("join_challenge", params: {"p_challenge_id": challengeId});
+  }
+
+  /// The ranked standings for one challenge.
+  ///
+  /// Computed server-side because a client may only read their own
+  /// `client_records` row, so the app can work out its own score and nobody
+  /// else's — which is why the challenge screen used to show a leaderboard
+  /// containing exactly one person. Returns the finished standings only:
+  /// names, scores and places, never the records behind them.
+  ///
+  /// Empty for a client who hasn't joined, and for a challenge nobody has.
+  static Future<List<LeaderboardEntry>> loadChallengeLeaderboard(String challengeId) async {
+    final res = await _invokeFunction("challenge-leaderboard", {"challengeId": challengeId});
+    return [
+      for (final e in (res["entries"] as List?) ?? const [])
+        if (e is Map)
+          LeaderboardEntry(
+            clientId: e["clientId"] as String? ?? "",
+            name: e["name"] as String? ?? "Former member",
+            score: (e["score"] as num?)?.toDouble() ?? 0,
+          ),
+    ];
+  }
+
   static Future<Map<String, dynamic>> generateAiNutritionProgram(
     String clientId, {
     bool forceRegenerate = false,

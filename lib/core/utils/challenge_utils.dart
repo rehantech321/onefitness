@@ -301,11 +301,27 @@ double calcChallengeScore(String clientId, Challenge challenge, ClientRecord? cl
   }
 }
 
-/// Registration opens 6 days before the challenge starts, closes on start day.
+/// Registration opens 6 days before the challenge starts.
 String registrationOpensDate(Challenge c) {
   final d = DateTime.parse(c.startDate).subtract(const Duration(days: 6));
   return isoDate(d);
 }
+
+/// Whether [c] can still be joined on [today].
+///
+/// Registration used to close on the start date, which left a running
+/// challenge that nobody could enter: a gym's Weight Loss Challenge ran
+/// 21 Oct to 11 Nov with a join window of 15–21 Oct, so from the 22nd the
+/// Join button was simply gone and the leaderboard stayed empty for the rest
+/// of its three weeks. Every client who found the challenge after it started
+/// was locked out of it.
+///
+/// It now stays open until the challenge ends. Joining late carries its own
+/// penalty under every scorer this app has — fewer days to drop weight,
+/// fewer sessions to attend, fewer habit days to average — so a late entrant
+/// takes the disadvantage rather than handing anyone else one.
+bool canJoinChallenge(Challenge c, String today) =>
+    today.compareTo(registrationOpensDate(c)) >= 0 && today.compareTo(c.endDate) <= 0;
 
 /// One ranked leaderboard row.
 class RankedParticipant {

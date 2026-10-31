@@ -162,11 +162,7 @@ class _ChallengeCard extends ConsumerWidget {
           challenge.endDate,
         ).difference(DateTime.parse(now)).inDays +
         1;
-    final regOpen = registrationOpensDate(challenge);
-    final canJoin =
-        showJoin &&
-        now.compareTo(regOpen) >= 0 &&
-        now.compareTo(challenge.startDate) <= 0;
+    final canJoin = showJoin && canJoinChallenge(challenge, now);
 
     return AppCard(
       onTap: onTap,
