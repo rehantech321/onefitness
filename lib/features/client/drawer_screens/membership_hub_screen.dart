@@ -46,7 +46,16 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
   String? _busyPlanId;
   String? _error;
   bool _browsing = false;
-  String _typeFilter = "all"; // all | membership | package
+  /// The one selected chip in the Available Plans filter row.
+  ///
+  /// Kind and category used to be two separate controls — pills for
+  /// Memberships/Packages, and a second row of tiles per category that
+  /// scrolled to a heading rather than filtering. One row of chips that all
+  /// behave the same way is less to explain, and on a phone filtering to a
+  /// category beats being dropped at its heading with the rest still below.
+  ///
+  /// `all`, `kind:<PlanKind.name>`, or `cat:<category name>`.
+  String _filter = "all";
   String? _timingChoicePlanId;
   String? _prorateChoicePlanId;
   bool _cancelBusy = false;
@@ -572,7 +581,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     // catalogue (see the _catalog branch), which is also where a client with
     // no membership at all is sent to get started.
     final buyable = plans.where((p) => !p.archived && !isProgramKind(p.kind)).toList();
-    final filteredBuyable = _typeFilter == "all" ? buyable : buyable.where((p) => p.kind.name == _typeFilter).toList();
+    final filteredBuyable = applyPlanFilter(buyable, _filter);
     // Regrouped from the *filtered* list, so the tiles only ever offer
     // categories that survive the current Memberships/Packages filter.
     final browseGroups = _groupByCategory(filteredBuyable, ref.watch(packageCategoriesProvider));
@@ -1007,15 +1016,35 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 const SectionLabel("Available Plans"),
               ],
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  _TypeFilterChip(label: "All", selected: _typeFilter == "all", onTap: () => setState(() => _typeFilter = "all")),
-                  const SizedBox(width: 8),
-                  _TypeFilterChip(label: "Memberships", selected: _typeFilter == "membership", onTap: () => setState(() => _typeFilter = "membership")),
-                  const SizedBox(width: 8),
-                  _TypeFilterChip(label: "Packages", selected: _typeFilter == "package", onTap: () => setState(() => _typeFilter = "package")),
-                ],
-              ),
+              // Every filter on one scrolling line: All, the two plan kinds,
+              // then one chip per category. Built from `buyable` rather than
+              // `filteredBuyable` on purpose — chips derived from the
+              // filtered list would vanish the moment you picked one, and
+              // there'd be no way back but "All".
+              Builder(builder: (context) {
+                final groups = _groupByCategory(buyable, ref.watch(packageCategoriesProvider));
+                final chips = <(String, String)>[
+                  ("all", "All"),
+                  ("kind:membership", "Memberships"),
+                  ("kind:package", "Packages"),
+                  for (final g in groups) ("cat:${g.key}", "${g.key} (${g.value.length})"),
+                ];
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final (id, label) in chips) ...[
+                        _TypeFilterChip(
+                          label: label,
+                          selected: _filter == id,
+                          onTap: () => setState(() => _filter = id),
+                        ),
+                        if (id != chips.last.$1) const SizedBox(width: 8),
+                      ],
+                    ],
+                  ),
+                );
+              }),
               const SizedBox(height: 12),
               FieldLabeled(
                 label: "Coupon code (optional)",
@@ -1046,17 +1075,9 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
                   child: HintBox(text: "No plans match this filter."),
-                )
-              else ...[
-                _CategoryTiles(
-                  groups: browseGroups,
-                  onTap: (c) => _jumpToSection("browse", c),
                 ),
-                if (browseGroups.length > 1) const SizedBox(height: 14),
-              ],
               for (final g in browseGroups) ...[
                 Padding(
-                  key: _sectionKey("browse", g.key),
                   padding: const EdgeInsets.only(bottom: 2),
                   child: SectionLabel(g.key),
                 ),
@@ -1279,6 +1300,33 @@ String _ordinalDay(int d) {
 /// Plans with no category set. Named rather than hidden so nothing silently
 /// disappears from a list the client is meant to be choosing from.
 const _uncategorised = "Other";
+
+/// The category bucket a plan falls into, matching [_groupByCategory]
+/// exactly — a chip labelled "One-on-One" that filtered on something subtly
+/// different would leave an empty list under a heading promising plans.
+String planFilterCategory(MembershipPlan p) {
+  final c = (p.category ?? "").trim();
+  return c.isEmpty ? _uncategorised : c;
+}
+
+/// Narrows [plans] to the Available Plans chip the client has selected.
+///
+/// [filter] is `all`, `kind:<PlanKind.name>`, or `cat:<category name>` — one
+/// selection spanning both dimensions, because they share a single row of
+/// chips and picking one has to mean dropping the other. An unrecognised
+/// filter returns everything rather than nothing: a stale value showing the
+/// whole catalogue is recoverable, one showing an empty hub looks broken.
+List<MembershipPlan> applyPlanFilter(List<MembershipPlan> plans, String filter) {
+  if (filter.startsWith("kind:")) {
+    final kind = filter.substring(5);
+    return plans.where((p) => p.kind.name == kind).toList();
+  }
+  if (filter.startsWith("cat:")) {
+    final category = filter.substring(4);
+    return plans.where((p) => planFilterCategory(p) == category).toList();
+  }
+  return plans;
+}
 
 /// The session types a plan actually lets you book — the "access granted"
 /// half of a plan card, and the thing `canBookOffering` checks at the moment
