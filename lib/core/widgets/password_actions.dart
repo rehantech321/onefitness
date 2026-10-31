@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../supabase/supabase_service.dart";
 import "../theme/app_colors.dart";
+import "../utils/write_failure.dart";
 import "../../data/providers/trainer_providers.dart";
 import "widgets.dart";
 
@@ -63,8 +64,11 @@ class _PasswordActionsState extends ConsumerState<PasswordActions> {
     try {
       await SupabaseService.sendPasswordReset(email);
       _say("Reset link sent to $email.");
-    } catch (_) {
-      _say("Couldn't send the reset email — check your connection and try again.", error: true);
+    } catch (e) {
+      // Was `catch (_)` with a fixed "check your connection" line, so a
+      // rate limit, a rejected address and an unconfigured email provider
+      // all looked identical — and all looked like the user's wifi.
+      _say(writeFailureMessage(e, whatFailed: "Couldn't send the reset email"), error: true);
     }
   }
 

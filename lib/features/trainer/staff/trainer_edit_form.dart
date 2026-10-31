@@ -6,6 +6,7 @@ import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/write_failure.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/widgets/password_actions.dart";
@@ -180,11 +181,11 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
     try {
       await SupabaseService.sendPasswordReset(email);
       if (mounted) setState(() => _resetSent = true);
-    } catch (_) {
+    } catch (e) {
       if (mounted)
         setState(
           () => _error =
-              "Couldn't send the reset email — check your connection and try again.",
+              writeFailureMessage(e, whatFailed: "Couldn't send the reset email"),
         );
     } finally {
       if (mounted) setState(() => _resetBusy = false);

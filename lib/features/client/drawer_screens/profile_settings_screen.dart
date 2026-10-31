@@ -6,6 +6,7 @@ import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/membership_utils.dart";
+import "../../../core/utils/write_failure.dart";
 import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/legal/sms_consent.dart";
 import "../../../core/legal/terms_screen.dart";
@@ -619,7 +620,7 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
       if (mounted)
         setState(
           () => _error =
-              "Couldn't send the reset email — check your connection and try again.",
+              writeFailureMessage(e, whatFailed: "Couldn't send the reset email"),
         );
     } finally {
       if (mounted) setState(() => _resetBusy = false);

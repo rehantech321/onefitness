@@ -1,5 +1,6 @@
 import "package:flutter_test/flutter_test.dart";
-import "package:supabase_flutter/supabase_flutter.dart" show PostgrestException;
+import "package:supabase_flutter/supabase_flutter.dart"
+    show AuthException, PostgrestException;
 
 import "package:onefitness/core/utils/write_failure.dart";
 
@@ -58,6 +59,55 @@ void main() {
       whatFailed: what,
     );
     expect(msg, "$what. Please try again.");
+  });
+
+  group("Supabase Auth refusals", () {
+    const sending = "Couldn't send the reset email";
+
+    test("a rate limit says to wait, not to check the wifi", () {
+      // What a project on Supabase's built-in email hits first: a handful of
+      // auth emails an hour, then 429.
+      final msg = writeFailureMessage(
+        const AuthException("email rate limit exceeded", statusCode: "429"),
+        whatFailed: sending,
+      );
+      expect(msg, contains("Wait a few minutes"));
+      expect(msg.toLowerCase(), isNot(contains("connection")));
+    });
+
+    test("a rate limit is recognised from the text even without a 429", () {
+      final msg = writeFailureMessage(
+        const AuthException("For security purposes you have exceeded the rate limit"),
+        whatFailed: sending,
+      );
+      expect(msg, contains("Wait a few minutes"));
+    });
+
+    test("a 500 points at the email provider and quotes the server", () {
+      // The case here: auth email isn't configured, so nothing is sent.
+      final msg = writeFailureMessage(
+        const AuthException("Error sending recovery email", statusCode: "500"),
+        whatFailed: sending,
+      );
+      expect(msg, contains("email service"));
+      expect(msg, contains("Error sending recovery email"));
+      expect(msg.toLowerCase(), isNot(contains("check your connection")));
+    });
+
+    test("a rejected address is passed through as given", () {
+      final msg = writeFailureMessage(
+        const AuthException("Unable to validate email address", statusCode: "400"),
+        whatFailed: sending,
+      );
+      expect(msg, contains("Unable to validate email address"));
+    });
+
+    test("an auth error with no message still reads as a sentence", () {
+      expect(
+        writeFailureMessage(const AuthException("  "), whatFailed: sending),
+        "$sending. Please try again.",
+      );
+    });
   });
 
   test("an actual network failure keeps the advice that fits it", () {
