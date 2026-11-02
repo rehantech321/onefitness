@@ -963,6 +963,22 @@ class _IntakeStatusSummary extends StatelessWidget {
                               ),
                             ),
                           ),
+                          // Says the earlier answers are still there before a
+                          // coach opens it — otherwise a re-intake looks like
+                          // it simply replaced whatever was on file.
+                          if ((rec?.history.length ?? 0) > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                rec!.history.length == 1
+                                    ? "1 earlier submission kept"
+                                    : "${rec.history.length} earlier submissions kept",
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  color: AppColors.mute,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),

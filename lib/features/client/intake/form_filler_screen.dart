@@ -31,6 +31,7 @@ class FormFillerScreen extends ConsumerStatefulWidget {
     required this.client,
     required this.who,
     required this.onSaved,
+    this.keepPrevious = false,
   });
 
   final String assessmentKey;
@@ -40,6 +41,15 @@ class FormFillerScreen extends ConsumerStatefulWidget {
   final ClientRecord client;
   final String who; // "client" | "trainer"
   final void Function(IntakeRecord) onSaved;
+
+  /// Whether saving files this as a new submission, keeping whatever is
+  /// already on record, rather than correcting the one that's there.
+  ///
+  /// Off for "Edit answers", which is how a coach fixes a figure they
+  /// mistyped — archiving that would bury the real re-intakes under a pile of
+  /// near-identical copies. On for "Fill in again", which is a client
+  /// answering the same questionnaire afresh months later.
+  final bool keepPrevious;
 
   @override
   ConsumerState<FormFillerScreen> createState() => _FormFillerScreenState();
@@ -117,7 +127,12 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
       attachments: _attachments,
     );
     try {
-      await SupabaseService.updateClientIntake(widget.profileId, widget.assessmentKey, record);
+      await SupabaseService.updateClientIntake(
+        widget.profileId,
+        widget.assessmentKey,
+        record,
+        keepPrevious: widget.keepPrevious,
+      );
       widget.onSaved(record);
       // Nutrition Intake completing kicks off an AI-drafted calorie/macro
       // target set (training vs. rest day) — fire-and-forget, mirroring

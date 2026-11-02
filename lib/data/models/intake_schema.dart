@@ -124,8 +124,59 @@ class IntakeAttachment {
   }
 }
 
+/// A superseded submission of an intake form.
+///
+/// Filling a form again used to overwrite the answers outright: a client
+/// re-doing their intake six months on, or a coach correcting a figure, left
+/// no trace of what the client had said before. That history is the useful
+/// part — it's how a coach sees that someone's goal moved from "fat loss" to
+/// "strength", or that an injury appeared. So the answers that were there are
+/// moved here instead, and [IntakeRecord] goes on holding the newest.
+class IntakeSubmission {
+  const IntakeSubmission({
+    this.answers = const {},
+    this.at,
+    this.by,
+    this.attachments = const [],
+  });
+
+  final Map<String, dynamic> answers;
+  final String? at;
+  final String? by;
+  final List<IntakeAttachment> attachments;
+
+  static IntakeSubmission fromJson(Map<String, dynamic> j) {
+    final answers = j["answers"];
+    return IntakeSubmission(
+      answers: answers is Map ? answers.cast<String, dynamic>() : const {},
+      at: j["at"] as String?,
+      by: j["by"] as String?,
+      attachments: ((j["attachments"] as List?) ?? const [])
+          .whereType<Map>()
+          .map((a) => IntakeAttachment.fromJson(a.cast<String, dynamic>()))
+          .whereType<IntakeAttachment>()
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    "answers": answers,
+    "at": at,
+    "by": by,
+    "attachments": [for (final a in attachments) a.toJson()],
+  };
+}
+
+/// How many superseded submissions one form keeps.
+///
+/// Not unbounded: an intake entry lives in `client_records.data`, which is
+/// bulk-loaded for the whole roster at sign-in, so every kept submission is
+/// weight every coach downloads to open the app. Twenty is far more re-intakes
+/// than a real client accumulates, and the attachments are only pointers.
+const kMaxIntakeHistory = 20;
+
 /// One entry in client.intake — mirrors {answers, completed, at, by}, plus
-/// the files attached to it.
+/// the files attached to it and any submissions it replaced.
 class IntakeRecord {
   const IntakeRecord({
     this.answers = const {},
@@ -133,6 +184,7 @@ class IntakeRecord {
     this.at,
     this.by,
     this.attachments = const [],
+    this.history = const [],
     this.extra = const {},
   });
   final Map<String, dynamic> answers;
@@ -140,6 +192,15 @@ class IntakeRecord {
   final String? at;
   final String? by;
   final List<IntakeAttachment> attachments;
+
+  /// Earlier submissions of this same form, newest first.
+  ///
+  /// The current answers deliberately stay on this record rather than moving
+  /// into the list: everything that reads an intake — the AI program drafter,
+  /// the waiver's merge tokens, the onboarding checklist, and the web app —
+  /// looks at `intake[key].answers`, and none of them should have to learn
+  /// about history to go on finding the latest answer.
+  final List<IntakeSubmission> history;
 
   /// Any other top-level keys on this intake entry, carried through
   /// untouched.
@@ -159,6 +220,7 @@ class IntakeRecord {
     String? at,
     String? by,
     List<IntakeAttachment>? attachments,
+    List<IntakeSubmission>? history,
     Map<String, dynamic>? extra,
   }) =>
       IntakeRecord(
@@ -167,12 +229,34 @@ class IntakeRecord {
         at: at ?? this.at,
         by: by ?? this.by,
         attachments: attachments ?? this.attachments,
+        history: history ?? this.history,
         extra: extra ?? this.extra,
       );
 
+  /// [next] as the current submission, with whatever was here pushed onto the
+  /// front of the history.
+  ///
+  /// Only a completed submission is archived: saving over a form that was
+  /// never filled in — or re-saving a draft — would otherwise stack up empty
+  /// entries that say nothing about the client.
+  IntakeRecord supersededBy(IntakeRecord next) {
+    if (!completed) return next.copyWith(history: history);
+    return next.copyWith(
+      history: [
+        IntakeSubmission(
+          answers: answers,
+          at: at,
+          by: by,
+          attachments: attachments,
+        ),
+        ...history,
+      ].take(kMaxIntakeHistory).toList(),
+    );
+  }
+
   /// The keys this model stores in its own fields. Everything else on an
   /// intake entry belongs in [extra].
-  static const knownKeys = {"answers", "completed", "at", "by", "attachments"};
+  static const knownKeys = {"answers", "completed", "at", "by", "attachments", "history"};
 }
 
 /// How many files one intake form accepts. A cap at all because these are

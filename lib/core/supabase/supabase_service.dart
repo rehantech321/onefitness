@@ -2268,11 +2268,21 @@ class SupabaseService {
     });
   }
 
+  /// Saves one intake form.
+  ///
+  /// [keepPrevious] archives whatever completed submission is already on the
+  /// row before writing this one, so the earlier answers stay readable — pass
+  /// it when a questionnaire is being submitted. It is off by default because
+  /// the physical assessment re-saves itself with `completed: true` every
+  /// time a coach touches a note, and each of those is the same submission
+  /// being edited, not a new one; archiving them would bury the real
+  /// re-intakes under a pile of near-identical copies.
   static Future<void> updateClientIntake(
     String profileId,
     String assessmentKey,
-    IntakeRecord record,
-  ) async {
+    IntakeRecord record, {
+    bool keepPrevious = false,
+  }) async {
     final row = await client
         .from("client_records")
         .select("data")
@@ -2285,6 +2295,26 @@ class SupabaseService {
     final intakeField = current["intake"];
     final currentIntake =
         intakeField is Map ? intakeField.cast<String, dynamic>() : const <String, dynamic>{};
+    // What's on the row right now, which is what gets archived — not
+    // `record.history`. The caller's copy came from a roster load that may be
+    // minutes old; this one was read a line ago, same fetch-then-merge
+    // reasoning as the rest of this method.
+    final priorRaw = currentIntake[assessmentKey];
+    final prior = priorRaw is Map ? priorRaw.cast<String, dynamic>() : null;
+    final priorHistory =
+        ((prior?["history"] as List?) ?? const []).whereType<Map>().toList();
+    final nextHistory = keepPrevious && prior?["completed"] == true
+        ? [
+            {
+              "answers": prior?["answers"] ?? const <String, dynamic>{},
+              "at": prior?["at"],
+              "by": prior?["by"],
+              "attachments": prior?["attachments"] ?? const [],
+            },
+            ...priorHistory,
+          ].take(kMaxIntakeHistory).toList()
+        : priorHistory;
+
     final nextIntake = {
       ...currentIntake,
       assessmentKey: {
@@ -2296,6 +2326,7 @@ class SupabaseService {
         "at": record.at,
         "by": record.by,
         "attachments": [for (final a in record.attachments) a.toJson()],
+        if (nextHistory.isNotEmpty) "history": nextHistory,
       },
     };
     await client.from("client_records").upsert({
@@ -4609,6 +4640,13 @@ class SupabaseService {
                   .whereType<Map>()
                   .map((a) => IntakeAttachment.fromJson(a.cast<String, dynamic>()))
                   .whereType<IntakeAttachment>()
+                  .toList(),
+              // Submissions this one replaced. Absent on every record written
+              // before re-filling kept history, and on anything the web app
+              // writes — an empty list is the right reading of both.
+              history: ((m["history"] as List?) ?? const [])
+                  .whereType<Map>()
+                  .map((h) => IntakeSubmission.fromJson(h.cast<String, dynamic>()))
                   .toList(),
               // The physical assessment's own fields, and anything else the
               // web app writes here — kept so a save from this app can put

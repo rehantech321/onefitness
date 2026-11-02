@@ -85,6 +85,11 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
   /// this screen — can't swap the editor out from under the coach mid-save.
   bool _editing = true;
 
+  /// Whether the open editor is a fresh submission rather than a correction
+  /// of the one on record. Decides whether saving keeps the current answers
+  /// as an earlier submission or writes over them.
+  bool _fillingAgain = false;
+
   @override
   void initState() {
     super.initState();
@@ -120,6 +125,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
   void _closeAssessment() => setState(() {
         _open = null;
         _editing = true;
+        _fillingAgain = false;
       });
 
   /// Writes the movement screen beside `completed` rather than inside
@@ -232,7 +238,19 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
             profileId: widget.profileId,
             assessmentKey: a.key,
             onBack: _closeAssessment,
-            onEdit: () => setState(() => _editing = true),
+            onEdit: () => setState(() {
+              _editing = true;
+              _fillingAgain = false;
+            }),
+            // Coaches only: a client re-opening their own intake is almost
+            // always correcting something they just typed, not starting a
+            // fresh one.
+            onFillAgain: isClientView
+                ? null
+                : () => setState(() {
+                      _editing = true;
+                      _fillingAgain = true;
+                    }),
           ),
         );
       }
@@ -241,8 +259,12 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
       // return to — which, after a save, there now are: the coach sees what
       // they just recorded rather than being dropped back to the list.
       final hasAnswersBehind = !isClientView && (record?.completed ?? false);
-      final leaveEditor =
-          hasAnswersBehind ? () => setState(() => _editing = false) : _closeAssessment;
+      final leaveEditor = hasAnswersBehind
+          ? () => setState(() {
+                _editing = false;
+                _fillingAgain = false;
+              })
+          : _closeAssessment;
       return LocalBackScope(
         isOpen: true,
         onBack: leaveEditor,
@@ -253,6 +275,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
           profileId: widget.profileId,
           client: client,
           who: widget.who,
+          keepPrevious: _fillingAgain,
           onSaved: (record) {
             widget.onSaved(a.key, record);
             // A client who has bought nothing has just told the gym what they

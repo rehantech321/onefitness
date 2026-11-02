@@ -20,7 +20,7 @@ import "intake_attachments.dart";
 /// This screen is the default landing place for staff on a completed intake.
 /// Editing is still one tap away, but it is now a decision rather than the
 /// only thing on offer.
-class IntakeAnswersScreen extends StatelessWidget {
+class IntakeAnswersScreen extends StatefulWidget {
   const IntakeAnswersScreen({
     super.key,
     required this.schema,
@@ -29,6 +29,7 @@ class IntakeAnswersScreen extends StatelessWidget {
     required this.assessmentKey,
     required this.onBack,
     required this.onEdit,
+    this.onFillAgain,
   });
 
   final IntakeSchema schema;
@@ -40,17 +41,49 @@ class IntakeAnswersScreen extends StatelessWidget {
   final String assessmentKey;
 
   final VoidCallback onBack;
+
+  /// Correct what's on record — same submission, fixed.
   final VoidCallback onEdit;
+
+  /// Answer the whole questionnaire again, keeping the current answers as an
+  /// earlier submission. Null hides the option, which is what the client's
+  /// own view wants: re-filling is a coach's call.
+  final VoidCallback? onFillAgain;
+
+  @override
+  State<IntakeAnswersScreen> createState() => _IntakeAnswersScreenState();
+}
+
+class _IntakeAnswersScreenState extends State<IntakeAnswersScreen> {
+  /// 0 is the current submission; 1 and up index [IntakeRecord.history].
+  int _viewing = 0;
+
+  bool get _isCurrent => _viewing == 0;
+
+  Map<String, dynamic> get _answers =>
+      _isCurrent ? widget.record.answers : widget.record.history[_viewing - 1].answers;
+
+  List<IntakeAttachment> get _attachments => _isCurrent
+      ? widget.record.attachments
+      : widget.record.history[_viewing - 1].attachments;
+
+  String? get _at =>
+      _isCurrent ? widget.record.at : widget.record.history[_viewing - 1].at;
+
+  String? get _by =>
+      _isCurrent ? widget.record.by : widget.record.history[_viewing - 1].by;
 
   @override
   Widget build(BuildContext context) {
-    final answers = record.answers;
+    final schema = widget.schema;
+    final record = widget.record;
+    final answers = _answers;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          BackBar(onBack: onBack),
+          BackBar(onBack: widget.onBack),
           const SizedBox(height: 6),
           Text(
             schema.title,
@@ -60,18 +93,33 @@ class IntakeAnswersScreen extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4, bottom: 16),
             child: Row(
               children: [
-                Icon(LucideIcons.check, size: 14, color: AppColors.gold),
+                Icon(
+                  _isCurrent ? LucideIcons.check : LucideIcons.history,
+                  size: 14,
+                  color: _isCurrent ? AppColors.gold : AppColors.mute,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    "Completed by ${record.by ?? "Client"}"
-                    "${record.at != null ? " · ${record.at}" : ""}",
-                    style: TextStyle(fontSize: 12, color: AppColors.gold),
+                    "Completed by ${_by ?? "Client"}"
+                    "${_at != null ? " · $_at" : ""}",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _isCurrent ? AppColors.gold : AppColors.mute,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
+          if (record.history.isNotEmpty) ...[
+            _SubmissionPicker(
+              record: record,
+              viewing: _viewing,
+              onPick: (i) => setState(() => _viewing = i),
+            ),
+            const SizedBox(height: 16),
+          ],
           ...schema.sections.map((sec) {
             final visible =
                 sec.questions.where((q) => intakeQuestionVisible(q, answers)).toList();
@@ -96,38 +144,191 @@ class IntakeAnswersScreen extends StatelessWidget {
               ),
             );
           }),
-          if (record.attachments.isNotEmpty)
+          if (_attachments.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 22),
               child: IntakeAttachmentsField(
-                profileId: profileId,
-                assessmentKey: assessmentKey,
-                attachments: record.attachments,
+                profileId: widget.profileId,
+                assessmentKey: widget.assessmentKey,
+                attachments: _attachments,
                 readOnly: true,
                 // Read-only, so nothing here can change the list.
                 onChanged: (_) {},
               ),
             ),
-          const HintBox(
-            text:
-                "Editing this re-files the form under your name and today's date, "
-                "replacing the record of who filled it in and when.",
-          ),
-          const SizedBox(height: 10),
-          BtnGhost(
-            onPressed: onEdit,
-            full: true,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(LucideIcons.pencil, size: 15, color: AppColors.mute),
-                SizedBox(width: 7),
-                Text("Edit answers"),
-              ],
+          // Editing only ever applies to the submission in force. A past one
+          // is a record of what was said at the time — there is nothing
+          // sensible to write back to, and offering Edit here would imply you
+          // could rewrite history.
+          if (_isCurrent) ...[
+            HintBox(
+              text: widget.onFillAgain == null
+                  ? "Editing this re-files the form under your name and today's "
+                      "date, replacing the record of who filled it in and when."
+                  : "Editing corrects what's on record. Use Fill in again when "
+                      "the client is answering afresh — that keeps these "
+                      "answers as an earlier submission instead of replacing "
+                      "them.",
             ),
-          ),
+            const SizedBox(height: 10),
+            BtnGhost(
+              onPressed: widget.onEdit,
+              full: true,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.pencil, size: 15, color: AppColors.mute),
+                  SizedBox(width: 7),
+                  Text("Edit answers"),
+                ],
+              ),
+            ),
+            if (widget.onFillAgain != null) ...[
+              const SizedBox(height: 8),
+              BtnGhost(
+                onPressed: widget.onFillAgain,
+                full: true,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.filePlus, size: 15, color: AppColors.mute),
+                    const SizedBox(width: 7),
+                    const Text("Fill in again"),
+                  ],
+                ),
+              ),
+            ],
+          ] else ...[
+            HintBox(
+              text:
+                  "This is an earlier submission, kept as it was filled in. "
+                  "The current answers are under ${record.at ?? "the latest entry"}.",
+            ),
+            const SizedBox(height: 10),
+            BtnGhost(
+              onPressed: () => setState(() => _viewing = 0),
+              full: true,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.cornerUpLeft, size: 15, color: AppColors.mute),
+                  const SizedBox(width: 7),
+                  // Kept short: the full "Back to current answers" overflows
+                  // this button on a narrow phone.
+                  const Text("Back to current"),
+                ],
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// Which submission of this form you're reading.
+///
+/// Only appears once a form has been filled more than once, so a client with
+/// a single intake sees exactly what they saw before.
+class _SubmissionPicker extends StatelessWidget {
+  const _SubmissionPicker({
+    required this.record,
+    required this.viewing,
+    required this.onPick,
+  });
+
+  final IntakeRecord record;
+  final int viewing;
+  final ValueChanged<int> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    // Current first, then each superseded one, newest to oldest — the order
+    // they're stored in.
+    final labels = <String>[
+      record.at ?? "Current",
+      for (final h in record.history) h.at ?? "Earlier",
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionLabel("Submissions"),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var i = 0; i < labels.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 8),
+                  child: _SubmissionChip(
+                    label: labels[i],
+                    // Saying which one is live matters more than the date: a
+                    // coach scanning this needs to know what they're acting on.
+                    sub: i == 0 ? "Current" : "Replaced",
+                    selected: i == viewing,
+                    onTap: () => onPick(i),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SubmissionChip extends StatelessWidget {
+  const _SubmissionChip({
+    required this.label,
+    required this.sub,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String sub;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.gold.withValues(alpha: 0.12) : AppColors.card,
+          border: Border.all(color: selected ? AppColors.gold : AppColors.line),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: selected ? AppColors.gold : AppColors.txt,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              sub,
+              style: TextStyle(
+                fontSize: 10.5,
+                color: selected ? AppColors.gold : AppColors.mute,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
