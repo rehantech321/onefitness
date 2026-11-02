@@ -47,7 +47,7 @@ class _MyPayScreenState extends ConsumerState<MyPayScreen> {
             child: Text(
               "You're paid ${_payoutModeLabel(me.payoutMode)} at \$${(me.payoutRateCents / 100).toStringAsFixed(2)}"
               "${me.referralCommissionPercent > 0 ? ', plus ${me.referralCommissionPercent}% on purchases by clients who used your Coach Code' : ''}.",
-              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ),
           DateRangeFilter(range: _range, onChange: (r) => setState(() => _range = r)),
@@ -62,7 +62,7 @@ class _MyPayScreenState extends ConsumerState<MyPayScreen> {
           MeritBadgeEarningsReport(range: _range, onlyTrainerId: me.id),
           const SizedBox(height: 12),
           const SectionLabel("Coach Merit Badges — This Month"),
-          const Text(
+          Text(
             "Automatic monthly coaching-performance incentives — finalized and paid out once the month ends.",
             style: TextStyle(fontSize: 11, color: AppColors.mute),
           ),

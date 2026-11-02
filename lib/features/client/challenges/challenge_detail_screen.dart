@@ -129,7 +129,7 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         "${tpl.typeLabel} · ${challenge.startDate} → ${challenge.endDate}",
-                        style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                        style: TextStyle(fontSize: 12, color: AppColors.mute),
                       ),
                     ),
                   ],
@@ -144,14 +144,14 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("\u{1F381} PRIZE", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700)),
+                  Text("\u{1F381} PRIZE", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
                   Text(challenge.prize!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
           if (challenge.description != null)
-            AppCard(child: Text(challenge.description!, style: const TextStyle(fontSize: 13, color: AppColors.txt, height: 1.5))),
+            AppCard(child: Text(challenge.description!, style: TextStyle(fontSize: 13, color: AppColors.txt, height: 1.5))),
           if (canJoin)
             Padding(
               padding: const EdgeInsets.only(bottom: 14),
@@ -182,7 +182,7 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
                 children: [
                   Text(
                     "LOG MY ${challenge.metric.toUpperCase()}",
-                    style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -205,10 +205,10 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
                     padding: const EdgeInsets.only(top: 6),
                     child: RichText(
                       text: TextSpan(
-                        style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                        style: TextStyle(fontSize: 12, color: AppColors.mute),
                         children: [
                           const TextSpan(text: "My best: "),
-                          TextSpan(text: _fmtNum(myScore), style: const TextStyle(color: AppColors.txt, fontWeight: FontWeight.w700)),
+                          TextSpan(text: _fmtNum(myScore), style: TextStyle(color: AppColors.txt, fontWeight: FontWeight.w700)),
                         ],
                       ),
                     ),
@@ -221,13 +221,13 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "MY SCORE",
                     style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1),
                   ),
                   const SizedBox(height: 4),
-                  Text(_fmtNum(myScore), style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.gold)),
-                  Text(challenge.metric, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                  Text(_fmtNum(myScore), style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.gold)),
+                  Text(challenge.metric, style: TextStyle(fontSize: 12, color: AppColors.mute)),
                 ],
               ),
             ),
@@ -265,16 +265,16 @@ class _ChallengeDetailScreenState extends ConsumerState<ChallengeDetailScreen> {
                     Expanded(
                       child: RichText(
                         text: TextSpan(
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.txt),
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.txt),
                           children: [
                             TextSpan(text: e.name),
-                            if (isMe) const TextSpan(text: " (you)", style: TextStyle(color: AppColors.gold)),
+                            if (isMe) TextSpan(text: " (you)", style: TextStyle(color: AppColors.gold)),
                           ],
                         ),
                       ),
                     ),
                     if (challenge.winnerClientId == e.clientId) const Padding(padding: EdgeInsets.only(right: 8), child: Text("\u{1F3C6}")),
-                    Text(_fmtNum(e.score), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.txt)),
+                    Text(_fmtNum(e.score), style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.txt)),
                   ],
                 ),
               );

@@ -45,7 +45,7 @@ class BtnGhost extends StatelessWidget {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.mute,
-        side: const BorderSide(color: AppColors.line),
+        side: BorderSide(color: AppColors.line),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),

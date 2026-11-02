@@ -61,7 +61,7 @@ class _ProductPhotoState extends State<ProductPhoto> {
         height: widget.height,
         color: AppColors.card,
         alignment: Alignment.center,
-        child: const Icon(LucideIcons.image, size: 20, color: AppColors.line),
+        child: Icon(LucideIcons.image, size: 20, color: AppColors.line),
       );
     }
     return Image.memory(
@@ -75,7 +75,7 @@ class _ProductPhotoState extends State<ProductPhoto> {
         height: widget.height,
         color: AppColors.card,
         alignment: Alignment.center,
-        child: const Icon(LucideIcons.image, size: 20, color: AppColors.line),
+        child: Icon(LucideIcons.image, size: 20, color: AppColors.line),
       ),
     );
   }

@@ -4,6 +4,7 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/membership_utils.dart";
 import "../../../core/utils/write_failure.dart";
 import "../shell/trainer_shell_state.dart";
 import "../../../core/utils/plan_members.dart";
@@ -402,12 +403,12 @@ class _ManageMembershipsScreenState
               SectionLabel("Membership Plans (${plans.length})"),
               TextButton.icon(
                 onPressed: () => setState(() => _creating = true),
-                icon: const Icon(
+                icon: Icon(
                   LucideIcons.plus,
                   size: 14,
                   color: AppColors.gold,
                 ),
-                label: const Text(
+                label: Text(
                   "Plan",
                   style: TextStyle(
                     color: AppColors.gold,
@@ -520,7 +521,7 @@ class _ManageMembershipsScreenState
                           ),
                           Text(
                             "${_kindLabel(p.kind)} · \$${(p.priceCents / 100).toStringAsFixed(2)}${p.kind == PlanKind.membership ? '/mo' : ''} · ${p.maxSessions ?? 0} sessions · $inUse member${inUse != 1 ? "s" : ""}${p.category != null && p.category!.isNotEmpty ? ' · ${p.category}' : ''}",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               color: AppColors.mute,
                             ),
@@ -550,7 +551,7 @@ class _ManageMembershipsScreenState
                       ],
                     ),
                     const SizedBox(width: 4),
-                    const Icon(
+                    Icon(
                       LucideIcons.chevronRight,
                       size: 15,
                       color: AppColors.mute,
@@ -595,6 +596,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
   late final _name = TextEditingController(text: widget.initial?.name ?? "");
   late final _description = TextEditingController(text: widget.initial?.description ?? "");
   late final _startDate = TextEditingController(text: widget.initial?.startDate ?? "");
+  late final _endDate = TextEditingController(text: widget.initial?.endDate ?? "");
   late int? _renewalDay = widget.initial?.renewalDay;
   late PlanKind _kind = widget.initial?.kind ?? PlanKind.membership;
   late final _price = TextEditingController(
@@ -725,18 +727,64 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
     _feeItemProductId = widget.initial?.feeItemProductId;
   }
 
-  Future<void> _pickStartDate() async {
+  Future<void> _pickDateInto(TextEditingController target) async {
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.tryParse(_startDate.text.trim()) ?? now,
+      initialDate: DateTime.tryParse(target.text.trim()) ?? now,
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 5),
     );
     if (picked != null) {
-      setState(() => _startDate.text =
+      setState(() => target.text =
           "${picked.year.toString().padLeft(4, "0")}-${picked.month.toString().padLeft(2, "0")}-${picked.day.toString().padLeft(2, "0")}");
     }
+  }
+
+  /// One of the two sales-window pickers. Extracted because the start and
+  /// end fields are identical but for their label and controller.
+  Widget _dateField({required String label, required TextEditingController controller, required String hint}) {
+    return FieldLabeled(
+      label: label,
+      child: InkWell(
+        onTap: () => _pickDateInto(controller),
+        child: InputDecorator(
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: AppColors.bg,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.line),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: AppColors.line),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  controller.text.isEmpty ? hint : controller.text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: controller.text.isEmpty ? AppColors.mute : AppColors.txt,
+                  ),
+                ),
+              ),
+              if (controller.text.isNotEmpty)
+                InkWell(
+                  onTap: () => setState(controller.clear),
+                  child: Icon(LucideIcons.x, size: 14, color: AppColors.mute),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -744,6 +792,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
     _name.dispose();
     _description.dispose();
     _startDate.dispose();
+    _endDate.dispose();
     _price.dispose();
     _maxSessions.dispose();
     _termMonths.dispose();
@@ -834,7 +883,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                   isExpanded: true,
                   underline: const SizedBox(),
                   dropdownColor: AppColors.card,
-                  style: const TextStyle(color: AppColors.txt, fontSize: 14),
+                  style: TextStyle(color: AppColors.txt, fontSize: 14),
                   items: [
                     const DropdownMenuItem<int?>(value: null, child: Text("Each client's own signup day")),
                     for (var d = 1; d <= 28; d++) DropdownMenuItem<int?>(value: d, child: Text("${_ordinal(d)} of every month")),
@@ -843,63 +892,47 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                 ),
               ),
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 4),
               child: Text(
                 "Every client on this membership is billed on that day. Someone joining mid-month pays a prorated amount up to it, then the full price from then on. Days after the 28th aren't offered because not every month has them.",
                 style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
               ),
             ),
-          ] else
-          FieldLabeled(
-            label: "Start date (optional)",
-            child: InkWell(
-              onTap: _pickStartDate,
-              child: InputDecorator(
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: AppColors.bg,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.line),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.line),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _startDate.text.isEmpty ? "Select date" : _startDate.text,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: _startDate.text.isEmpty ? AppColors.mute : AppColors.txt,
-                        ),
-                      ),
-                    ),
-                    if (_startDate.text.isNotEmpty)
-                      InkWell(
-                        onTap: () => setState(() => _startDate.clear()),
-                        child: const Icon(LucideIcons.x, size: 14, color: AppColors.mute),
-                      ),
-                  ],
+          ],
+          const SizedBox(height: 10),
+          // The sales window, for every kind of plan. The start date used to
+          // live in the `else` of the membership branch, so a membership
+          // never had one — and `isSub` dropped it on save even if set.
+          Row(
+            children: [
+              Expanded(
+                child: _dateField(
+                  label: "On sale from",
+                  controller: _startDate,
+                  hint: "Any time",
                 ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _dateField(
+                  label: "On sale until",
+                  controller: _endDate,
+                  hint: "No end",
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              "Controls when clients can buy this plan — outside these dates it isn't shown in the Access Hub and can't be assigned. "
+              "Anyone already on it keeps their access and keeps booking.",
+              style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
             ),
           ),
-          if (!isSub)
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: Text(
-                "Only for something that starts on a fixed date. Leave blank and it simply runs from whenever it is bought.",
-                style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
-              ),
-            ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             "KIND",
             style: TextStyle(
               fontSize: 10,
@@ -955,7 +988,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
               const SizedBox(width: 8),
               Expanded(
                 child: FieldLabeled(
-                  label: "Max sessions",
+                  label: sessionAllowanceLabel(_kind),
                   child: AppField(
                     controller: _maxSessions,
                     keyboardType: TextInputType.number,
@@ -976,7 +1009,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
           ],
           if (!isProgram) ...[
             const SizedBox(height: 10),
-            const Text(
+            Text(
               "ALLOWED SESSION TYPES",
               style: TextStyle(
                 fontSize: 10,
@@ -1024,7 +1057,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
               }).toList(),
             ),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               "CATEGORY",
               style: TextStyle(
                 fontSize: 10,
@@ -1073,7 +1106,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                   onPressed: () => setState(() => _addingCategory = true),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.mute,
-                    side: const BorderSide(color: AppColors.line),
+                    side: BorderSide(color: AppColors.line),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 8,
@@ -1108,7 +1141,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
             // no contract for this plan.
             const SizedBox(height: 14),
             const SectionLabel("Contract"),
-            const Text(
+            Text(
               "Clients sign this before they can buy this plan. Leave it empty for no contract.",
               style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
             ),
@@ -1129,7 +1162,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
               ),
             ),
             if (_contractBody.text.trim().isNotEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 6),
                 child: Text(
                   "You can use {{client_full_name}}, {{client_dob}}, {{signature_date}} and {{coach_name}} — they're filled in for each client.",
@@ -1214,11 +1247,11 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                       isExpanded: true,
                       underline: const SizedBox(),
                       dropdownColor: AppColors.card,
-                      hint: const Text(
+                      hint: Text(
                         "— Select a product —",
                         style: TextStyle(color: AppColors.mute, fontSize: 13),
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.txt,
                         fontSize: 13,
                       ),
@@ -1253,18 +1286,29 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                   onChange: (v) => setState(() => _limitOnePerAccount = v),
                 ),
                 const SizedBox(height: 8),
+
+              ],
+              if (!isProgram) ...[
+                const SizedBox(height: 8),
                 _ToggleRow(
-                  label: "Manage expiration",
+                  label: "Give each buyer a time-limited access window",
                   value: _expirationEnabled,
                   onChange: (v) => setState(() => _expirationEnabled = v),
                 ),
                 if (_expirationEnabled) ...[
                   const SizedBox(height: 8),
                   FieldLabeled(
-                    label: "Expires in how many days?",
+                    label: "Access expires after how many days?",
                     child: AppField(
                       controller: _expirationDays,
                       keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      "Counted from the day they buy it. Separate from the sales window above, which is about when the plan is offered.",
+                      style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                     ),
                   ),
                 ],
@@ -1329,7 +1373,8 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                           "plan-${DateTime.now().microsecondsSinceEpoch}",
                       name: _name.text.trim(),
                       description: _description.text.trim().isEmpty ? null : _description.text.trim(),
-                      startDate: isSub || _startDate.text.trim().isEmpty ? null : _startDate.text.trim(),
+                      startDate: _startDate.text.trim().isEmpty ? null : _startDate.text.trim(),
+                      endDate: _endDate.text.trim().isEmpty ? null : _endDate.text.trim(),
                       renewalDay: isSub ? _renewalDay : null,
                       kind: _kind,
                       maxSessions: int.tryParse(_maxSessions.text.trim()) ?? 0,
@@ -1375,10 +1420,8 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
                       public: isProgram ? true : _public,
                       limitOnePerAccount:
                           (!isProgram && !isSub) && _limitOnePerAccount,
-                      expirationEnabled:
-                          (!isProgram && !isSub) && _expirationEnabled,
-                      expirationDays:
-                          (!isProgram && !isSub && _expirationEnabled)
+                      expirationEnabled: !isProgram && _expirationEnabled,
+                      expirationDays: (!isProgram && _expirationEnabled)
                           ? (int.tryParse(_expirationDays.text.trim()) ?? 30)
                           : null,
                     ),
@@ -1397,7 +1440,7 @@ class _PlanEditFormState extends ConsumerState<_PlanEditForm> {
             TextButton(
               onPressed: widget.onDelete,
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC97F7F),
+                foregroundColor: AppColors.errorText,
               ),
               child: const Text("Delete or archive plan"),
             ),
@@ -1508,7 +1551,7 @@ class _CategoryManagerState extends State<_CategoryManager> {
           children: [
             AppField(kind: FieldKind.name, controller: controller),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               "Every plan and product in this category moves with it.",
               style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.35),
             ),
@@ -1568,7 +1611,7 @@ class _CategoryManagerState extends State<_CategoryManager> {
         children: [
           const Text("Categories", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             "Group plans by what they are. Categories are shared with Products, so the same names appear there.",
             style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
@@ -1577,7 +1620,7 @@ class _CategoryManagerState extends State<_CategoryManager> {
             const HintBox(text: "No categories yet — add one below.", bordered: false)
           else ...[
             if (categories.length > 1)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 8),
                 child: Text(
                   "Press and hold a category to drag it into place.",
@@ -1611,7 +1654,7 @@ class _CategoryManagerState extends State<_CategoryManager> {
                             const SizedBox(height: 1),
                             Text(
                               "$count plan${count == 1 ? "" : "s"}",
-                              style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                              style: TextStyle(fontSize: 11, color: AppColors.mute),
                             ),
                           ],
                         ),
@@ -1633,7 +1676,7 @@ class _CategoryManagerState extends State<_CategoryManager> {
                       ),
                       IconButton(
                         onPressed: () => _rename(c),
-                        icon: const Icon(LucideIcons.pencil, size: 14, color: AppColors.mute),
+                        icon: Icon(LucideIcons.pencil, size: 14, color: AppColors.mute),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       ),
@@ -1666,7 +1709,7 @@ class _CategoryManagerState extends State<_CategoryManager> {
             ),
           ],
           if (available.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 4, bottom: 4),
               child: Text(
                 "All the standard categories are already added — make your own below.",
@@ -1689,8 +1732,8 @@ class _CategoryManagerState extends State<_CategoryManager> {
                       isExpanded: true,
                       underline: const SizedBox(),
                       dropdownColor: AppColors.card,
-                      hint: const Text("Choose a category…", style: TextStyle(color: AppColors.mute, fontSize: 13)),
-                      style: const TextStyle(color: AppColors.txt, fontSize: 13),
+                      hint: Text("Choose a category…", style: TextStyle(color: AppColors.mute, fontSize: 13)),
+                      style: TextStyle(color: AppColors.txt, fontSize: 13),
                       items: available.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                       onChanged: busy ? null : onPick,
                     ),
@@ -1705,7 +1748,7 @@ class _CategoryManagerState extends State<_CategoryManager> {
             ),
           // Anything the gym sells that the preset list never anticipated —
           // the dropdown above stays the fast path for the usual five.
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 10),
             child: Row(
               children: [
@@ -1739,7 +1782,7 @@ class _CategoryManagerState extends State<_CategoryManager> {
           if (_customError != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(_customError!, style: const TextStyle(fontSize: 11, color: AppColors.errorText)),
+              child: Text(_customError!, style: TextStyle(fontSize: 11, color: AppColors.errorText)),
             ),
         ],
       ),
@@ -1778,7 +1821,7 @@ class _PlanMembers extends ConsumerWidget {
         if (members.isEmpty)
           const HintBox(text: "Nobody is on this plan yet. It can be deleted outright rather than archived.")
         else ...[
-          const Text(
+          Text(
             "Tap a name to open their profile.",
             style: TextStyle(fontSize: 11, color: AppColors.mute),
           ),
@@ -1815,7 +1858,7 @@ class _PlanMembers extends ConsumerWidget {
                             ];
                             return Text(
                               bits.join(" · "),
-                              style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                              style: TextStyle(fontSize: 11, color: AppColors.mute),
                             );
                           }),
                           // A plan they've cancelled but are still running
@@ -1823,13 +1866,13 @@ class _PlanMembers extends ConsumerWidget {
                           if (planEndsOn(m, planId) != null)
                             Text(
                               "Ends ${planEndsOn(m, planId)}",
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w700),
                             ),
                         ],
                       ),
                     ),
-                    const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                    Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
                   ],
                 ),
               ),

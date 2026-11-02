@@ -188,7 +188,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
             child: Column(
               children: [
                 Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.bg,
                     border: Border(bottom: BorderSide(color: AppColors.line)),
                   ),
@@ -208,7 +208,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                         Builder(
                           builder: (context) => IconButton(
                             onPressed: () => Scaffold.of(context).openDrawer(),
-                            icon: const Icon(
+                            icon: Icon(
                               LucideIcons.menu,
                               size: 22,
                               color: AppColors.gold,
@@ -226,7 +226,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                           IconButton(
                             onPressed: _handleBack,
                             tooltip: "Back",
-                            icon: const Icon(
+                            icon: Icon(
                               LucideIcons.chevronLeft,
                               size: 24,
                               color: AppColors.gold,
@@ -242,7 +242,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
                         const Spacer(),
                         Text(
                           _titles[mode] ?? "",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 0.3,
@@ -297,7 +297,7 @@ class _TrainerShellState extends ConsumerState<TrainerShell> {
           ),
         ),
         bottomNavigationBar: DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.bottomBarBg,
             border: Border(top: BorderSide(color: AppColors.line)),
           ),
@@ -453,14 +453,14 @@ class _TrainerDrawer extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: DecoratedBox(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: AppColors.line)),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         LucideIcons.dumbbell,
                         size: 18,
                         color: AppColors.gold,
@@ -475,10 +475,14 @@ class _TrainerDrawer extends ConsumerWidget {
                           ),
                         ),
                       ),
+                      // Light/dark here as well as in My Profile: the full
+                      // picker is the right home for the setting, but nobody
+                      // walks to Profile mid-session to dim a screen.
+                      const ThemeModeToggleButton(),
                       IconButton(
                         onPressed: () => Scaffold.of(context).closeDrawer(),
                         tooltip: "Close menu",
-                        icon: const Icon(
+                        icon: Icon(
                           LucideIcons.x,
                           size: 20,
                           color: AppColors.mute,
@@ -509,7 +513,7 @@ class _TrainerDrawer extends ConsumerWidget {
                             horizontal: 20,
                             vertical: 15,
                           ),
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             border: Border(
                               bottom: BorderSide(color: AppColors.line),
                             ),
@@ -521,7 +525,7 @@ class _TrainerDrawer extends ConsumerWidget {
                               Expanded(
                                 child: Text(
                                   e.label,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: AppColors.txt,
@@ -541,7 +545,7 @@ class _TrainerDrawer extends ConsumerWidget {
                 SupabaseService.signOut();
                 ref.read(trainerAuthProvider.notifier).signOut();
               },
-              child: const Padding(
+              child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 child: Row(
                   children: [
@@ -593,7 +597,7 @@ class _DrawerGroupState extends State<_DrawerGroup> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
           child: Row(
             children: [
               Expanded(
@@ -606,7 +610,7 @@ class _DrawerGroupState extends State<_DrawerGroup> {
                         Icon(e.icon, size: 17, color: AppColors.gold),
                         const SizedBox(width: 14),
                         Expanded(
-                          child: Text(e.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.txt)),
+                          child: Text(e.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.txt)),
                         ),
                       ],
                     ),
@@ -629,7 +633,7 @@ class _DrawerGroupState extends State<_DrawerGroup> {
               onTap: () => widget.onGo(c.key),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(44, 13, 20, 13),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: Color(0x08FFFFFF),
                   border: Border(bottom: BorderSide(color: AppColors.line)),
                 ),
@@ -638,7 +642,7 @@ class _DrawerGroupState extends State<_DrawerGroup> {
                     Icon(c.icon, size: 15, color: AppColors.gold),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(c.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.txt)),
+                      child: Text(c.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.txt)),
                     ),
                   ],
                 ),

@@ -348,7 +348,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                                         ],
                                         if (completed) ...[
                                           const SizedBox(width: 6),
-                                          const Icon(
+                                          Icon(
                                             LucideIcons.check,
                                             size: 14,
                                             color: AppColors.grn,
@@ -359,7 +359,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                                     const SizedBox(height: 2),
                                     Text(
                                       "$exCount exercise${exCount != 1 ? 's' : ''}",
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         color: AppColors.mute,
                                       ),
@@ -369,7 +369,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                                         padding: const EdgeInsets.only(top: 4),
                                         child: Text(
                                           d.rationale!,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 11.5,
                                             color: AppColors.mute,
                                             height: 1.4,
@@ -484,7 +484,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                   Wrap(
                     spacing: 10,
                     runSpacing: 6,
-                    children: const [
+                    children: [
                       _LegendDot(
                         color: AppColors.grn,
                         label: "Hit target reps",
@@ -575,7 +575,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                           children: [
                             Text(
                               "EXERCISE ${index + 1} OF $total",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
                                 color: AppColors.mute,
                                 letterSpacing: 1,
@@ -661,7 +661,7 @@ class _SessionLoggerViewState extends State<SessionLoggerView> {
                           : () => _saveSession(prog, activeDay),
                       full: true,
                       child: _saving
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
@@ -743,7 +743,7 @@ class _Chip extends StatelessWidget {
             ),
             if (trailingCheck) ...[
               const SizedBox(width: 5),
-              const Icon(LucideIcons.check, size: 13, color: AppColors.grn),
+              Icon(LucideIcons.check, size: 13, color: AppColors.grn),
             ],
           ],
         ),
@@ -773,7 +773,7 @@ class _LegendDot extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: AppColors.mute),
+          style: TextStyle(fontSize: 10, color: AppColors.mute),
         ),
       ],
     );
@@ -846,7 +846,7 @@ class _SuggestedHeading extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Icon(LucideIcons.sparkles, size: 14, color: AppColors.gold),
+            Icon(LucideIcons.sparkles, size: 14, color: AppColors.gold),
             const SizedBox(width: 7),
             const Text(
               "Suggested",
@@ -854,7 +854,7 @@ class _SuggestedHeading extends StatelessWidget {
             ),
           ],
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(top: 3),
           child: Text(
             "Optional movement days that support your goal. Do them when you can — your committed sessions come first.",

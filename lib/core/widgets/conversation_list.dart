@@ -64,14 +64,14 @@ class ConversationList extends StatelessWidget {
                     child: Text(
                       emptyText,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5),
+                      style: TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5),
                     ),
                   ),
                 )
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   itemCount: conversations.length,
-                  separatorBuilder: (context, i) => const Divider(height: 1, color: AppColors.line, indent: 70),
+                  separatorBuilder: (context, i) => Divider(height: 1, color: AppColors.line, indent: 70),
                   itemBuilder: (context, i) {
                     final c = conversations[i];
                     return InkWell(
@@ -131,7 +131,7 @@ class ConversationList extends StatelessWidget {
                                         Container(
                                           width: 8,
                                           height: 8,
-                                          decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+                                          decoration: BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
                                         ),
                                       ],
                                     ],

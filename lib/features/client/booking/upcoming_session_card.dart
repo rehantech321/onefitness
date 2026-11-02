@@ -65,20 +65,20 @@ class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(shortDate, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.txt)),
+                  Text(shortDate, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.txt)),
                   const SizedBox(height: 1),
                   Text(
                     fmtSlot(b.slot),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.gold),
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.gold),
                   ),
                   const SizedBox(height: 1),
                   Text(
                     trainer?.displayTitle ?? "Removed",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 10.5, color: AppColors.mute),
+                    style: TextStyle(fontSize: 10.5, color: AppColors.mute),
                   ),
                   // The card's orange border, and the "Late Cancel" button
                   // itself, already say a fee applies — a label on top of
@@ -88,23 +88,23 @@ class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
                       padding: const EdgeInsets.only(top: 6),
                       child: Container(
                         padding: const EdgeInsets.only(top: 6),
-                        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+                        decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(disciplineLabel(b.discipline), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, color: AppColors.mute)),
+                            Text(disciplineLabel(b.discipline), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, color: AppColors.mute)),
                             if (b.locationName != null)
                               Padding(
                                 padding: const EdgeInsets.only(top: 5),
-                                child: Text(b.locationName!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, color: AppColors.gold, fontWeight: FontWeight.w600)),
+                                child: Text(b.locationName!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, color: AppColors.gold, fontWeight: FontWeight.w600)),
                               ),
                             if (charged)
                               Padding(
                                 padding: const EdgeInsets.only(top: 5),
                                 child: Text(
                                   "Within ${settings.lateCancellationHours} hrs — late window.${!reschedulable ? " Rescheduling is blocked this close to your session." : ""}",
-                                  style: const TextStyle(fontSize: 10, color: AppColors.mute, height: 1.35),
+                                  style: TextStyle(fontSize: 10, color: AppColors.mute, height: 1.35),
                                 ),
                               ),
                           ],
@@ -123,7 +123,7 @@ class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.gold,
                       backgroundColor: AppColors.gold.withValues(alpha: 0.12),
-                      side: const BorderSide(color: AppColors.goldDim),
+                      side: BorderSide(color: AppColors.goldDim),
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -138,7 +138,7 @@ class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
                     onPressed: () => widget.onCancel(b),
                     style: charged
                         ? OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFFD68A4F),
+                            foregroundColor: AppColors.warning,
                             backgroundColor: const Color(0x1AC9784A),
                             side: const BorderSide(color: Color(0xFFA8632F)),
                             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -147,7 +147,7 @@ class _UpcomingSessionCardState extends ConsumerState<UpcomingSessionCard> {
                           )
                         : OutlinedButton.styleFrom(
                             foregroundColor: AppColors.errorText,
-                            side: const BorderSide(color: AppColors.line),
+                            side: BorderSide(color: AppColors.line),
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,

@@ -49,7 +49,7 @@ class SourceCitations extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(LucideIcons.bookOpen, size: 14, color: AppColors.gold),
               SizedBox(width: 7),
@@ -67,10 +67,10 @@ class SourceCitations extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             disclaimer,
-            style: const TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.5),
+            style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.5),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             "This guidance is based on:",
             style: TextStyle(fontSize: 11.5, color: AppColors.txt, fontWeight: FontWeight.w700),
           ),
@@ -88,7 +88,7 @@ class SourceCitations extends StatelessWidget {
                     children: [
                       Text(
                         s.topic,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10.5,
                           color: AppColors.mute,
                           fontWeight: FontWeight.w700,
@@ -102,7 +102,7 @@ class SourceCitations extends StatelessWidget {
                           Expanded(
                             child: Text(
                               s.title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12.5,
                                 color: AppColors.gold,
                                 fontWeight: FontWeight.w700,
@@ -112,7 +112,7 @@ class SourceCitations extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(left: 6, top: 2),
                             child: Icon(LucideIcons.externalLink, size: 12, color: AppColors.gold),
                           ),
@@ -121,7 +121,7 @@ class SourceCitations extends StatelessWidget {
                       const SizedBox(height: 1),
                       Text(
                         "${s.publisher} · ${s.year}",
-                        style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3),
+                        style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3),
                       ),
                     ],
                   ),

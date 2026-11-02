@@ -157,7 +157,7 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
       context: buttonContext,
       position: position,
       color: AppColors.card,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.line)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: AppColors.line)),
       constraints: const BoxConstraints(minWidth: 190),
       items: _moreTabs.map((t) {
         final active = _tab == t.key;
@@ -187,7 +187,7 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
           child: Row(
             children: [
               ..._primary.map((t) => Expanded(child: _TabButton(def: t, active: _tab == t.key, onTap: () => _goTab(t.key)))),

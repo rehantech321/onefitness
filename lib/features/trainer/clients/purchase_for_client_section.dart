@@ -1,4 +1,6 @@
 import "package:flutter/material.dart";
+import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/membership_utils.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/payments/payment_method_picker.dart";
@@ -107,7 +109,9 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
     // program is exactly the case this screen exists for, and unlike a
     // membership swap it adds to what they already hold rather than replacing
     // it (see enroll-free-plan / stripe-webhook, which keep the two apart).
-    final plans = ref.watch(membershipPlansProvider).where((p) => !p.archived).toList()
+    // Staff can't assign a plan that is no longer on sale either — the
+    // server refuses it, so offering it here would only produce an error.
+    final plans = ref.watch(membershipPlansProvider).where((p) => !p.archived && planOnSale(p, isoToday())).toList()
       ..sort((a, b) => a.kind.index.compareTo(b.kind.index));
     // Grouped the same way, and in the same order, as the client's own
     // Access Hub — a coach picking a plan for someone should be looking at
@@ -125,14 +129,14 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
           BackBar(onBack: widget.onBack, title: "Profile"),
           const SizedBox(height: 10),
           SectionLabel("Purchase for ${widget.info.name}"),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 4, bottom: 14),
             child: Text(
               "Pick a plan and, if you'd like, a coupon code. For a paid plan you'll take payment right here — hand the client your phone to enter their card. Set the price to 0 to give a plan away without charging for it.",
               style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ),
-          const Text("PLAN", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          Text("PLAN", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 8),
           if (plans.isEmpty) const HintBox(text: "No plans set up yet — create one under Access/Memberships first."),
           for (final group in grouped) ...[
@@ -143,7 +147,7 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
                 padding: const EdgeInsets.only(top: 6, bottom: 6),
                 child: Text(
                   group.key.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     color: AppColors.gold,
                     fontWeight: FontWeight.w700,
@@ -169,7 +173,7 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
                     ),
                     Text(
                       p.priceCents > 0 ? "\$${(p.priceCents / 100).toStringAsFixed(2)}${p.kind == PlanKind.membership ? '/mo' : ''}" : "Free",
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.gold),
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.gold),
                     ),
                     const SizedBox(width: 8),
                     Icon(selected ? LucideIcons.checkCircle2 : LucideIcons.circle, size: 18, color: selected ? AppColors.gold : AppColors.line),
@@ -220,7 +224,7 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
                                 ),
                               ),
                             ),
-                            const Icon(LucideIcons.calendar, size: 14, color: AppColors.mute),
+                            Icon(LucideIcons.calendar, size: 14, color: AppColors.mute),
                           ],
                         ),
                       ),
@@ -237,7 +241,7 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
                     _expiresAt == null
                         ? "Access doesn't run out. Set a date to give it a limit."
                         : "Sessions can't be booked against this plan after this date.",
-                    style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3),
+                    style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3),
                   ),
                 ),
                 if (_expiresAt != null)
@@ -255,7 +259,7 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
           ],
           if (plan != null && (_priceOverrideCents ?? plan.priceCents) > 0) ...[
             const SizedBox(height: 10),
-            const Text("COUPON (OPTIONAL)", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            Text("COUPON (OPTIONAL)", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 8),
             AppCard(
               child: DropdownButton<String?>(
@@ -263,8 +267,8 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
                 isExpanded: true,
                 underline: const SizedBox(),
                 dropdownColor: AppColors.card,
-                hint: const Text("No coupon", style: TextStyle(color: AppColors.mute, fontSize: 13)),
-                style: const TextStyle(color: AppColors.txt, fontSize: 13),
+                hint: Text("No coupon", style: TextStyle(color: AppColors.mute, fontSize: 13)),
+                style: TextStyle(color: AppColors.txt, fontSize: 13),
                 items: [
                   const DropdownMenuItem<String?>(value: null, child: Text("No coupon")),
                   ...coupons.map((c) => DropdownMenuItem<String?>(value: c.id, child: Text("${c.code} — ${c.valueLabel}"))),
@@ -279,7 +283,7 @@ class _PurchaseForClientSectionState extends ConsumerState<PurchaseForClientSect
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: Text(_error!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12)),
+              child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
             ),
           BtnGold(
             full: true,

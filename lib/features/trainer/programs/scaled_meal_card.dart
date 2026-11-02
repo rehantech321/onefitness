@@ -78,7 +78,7 @@ class _ScaledMealCardState extends State<ScaledMealCard> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("Target: ${meal.targetCalories} kcal", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                      Text("Target: ${meal.targetCalories} kcal", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                       Text(
                         match.delta == 0 ? "On target ✓" : "${match.delta > 0 ? "+" : ""}${match.delta} kcal (${match.pct}%)",
                         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: matchColor),
@@ -96,7 +96,7 @@ class _ScaledMealCardState extends State<ScaledMealCard> {
                     ),
                   ),
                   if (hasOverrides)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 4),
                       child: Text("⚠ Macros are estimates after manual adjustments.", style: TextStyle(fontSize: 10, color: AppColors.mute)),
                     ),
@@ -108,13 +108,13 @@ class _ScaledMealCardState extends State<ScaledMealCard> {
             Container(
               margin: const EdgeInsets.only(top: 12),
               padding: const EdgeInsets.only(top: 10),
-              decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     "INGREDIENTS${meal.scaledIngredients != null ? " (SCALED)" : ""}",
-                    style: const TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.8),
+                    style: TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.8),
                   ),
                   const SizedBox(height: 8),
                   ...ings.asMap().entries.map((entry) {
@@ -125,13 +125,13 @@ class _ScaledMealCardState extends State<ScaledMealCard> {
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
                         children: [
-                          Expanded(flex: 3, child: Text(ing.item, style: const TextStyle(fontSize: 12, color: AppColors.txt))),
+                          Expanded(flex: 3, child: Text(ing.item, style: TextStyle(fontSize: 12, color: AppColors.txt))),
                           SizedBox(
                             width: 64,
                             child: TextField(
                               controller: TextEditingController(text: meal.overrides[i] ?? (ing.qty != null ? fmtQty(ing.qty) : "")),
                               textAlign: TextAlign.right,
-                              style: const TextStyle(fontSize: 12, color: AppColors.txt),
+                              style: TextStyle(fontSize: 12, color: AppColors.txt),
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               decoration: InputDecoration(
                                 isDense: true,
@@ -152,7 +152,7 @@ class _ScaledMealCardState extends State<ScaledMealCard> {
                               },
                             ),
                           ),
-                          SizedBox(width: 32, child: Padding(padding: const EdgeInsets.only(left: 8), child: Text(ing.unit ?? "", style: const TextStyle(fontSize: 11, color: AppColors.mute)))),
+                          SizedBox(width: 32, child: Padding(padding: const EdgeInsets.only(left: 8), child: Text(ing.unit ?? "", style: TextStyle(fontSize: 11, color: AppColors.mute)))),
                         ],
                       ),
                     );
@@ -162,7 +162,7 @@ class _ScaledMealCardState extends State<ScaledMealCard> {
                       padding: const EdgeInsets.only(top: 6),
                       child: GestureDetector(
                         onTap: () => widget.onUpdate(meal.copyWith(clearOverrides: true)),
-                        child: const Text("Reset all to auto-scaled", style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
+                        child: Text("Reset all to auto-scaled", style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
                       ),
                     ),
                 ],
@@ -175,20 +175,20 @@ class _ScaledMealCardState extends State<ScaledMealCard> {
                 onTap: () => setState(() => _showInstructions = !_showInstructions),
                 child: Text(
                   _showInstructions ? "Hide instructions ▲" : "Show instructions ▼",
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gold),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.gold),
                 ),
               ),
             ),
             if (_showInstructions)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text(meal.instructions!, style: const TextStyle(fontSize: 12, color: AppColors.txt, height: 1.5)),
+                child: Text(meal.instructions!, style: TextStyle(fontSize: 12, color: AppColors.txt, height: 1.5)),
               ),
           ],
           if (meal.notes != null && meal.notes!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(meal.notes!, style: const TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
+              child: Text(meal.notes!, style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
             ),
           Padding(
             padding: const EdgeInsets.only(top: 10),
@@ -217,8 +217,8 @@ class _MacroPill extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: 44),
       child: Column(
         children: [
-          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold)),
-          Text(label, style: const TextStyle(fontSize: 9, color: AppColors.mute, letterSpacing: 0.3)),
+          Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold)),
+          Text(label, style: TextStyle(fontSize: 9, color: AppColors.mute, letterSpacing: 0.3)),
         ],
       ),
     );

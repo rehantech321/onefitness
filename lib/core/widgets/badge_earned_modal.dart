@@ -44,18 +44,18 @@ class BadgeEarnedModal extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("MERIT BADGE EARNED!", style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
+            Text("MERIT BADGE EARNED!", style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
             const SizedBox(height: 14),
             MeritBadgeShield(badgeKey: badgeKey, size: 110),
             const SizedBox(height: 14),
-            Text(badge.name, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppColors.txt)),
+            Text(badge.name, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppColors.txt)),
             const SizedBox(height: 4),
             Text(
               method == "coach" ? "AWARDED BY YOUR COACH" : "EARNED AUTOMATICALLY",
-              style: const TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1),
+              style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1),
             ),
             const SizedBox(height: 10),
-            Text(badge.description, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5)),
+            Text(badge.description, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5)),
             const SizedBox(height: 20),
             Row(
               children: [

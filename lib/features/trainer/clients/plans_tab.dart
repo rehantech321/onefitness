@@ -6,6 +6,7 @@ import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/notification_triggers.dart";
+import "../../../core/utils/write_failure.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/client_record.dart";
 import "../../../data/models/nutrition_plan.dart";
@@ -200,9 +201,14 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
   }
 
   Future<void> _approveWorkoutDraft(SavedProgram draft) async {
+    if (!await _confirmReplaceLiveSplit()) return;
     await _writeSavedPrograms(
       _record.savedPrograms.map((p) => p.id == draft.id ? p.copyWith(status: "active") : p).toList(),
     );
+    // Approving means "this is their program now", so the Training tab —
+    // which is where a coach looks to see what a client is on — has to show
+    // it rather than staying empty.
+    await _loadIntoLiveSplit(draft);
     _notifyClientPlanAssigned("workout");
   }
 
@@ -241,12 +247,56 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
 
   Future<void> _editWorkout(SavedProgram p) async {
     setState(() => _busy = true);
+    await _loadIntoLiveSplit(p);
+    if (mounted) setState(() => _busy = false);
+    widget.onEditWorkout();
+  }
+
+  /// Copies [p]'s days into the client's live split — what the Training
+  /// sub-tab shows.
+  ///
+  /// Assigning a program and approving an AI draft both used to write only
+  /// `savedPrograms`, leaving `programDays` untouched. The program appeared
+  /// under Programs while the Training tab still read "No days yet. Add Day
+  /// 1 to start building this client's split", which looks exactly like the
+  /// assignment having failed. Only "Review & Edit" ever filled it in.
+  Future<bool> _loadIntoLiveSplit(SavedProgram p) async {
     try {
       await SupabaseService.updateClientProgramDays(widget.clientId, p.programDays);
       ref.read(trainerClientRecordsProvider.notifier).update(widget.clientId, (r) => r.copyWith(programDays: p.programDays));
-    } catch (_) {}
-    if (mounted) setState(() => _busy = false);
-    widget.onEditWorkout();
+      return true;
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = writeFailureMessage(e, whatFailed: "Assigned, but the Training tab couldn't be updated"));
+      }
+      return false;
+    }
+  }
+
+  /// Asks before replacing a split the coach has built but not saved as a
+  /// program — those days exist nowhere else, so overwriting them silently
+  /// would throw away work with no way back.
+  Future<bool> _confirmReplaceLiveSplit() async {
+    final live = _record.programDays;
+    if (live.isEmpty) return true;
+    // A split that mirrors a program they already hold is a loaded copy, not
+    // unsaved work — replacing that needs no ceremony.
+    if (_record.savedPrograms.any(_liveSplitMirrors)) return true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        content: Text(
+          "The Training tab has ${live.length} day${live.length == 1 ? "" : "s"} that isn't saved as a program. "
+          "Assigning this one replaces it.\n\nSave it as a program first if you want to keep it.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Cancel")),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text("Replace")),
+        ],
+      ),
+    );
+    return ok == true;
   }
 
   /// Notifications spec — "New workout/nutrition plan assigned" email, for
@@ -481,7 +531,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_error != null)
-          Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_error!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12))),
+          Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12))),
 
         // ── AI workout draft ──
         if (workoutDrafts.isEmpty)
@@ -504,7 +554,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                   hasAnyAiWorkout
                       ? "If this client has updated their Personalized Training Intake answers, draft a fresh split from their current answers. You'll review it here before anything changes."
                       : "This client's Personalized Training Intake is complete but no AI draft has been generated yet. Draft a weekly split from their intake answers — you'll review it here before assigning it.",
-                  style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
+                  style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
                 ),
                 const SizedBox(height: 10),
                 if (isOwner)
@@ -518,7 +568,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                             : "Draft a Workout with AI"),
                   )
                 else
-                  const Text("Only the owner can generate AI drafts.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
+                  Text("Only the owner can generate AI drafts.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
               ],
             ),
           ),
@@ -543,7 +593,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                     "$committed day split"
                     "${suggested > 0 ? " · $suggested suggested day${suggested == 1 ? "" : "s"}" : ""}"
                     "${p.createdAt != null ? " · generated ${p.createdAt}" : ""}",
-                    style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                    style: TextStyle(fontSize: 12, color: AppColors.mute),
                   );
                 }),
                 if (p.programNote != null) ...[
@@ -579,7 +629,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: _busy ? null : () => _discardWorkoutDraft(p),
-                        style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF6B3B3B)), foregroundColor: const Color(0xFFC97F7F)),
+                        style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF6B3B3B)), foregroundColor: AppColors.errorText),
                         child: const Text("Discard"),
                       ),
                     ),
@@ -604,7 +654,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                   hasAnyAiNutrition
                       ? "If this client has updated their Nutrition Intake answers since their targets were last set, draft a fresh set from their current answers. You'll review it here before anything changes."
                       : "This client's Nutrition Intake is complete but no AI draft has been generated yet. Draft whole-number Training/Rest Day targets from their intake answers — you'll review it here before anything is applied.",
-                  style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
+                  style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
                 ),
                 const SizedBox(height: 10),
                 if (isOwner)
@@ -618,7 +668,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                             : "Generate AI Nutrition Targets"),
                   )
                 else
-                  const Text("Only the owner can generate AI drafts.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
+                  Text("Only the owner can generate AI drafts.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
               ],
             ),
           ),
@@ -638,8 +688,8 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text("Training: ${p.trainingTargets.calories ?? "—"} kcal", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
-                Text("Rest: ${p.restTargets.calories ?? "—"} kcal", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                Text("Training: ${p.trainingTargets.calories ?? "—"} kcal", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                Text("Rest: ${p.restTargets.calories ?? "—"} kcal", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                 const SizedBox(height: 8),
                 const HintBox(text: "Approving fills in this client's Training/Rest Day Targets and Calorie Budget from this draft. Review it first if you'd like to adjust anything."),
                 const SizedBox(height: 10),
@@ -665,7 +715,7 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: _busy ? null : () => _discardNutritionDraft(p.id),
-                        style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF6B3B3B)), foregroundColor: const Color(0xFFC97F7F)),
+                        style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF6B3B3B)), foregroundColor: AppColors.errorText),
                         child: const Text("Discard"),
                       ),
                     ),
@@ -786,10 +836,18 @@ class _ProgramsPanelState extends ConsumerState<_ProgramsPanel> {
                 child: _LibraryCard(
                   name: p.name,
                   onAssign: () async {
-                    await _writeSavedPrograms([
-                      ..._record.savedPrograms,
-                      SavedProgram(id: "${DateTime.now().microsecondsSinceEpoch}", name: p.name, status: "active", programDays: p.programDays, createdAt: stamp()),
-                    ]);
+                    if (!await _confirmReplaceLiveSplit()) return;
+                    final assigned = SavedProgram(
+                      id: "${DateTime.now().microsecondsSinceEpoch}",
+                      name: p.name,
+                      status: "active",
+                      programDays: p.programDays,
+                      createdAt: stamp(),
+                    );
+                    await _writeSavedPrograms([..._record.savedPrograms, assigned]);
+                    // Same as approving a draft: the Training tab is the
+                    // coach's view of what this client is doing now.
+                    await _loadIntoLiveSplit(assigned);
                     _notifyClientPlanAssigned("workout");
                   },
                   onDuplicate: () async {
@@ -875,8 +933,8 @@ class _ProgramCard extends StatelessWidget {
                 if (archived) const Tag(text: "Archived"),
               ],
             ),
-            Padding(padding: const EdgeInsets.only(top: 2), child: Text(meta, style: const TextStyle(fontSize: 11, color: AppColors.mute))),
-            if (modifiedLabel != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text(modifiedLabel!, style: const TextStyle(fontSize: 11, color: AppColors.mute))),
+            Padding(padding: const EdgeInsets.only(top: 2), child: Text(meta, style: TextStyle(fontSize: 11, color: AppColors.mute))),
+            if (modifiedLabel != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text(modifiedLabel!, style: TextStyle(fontSize: 11, color: AppColors.mute))),
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
@@ -935,7 +993,7 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? const Color(0xFFC97F7F) : AppColors.gold;
+    final color = danger ? AppColors.errorText : AppColors.gold;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -976,7 +1034,7 @@ class _DraftNote extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.45),
+            style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.45),
           ),
         ),
       ],

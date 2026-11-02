@@ -10,6 +10,8 @@ class ExerciseDef {
     this.setup,
     this.cues,
     this.coachNotes,
+    this.videoPath,
+    this.videoName,
   });
 
   final String id;
@@ -20,6 +22,22 @@ class ExerciseDef {
   final String? setup;
   final String? cues;
   final String? coachNotes;
+
+  /// Object name of the demo clip in the `exercise-videos` bucket, or null
+  /// when nobody has filmed this exercise yet.
+  ///
+  /// Only the name is stored. The catalogue is loaded whole at sign-in, so a
+  /// video inlined here would be downloaded by every client on every launch
+  /// whether or not they ever opened it.
+  final String? videoPath;
+
+  /// The file as the coach picked it, so the editor can name what's attached
+  /// instead of showing them a uuid.
+  final String? videoName;
+
+  /// True when a client has something to watch. [videoName] is cosmetic and
+  /// an older record may not carry one, so it is never part of this test.
+  bool get hasVideo => (videoPath ?? "").isNotEmpty;
 }
 
 /// Mirrors constants/domain.js `MOVEMENT_PATTERNS`.

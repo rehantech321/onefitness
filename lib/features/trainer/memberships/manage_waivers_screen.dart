@@ -186,12 +186,12 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
               SectionLabel("Waivers & Contracts (${waivers.length})"),
               TextButton.icon(
                 onPressed: () => setState(() => _creating = true),
-                icon: const Icon(
+                icon: Icon(
                   LucideIcons.plus,
                   size: 14,
                   color: AppColors.gold,
                 ),
-                label: const Text(
+                label: Text(
                   "Document",
                   style: TextStyle(
                     color: AppColors.gold,
@@ -241,7 +241,7 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
                                     color: AppColors.line,
                                     borderRadius: BorderRadius.circular(5),
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     "Archived",
                                     style: TextStyle(
                                       fontSize: 10,
@@ -255,7 +255,7 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
                           ),
                           Text(
                             "${w.scope == 'plan' ? 'Plan contract' : 'General waiver'}${w.required ? ' · Required' : ''} · $signed signed",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               color: AppColors.mute,
                             ),
@@ -263,7 +263,7 @@ class _ManageWaiversScreenState extends ConsumerState<ManageWaiversScreen> {
                         ],
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       LucideIcons.chevronRight,
                       size: 15,
                       color: AppColors.mute,
@@ -366,7 +366,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             "SCOPE",
             style: TextStyle(
               fontSize: 10,
@@ -393,7 +393,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
           ),
           if (_scope == "plan") ...[
             const SizedBox(height: 10),
-            const Text(
+            Text(
               "PLAN",
               style: TextStyle(
                 fontSize: 10,
@@ -421,7 +421,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
             children: [
               IconButton(
                 onPressed: () => setState(() => _wrap("**")),
-                icon: const Icon(
+                icon: Icon(
                   LucideIcons.bold,
                   size: 16,
                   color: AppColors.mute,
@@ -429,7 +429,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
               ),
               IconButton(
                 onPressed: () => setState(() => _wrap("*")),
-                icon: const Icon(
+                icon: Icon(
                   LucideIcons.italic,
                   size: 16,
                   color: AppColors.mute,
@@ -438,7 +438,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
               IconButton(
                 onPressed: () =>
                     setState(() => _body.text = "${_body.text}\n- "),
-                icon: const Icon(
+                icon: Icon(
                   LucideIcons.list,
                   size: 16,
                   color: AppColors.mute,
@@ -459,7 +459,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
                   PopupMenuItem(value: "signature_date", child: Text("Today's date")),
                   PopupMenuItem(value: "guardian_name", child: Text("Guardian name")),
                 ],
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(LucideIcons.atSign, size: 14, color: AppColors.mute),
@@ -478,7 +478,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
                   PopupMenuItem(value: "guardian_signature", child: Text("Guardian Signature (if minor)")),
                   PopupMenuItem(value: "photo_opt_out", child: Text("Photo/video opt-out checkbox")),
                 ],
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(LucideIcons.penTool, size: 14, color: AppColors.gold),
@@ -489,7 +489,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
               ),
             ],
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(bottom: 6),
             child: Text(
               "Insert Client Initials/Signature wherever the client needs to place one — they'll become tap-to-sign boxes when the client reads this document. Variables like {{client_full_name}} are replaced with the client's real info automatically.",
@@ -500,23 +500,23 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
             controller: _body,
             maxLines: 8,
             onChanged: (_) => setState(() {}),
-            style: const TextStyle(color: AppColors.txt, fontSize: 13),
+            style: TextStyle(color: AppColors.txt, fontSize: 13),
             decoration: InputDecoration(
               hintText: "Document text…",
-              hintStyle: const TextStyle(color: AppColors.mute),
+              hintStyle: TextStyle(color: AppColors.mute),
               filled: true,
               fillColor: AppColors.card,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.line),
+                borderSide: BorderSide(color: AppColors.line),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.line),
+                borderSide: BorderSide(color: AppColors.line),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.gold),
+                borderSide: BorderSide(color: AppColors.gold),
               ),
             ),
           ),
@@ -575,7 +575,7 @@ class _WaiverEditFormState extends State<_WaiverEditForm> {
             TextButton(
               onPressed: widget.onDelete,
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC97F7F),
+                foregroundColor: AppColors.errorText,
               ),
               child: const Text("Delete or archive document"),
             ),

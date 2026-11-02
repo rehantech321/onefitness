@@ -774,7 +774,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
                     onPressed: () => setState(() => _showAllUpcoming = !_showAllUpcoming),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.gold,
-                      side: const BorderSide(color: AppColors.line),
+                      side: BorderSide(color: AppColors.line),
                       padding: const EdgeInsets.symmetric(vertical: 9),
                     ),
                     child: Text(
@@ -799,12 +799,12 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(padding: EdgeInsets.only(top: 1), child: Icon(LucideIcons.calendar, size: 16, color: AppColors.gold)),
+                  Padding(padding: EdgeInsets.only(top: 1), child: Icon(LucideIcons.calendar, size: 16, color: AppColors.gold)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: RichText(
                       text: TextSpan(
-                        style: const TextStyle(fontSize: 12, color: AppColors.txt, height: 1.5),
+                        style: TextStyle(fontSize: 12, color: AppColors.txt, height: 1.5),
                         children: [
                           const TextSpan(text: "Rescheduling "),
                           TextSpan(
@@ -973,7 +973,7 @@ class _MembershipBanner extends StatelessWidget {
         ),
     ];
     final lowest = lines.map((l) => l.remaining).reduce((a, b) => a < b ? a : b);
-    final color = lowest > 3 ? AppColors.grn : (lowest > 0 ? const Color(0xFFD68A4F) : const Color(0xFFC97F7F));
+    final color = lowest > 3 ? AppColors.grn : (lowest > 0 ? AppColors.warning : AppColors.errorText);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -994,11 +994,11 @@ class _MembershipBanner extends StatelessWidget {
                   children: [
                     TextSpan(
                       text: "${l.remaining} session${l.remaining != 1 ? 's' : ''} remaining  ",
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: l.remaining > 0 ? AppColors.txt : const Color(0xFFC97F7F)),
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: l.remaining > 0 ? AppColors.txt : AppColors.errorText),
                     ),
                     TextSpan(
                       text: "— ${l.plan.name}${l.plan.kind == PlanKind.membership ? " this month" : ""}",
-                      style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                      style: TextStyle(fontSize: 12, color: AppColors.mute),
                     ),
                   ],
                 ),
@@ -1062,7 +1062,7 @@ class _StepOne extends StatelessWidget {
         if (allowedTypes.contains("semi-private"))
           AppCard(
             onTap: () => onPick("semi-private"),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text("Semi-Private", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
@@ -1078,7 +1078,7 @@ class _StepOne extends StatelessWidget {
         if (allowedTypes.contains("one-on-one"))
           AppCard(
             onTap: () => onPick("one-on-one"),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text("One-on-One", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
@@ -1102,7 +1102,7 @@ class _StepOne extends StatelessWidget {
                 Text(
                   "Hike and Outdoor HIIT classes — 1 hour, capacity ${capFor("large-group")}, starting on the "
                   "hour every hour. Included with any active membership.",
-                  style: const TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5),
+                  style: TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5),
                 ),
               ],
             ),
@@ -1133,7 +1133,7 @@ class _FreeFirstSessionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(LucideIcons.gift, size: 16, color: AppColors.gold),
               SizedBox(width: 8),
@@ -1141,7 +1141,7 @@ class _FreeFirstSessionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             "Book a free physical assessment with a coach — Semi-Private or One-on-One, your choice. "
             "No membership needed, and it doesn't use up any sessions.",
             style: TextStyle(fontSize: 12.5, color: AppColors.mute, height: 1.5),
@@ -1178,12 +1178,12 @@ class _FreeSessionActiveBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 1),
             child: Icon(LucideIcons.gift, size: 16, color: AppColors.gold),
           ),
           const SizedBox(width: 10),
-          const Expanded(
+          Expanded(
             child: Text(
               "Booking your free physical assessment — pick a time below. "
               "It won't use any of your sessions.",
@@ -1225,7 +1225,7 @@ class _NoPlanGate extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(LucideIcons.lock, size: 16, color: AppColors.gold),
               SizedBox(width: 8),
@@ -1233,7 +1233,7 @@ class _NoPlanGate extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             "Sessions are booked against a membership or package. Pick one in the Membership Hub and the full schedule opens up here.",
             style: TextStyle(fontSize: 12.5, color: AppColors.mute, height: 1.5),
           ),
@@ -1241,7 +1241,7 @@ class _NoPlanGate extends StatelessWidget {
           BtnGold(
             full: true,
             onPressed: onGoMemberships,
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1282,14 +1282,14 @@ class _StepTwo extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(sessionTypeLabel(chosenType), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
+            Text(sessionTypeLabel(chosenType), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
             if (onChangeType != null) ...[
               const SizedBox(width: 8),
-              const Text("›", style: TextStyle(fontSize: 13, color: AppColors.mute)),
+              Text("›", style: TextStyle(fontSize: 13, color: AppColors.mute)),
               const SizedBox(width: 8),
               GestureDetector(
                 onTap: onChangeType,
-                child: const Text("Change", style: TextStyle(fontSize: 12, color: AppColors.mute, decoration: TextDecoration.underline)),
+                child: Text("Change", style: TextStyle(fontSize: 12, color: AppColors.mute, decoration: TextDecoration.underline)),
               ),
             ],
           ],
@@ -1309,11 +1309,11 @@ class _StepTwo extends StatelessWidget {
                         children: [
                           Text(disciplineLabel(d), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                           const SizedBox(height: 2),
-                          Text("${sessionTypeLabel(chosenType)} · ${disciplineLabel(d)}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                          Text("${sessionTypeLabel(chosenType)} · ${disciplineLabel(d)}", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                         ],
                       ),
                     ),
-                    const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
+                    Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
                   ],
                 ),
               )),
@@ -1335,7 +1335,7 @@ class _JumpToChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(border: Border.all(color: AppColors.line), color: AppColors.card, borderRadius: BorderRadius.circular(8)),
-        child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.mute)),
+        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.mute)),
       ),
     );
   }
@@ -1505,17 +1505,17 @@ class _StepThreeState extends State<_StepThree> {
           spacing: 6,
           runSpacing: 6,
           children: [
-            Text(sessionTypeLabel(chosenType), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
-            const Text("›", style: TextStyle(fontSize: 13, color: AppColors.mute)),
-            Text(disciplineLabel(chosenDisc), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
+            Text(sessionTypeLabel(chosenType), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
+            Text("›", style: TextStyle(fontSize: 13, color: AppColors.mute)),
+            Text(disciplineLabel(chosenDisc), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
             if (onChangeType != null)
               GestureDetector(
                 onTap: onChangeType,
-                child: const Text("Change type", style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
+                child: Text("Change type", style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
               ),
             GestureDetector(
               onTap: onChangeDisc,
-              child: const Text("Change discipline", style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
+              child: Text("Change discipline", style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
             ),
           ],
         ),
@@ -1529,7 +1529,7 @@ class _StepThreeState extends State<_StepThree> {
             padding: const EdgeInsets.only(top: 10, bottom: 4),
             child: Row(
               children: [
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(right: 8),
                   child: Text("Jump to:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                 ),
@@ -1564,7 +1564,7 @@ class _StepThreeState extends State<_StepThree> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(fmtSlot(slot), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold)),
+                  Text(fmtSlot(slot), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold)),
                   const SizedBox(height: 8),
                   ...avail.map((a) {
                     final isFull = a.open <= 0 && !a.mine;
@@ -1588,13 +1588,13 @@ class _StepThreeState extends State<_StepThree> {
                                   color: a.mine
                                       ? AppColors.gold.withValues(alpha: 0.1)
                                       : onWaitlist != null
-                                          ? const Color(0xFFD68A4F).withValues(alpha: 0.06)
+                                          ? AppColors.warning.withValues(alpha: 0.06)
                                           : AppColors.card,
                                   border: Border.all(
                                     color: a.mine
                                         ? AppColors.gold
                                         : onWaitlist != null
-                                            ? const Color(0xFFD68A4F).withValues(alpha: 0.35)
+                                            ? AppColors.warning.withValues(alpha: 0.35)
                                             : (a.open > 0 ? AppColors.line : const Color(0xFF222222)),
                                   ),
                                   borderRadius: BorderRadius.circular(10),
@@ -1618,7 +1618,7 @@ class _StepThreeState extends State<_StepThree> {
                                           ),
                                           Padding(
                                             padding: const EdgeInsets.only(top: 2),
-                                            child: Text(a.trainer.displayTitle, style: const TextStyle(fontSize: 12, color: AppColors.txt)),
+                                            child: Text(a.trainer.displayTitle, style: TextStyle(fontSize: 12, color: AppColors.txt)),
                                           ),
                                           Padding(
                                             padding: const EdgeInsets.only(top: 3),
@@ -1626,7 +1626,7 @@ class _StepThreeState extends State<_StepThree> {
                                               onTap: () => CoachProfileCard.show(context, a.trainer),
                                               child: Row(
                                                 mainAxisSize: MainAxisSize.min,
-                                                children: const [
+                                                children: [
                                                   Text("Meet the Coach", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mute)),
                                                   SizedBox(width: 3),
                                                   Icon(LucideIcons.chevronRight, size: 11, color: AppColors.mute),
@@ -1642,12 +1642,12 @@ class _StepThreeState extends State<_StepThree> {
                                               padding: const EdgeInsets.only(top: 3),
                                               child: Row(
                                                 children: [
-                                                  const Icon(LucideIcons.mapPin, size: 11, color: AppColors.mute),
+                                                  Icon(LucideIcons.mapPin, size: 11, color: AppColors.mute),
                                                   const SizedBox(width: 3),
                                                   Flexible(
                                                     child: Text(
                                                       a.locationName ?? widget.gymLocationName,
-                                                      style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                                      style: TextStyle(fontSize: 11, color: AppColors.mute),
                                                       overflow: TextOverflow.ellipsis,
                                                     ),
                                                   ),
@@ -1665,7 +1665,7 @@ class _StepThreeState extends State<_StepThree> {
                                                       padding: const EdgeInsets.only(left: 5),
                                                       child: Text(
                                                         "· ${formatDistance(metres)} away",
-                                                        style: const TextStyle(
+                                                        style: TextStyle(
                                                           fontSize: 11,
                                                           color: AppColors.gold,
                                                           fontWeight: FontWeight.w700,
@@ -1680,21 +1680,21 @@ class _StepThreeState extends State<_StepThree> {
                                       ),
                                     ),
                                     if (a.mine)
-                                      const Text("Booked ✓", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700))
+                                      Text("Booked ✓", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700))
                                     else if (a.open > 0)
                                       Column(
                                         crossAxisAlignment: CrossAxisAlignment.end,
                                         children: [
-                                          Text("${a.open}", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.gold)),
-                                          Text("of ${a.cap} open", style: const TextStyle(fontSize: 10, color: AppColors.mute)),
+                                          Text("${a.open}", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.gold)),
+                                          Text("of ${a.cap} open", style: TextStyle(fontSize: 10, color: AppColors.mute)),
                                         ],
                                       )
                                     else if (onWaitlist != null)
                                       Column(
                                         crossAxisAlignment: CrossAxisAlignment.end,
                                         children: [
-                                          const Text("Waitlist", style: TextStyle(fontSize: 11, color: Color(0xFFD68A4F), fontWeight: FontWeight.w700)),
-                                          Text("#${onWaitlist.position ?? '—'}", style: const TextStyle(fontSize: 10, color: AppColors.mute)),
+                                          Text("Waitlist", style: TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w700)),
+                                          Text("#${onWaitlist.position ?? '—'}", style: TextStyle(fontSize: 10, color: AppColors.mute)),
                                         ],
                                       )
                                     else
@@ -1713,7 +1713,7 @@ class _StepThreeState extends State<_StepThree> {
                                     ? OutlinedButton(
                                         onPressed: waitlistBusy ? null : () => widget.onLeaveWaitlist(onWaitlist),
                                         style: OutlinedButton.styleFrom(
-                                          foregroundColor: const Color(0xFFC97F7F),
+                                          foregroundColor: AppColors.errorText,
                                           side: const BorderSide(color: Color(0xFF6B3B3B)),
                                           padding: const EdgeInsets.symmetric(vertical: 7),
                                         ),
@@ -1725,9 +1725,9 @@ class _StepThreeState extends State<_StepThree> {
                                     : OutlinedButton(
                                         onPressed: waitlistBusy ? null : () => widget.onJoinWaitlist(a.trainer, chosenType, chosenDisc, slot),
                                         style: OutlinedButton.styleFrom(
-                                          foregroundColor: const Color(0xFFD68A4F),
-                                          side: const BorderSide(color: Color(0xFFD68A4F)),
-                                          backgroundColor: const Color(0xFFD68A4F).withValues(alpha: 0.1),
+                                          foregroundColor: AppColors.warning,
+                                          side: BorderSide(color: AppColors.warning),
+                                          backgroundColor: AppColors.warning.withValues(alpha: 0.1),
                                           padding: const EdgeInsets.symmetric(vertical: 7),
                                         ),
                                         child: const Text("+ Join waitlist", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),

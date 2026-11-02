@@ -2,7 +2,10 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
+import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/utils/date_utils.dart";
+import "../../../core/utils/write_failure.dart";
 import "../../../core/utils/intake_entitlements.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/intake_forms.dart";
@@ -13,6 +16,7 @@ import "../../../data/models/intake_schema.dart";
 import "../shell/client_shell_state.dart";
 import "form_filler_screen.dart";
 import "intake_answers_screen.dart";
+import "physical_assessment_screen.dart";
 
 const _groupIcons = {
   "training": LucideIcons.clipboardCheck,
@@ -118,6 +122,34 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
         _editing = true;
       });
 
+  /// Writes the movement screen beside `completed` rather than inside
+  /// `answers`, matching the shape the web app writes and
+  /// generate-ai-workout-program reads.
+  Future<void> _savePhysical(String assessmentKey, Map<String, dynamic> payload) async {
+    final prior = widget.client.intake[assessmentKey];
+    final record = IntakeRecord(
+      answers: prior?.answers ?? const {},
+      completed: true,
+      at: stamp(),
+      by: "Trainer/Coach",
+      attachments: prior?.attachments ?? const [],
+      extra: {...?prior?.extra, ...payload},
+    );
+    try {
+      await SupabaseService.updateClientIntake(widget.profileId, assessmentKey, record);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(writeFailureMessage(e, whatFailed: "Couldn't save the assessment"))),
+      );
+      return;
+    }
+    widget.onSaved(assessmentKey, record);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Assessment saved.")));
+    _closeAssessment();
+  }
+
   @override
   Widget build(BuildContext context) {
     final client = widget.client;
@@ -146,6 +178,22 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
 
     if (_open != null) {
       final a = _open!;
+      // Staff record the movement screen; the client sees what it is. This
+      // is a thing done TO a client by a coach, so there's nothing for them
+      // to fill in — but there was nothing for the coach to fill in either
+      // until now, and the screen lived on paper.
+      if (a.physical && !isClientView) {
+        return LocalBackScope(
+          isOpen: true,
+          onBack: _closeAssessment,
+          child: PhysicalAssessmentScreen(
+            existing: client.intake[a.key],
+            clientName: info?.name.isNotEmpty == true ? info!.name : "this client",
+            onBack: _closeAssessment,
+            onSave: (payload) => _savePhysical(a.key, payload),
+          ),
+        );
+      }
       if (a.physical) {
         return LocalBackScope(
           isOpen: true,
@@ -240,7 +288,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                       style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       "Your intake forms unlock once you have a membership, package or program. What you buy decides which "
                       "forms you fill in — a membership or package opens all of them, a personalized program opens training "
                       "and nutrition, and a nutrition program opens nutrition.",
@@ -342,7 +390,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                                   padding: const EdgeInsets.only(top: 2),
                                   child: Text(
                                     "Conducted by: ${a.by}",
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
                                       color: AppColors.mute,
                                     ),
@@ -353,7 +401,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                                     padding: const EdgeInsets.only(top: 3),
                                     child: Text(
                                       "Completed by ${rec!.by} · ${rec.at}",
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 11,
                                         color: AppColors.gold,
                                       ),
@@ -369,7 +417,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                                           // row looks like a dead end.
                                           ? "${_unlockHint(a.key)} Tap to choose a plan."
                                           : _staffLockNote(a),
-                                      style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.35),
+                                      style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.35),
                                     ),
                                   ),
                               ],
@@ -404,7 +452,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                             ),
                           ),
                           const SizedBox(width: 4),
-                          const Icon(
+                          Icon(
                             LucideIcons.chevronRight,
                             size: 16,
                             color: AppColors.mute,

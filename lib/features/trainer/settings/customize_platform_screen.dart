@@ -218,7 +218,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
           isExpanded: true,
           underline: const SizedBox(),
           dropdownColor: AppColors.card,
-          style: const TextStyle(color: AppColors.txt, fontSize: 14, fontWeight: FontWeight.w700),
+          style: TextStyle(color: AppColors.txt, fontSize: 14, fontWeight: FontWeight.w700),
           items: _tabs.map((t) => DropdownMenuItem(value: t.$1, child: Text(t.$2))).toList(),
           onChanged: (v) {
             if (v != null) _switchTab(v);
@@ -375,7 +375,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     onChange: (v) => _set((d) => d.copyWith(offeredDisciplines: v)),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     "Anything added here shows up for coaches (on their profile and availability), on the schedule when creating a session, "
                     "and for clients when booking. How many clients each type takes is set under Scheduling → Class size limit. "
                     "Assessments are always available to staff regardless of these settings.",
@@ -416,7 +416,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.gold,
-                      side: const BorderSide(color: AppColors.goldDim),
+                      side: BorderSide(color: AppColors.goldDim),
                       minimumSize: const Size.fromHeight(44),
                     ),
                     icon: const Icon(LucideIcons.map, size: 15),
@@ -430,7 +430,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
                         "Pinned at ${s.locationLat!.toStringAsFixed(5)}, ${s.locationLng!.toStringAsFixed(5)}",
-                        style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                        style: TextStyle(fontSize: 11, color: AppColors.mute),
                       ),
                     ),
                   const SizedBox(height: 10),
@@ -439,7 +439,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     child: _StableTextField(value: s.locationHint, placeholder: "e.g. Park in the rear lot, side entrance", onChanged: (v) => _set((d) => d.copyWith(locationHint: v))),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     "Clients booking a session see the default location below (or the session's own location, if it was created at another site). A coach's profile location doesn't change this.",
                     style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
@@ -454,7 +454,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     "The number the Chat call button and the Support page dial, for clients and coaches alike. Leave it empty to hide both.",
                     style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
@@ -531,7 +531,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                   ],
                   if (anyFeeEnabled) ...[
                     const SizedBox(height: 10),
-                    const Text(
+                    Text(
                       "Each fee is calculated on its own pre-fee price only — never compounds on itself.",
                       style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                     ),
@@ -545,7 +545,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       "Shown next to the pay button on Stripe's checkout page, in addition to the fee's own line item — both are always visible before the client confirms. Not optional; there's no setting to hide either one.",
                       style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                     ),
@@ -603,7 +603,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                         isExpanded: true,
                         underline: const SizedBox(),
                         dropdownColor: AppColors.card,
-                        style: const TextStyle(color: AppColors.txt, fontSize: 13),
+                        style: TextStyle(color: AppColors.txt, fontSize: 13),
                         items: _timeZones.map((tz) => DropdownMenuItem(value: tz.$1, child: Text(tz.$2))).toList(),
                         onChanged: (v) {
                           if (v != null) _set((d) => d.copyWith(businessTimeZone: v));
@@ -612,7 +612,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     "Used to format message/charge timestamps consistently for every viewer, regardless of their own device's time zone. Booking dates themselves still follow each viewer's local device clock.",
                     style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
@@ -622,7 +622,7 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                     child: _StableTextField(value: s.businessName, placeholder: "ONE Fitness", onChanged: (v) => _set((d) => d.copyWith(businessName: v))),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     "Updates the main header, login screens, and email sender name. Some deeper copy (legal/waiver boilerplate, etc.) may still say \"ONE Fitness\" — flag any you spot and they're quick to update.",
                     style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
@@ -675,11 +675,11 @@ class _CustomizePlatformScreenState extends ConsumerState<CustomizePlatformScree
                 ],
                 if (_saveError != null) ...[
                   const SizedBox(height: 14),
-                  Text("⚠ $_saveError", style: const TextStyle(color: AppColors.errorText, fontSize: 12, fontWeight: FontWeight.w700)),
+                  Text("⚠ $_saveError", style: TextStyle(color: AppColors.errorText, fontSize: 12, fontWeight: FontWeight.w700)),
                 ],
                 if (_savedFlash) ...[
                   const SizedBox(height: 14),
-                  const Text("✓ Saved — live for every client and coach now.", style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w700)),
+                  Text("✓ Saved — live for every client and coach now.", style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w700)),
                 ],
                 const SizedBox(height: 18),
                 BtnGold(
@@ -759,7 +759,7 @@ class _ToggleRow extends StatelessWidget {
           ),
           if (hint != null) ...[
             const SizedBox(height: 6),
-            Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+            Text(hint!, style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
           ],
         ],
       ),
@@ -797,13 +797,13 @@ class _NumberRow extends StatelessWidget {
               ),
               if (suffix != null) ...[
                 const SizedBox(width: 6),
-                Flexible(child: Text(suffix!, style: const TextStyle(fontSize: 11, color: AppColors.mute))),
+                Flexible(child: Text(suffix!, style: TextStyle(fontSize: 11, color: AppColors.mute))),
               ],
             ],
           ),
           if (hint != null) ...[
             const SizedBox(height: 6),
-            Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+            Text(hint!, style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
           ],
         ],
       ),
@@ -838,7 +838,7 @@ class _MoneyRow extends StatelessWidget {
                 const SizedBox(width: 8),
               ],
               Expanded(child: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
-              const Text("\$", style: TextStyle(color: AppColors.mute, fontSize: 13)),
+              Text("\$", style: TextStyle(color: AppColors.mute, fontSize: 13)),
               const SizedBox(width: 4),
               SizedBox(
                 width: 70,
@@ -852,7 +852,7 @@ class _MoneyRow extends StatelessWidget {
           ),
           if (hint != null) ...[
             const SizedBox(height: 6),
-            Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+            Text(hint!, style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
           ],
         ],
       ),
@@ -882,7 +882,7 @@ class _PercentRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 4),
-          const Text("%", style: TextStyle(color: AppColors.mute, fontSize: 13)),
+          Text("%", style: TextStyle(color: AppColors.mute, fontSize: 13)),
         ],
       ),
     );
@@ -922,7 +922,7 @@ class _ChoiceRow extends StatelessWidget {
           ),
           if (hint != null) ...[
             const SizedBox(height: 8),
-            Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+            Text(hint!, style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
           ],
         ],
       ),
@@ -972,7 +972,7 @@ class _MultiChoiceRow extends StatelessWidget {
             }).toList(),
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             "Full name and email can't be turned off — every client needs both for their account, enforced at signup. Phone / Birthday / City above are optional-or-required, your call.",
             style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
@@ -1049,7 +1049,7 @@ class _CatalogEditor extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Keep")),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Delete", style: TextStyle(color: AppColors.danger)),
+            child: Text("Delete", style: TextStyle(color: AppColors.danger)),
           ),
         ],
       ),
@@ -1070,7 +1070,7 @@ class _CatalogEditor extends StatelessWidget {
           if (offered.isEmpty)
             Row(
               children: [
-                Text("No ${noun}s offered.", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                Text("No ${noun}s offered.", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                 const Spacer(),
                 TextButton(
                   onPressed: () => _add(context),
@@ -1095,14 +1095,14 @@ class _CatalogEditor extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(o.$2, style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600)),
+                        Text(o.$2, style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600)),
                         IconButton(
                           tooltip: "Delete",
                           visualDensity: VisualDensity.compact,
                           constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                           padding: EdgeInsets.zero,
                           onPressed: () => _confirmDelete(context, o),
-                          icon: const Icon(LucideIcons.x, size: 14, color: AppColors.gold),
+                          icon: Icon(LucideIcons.x, size: 14, color: AppColors.gold),
                         ),
                       ],
                     ),
@@ -1121,9 +1121,9 @@ class _CatalogEditor extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(LucideIcons.plus, size: 13, color: AppColors.gold),
+                        Icon(LucideIcons.plus, size: 13, color: AppColors.gold),
                         const SizedBox(width: 4),
-                        Text("Add $noun", style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700)),
+                        Text("Add $noun", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700)),
                       ],
                     ),
                   ),
@@ -1132,7 +1132,7 @@ class _CatalogEditor extends StatelessWidget {
             ),
           if (deleted.isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text("Deleted — tap to restore", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+            Text("Deleted — tap to restore", style: TextStyle(fontSize: 11, color: AppColors.mute)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
@@ -1152,9 +1152,9 @@ class _CatalogEditor extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(LucideIcons.plus, size: 12, color: AppColors.mute),
+                          Icon(LucideIcons.plus, size: 12, color: AppColors.mute),
                           const SizedBox(width: 4),
-                          Text(o.$2, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                          Text(o.$2, style: TextStyle(fontSize: 12, color: AppColors.mute)),
                         ],
                       ),
                     ),
@@ -1186,13 +1186,13 @@ class _DefaultLocationPicker extends StatelessWidget {
         children: [
           const Text("Default location", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
-          const Text(
+          Text(
             "Used for coaches who have not set their own location, and shown first to clients when they book.",
             style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
           const SizedBox(height: 10),
           if (all.isEmpty)
-            const Text(
+            Text(
               "Add a location above first.",
               style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic),
             )
@@ -1226,13 +1226,13 @@ class _DefaultLocationPicker extends StatelessWidget {
                             if (l.address.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 1),
-                                child: Text(l.address, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                                child: Text(l.address, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                               ),
                           ],
                         ),
                       ),
                       if (l.name == current)
-                        const Text(
+                        Text(
                           "Default",
                           style: TextStyle(fontSize: 10.5, color: AppColors.gold, fontWeight: FontWeight.w800),
                         ),
@@ -1278,7 +1278,7 @@ class _CoachLocationsList extends ConsumerWidget {
             entries.isEmpty
                 ? "No coach has set their own location — they all use the default above."
                 : "Set by coaches on their own profiles. Anything not already in your list is marked, so you can add it above if it is a real site.",
-            style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
           if (entries.isNotEmpty) const SizedBox(height: 10),
           for (final e in entries)
@@ -1287,7 +1287,7 @@ class _CoachLocationsList extends ConsumerWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 2),
                     child: Icon(LucideIcons.mapPin, size: 14, color: AppColors.gold),
                   ),
@@ -1301,7 +1301,7 @@ class _CoachLocationsList extends ConsumerWidget {
                           padding: const EdgeInsets.only(top: 1),
                           child: Text(
                             e.value.join(", "),
-                            style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3),
+                            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3),
                           ),
                         ),
                       ],
@@ -1314,7 +1314,7 @@ class _CoachLocationsList extends ConsumerWidget {
                         color: AppColors.gold.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(5),
                       ),
-                      child: const Text(
+                      child: Text(
                         "Coach only",
                         style: TextStyle(fontSize: 9.5, color: AppColors.gold, fontWeight: FontWeight.w800),
                       ),
@@ -1384,7 +1384,7 @@ class _ExtraLocationsEditor extends StatelessWidget {
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.gold,
-                        side: const BorderSide(color: AppColors.goldDim),
+                        side: BorderSide(color: AppColors.goldDim),
                       ),
                       icon: const Icon(LucideIcons.map, size: 14),
                       label: Text(
@@ -1400,11 +1400,11 @@ class _ExtraLocationsEditor extends StatelessWidget {
                         child: Text(
                           "Pinned at ${(pinned.value?.lat ?? existing!.lat!).toStringAsFixed(5)}, "
                           "${(pinned.value?.lng ?? existing!.lng!).toStringAsFixed(5)}",
-                          style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                          style: TextStyle(fontSize: 11, color: AppColors.mute),
                         ),
                       )
                     else
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 6),
                         child: Text(
                           "Without a pin we'll try to place it from the address when you save.",
@@ -1455,7 +1455,7 @@ class _ExtraLocationsEditor extends StatelessWidget {
             mainName.trim().isEmpty
                 ? "Set the main location above first."
                 : "$mainName is the main one. Add any other site you run sessions at — you pick the location when creating a session.",
-            style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
           const SizedBox(height: 8),
           for (var i = 0; i < locations.length; i++)
@@ -1463,7 +1463,7 @@ class _ExtraLocationsEditor extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
                 children: [
-                  const Icon(LucideIcons.mapPin, size: 15, color: AppColors.gold),
+                  Icon(LucideIcons.mapPin, size: 15, color: AppColors.gold),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -1471,19 +1471,19 @@ class _ExtraLocationsEditor extends StatelessWidget {
                       children: [
                         Text(locations[i].name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                         if (locations[i].address.isNotEmpty)
-                          Text(locations[i].address, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                          Text(locations[i].address, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                       ],
                     ),
                   ),
                   IconButton(
                     tooltip: "Edit",
                     onPressed: () => _edit(context, existing: locations[i], index: i),
-                    icon: const Icon(LucideIcons.pencil, size: 15, color: AppColors.mute),
+                    icon: Icon(LucideIcons.pencil, size: 15, color: AppColors.mute),
                   ),
                   IconButton(
                     tooltip: "Remove",
                     onPressed: () => onChange([...locations]..removeAt(i)),
-                    icon: const Icon(LucideIcons.trash2, size: 15, color: AppColors.mute),
+                    icon: Icon(LucideIcons.trash2, size: 15, color: AppColors.mute),
                   ),
                 ],
               ),
@@ -1533,7 +1533,7 @@ class _ClassSizeEditor extends StatelessWidget {
         children: [
           const Text("Class size limit", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
-          const Text(
+          Text(
             "The most clients one session of each type takes. Booking stops at this number.",
             style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
@@ -1557,11 +1557,11 @@ class _ClassSizeEditor extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Text("clients", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                  Text("clients", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                 ],
               ),
             ),
-          const Text(
+          Text(
             "One-on-One and assessments are always one client.",
             style: TextStyle(fontSize: 11, color: AppColors.mute),
           ),
@@ -1583,9 +1583,9 @@ class _LockedPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.lock, size: 11, color: AppColors.onGold),
+          Icon(LucideIcons.lock, size: 11, color: AppColors.onGold),
           const SizedBox(width: 5),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.onGold)),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.onGold)),
         ],
       ),
     );
@@ -1641,7 +1641,7 @@ class _CustomFieldsEditorState extends State<_CustomFieldsEditor> {
         children: [
           const Text("Custom profile fields", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          if (widget.fields.isEmpty) const Text("None yet — added fields show up on every client intake and edit-profile form.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
+          if (widget.fields.isEmpty) Text("None yet — added fields show up on every client intake and edit-profile form.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
           ReorderableColumn(
             itemCount: widget.fields.length,
             keyOf: (i) => widget.fields[i].id,
@@ -1668,9 +1668,9 @@ class _CustomFieldsEditorState extends State<_CustomFieldsEditor> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text(f.type.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gold)),
+                  Text(f.type.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gold)),
                   IconButton(
-                    icon: const Icon(LucideIcons.trash2, size: 14, color: AppColors.errorText),
+                    icon: Icon(LucideIcons.trash2, size: 14, color: AppColors.errorText),
                     onPressed: () => widget.onChange(widget.fields.where((x) => x.id != f.id).toList()),
                   ),
                 ],
@@ -1685,11 +1685,11 @@ class _CustomFieldsEditorState extends State<_CustomFieldsEditor> {
               DropdownButton<String>(
                 value: _newType,
                 dropdownColor: AppColors.card,
-                style: const TextStyle(color: AppColors.txt, fontSize: 12),
+                style: TextStyle(color: AppColors.txt, fontSize: 12),
                 items: _customFieldTypes.map((t) => DropdownMenuItem(value: t.$1, child: Text(t.$2))).toList(),
                 onChanged: (v) => setState(() => _newType = v ?? "text"),
               ),
-              IconButton(icon: const Icon(LucideIcons.plus, size: 16, color: AppColors.gold), onPressed: _add),
+              IconButton(icon: Icon(LucideIcons.plus, size: 16, color: AppColors.gold), onPressed: _add),
             ],
           ),
         ],
@@ -1725,7 +1725,7 @@ class _FeeProfileEditor extends StatelessWidget {
           ),
           if (hint != null) ...[
             const SizedBox(height: 6),
-            Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+            Text(hint!, style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
           ],
           if (profile.enabled) ...[
             const SizedBox(height: 10),
@@ -1846,11 +1846,11 @@ class _SignupWaiverEditorState extends ConsumerState<_SignupWaiverEditor> {
           FieldLabeled(label: "Body", child: AppField(controller: _body, maxLines: 8, minLines: 4)),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text("⚠ $_error", style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+            Text("⚠ $_error", style: TextStyle(color: AppColors.errorText, fontSize: 12)),
           ],
           if (_flash) ...[
             const SizedBox(height: 8),
-            const Text("✓ Waiver saved.", style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w700)),
+            Text("✓ Waiver saved.", style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w700)),
           ],
           const SizedBox(height: 10),
           BtnGhost(onPressed: _saving ? null : _save, child: Text(_saving ? "Saving…" : "Save Waiver Document")),
@@ -1891,7 +1891,7 @@ class _BeepSoundRow extends StatelessWidget {
         children: [
           Text(kind.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
           const SizedBox(height: 2),
-          Text(_blurb, style: const TextStyle(fontSize: 11.5, color: AppColors.mute)),
+          Text(_blurb, style: TextStyle(fontSize: 11.5, color: AppColors.mute)),
           const SizedBox(height: 7),
           Wrap(
             spacing: 7,
@@ -1994,7 +1994,7 @@ class _CoachSetLocations extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(LucideIcons.mapPin, size: 13, color: AppColors.gold),
+                    Icon(LucideIcons.mapPin, size: 13, color: AppColors.gold),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(p.name,
@@ -2002,16 +2002,16 @@ class _CoachSetLocations extends ConsumerWidget {
                     ),
                     if (p.coachName != null)
                       Text(p.coachName!,
-                          style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                          style: TextStyle(fontSize: 11, color: AppColors.mute)),
                   ],
                 ),
                 if (p.address.trim().isNotEmpty) ...[
                   const SizedBox(height: 3),
-                  Text(p.address, style: const TextStyle(fontSize: 11.5, color: AppColors.mute)),
+                  Text(p.address, style: TextStyle(fontSize: 11.5, color: AppColors.mute)),
                 ],
                 if (!p.hasCoords) ...[
                   const SizedBox(height: 5),
-                  const Text(
+                  Text(
                     "⚠ No map pin — clients won't see a distance for sessions here. Ask the coach to set it on the map.",
                     style: TextStyle(fontSize: 11, color: AppColors.warning, height: 1.35),
                   ),

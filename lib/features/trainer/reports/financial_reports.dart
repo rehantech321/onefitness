@@ -42,11 +42,11 @@ class ItemizedSalesReport extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(c.clientName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                        Text("${c.description ?? c.planName ?? '—'} · ${c.category ?? ''} · ${c.date}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                        Text("${c.description ?? c.planName ?? '—'} · ${c.category ?? ''} · ${c.date}", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                       ],
                     ),
                   ),
-                  Text(_money(c.amount ?? 0), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold)),
+                  Text(_money(c.amount ?? 0), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold)),
                 ],
               ),
             )),
@@ -108,7 +108,7 @@ class _RealTimeChargesReportState extends ConsumerState<RealTimeChargesReport> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text("${c.clientName} · ${_money(c.amount ?? 0)}", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                          Text("${c.description ?? '—'} · ${c.date}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                          Text("${c.description ?? '—'} · ${c.date}", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                         ],
                       ),
                     ),
@@ -127,11 +127,11 @@ class _RealTimeChargesReportState extends ConsumerState<RealTimeChargesReport> {
                                   if (mounted) setState(() => _busyId = null);
                                 }
                               },
-                        child: Text(_busyId == c.id ? "Refunding…" : "Refund", style: const TextStyle(fontSize: 11, color: Color(0xFFC97F7F))),
+                        child: Text(_busyId == c.id ? "Refunding…" : "Refund", style: TextStyle(fontSize: 11, color: AppColors.errorText)),
                       )
                     else if (c.type == "early_termination_fee")
                       c.waivedAt != null
-                          ? const Text("Waived", style: TextStyle(fontSize: 11, color: AppColors.mute))
+                          ? Text("Waived", style: TextStyle(fontSize: 11, color: AppColors.mute))
                           : TextButton(
                               onPressed: _busyId != null
                                   ? null
@@ -146,7 +146,7 @@ class _RealTimeChargesReportState extends ConsumerState<RealTimeChargesReport> {
                                         if (mounted) setState(() => _busyId = null);
                                       }
                                     },
-                              child: Text(_busyId == c.id ? "Waiving…" : "Waive", style: const TextStyle(fontSize: 11, color: AppColors.gold)),
+                              child: Text(_busyId == c.id ? "Waiving…" : "Waive", style: TextStyle(fontSize: 11, color: AppColors.gold)),
                             ),
                   ],
                 ),
@@ -201,11 +201,11 @@ class ProjectedRevenueReport extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(r.$1.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                        Text("${r.$1.kind == PlanKind.membership ? 'Membership' : 'Package'} · ${r.$2} active client${r.$2 == 1 ? '' : 's'}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                        Text("${r.$1.kind == PlanKind.membership ? 'Membership' : 'Package'} · ${r.$2} active client${r.$2 == 1 ? '' : 's'}", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                       ],
                     ),
                   ),
-                  Text(r.$3 > 0 ? "${_money(r.$3)}/mo" : "—", style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.gold)),
+                  Text(r.$3 > 0 ? "${_money(r.$3)}/mo" : "—", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.gold)),
                 ],
               ),
             )),

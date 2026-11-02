@@ -113,10 +113,10 @@ class _SignaturesScreenState extends ConsumerState<SignaturesScreen> {
                   onTap: () => setState(() => _signing = d),
                   child: Row(
                     children: [
-                      const Icon(LucideIcons.fileSignature, size: 17, color: AppColors.gold),
+                      Icon(LucideIcons.fileSignature, size: 17, color: AppColors.gold),
                       const SizedBox(width: 10),
                       Expanded(child: Text(d.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
-                      const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.gold),
+                      Icon(LucideIcons.chevronRight, size: 16, color: AppColors.gold),
                     ],
                   ),
                 )),

@@ -79,7 +79,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 child: BtnGold(
                   full: true,
                   onPressed: () => showAddManualBookingSheet(context, ref, initialDate: _selectedDate ?? isoToday()),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [Icon(LucideIcons.plus, size: 15, color: AppColors.onGold), SizedBox(width: 6), Text("Book session")],
@@ -128,8 +128,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
                         child: TextButton.icon(
                           onPressed: () => setState(() => _selectedDate = null),
-                          icon: const Icon(LucideIcons.chevronLeft, size: 15, color: AppColors.mute),
-                          label: const Text("Month", style: TextStyle(color: AppColors.mute, fontSize: 12)),
+                          icon: Icon(LucideIcons.chevronLeft, size: 15, color: AppColors.mute),
+                          label: Text("Month", style: TextStyle(color: AppColors.mute, fontSize: 12)),
                           style: TextButton.styleFrom(padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
                         ),
                       ),
@@ -236,7 +236,7 @@ class _AdvancedSettingsState extends ConsumerState<_AdvancedSettings> {
             onTap: () => setState(() => _open = !_open),
             child: Row(
               children: [
-                const Icon(LucideIcons.settings2, size: 16, color: AppColors.gold),
+                Icon(LucideIcons.settings2, size: 16, color: AppColors.gold),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text("Advanced settings", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
@@ -247,7 +247,7 @@ class _AdvancedSettingsState extends ConsumerState<_AdvancedSettings> {
           ),
           if (_open) ...[
             const SizedBox(height: 12),
-            const Text("LOCATION", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            Text("LOCATION", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 6),
             if (locations.isEmpty)
               const HintBox(text: "No location set yet — add one under Customize Platform → Location.")
@@ -278,12 +278,12 @@ class _AdvancedSettingsState extends ConsumerState<_AdvancedSettings> {
               if ((current?.address ?? "").isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(current!.address, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                  child: Text(current!.address, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                 ),
               if ((current?.hint ?? "").isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
-                  child: Text(current!.hint, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                  child: Text(current!.hint, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                 ),
               const SizedBox(height: 10),
               BtnGhost(
@@ -292,7 +292,7 @@ class _AdvancedSettingsState extends ConsumerState<_AdvancedSettings> {
                 child: Text("Create session at ${selected ?? "this location"}", style: const TextStyle(fontSize: 12)),
               ),
               const SizedBox(height: 12),
-              const Text("CLASS SIZE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+              Text("CLASS SIZE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
               const SizedBox(height: 6),
               for (final t in settings.offeredSessionTypes)
                 Padding(
@@ -302,13 +302,13 @@ class _AdvancedSettingsState extends ConsumerState<_AdvancedSettings> {
                       Expanded(child: Text(sessionTypeLabel(t), style: const TextStyle(fontSize: 12))),
                       Text(
                         "${capFor(t, semiPrivateCap: settings.semiPrivateCap)} client${capFor(t, semiPrivateCap: settings.semiPrivateCap) == 1 ? "" : "s"}",
-                        style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700),
+                        style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
                 ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 "Locations, session types and class sizes are set in Customize Platform (Location and Services).",
                 style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
               ),

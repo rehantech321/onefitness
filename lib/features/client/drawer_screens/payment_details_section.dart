@@ -51,7 +51,7 @@ class _PaymentDetailsSectionState extends ConsumerState<PaymentDetailsSection> {
         content: Text("${m.label} will be removed from your account. You can add it again at your next purchase."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Keep")),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Remove", style: TextStyle(color: AppColors.danger))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text("Remove", style: TextStyle(color: AppColors.danger))),
         ],
       ),
     );
@@ -96,7 +96,7 @@ class _PaymentDetailsSectionState extends ConsumerState<PaymentDetailsSection> {
             future: _future,
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) {
-                return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator(color: AppColors.gold)));
+                return Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator(color: AppColors.gold)));
               }
               if (snap.hasError) {
                 return const HintBox(text: "Couldn't load your payment details — pull down to try again.");
@@ -130,18 +130,18 @@ class _PaymentDetailsSectionState extends ConsumerState<PaymentDetailsSection> {
                                       if (m.expiry != null) "Expires ${m.expiry}",
                                       if (m.isDefault) "Used for membership renewals",
                                     ].join(" · ").ifEmpty(m.isCard ? "Saved card" : "Saved bank account"),
-                                    style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                                    style: TextStyle(fontSize: 12, color: AppColors.mute),
                                   ),
                                 ],
                               ),
                             ),
                             if (_removing == m.id)
-                              const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+                              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
                             else
                               IconButton(
                                 tooltip: "Remove",
                                 onPressed: _removing != null ? null : () => _remove(m),
-                                icon: const Icon(LucideIcons.trash2, size: 17, color: AppColors.mute),
+                                icon: Icon(LucideIcons.trash2, size: 17, color: AppColors.mute),
                               ),
                           ],
                         ),

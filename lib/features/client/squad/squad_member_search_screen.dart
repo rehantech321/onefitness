@@ -80,11 +80,11 @@ class _SquadMemberSearchScreenState extends State<SquadMemberSearchScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                            Text(c.email ?? "", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                            Text(c.email ?? "", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                           ],
                         ),
                       ),
-                      const Icon(LucideIcons.userPlus, size: 16, color: AppColors.gold),
+                      Icon(LucideIcons.userPlus, size: 16, color: AppColors.gold),
                     ],
                   ),
                 )),

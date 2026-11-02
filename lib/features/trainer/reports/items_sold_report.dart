@@ -36,7 +36,7 @@ class ItemsSoldReport extends ConsumerWidget {
     final ordersAsync = ref.watch(reportOrdersProvider);
 
     return ordersAsync.when(
-      loading: () => const Padding(
+      loading: () => Padding(
         padding: EdgeInsets.all(24),
         child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
       ),
@@ -140,12 +140,12 @@ class _Body extends StatelessWidget {
                   children: [
                     Text("$totalUnits item${totalUnits == 1 ? "" : "s"} sold",
                         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                    const Text("in the selected range",
+                    Text("in the selected range",
                         style: TextStyle(fontSize: 11, color: AppColors.mute)),
                   ],
                 ),
                 Text(_money(totalRevenue),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.gold)),
               ],
             ),
@@ -176,7 +176,7 @@ class _GroupCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(group.kind.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                       color: AppColors.gold,
@@ -186,7 +186,7 @@ class _GroupCard extends StatelessWidget {
             ],
           ),
           if (group.kind == SoldKind.other)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 4),
               child: Text(
                 "Sold under a plan that's no longer in the catalogue, so it can't be filed under a type.",
@@ -202,7 +202,7 @@ class _GroupCard extends StatelessWidget {
                   SizedBox(
                     width: 34,
                     child: Text("${item.units}×",
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold)),
                   ),
                   Expanded(
@@ -210,7 +210,7 @@ class _GroupCard extends StatelessWidget {
                         style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
                   ),
                   Text(_money(item.revenue),
-                      style: const TextStyle(fontSize: 12.5, color: AppColors.mute)),
+                      style: TextStyle(fontSize: 12.5, color: AppColors.mute)),
                 ],
               ),
             ),
@@ -238,7 +238,7 @@ class _HistoryTable extends StatelessWidget {
               Expanded(flex: 3, child: _H("Total", right: true)),
             ],
           ),
-          const Divider(color: AppColors.line, height: 14),
+          Divider(color: AppColors.line, height: 14),
           for (var i = 0; i < history.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -258,7 +258,7 @@ class _HistoryTable extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text("${history[i].units}",
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.gold)),
                         // Against the month before it, and only when there
                         // is a month before it with something in it.
@@ -298,7 +298,7 @@ class _H extends StatelessWidget {
   Widget build(BuildContext context) => Text(
         text,
         textAlign: right ? TextAlign.right : TextAlign.left,
-        style: const TextStyle(
+        style: TextStyle(
             fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.6),
       );
 }

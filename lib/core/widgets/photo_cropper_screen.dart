@@ -149,7 +149,7 @@ class _PhotoCropperScreenState extends State<PhotoCropperScreen> {
               children: [
                 const Text("Position your photo", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
                 const SizedBox(height: 4),
-                const Text("Drag to reposition · Pinch or scroll to zoom", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                Text("Drag to reposition · Pinch or scroll to zoom", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                 const SizedBox(height: 20),
                 Listener(
                   onPointerSignal: _onPointerScroll,
@@ -167,7 +167,7 @@ class _PhotoCropperScreenState extends State<PhotoCropperScreen> {
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: !_loaded
-                          ? const Center(child: Text("Loading…", style: TextStyle(color: AppColors.mute, fontSize: 12)))
+                          ? Center(child: Text("Loading…", style: TextStyle(color: AppColors.mute, fontSize: 12)))
                           : Stack(
                               children: [
                                 Positioned(
@@ -187,7 +187,7 @@ class _PhotoCropperScreenState extends State<PhotoCropperScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _ZoomButton(icon: Icons.remove, onTap: () => _applyZoom(_scale - 0.15)),
-                    SizedBox(width: 52, child: Text(_loaded ? "${(_scale * 100).round()}%" : "—", textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: AppColors.mute))),
+                    SizedBox(width: 52, child: Text(_loaded ? "${(_scale * 100).round()}%" : "—", textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.mute))),
                     _ZoomButton(icon: Icons.add, onTap: () => _applyZoom(_scale + 0.15)),
                   ],
                 ),
@@ -216,7 +216,7 @@ class _PhotoCropperScreenState extends State<PhotoCropperScreen> {
                           onPressed: () => Navigator.of(context).pop(),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.mute,
-                            side: const BorderSide(color: AppColors.line),
+                            side: BorderSide(color: AppColors.line),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -248,7 +248,7 @@ class _ZoomButton extends StatelessWidget {
       child: Container(
         width: 44,
         height: 44,
-        decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.card, border: Border.fromBorderSide(BorderSide(color: AppColors.line))),
+        decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.card, border: Border.fromBorderSide(BorderSide(color: AppColors.line))),
         alignment: Alignment.center,
         child: Icon(icon, size: 20, color: Colors.white),
       ),

@@ -112,7 +112,7 @@ class _ClientVisitsSectionState extends ConsumerState<ClientVisitsSection> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
               ),
           ],
         ),
@@ -264,13 +264,13 @@ class _FutureVisitCard extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                   ),
                   const SizedBox(height: 3),
-                  Text(trainer?.name ?? "Removed", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                  Text(trainer?.name ?? "Removed", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                   if (charged)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 4),
                       child: Text(
                         "⚠ Late cancel fee window",
-                        style: TextStyle(fontSize: 11, color: Color(0xFFD68A4F), fontWeight: FontWeight.w700),
+                        style: TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w700),
                       ),
                     ),
                 ],
@@ -282,7 +282,7 @@ class _FutureVisitCard extends StatelessWidget {
               onSelected: (v) => v == "reschedule" ? onReschedule() : onCancel(),
               itemBuilder: (context) => [
                 if (reschedulable)
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: "reschedule",
                     child: Text("Reschedule", style: TextStyle(color: AppColors.txt, fontSize: 13)),
                   ),
@@ -290,7 +290,7 @@ class _FutureVisitCard extends StatelessWidget {
                   value: "cancel",
                   child: Text(
                     charged ? "Late Cancel" : "Cancel",
-                    style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 13),
+                    style: TextStyle(color: AppColors.errorText, fontSize: 13),
                   ),
                 ),
               ],
@@ -300,7 +300,7 @@ class _FutureVisitCard extends StatelessWidget {
                   border: Border.all(color: AppColors.line),
                   borderRadius: BorderRadius.circular(7),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text("Edit", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.txt)),
@@ -343,11 +343,11 @@ class _PastVisitCard extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                   ),
                   const SizedBox(height: 3),
-                  Text(trainer?.name ?? "Removed", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                  Text(trainer?.name ?? "Removed", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                   const SizedBox(height: 3),
                   Text(
                     "${dayLabel(b.date)} · ${fmtSlot(b.slot)}",
-                    style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                    style: TextStyle(fontSize: 12, color: AppColors.mute),
                   ),
                 ],
               ),

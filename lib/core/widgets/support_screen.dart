@@ -64,12 +64,12 @@ class CallGymButton extends ConsumerWidget {
       return IconButton(
         tooltip: label,
         onPressed: call,
-        icon: const Icon(LucideIcons.phone, size: 18, color: AppColors.gold),
+        icon: Icon(LucideIcons.phone, size: 18, color: AppColors.gold),
       );
     }
     return OutlinedButton.icon(
       onPressed: call,
-      style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: const BorderSide(color: AppColors.goldDim)),
+      style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: BorderSide(color: AppColors.goldDim)),
       icon: const Icon(LucideIcons.phone, size: 14),
       label: const Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
     );
@@ -112,18 +112,18 @@ class SupportScreen extends ConsumerWidget {
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     "Questions about your membership, a booking or anything else — give us a call.",
                     style: TextStyle(fontSize: 12.5, color: AppColors.mute, height: 1.5),
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Icon(LucideIcons.phone, size: 16, color: AppColors.gold),
+                      Icon(LucideIcons.phone, size: 16, color: AppColors.gold),
                       const SizedBox(width: 8),
                       Text(
                         prettyPhone(phone),
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.gold),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.gold),
                       ),
                     ],
                   ),
@@ -138,7 +138,7 @@ class SupportScreen extends ConsumerWidget {
                         );
                       }
                     },
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -162,12 +162,12 @@ class SupportScreen extends ConsumerWidget {
                   if (settings.locationAddress.trim().isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(settings.locationAddress, style: const TextStyle(fontSize: 12.5, color: AppColors.mute)),
+                      child: Text(settings.locationAddress, style: TextStyle(fontSize: 12.5, color: AppColors.mute)),
                     ),
                   if (settings.locationHint.trim().isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
-                      child: Text(settings.locationHint, style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4)),
+                      child: Text(settings.locationHint, style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4)),
                     ),
                 ],
               ),

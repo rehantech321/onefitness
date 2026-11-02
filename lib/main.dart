@@ -6,10 +6,11 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "core/notifications/push_service.dart";
 import "core/supabase/supabase_service.dart";
 import "core/theme/app_colors.dart";
-import "core/theme/app_theme.dart";
+import "core/theme/palette_scope.dart";
 import "data/providers/client_providers.dart";
 import "data/providers/role_provider.dart";
 import "data/providers/supabase_bootstrap_provider.dart";
+import "data/providers/theme_mode_provider.dart";
 import "data/providers/trainer_providers.dart";
 import "features/auth/client_auth_screen.dart";
 import "features/client/shell/client_shell.dart";
@@ -25,8 +26,20 @@ Future<void> main() async {
   // Firebase only — the permission prompt and token registration wait
   // until sign-in, so the OS asks with context rather than on a cold
   // first launch. Never throws: push failing must not block startup.
+  // Started before the others and awaited after, so this single
+  // SharedPreferences read overlaps the network init rather than adding to
+  // it. Having the answer before the first frame is what stops a cold start
+  // flashing the wrong palette.
+  final storedTheme = ThemeModeNotifier.readStored();
   await Future.wait([SupabaseService.initialize(), PushService.init()]);
-  runApp(const ProviderScope(child: OneFitnessApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        initialThemeModeProvider.overrideWithValue(await storedTheme),
+      ],
+      child: const OneFitnessApp(),
+    ),
+  );
 }
 
 /// Lets the Stripe-return check in _RootGate show a SnackBar without
@@ -40,12 +53,17 @@ class OneFitnessApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: "ONE Fitness",
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
-      scaffoldMessengerKey: scaffoldMessengerKey,
-      home: const _RootGate(),
+    // PaletteScope owns installing the palette and repainting what's already
+    // on screen when it changes — see its own doc comment for why a palette
+    // swap doesn't otherwise reach the screen you're looking at.
+    return PaletteScope(
+      builder: (context, theme) => MaterialApp(
+        title: "ONE Fitness",
+        debugShowCheckedModeBanner: false,
+        theme: theme,
+        scaffoldMessengerKey: scaffoldMessengerKey,
+        home: const _RootGate(),
+      ),
     );
   }
 }
@@ -158,7 +176,7 @@ class _RootGateState extends ConsumerState<_RootGate> {
     final bootstrap = ref.watch(supabaseBootstrapProvider);
 
     return bootstrap.when(
-      loading: () => const Scaffold(backgroundColor: AppColors.bg, body: Center(child: CircularProgressIndicator(color: AppColors.gold))),
+      loading: () => Scaffold(backgroundColor: AppColors.bg, body: Center(child: CircularProgressIndicator(color: AppColors.gold))),
       error: (err, st) => const _RootContent(), // fall back to mock/signed-out state rather than block the app
       data: (_) {
         _checkStripeReturn();

@@ -47,11 +47,11 @@ class _CollapsibleSectionState extends State<CollapsibleSection> {
                   AnimatedRotation(
                     turns: _open ? 0.25 : 0,
                     duration: const Duration(milliseconds: 150),
-                    child: const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
+                    child: Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.txt)),
+                    child: Text(widget.title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.txt)),
                   ),
                   if (widget.meta != null) widget.meta!,
                 ],

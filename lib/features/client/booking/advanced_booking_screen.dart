@@ -594,7 +594,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
                 const SectionLabel("Set your weekly pattern"),
                 Text(
                   "${sessionTypeLabel(_sessionType!)} · ${disciplineLabel(_discipline!)} · ${info.city?.trim().isNotEmpty == true ? info.city : "Any location"}",
-                  style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                  style: TextStyle(fontSize: 12, color: AppColors.mute),
                 ),
                 const SizedBox(height: 16),
                 ..._brackets.asMap().entries.map(
@@ -705,7 +705,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
               ),
               Text(
                 "${sessionTypeLabel(_sessionType!)} · ${disciplineLabel(_discipline!)}",
-                style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                style: TextStyle(fontSize: 12, color: AppColors.mute),
               ),
               const SizedBox(height: 14),
               if (_occurrences.isEmpty)
@@ -733,7 +733,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
                                   padding: const EdgeInsets.only(top: 2),
                                   child: Text(
                                     "✓ Will be booked${coach != null ? " with ${coach.name}" : ""}",
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
                                       color: AppColors.success,
                                     ),
@@ -744,20 +744,20 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
                                   padding: const EdgeInsets.only(top: 2),
                                   child: Text(
                                     "Skipped — ${o.reason}",
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
                                       color: AppColors.mute,
                                     ),
                                   ),
                                 ),
                               if (o.status == "full")
-                                const Padding(
+                                Padding(
                                   padding: EdgeInsets.only(top: 2),
                                   child: Text(
                                     "Session is full",
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: Color(0xFFD68A4F),
+                                      color: AppColors.warning,
                                     ),
                                   ),
                                 ),
@@ -776,7 +776,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
                           _DecisionChip(
                             label: "Skip this session",
                             selected: o.decision == "skip",
-                            color: const Color(0xFFC97F7F),
+                            color: AppColors.errorText,
                             onTap: () => setState(() => o.decision = "skip"),
                           ),
                         ],
@@ -817,7 +817,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
           padding: const EdgeInsets.fromLTRB(18, 40, 18, 18),
           child: Column(
             children: [
-              const Icon(LucideIcons.check, size: 36, color: AppColors.gold),
+              Icon(LucideIcons.check, size: 36, color: AppColors.gold),
               const SizedBox(height: 16),
               const Text(
                 "Recurring Booking complete",
@@ -847,7 +847,7 @@ class _AdvancedBookingScreenState extends ConsumerState<AdvancedBookingScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: Text(
                           "— ${s.skipped} skipped",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             color: AppColors.mute,
                           ),
@@ -894,7 +894,7 @@ class _StepScaffold extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               hint!,
-              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ],
           const SizedBox(height: 14),
@@ -936,7 +936,7 @@ class _OptionCard extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
                   sub!,
-                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
                 ),
               ),
           ],
@@ -1026,7 +1026,7 @@ class _BracketEditor extends StatelessWidget {
             children: [
               Text(
                 "Bracket ${index + 1}",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.mute,
@@ -1035,7 +1035,7 @@ class _BracketEditor extends StatelessWidget {
               if (canRemove)
                 InkWell(
                   onTap: onRemove,
-                  child: const Text(
+                  child: Text(
                     "Remove",
                     style: TextStyle(
                       fontSize: 11,
@@ -1121,7 +1121,7 @@ class _BracketEditor extends StatelessWidget {
                   ),
                   child: Text(
                     fmtSlot(bracket.time),
-                    style: const TextStyle(fontSize: 14, color: AppColors.txt),
+                    style: TextStyle(fontSize: 14, color: AppColors.txt),
                   ),
                 ),
               );

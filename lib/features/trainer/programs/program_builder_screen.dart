@@ -235,7 +235,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                         "No days yet. Add Day 1 to start building this client's split (e.g. Push / Pull / Legs).",
                   ),
                 if (_days.length > 1)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(bottom: 8),
                     child: Text(
                       "Press and hold a day to drag it into place.",
@@ -277,7 +277,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                                           children: [
                                             Text(
                                               day.title,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontWeight: FontWeight.w700,
                                                 fontSize: 15,
                                                 color: AppColors.gold,
@@ -285,7 +285,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                                             ),
                                             Text(
                                               "${day.exercises.length} exercise${day.exercises.length == 1 ? '' : 's'}",
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 12,
                                                 color: AppColors.mute,
                                               ),
@@ -293,7 +293,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                                           ],
                                         ),
                                       ),
-                                      const Icon(
+                                      Icon(
                                         LucideIcons.chevronRight,
                                         size: 16,
                                         color: AppColors.mute,
@@ -358,7 +358,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                             onPressed: () => setState(() => _saving = true),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.gold,
-                              side: const BorderSide(color: AppColors.goldDim),
+                              side: BorderSide(color: AppColors.goldDim),
                               padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
                             child: const Row(
@@ -421,7 +421,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                                         ),
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: AppColors.mute,
-                                          side: const BorderSide(
+                                          side: BorderSide(
                                             color: AppColors.line,
                                           ),
                                           padding: const EdgeInsets.symmetric(
@@ -444,7 +444,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                                       setState(() => _confirmClear = true),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: AppColors.mute,
-                                    side: const BorderSide(
+                                    side: BorderSide(
                                       color: AppColors.line,
                                     ),
                                     padding: const EdgeInsets.symmetric(
@@ -556,7 +556,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                   ),
                   IconButton(
                     onPressed: () => setState(() => _renaming = true),
-                    icon: const Icon(
+                    icon: Icon(
                       LucideIcons.edit3,
                       size: 15,
                       color: AppColors.mute,
@@ -579,7 +579,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                     'No exercises yet for ${activeDay.title}. Tap "Add exercise" to pull from the library.',
               ),
             if (activeDay.exercises.length > 1)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 8),
                 child: Text(
                   "Press and hold an exercise to drag it into place.",
@@ -628,12 +628,12 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Padding(
+                            Padding(
                               padding: EdgeInsets.only(top: 1),
                               child: Icon(
                                 LucideIcons.flag,
                                 size: 14,
-                                color: Color(0xFFD68A4F),
+                                color: AppColors.warning,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -643,9 +643,9 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                                 children: [
                                   Text(
                                     "Client flagged this${ex.clientNoteAt != null ? " — ${ex.clientNoteAt}" : ""}",
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
-                                      color: Color(0xFFD68A4F),
+                                      color: AppColors.warning,
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 0.5,
                                     ),
@@ -653,7 +653,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                                   const SizedBox(height: 3),
                                   Text(
                                     ex.clientNoteText ?? "",
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
                                       color: AppColors.txt,
                                     ),
@@ -680,7 +680,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                         ),
                       ),
                     if (isSuperset)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(bottom: 6),
                         child: Text(
                           "SUPERSET",
@@ -701,7 +701,7 @@ class _ProgramBuilderScreenState extends ConsumerState<ProgramBuilderScreen> {
                             children: [
                               Text(
                                 _exerciseNumber(i),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.gold,
@@ -967,7 +967,7 @@ class _MiniActionButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
             color: AppColors.mute,
@@ -995,7 +995,7 @@ class _InlineDeleteConfirm extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(fontSize: 13, color: Color(0xFFC97F7F)),
+            style: TextStyle(fontSize: 13, color: AppColors.errorText),
           ),
         ),
         const SizedBox(width: 8),
@@ -1017,7 +1017,7 @@ class _InlineDeleteConfirm extends StatelessWidget {
           onPressed: onCancel,
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.mute,
-            side: const BorderSide(color: AppColors.line),
+            side: BorderSide(color: AppColors.line),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           ),
           child: const Text(
@@ -1156,7 +1156,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.card,
               borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
             ),
@@ -1196,12 +1196,12 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
             ),
             child: Row(
               children: [
-                const Icon(LucideIcons.user, size: 13, color: AppColors.gold),
+                Icon(LucideIcons.user, size: 13, color: AppColors.gold),
                 const SizedBox(width: 8),
                 Expanded(
                   child: RichText(
                     text: TextSpan(
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.mute,
                       ),
@@ -1209,7 +1209,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
                         const TextSpan(text: "Will be assigned to "),
                         TextSpan(
                           text: clientName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.txt,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1225,7 +1225,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
             ),
           )
         else
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(bottom: 12),
             child: Text(
               "Saving as a reusable template in the Programs Library — no client assigned yet.",
@@ -1238,7 +1238,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               _err!,
-              style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12),
+              style: TextStyle(color: AppColors.errorText, fontSize: 12),
             ),
           ),
         const SizedBox(height: 16),
@@ -1273,7 +1273,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
         const SizedBox(height: 12),
         Text(
           '"$name" saved!',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 17,
             color: AppColors.grn,
@@ -1283,7 +1283,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
         Text(
           "Saved to ${clientName != null ? "$clientName's profile" : "Programs Library"}. You can keep editing — nothing has been reset.",
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 13, color: AppColors.mute),
+          style: TextStyle(fontSize: 13, color: AppColors.mute),
         ),
         const SizedBox(height: 20),
         Row(
@@ -1293,7 +1293,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
                 onPressed: _doReset,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.mute,
-                  side: const BorderSide(color: AppColors.line),
+                  side: BorderSide(color: AppColors.line),
                   padding: const EdgeInsets.symmetric(vertical: 11),
                 ),
                 child: const Text(
@@ -1309,7 +1309,7 @@ class _SaveProgramSheetState extends ConsumerState<_SaveProgramSheet> {
                 style: OutlinedButton.styleFrom(
                   backgroundColor: const Color(0x1FD9D9D9),
                   foregroundColor: AppColors.gold,
-                  side: const BorderSide(color: AppColors.goldDim),
+                  side: BorderSide(color: AppColors.goldDim),
                   padding: const EdgeInsets.symmetric(vertical: 11),
                 ),
                 child: const Text(

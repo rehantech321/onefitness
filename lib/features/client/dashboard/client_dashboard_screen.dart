@@ -166,7 +166,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
           const SizedBox(height: 2),
           stag(Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: Text(dayLabel(isoToday()), style: const TextStyle(fontSize: 13, color: AppColors.mute)),
+            child: Text(dayLabel(isoToday()), style: TextStyle(fontSize: 13, color: AppColors.mute)),
           )),
 
           if (widget.earnedBadges.any((b) => b.clientId == info.id && b.isActive)) ...[
@@ -221,12 +221,12 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                         const SizedBox(height: 1),
                         Text(
                           "${habitStreak(client)} day streak · ${((done / habits.length) * 100).round()}% today",
-                          style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                          style: TextStyle(fontSize: 11, color: AppColors.mute),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                  Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
                 ],
               ),
             )),
@@ -242,7 +242,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
               child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "NEXT SESSION",
                   style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 1),
                 ),
@@ -256,9 +256,9 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        const Icon(LucideIcons.mapPin, size: 12, color: AppColors.gold),
+                        Icon(LucideIcons.mapPin, size: 12, color: AppColors.gold),
                         const SizedBox(width: 4),
-                        Text(_next!.locationName!, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                        Text(_next!.locationName!, style: TextStyle(fontSize: 12, color: AppColors.mute)),
                       ],
                     ),
                   ],
@@ -277,7 +277,7 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       "Starts now against tonight's booking.",
                       style: TextStyle(fontSize: 11, color: AppColors.mute),
                     ),
@@ -287,14 +287,14 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                     onPressed: widget.onGoBooking,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.gold,
-                      side: const BorderSide(color: AppColors.line),
+                      side: BorderSide(color: AppColors.line),
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                     child: const Text("Manage sessions", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                   ),
                 ] else ...[
-                  const Text("No upcoming sessions booked.", style: TextStyle(fontSize: 13, color: AppColors.mute)),
+                  Text("No upcoming sessions booked.", style: TextStyle(fontSize: 13, color: AppColors.mute)),
                   const SizedBox(height: 10),
                   BtnGold(onPressed: widget.onGoBooking, child: const Text("Book a session", style: TextStyle(fontSize: 13))),
                 ],
@@ -316,12 +316,12 @@ class _ClientDashboardScreenState extends ConsumerState<ClientDashboardScreen> {
                       const Text("Today's workout", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                       Text(
                         _loggedToday ? "Logged — tap to review or edit" : "Tap to log your session",
-                        style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                        style: TextStyle(fontSize: 12, color: AppColors.mute),
                       ),
                     ],
                   ),
                 ),
-                const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
+                Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
               ],
             ),
           )),
@@ -373,12 +373,12 @@ class _OnboardingSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "COMPLETE YOUR ONBOARDING",
             style: TextStyle(fontSize: 12, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5),
           ),
           if (noPurchaseYet)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 4),
               child: Row(
                 children: [
@@ -399,7 +399,7 @@ class _OnboardingSection extends StatelessWidget {
               width: double.infinity,
               child: _IntakeButton(icon: LucideIcons.phone, label: "Book Intake Call", onTap: onBookIntake),
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8, bottom: 8),
               child: Text(
                 "Or fill out your intake forms below to complete on your own.",
@@ -440,7 +440,7 @@ class _IntakeButton extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         backgroundColor: AppColors.gold.withValues(alpha: 0.12),
         foregroundColor: AppColors.gold,
-        side: const BorderSide(color: AppColors.goldDim),
+        side: BorderSide(color: AppColors.goldDim),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
@@ -482,13 +482,13 @@ class _OnboardingStepCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(step.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.txt)),
+                Text(step.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.txt)),
                 const SizedBox(height: 1),
-                Text(step.sub, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                Text(step.sub, style: TextStyle(fontSize: 11, color: AppColors.mute)),
               ],
             ),
           ),
-          const SizedBox(
+          SizedBox(
             width: 7,
             height: 7,
             child: DecoratedBox(decoration: BoxDecoration(color: AppColors.danger, shape: BoxShape.circle)),

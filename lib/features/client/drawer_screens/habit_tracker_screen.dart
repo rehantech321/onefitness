@@ -61,7 +61,7 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
           padding: const EdgeInsets.all(40),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: const [
+            children: [
               Text("\u{1F525}", style: TextStyle(fontSize: 32)),
               SizedBox(height: 10),
               Text("No habits yet", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
@@ -145,7 +145,7 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
                         border: Border.all(color: done ? AppColors.grn : AppColors.line, width: 1.5),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: done ? const Icon(LucideIcons.check, size: 14, color: AppColors.onGold) : null,
+                      child: done ? Icon(LucideIcons.check, size: 14, color: AppColors.onGold) : null,
                     ),
                   ],
                 ),
@@ -164,7 +164,7 @@ class _HabitTrackerScreenState extends ConsumerState<HabitTrackerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "DAILY CHECK-IN",
                     style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                   ),

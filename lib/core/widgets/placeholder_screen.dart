@@ -17,12 +17,12 @@ class PlaceholderScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(LucideIcons.hammer, size: 28, color: AppColors.goldDim),
+            Icon(LucideIcons.hammer, size: 28, color: AppColors.goldDim),
             const SizedBox(height: 12),
             Text(
               "$title — coming in a later pass",
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.mute, fontSize: 13),
+              style: TextStyle(color: AppColors.mute, fontSize: 13),
             ),
           ],
         ),

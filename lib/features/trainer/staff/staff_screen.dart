@@ -193,12 +193,12 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
               SectionLabel("Trainers (${trainers.length})"),
               TextButton.icon(
                 onPressed: () => setState(() => _creating = true),
-                icon: const Icon(
+                icon: Icon(
                   LucideIcons.plus,
                   size: 14,
                   color: AppColors.gold,
                 ),
-                label: const Text(
+                label: Text(
                   "Trainer",
                   style: TextStyle(
                     color: AppColors.gold,
@@ -232,7 +232,7 @@ class _StaffScreenState extends ConsumerState<StaffScreen> {
                           ),
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         LucideIcons.edit3,
                         size: 15,
                         color: AppColors.mute,
@@ -312,7 +312,7 @@ class _AvailSummary extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 2),
                 child: Icon(LucideIcons.clock, size: 12, color: AppColors.gold),
               ),
@@ -323,7 +323,7 @@ class _AvailSummary extends StatelessWidget {
                   children: [
                     Text(
                       "${sessionTypeLabel(b.sessionType)} · ${disciplineLabel(b.discipline)}",
-                      style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
+                      style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
                     ),
                     ...working.map((e) {
                       final slots = [...b.byDay[e.key]!]..sort();
@@ -331,11 +331,11 @@ class _AvailSummary extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 2),
                         child: RichText(
                           text: TextSpan(
-                            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                            style: TextStyle(fontSize: 12, color: AppColors.mute),
                             children: [
                               TextSpan(
                                 text: "${e.value}  ",
-                                style: const TextStyle(color: AppColors.txt, fontWeight: FontWeight.w700),
+                                style: TextStyle(color: AppColors.txt, fontWeight: FontWeight.w700),
                               ),
                               TextSpan(text: slots.map(fmtSlotShort).join(" ")),
                             ],
@@ -369,7 +369,7 @@ class _IconLine extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             text,
-            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+            style: TextStyle(fontSize: 11, color: AppColors.mute),
           ),
         ],
       ),

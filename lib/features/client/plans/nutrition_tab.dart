@@ -142,12 +142,12 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
                     children: [
                       Text(
                         "${targets[key]}${unit == '%' ? '%' : ''}",
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.gold),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.gold),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         macroShortLabel(key).toUpperCase(),
-                        style: const TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 0.5),
+                        style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 0.5),
                       ),
                     ],
                   ),
@@ -212,7 +212,7 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.gold,
-                    side: const BorderSide(color: AppColors.line),
+                    side: BorderSide(color: AppColors.line),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -231,10 +231,10 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(it.item, style: const TextStyle(fontSize: 13, color: AppColors.txt)),
+                              Text(it.item, style: TextStyle(fontSize: 13, color: AppColors.txt)),
                               Text(
                                 "${fmtQty(it.qty)}${it.unit != null ? ' ${it.unit}' : ''}",
-                                style: const TextStyle(fontSize: 13, color: AppColors.mute),
+                                style: TextStyle(fontSize: 13, color: AppColors.mute),
                               ),
                             ],
                           ),
@@ -247,7 +247,7 @@ class _NutritionTabState extends ConsumerState<NutritionTab> {
           if (n.guidelines != null && n.guidelines!.isNotEmpty) ...[
             const SectionLabel("Guidelines"),
             AppCard(
-              child: Text(n.guidelines!, style: const TextStyle(fontSize: 13, color: AppColors.txt, height: 1.6)),
+              child: Text(n.guidelines!, style: TextStyle(fontSize: 13, color: AppColors.txt, height: 1.6)),
             ),
           ],
 
@@ -318,7 +318,7 @@ class _CalorieBudgetPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             "CALORIE BUDGET · REFERENCE ONLY",
             style: TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 1),
           ),
@@ -337,10 +337,10 @@ class _CalorieBudgetPanel extends StatelessWidget {
             children: [
               RichText(
                 text: TextSpan(
-                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
                   children: [
                     const TextSpan(text: "Total: "),
-                    TextSpan(text: "$allocated kcal", style: const TextStyle(color: AppColors.txt, fontWeight: FontWeight.w700)),
+                    TextSpan(text: "$allocated kcal", style: TextStyle(color: AppColors.txt, fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -370,7 +370,7 @@ class _CalorieBudgetPanel extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             "Daily target: ${dailyCalTarget > 0 ? '$dailyCalTarget kcal' : 'not set'}",
-            style: const TextStyle(fontSize: 9, color: AppColors.mute),
+            style: TextStyle(fontSize: 9, color: AppColors.mute),
           ),
         ],
       ),
@@ -394,7 +394,7 @@ class _BudgetBox extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 8.5, color: AppColors.mute, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 8.5, color: AppColors.mute, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 3),
             Container(
@@ -477,13 +477,13 @@ class _MealSection extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(child: Text(meal.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
-                        const Text("Your pick", style: TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.w700)),
+                        Text("Your pick", style: TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.w700)),
                         if (onRemoveChoice != null)
                           IconButton(
                             tooltip: "Remove",
                             visualDensity: VisualDensity.compact,
                             onPressed: () => onRemoveChoice!(meal),
-                            icon: const Icon(Icons.close, size: 16, color: AppColors.mute),
+                            icon: Icon(Icons.close, size: 16, color: AppColors.mute),
                           ),
                       ],
                     ),
@@ -507,10 +507,10 @@ class _MealSection extends StatelessWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(ing.item, style: const TextStyle(fontSize: 13, color: AppColors.txt)),
+                              Text(ing.item, style: TextStyle(fontSize: 13, color: AppColors.txt)),
                               Text(
                                 "${fmtQty(ing.qty)}${ing.unit != null ? ' ${ing.unit}' : ''}",
-                                style: const TextStyle(fontSize: 13, color: AppColors.mute),
+                                style: TextStyle(fontSize: 13, color: AppColors.mute),
                               ),
                             ],
                           ),
@@ -545,7 +545,7 @@ class _MealSection extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(child: Text(meal.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
-                        if (meal.time != null) Text(meal.time!, style: const TextStyle(fontSize: 12, color: AppColors.gold)),
+                        if (meal.time != null) Text(meal.time!, style: TextStyle(fontSize: 12, color: AppColors.gold)),
                       ],
                     ),
                     if (meal.calories > 0 || meal.protein > 0) ...[
@@ -564,16 +564,16 @@ class _MealSection extends StatelessWidget {
                     ],
                     ...meal.ingredients.map((ing) => Container(
                           padding: const EdgeInsets.symmetric(vertical: 5),
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             border: Border(bottom: BorderSide(color: AppColors.line)),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(ing.item, style: const TextStyle(fontSize: 13, color: AppColors.txt)),
+                              Text(ing.item, style: TextStyle(fontSize: 13, color: AppColors.txt)),
                               Text(
                                 "${fmtQty(ing.qty)}${ing.unit != null ? ' ${ing.unit}' : ''}",
-                                style: const TextStyle(fontSize: 13, color: AppColors.mute),
+                                style: TextStyle(fontSize: 13, color: AppColors.mute),
                               ),
                             ],
                           ),
@@ -581,7 +581,7 @@ class _MealSection extends StatelessWidget {
                     if (meal.notes != null && meal.notes!.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Text(meal.notes!, style: const TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
+                        child: Text(meal.notes!, style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
                       ),
                   ],
                 ),
@@ -605,8 +605,8 @@ class _MacroChip extends StatelessWidget {
       decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(7)),
       child: Column(
         children: [
-          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold)),
-          Text(label, style: const TextStyle(fontSize: 9, color: AppColors.mute, letterSpacing: 0.3)),
+          Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold)),
+          Text(label, style: TextStyle(fontSize: 9, color: AppColors.mute, letterSpacing: 0.3)),
         ],
       ),
     );

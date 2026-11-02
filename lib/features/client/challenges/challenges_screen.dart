@@ -64,7 +64,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
         children: [
           const SectionLabel("Challenges"),
           if (joined.isNotEmpty) ...[
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: Text(
                 "YOU'RE IN",
@@ -87,7 +87,7 @@ class _ChallengesScreenState extends ConsumerState<ChallengesScreen> {
             const SizedBox(height: 12),
           ],
           if (available.isNotEmpty) ...[
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: Text(
                 "AVAILABLE TO JOIN",
@@ -189,7 +189,7 @@ class _ChallengeCard extends ConsumerWidget {
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         "${tpl.typeLabel} · ${challenge.participantIds.length} registered",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           color: AppColors.mute,
                         ),
@@ -198,7 +198,7 @@ class _ChallengeCard extends ConsumerWidget {
                     if (daysLeft > 0)
                       Text(
                         "$daysLeft day${daysLeft != 1 ? 's' : ''} left",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           color: AppColors.mute,
                         ),
@@ -208,7 +208,7 @@ class _ChallengeCard extends ConsumerWidget {
                         padding: const EdgeInsets.only(top: 3),
                         child: Text(
                           "\u{1F381} Prize: ${challenge.prize}",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             color: AppColors.gold,
                           ),
@@ -223,7 +223,7 @@ class _ChallengeCard extends ConsumerWidget {
                             if (challenge.rewardProductId != null)
                               ref.watch(productsProvider).where((p) => p.id == challenge.rewardProductId).map((p) => p.name).firstOrNull ?? "a product",
                           ].join(" + ")}",
-                          style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
                         ),
                       ),
                   ],
@@ -233,7 +233,7 @@ class _ChallengeCard extends ConsumerWidget {
                 onPressed: onTap,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.mute,
-                  side: const BorderSide(color: AppColors.line),
+                  side: BorderSide(color: AppColors.line),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 6,
@@ -253,7 +253,7 @@ class _ChallengeCard extends ConsumerWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.gold,
                     backgroundColor: AppColors.gold.withValues(alpha: 0.1),
-                    side: const BorderSide(color: AppColors.goldDim),
+                    side: BorderSide(color: AppColors.goldDim),
                     padding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   child: const Text(

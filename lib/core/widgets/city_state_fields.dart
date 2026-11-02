@@ -108,7 +108,7 @@ class CityStateFields extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               helper!,
-              style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+              style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
             ),
           ),
       ],

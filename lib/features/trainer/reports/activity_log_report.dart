@@ -37,7 +37,7 @@ class _ActivityLogReportState extends ConsumerState<ActivityLogReport> {
     final async = ref.watch(activityLogProvider);
 
     return async.when(
-      loading: () => const Padding(
+      loading: () => Padding(
         padding: EdgeInsets.all(24),
         child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
       ),
@@ -157,7 +157,7 @@ class _Row extends StatelessWidget {
                   // "System" is the honest answer for a Stripe webhook or a
                   // scheduled job — better than attributing it to a person.
                   "${entry.actorName ?? "System"} · $_when",
-                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
                 ),
               ],
             ),

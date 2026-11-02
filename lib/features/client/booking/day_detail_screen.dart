@@ -115,7 +115,7 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
               ),
           ],
         ),
@@ -166,7 +166,7 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                       : doneSets.map((s) => "${s.completedReps ?? 0}×${s.completedWeight != null ? "${s.completedWeight} lb" : "BW"}").join(", ");
                   return Container(
                     padding: const EdgeInsets.symmetric(vertical: 7),
-                    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+                    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -174,13 +174,13 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             if (doneSets.isNotEmpty) ...[
-                              const Icon(LucideIcons.check, size: 13, color: AppColors.gold),
+                              Icon(LucideIcons.check, size: 13, color: AppColors.gold),
                               const SizedBox(width: 6),
                             ],
                             Text(ex.name, style: const TextStyle(fontSize: 13)),
                           ],
                         ),
-                        Text(summary, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                        Text(summary, style: TextStyle(fontSize: 12, color: AppColors.mute)),
                       ],
                     ),
                   );
@@ -200,7 +200,7 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("COACH'S NOTE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gold, letterSpacing: 0.5)),
+                      Text("COACH'S NOTE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gold, letterSpacing: 0.5)),
                       const SizedBox(height: 4),
                       Text(log.coachComment!, style: const TextStyle(fontSize: 13)),
                     ],
@@ -217,7 +217,7 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(LucideIcons.calendarCheck, size: 17, color: AppColors.gold),
+                        Icon(LucideIcons.calendarCheck, size: 17, color: AppColors.gold),
                         const SizedBox(width: 10),
                         Text(fmtSlot(b.slot), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                       ],
@@ -225,21 +225,21 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                     const SizedBox(height: 6),
                     Text(
                       "${trainer?.name ?? "Coach"} · ${disciplineLabel(b.discipline)}",
-                      style: const TextStyle(fontSize: 13, color: AppColors.mute),
+                      style: TextStyle(fontSize: 13, color: AppColors.mute),
                     ),
                     if (b.locationName != null) ...[
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          const Icon(LucideIcons.mapPin, size: 12, color: AppColors.gold),
+                          Icon(LucideIcons.mapPin, size: 12, color: AppColors.gold),
                           const SizedBox(width: 4),
-                          Text(b.locationName!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.gold)),
+                          Text(b.locationName!, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.gold)),
                         ],
                       ),
                     ],
                     if (isPast) ...[
                       const SizedBox(height: 12),
-                      const Text(
+                      Text(
                         "This session wasn't logged.",
                         style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic),
                       ),
@@ -249,26 +249,26 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                         child: Container(
                           margin: const EdgeInsets.only(top: 14),
                           padding: const EdgeInsets.only(top: 12),
-                          decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+                          decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                           child: Row(
                             children: [
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       "YOUR ASSIGNED WORKOUT",
                                       style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 1),
                                     ),
                                     const SizedBox(height: 3),
                                     Text(
                                       client.savedPrograms.isEmpty ? "No program assigned yet" : "View full plan",
-                                      style: const TextStyle(fontSize: 13, color: AppColors.txt),
+                                      style: TextStyle(fontSize: 13, color: AppColors.txt),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
+                              Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
                             ],
                           ),
                         ),
@@ -283,7 +283,7 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                                   onPressed: () => widget.onReschedule(b),
                                   style: OutlinedButton.styleFrom(
                                     backgroundColor: AppColors.gold.withValues(alpha: 0.12),
-                                    side: const BorderSide(color: AppColors.goldDim),
+                                    side: BorderSide(color: AppColors.goldDim),
                                     foregroundColor: AppColors.gold,
                                     padding: const EdgeInsets.symmetric(vertical: 9),
                                   ),
@@ -295,8 +295,8 @@ class _DayDetailScreenState extends ConsumerState<DayDetailScreen> {
                               child: OutlinedButton(
                                 onPressed: () => setState(() => _cancelTarget = b),
                                 style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: AppColors.line),
-                                  foregroundColor: const Color(0xFFC97F7F),
+                                  side: BorderSide(color: AppColors.line),
+                                  foregroundColor: AppColors.errorText,
                                   padding: const EdgeInsets.symmetric(vertical: 9),
                                 ),
                                 child: const Text("Cancel", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),

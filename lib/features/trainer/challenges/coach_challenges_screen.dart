@@ -88,8 +88,8 @@ class _CoachChallengesScreenState extends ConsumerState<CoachChallengesScreen> {
               const SectionLabel("Challenges"),
               TextButton.icon(
                 onPressed: () => setState(() => _creating = true),
-                icon: const Icon(LucideIcons.plus, size: 14, color: AppColors.gold),
-                label: const Text(
+                icon: Icon(LucideIcons.plus, size: 14, color: AppColors.gold),
+                label: Text(
                   "Create",
                   style: TextStyle(color: AppColors.gold, fontWeight: FontWeight.w700, fontSize: 12),
                 ),
@@ -161,24 +161,24 @@ class _ChallengeRow extends ConsumerWidget {
                 const SizedBox(height: 2),
                 Text(
                   "${tpl.typeLabel} · ${challenge.participantIds.length} registered",
-                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
                 ),
                 Text(
                   "${challenge.startDate} → ${challenge.endDate}${daysLeft > 0 ? " · ${daysLeft}d left" : " · Ended"}",
-                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
                 ),
                 if (challenge.prize != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
                     child: Text(
                       "\u{1F381} ${challenge.prize}",
-                      style: const TextStyle(fontSize: 11, color: AppColors.gold),
+                      style: TextStyle(fontSize: 11, color: AppColors.gold),
                     ),
                   ),
               ],
             ),
           ),
-          const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+          Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
         ],
       ),
     );
@@ -337,7 +337,7 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
                     Text(challenge.name, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
                     Text(
                       "${tpl.typeLabel} · ${isEnded ? "Ended" : isActive ? "Active" : "Upcoming"}",
-                      style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                      style: TextStyle(fontSize: 12, color: AppColors.mute),
                     ),
                   ],
                 ),
@@ -377,7 +377,7 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       challenge.description!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.mute,
                         fontStyle: FontStyle.italic,
@@ -400,13 +400,13 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "PICK WINNER",
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold),
                   ),
                   const SizedBox(height: 8),
                   if (ranked.isEmpty)
-                    const Text("No one registered yet.", style: TextStyle(fontSize: 12, color: AppColors.mute))
+                    Text("No one registered yet.", style: TextStyle(fontSize: 12, color: AppColors.mute))
                   else
                     ...ranked.map((e) {
                       final isWinner = challenge.winnerClientId == e.clientId;
@@ -493,7 +493,7 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
                         const Padding(padding: EdgeInsets.only(right: 8), child: Text("\u{1F3C6}", style: TextStyle(fontSize: 16))),
                       Text(
                         "${_fmtScore(e.score)}${showPercent ? "%" : ""}",
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.txt),
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.txt),
                       ),
                     ],
                   ),
@@ -503,11 +503,11 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.only(top: 14),
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
             child: OutlinedButton(
               onPressed: _confirmAndDelete,
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFC97F7F),
+                foregroundColor: AppColors.errorText,
                 side: const BorderSide(color: Color(0xFF6B3B3B)),
               ),
               child: const Text("Delete challenge"),
@@ -522,10 +522,12 @@ class _CoachChallengeDetailState extends ConsumerState<_CoachChallengeDetail> {
 String _fmtScore(double score) => score % 1 == 0 ? score.toInt().toString() : score.toString();
 
 class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.label, required this.value, this.labelColor = AppColors.txt});
+  _InfoLine({required this.label, required this.value, this.labelColor});
   final String label;
   final String value;
-  final Color labelColor;
+  /// Null means ordinary body text. Can't default to
+  /// AppColors.txt in the constructor any more — it's a getter now.
+  final Color? labelColor;
 
   @override
   Widget build(BuildContext context) {
@@ -533,9 +535,9 @@ class _InfoLine extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 2),
       child: RichText(
         text: TextSpan(
-          style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.6),
+          style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.6),
           children: [
-            TextSpan(text: "$label ", style: TextStyle(color: labelColor, fontWeight: FontWeight.w700)),
+            TextSpan(text: "$label ", style: TextStyle(color: labelColor ?? AppColors.txt, fontWeight: FontWeight.w700)),
             TextSpan(text: value),
           ],
         ),
@@ -786,7 +788,7 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
             BtnGhost(
               full: true,
               onPressed: () => setState(() => _definingType = true),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -884,8 +886,8 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
                         value: _rewardProductId,
                         underline: const SizedBox(),
                         dropdownColor: AppColors.card,
-                        hint: const Text("Product", style: TextStyle(color: AppColors.mute, fontSize: 12)),
-                        style: const TextStyle(color: AppColors.txt, fontSize: 12),
+                        hint: Text("Product", style: TextStyle(color: AppColors.mute, fontSize: 12)),
+                        style: TextStyle(color: AppColors.txt, fontSize: 12),
                         items: [
                           const DropdownMenuItem<String?>(value: null, child: Text("No product")),
                           for (final p in products) DropdownMenuItem<String?>(value: p.id, child: Text(p.name)),
@@ -915,7 +917,7 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
                     isExpanded: true,
                     underline: const SizedBox(),
                     dropdownColor: AppColors.card,
-                    style: const TextStyle(color: AppColors.txt, fontSize: 14),
+                    style: TextStyle(color: AppColors.txt, fontSize: 14),
                     items: [
                       const DropdownMenuItem<String?>(value: null, child: Text("All clients")),
                       for (final t in trainers) DropdownMenuItem<String?>(value: t.id, child: Text("${t.displayTitle} — their clients only")),
@@ -948,7 +950,7 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
               padding: const EdgeInsets.only(top: 6, bottom: 4),
               child: Text(
                 "Registration opens ${isoDate(_startDate!.subtract(const Duration(days: 6)))} · Closes on start date",
-                style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                style: TextStyle(fontSize: 11, color: AppColors.mute),
               ),
             ),
           const SizedBox(height: 10),
@@ -987,7 +989,7 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
                 _winnerMode == "auto"
                     ? 'Auto: highest "$tplMetric" at end date wins.'
                     : "Coach picks winner manually after the challenge ends.",
-                style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                style: TextStyle(fontSize: 11, color: AppColors.mute),
               ),
             ),
           ] else
@@ -1000,13 +1002,13 @@ class _CreateChallengeFormState extends ConsumerState<_CreateChallengeForm> {
                     // the useful thing to say — the metric is the gym's own
                     // wording and doesn't reveal how the ranking is produced.
                     : 'Winner: highest "$tplMetric" at the end date, from ${scoringBasisFor(custom.basis)?.label.toLowerCase() ?? "the tracking you chose"}.',
-                style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                style: TextStyle(fontSize: 11, color: AppColors.mute),
               ),
             ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Text(_error!, style: const TextStyle(color: Color(0xFFE05555), fontSize: 13)),
+              child: Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
             ),
           const SizedBox(height: 16),
           BtnGold(full: true, onPressed: _save, child: const Text("Create Challenge")),
@@ -1053,23 +1055,23 @@ class _TypeCard extends StatelessWidget {
                 Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                 if (description.isNotEmpty) ...[
                   const SizedBox(height: 3),
-                  Text(description, style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4)),
+                  Text(description, style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4)),
                 ],
                 const SizedBox(height: 4),
-                Text(footer, style: const TextStyle(fontSize: 11, color: AppColors.gold)),
+                Text(footer, style: TextStyle(fontSize: 11, color: AppColors.gold)),
               ],
             ),
           ),
           if (onDelete != null)
             IconButton(
               onPressed: onDelete,
-              icon: const Icon(LucideIcons.trash2, size: 15, color: AppColors.mute),
+              icon: Icon(LucideIcons.trash2, size: 15, color: AppColors.mute),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
               tooltip: "Remove this type",
             )
           else
-            const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+            Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
         ],
       ),
     );
@@ -1183,7 +1185,7 @@ class _CreateChallengeTypeFormState extends ConsumerState<_CreateChallengeTypeFo
           const SizedBox(height: 10),
           const SectionLabel("New challenge type"),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             "Define a type once and build as many challenges from it as you like, the same way you would from the built-in ones.",
             style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.45),
           ),
@@ -1260,7 +1262,7 @@ class _CreateChallengeTypeFormState extends ConsumerState<_CreateChallengeTypeFo
                                 const SizedBox(height: 2),
                                 Text(
                                   b.detail,
-                                  style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                                  style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                                 ),
                               ],
                             ),
@@ -1281,7 +1283,7 @@ class _CreateChallengeTypeFormState extends ConsumerState<_CreateChallengeTypeFo
               placeholder: basis == null ? "Pick how it's tracked first" : scoringBasisFor(basis)!.label,
             ),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 5),
             child: Text(
               "Wording only — it's the label clients see above the leaderboard. Leave it blank to use the tracking name.",
@@ -1323,7 +1325,7 @@ class _CreateChallengeTypeFormState extends ConsumerState<_CreateChallengeTypeFo
               ),
             ),
           ] else
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 14),
               child: Text(
                 "This type will be yours — it won't appear for other coaches.",
@@ -1333,7 +1335,7 @@ class _CreateChallengeTypeFormState extends ConsumerState<_CreateChallengeTypeFo
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Text(_error!, style: const TextStyle(color: Color(0xFFE05555), fontSize: 13)),
+              child: Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 13)),
             ),
           const SizedBox(height: 16),
           BtnGold(

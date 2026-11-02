@@ -12,7 +12,10 @@ class _DirMeta {
   final String label;
 }
 
-const _dirMeta = {
+// Rebuilt on each read rather than held in a `final`: a lazily-initialised
+// field would capture whichever palette happened to be active the first
+// time it was touched and keep those colours after a theme switch.
+Map<String, _DirMeta> get _dirMeta => {
   "up": _DirMeta(arrow: "↑", color: Color(0xFF00E676), label: "Increased"),
   "down": _DirMeta(arrow: "↓", color: AppColors.danger, label: "Decreased"),
   "same": _DirMeta(arrow: "=", color: AppColors.gold, label: "Maintained"),
@@ -45,7 +48,7 @@ class HistoryScreen extends ConsumerWidget {
           const SectionLabel("Your history"),
           ...days.map((day) => CollapsibleSection(
                 title: day.dayTitle,
-                meta: Text(_niceDate(day.date), style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                meta: Text(_niceDate(day.date), style: TextStyle(fontSize: 11, color: AppColors.mute)),
                 children: day.exercises
                     .map((ex) => CollapsibleSection(
                           title: ex.name,
@@ -56,18 +59,18 @@ class HistoryScreen extends ConsumerWidget {
                           children: ex.sets
                               .map((s) => Container(
                                     padding: const EdgeInsets.symmetric(vertical: 7),
-                                    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+                                    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text("Set ${s.setNum}", style: const TextStyle(fontSize: 13, color: AppColors.mute)),
+                                        Text("Set ${s.setNum}", style: TextStyle(fontSize: 13, color: AppColors.mute)),
                                         Row(
                                           children: [
                                             Text(
                                               s.prevWeight != null
                                                   ? "${_fmtNum(s.prevWeight!)} lbs → ${_fmtNum(s.weight)} lbs"
                                                   : "${_fmtNum(s.weight)} lbs",
-                                              style: const TextStyle(fontSize: 13, color: AppColors.txt),
+                                              style: TextStyle(fontSize: 13, color: AppColors.txt),
                                             ),
                                             const SizedBox(width: 6),
                                             Text(

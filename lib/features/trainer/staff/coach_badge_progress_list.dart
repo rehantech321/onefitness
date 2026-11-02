@@ -68,14 +68,14 @@ class CoachBadgeProgressList extends ConsumerWidget {
                         ),
                         Text(
                           "\$${((rewardCentsByKey[b.badgeKey] ?? 0) / 100).toStringAsFixed(2)}",
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.gold),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.gold),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(kCoachBadgeDescriptions[b.badgeKey] ?? "", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                    Text(kCoachBadgeDescriptions[b.badgeKey] ?? "", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                     const SizedBox(height: 4),
-                    Text(b.detail, style: const TextStyle(fontSize: 11, color: AppColors.txt)),
+                    Text(b.detail, style: TextStyle(fontSize: 11, color: AppColors.txt)),
                   ],
                 ),
               ))

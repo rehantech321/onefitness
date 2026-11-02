@@ -33,7 +33,7 @@ class MiniField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+          style: TextStyle(fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5),
         ),
         const SizedBox(height: 3),
         TextField(
@@ -49,17 +49,17 @@ class MiniField extends StatelessWidget {
           onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-          style: const TextStyle(color: AppColors.txt, fontSize: 13),
+          style: TextStyle(color: AppColors.txt, fontSize: 13),
           decoration: InputDecoration(
             hintText: ph,
-            hintStyle: const TextStyle(color: AppColors.mute),
+            hintStyle: TextStyle(color: AppColors.mute),
             filled: true,
             fillColor: AppColors.bg,
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.gold)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.gold)),
           ),
         ),
       ],

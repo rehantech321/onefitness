@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/program_utils.dart";
+import "../../../core/widgets/exercise_video.dart";
 import "../../../data/models/client_record.dart";
 import "../../../data/models/exercise_prescription.dart";
 import "../../../data/providers/trainer_providers.dart";
@@ -99,7 +100,7 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
                   border: Border.all(color: AppColors.goldDim),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: const Text(
+                child: Text(
                   "UNILATERAL",
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.gold, letterSpacing: 0.5),
                 ),
@@ -115,50 +116,63 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
               runSpacing: 10,
               children: [
                 if (exercise.weight != null)
-                  Text("@ ${exercise.weight} $_unit", style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600)),
+                  Text("@ ${exercise.weight} $_unit", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600)),
                 if (exercise.time != null)
-                  Text("Time: ${exercise.time}", style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600)),
+                  Text("Time: ${exercise.time}", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600)),
                 if (exercise.distance != null)
-                  Text("Distance: ${exercise.distance}", style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600)),
+                  Text("Distance: ${exercise.distance}", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600)),
                 if (exercise.rest != null)
-                  Text("Rest: ${exercise.rest}", style: const TextStyle(fontSize: 12, color: AppColors.mute, fontWeight: FontWeight.w600)),
+                  Text("Rest: ${exercise.rest}", style: TextStyle(fontSize: 12, color: AppColors.mute, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
         if (exercise.notes != null && exercise.notes!.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text(exercise.notes!, style: const TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
+            child: Text(exercise.notes!, style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
           ),
         // The catalogue's coaching cues are for the client — how to do the
         // movement. Its coachNotes are deliberately not read here: those are
         // the coach's private notes about the exercise and never reach the
         // client's screen.
+        // The demo clip a coach filmed comes from the same catalogue entry,
+        // so both are resolved from one lookup.
         Consumer(builder: (context, ref, _) {
           final catalog = ref.watch(exerciseCatalogProvider);
           final matches = catalog.where((d) =>
               (exercise.exerciseId != null && d.id == exercise.exerciseId) ||
               (exercise.exerciseId == null && d.name.toLowerCase() == exercise.name.toLowerCase()));
-          final cues = matches.isEmpty ? null : matches.first.cues;
-          if (cues == null || cues.trim().isEmpty) return const SizedBox.shrink();
+          final def = matches.isEmpty ? null : matches.first;
+          final cues = (def?.cues ?? "").trim();
+          final videoPath = def?.videoPath ?? "";
+          if (cues.isEmpty && videoPath.isEmpty) return const SizedBox.shrink();
           return Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.gold.withValues(alpha: 0.08),
-                border: Border.all(color: AppColors.goldDim),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("CUES", style: TextStyle(fontSize: 9.5, color: AppColors.gold, fontWeight: FontWeight.w800, letterSpacing: 1)),
-                  const SizedBox(height: 2),
-                  Text(cues, style: const TextStyle(fontSize: 12, color: AppColors.txt, height: 1.4)),
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (videoPath.isNotEmpty)
+                  WatchDemoButton(title: exercise.name, videoPath: videoPath),
+                if (videoPath.isNotEmpty && cues.isNotEmpty) const SizedBox(height: 6),
+                if (cues.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.gold.withValues(alpha: 0.08),
+                      border: Border.all(color: AppColors.goldDim),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("CUES", style: TextStyle(fontSize: 9.5, color: AppColors.gold, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                        const SizedBox(height: 2),
+                        Text(cues, style: TextStyle(fontSize: 12, color: AppColors.txt, height: 1.4)),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           );
         }),
@@ -180,7 +194,7 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
                     child: Text(
                       "SET $n",
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.mute, letterSpacing: 1),
+                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.mute, letterSpacing: 1),
                     ),
                   ),
               ]),
@@ -220,7 +234,7 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
       child: Text(
         exercise.reps > 0 ? "${exercise.reps}" : "—",
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.gold),
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.gold),
       ),
     ));
   }
@@ -245,7 +259,7 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
           contentPadding: const EdgeInsets.symmetric(vertical: 7),
           border: InputBorder.none,
           hintText: exercise.reps > 0 ? "${exercise.reps}" : "",
-          hintStyle: const TextStyle(color: AppColors.mute),
+          hintStyle: TextStyle(color: AppColors.mute),
         ),
         onChanged: (v) {
           widget.onSetChange(exercise.name, setNum, "reps", int.tryParse(v));
@@ -262,7 +276,7 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
     return _cellWrap(Container(
       padding: const EdgeInsets.symmetric(vertical: 7),
       decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
-      child: Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+      child: Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.mute)),
     ));
   }
 
@@ -321,7 +335,7 @@ class _ExerciseSetGridState extends State<ExerciseSetGrid> {
           contentPadding: const EdgeInsets.symmetric(vertical: 7),
           border: InputBorder.none,
           hintText: last.weight > 0 ? _fmtNum(last.weight) : (suggested != null ? _fmtNum(suggested) : ""),
-          hintStyle: const TextStyle(color: AppColors.mute),
+          hintStyle: TextStyle(color: AppColors.mute),
         ),
         onChanged: (v) {
           widget.onSetChange(exercise.name, setNum, "weight", double.tryParse(v));
@@ -340,7 +354,7 @@ class _RowLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.5),
-      child: Text(text, style: const TextStyle(fontSize: 10, color: AppColors.mute)),
+      child: Text(text, style: TextStyle(fontSize: 10, color: AppColors.mute)),
     );
   }
 }

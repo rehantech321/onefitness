@@ -160,7 +160,7 @@ class _AvailabilityBlockEditorState extends State<AvailabilityBlockEditor> {
           ),
           if (_discipline != null) ...[
             const SizedBox(height: 14),
-            const Text("1. Select the days that share a schedule (e.g. Mon, Wed, Fri together)", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
+            Text("1. Select the days that share a schedule (e.g. Mon, Wed, Fri together)", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Row(
               children: _weekdayOrder.map((d) {
@@ -203,15 +203,15 @@ class _AvailabilityBlockEditorState extends State<AvailabilityBlockEditor> {
             ),
             const SizedBox(height: 14),
             if (_selectedDays.isEmpty)
-              const Text("Select one or more days above, then tap their times below.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic))
+              Text("Select one or more days above, then tap their times below.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic))
             else ...[
               Text(
                 "2. Tap times for ${_selectedDays.toList().map((d) => _weekdayShort[d]).join('/')}",
-                style: const TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 10),
               if (widget.isLargeGroup)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(bottom: 8),
                   child: Text("Large Group classes always start on the hour · 1 hr · capacity 15", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
                 )
@@ -238,7 +238,7 @@ class _AvailabilityBlockEditorState extends State<AvailabilityBlockEditor> {
           ],
           if (_err != null) ...[
             const SizedBox(height: 12),
-            Text(_err!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+            Text(_err!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
           ],
           const SizedBox(height: 16),
           Row(
@@ -273,7 +273,7 @@ class _SlotGroup extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1, fontWeight: FontWeight.w700)),
+          Text(label, style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1, fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           Wrap(
             spacing: 6,
@@ -336,7 +336,7 @@ class _MiniBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(7), border: Border.all(color: AppColors.line)),
-        child: Text(label, style: const TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
+        child: Text(label, style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
       ),
     );
   }

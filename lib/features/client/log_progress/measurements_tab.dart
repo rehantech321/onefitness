@@ -166,7 +166,7 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Bodyweight Over Time", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700)),
+                  Text("Bodyweight Over Time", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 12),
                   SizedBox(
                     height: 80,
@@ -193,11 +193,11 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                   onPressed: _sharing ? null : () => _shareWithSquad(weights),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.gold,
-                    side: const BorderSide(color: AppColors.goldDim),
+                    side: BorderSide(color: AppColors.goldDim),
                     padding: const EdgeInsets.symmetric(vertical: 9),
                   ),
                   icon: _sharing
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+                      ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
                       : const Icon(LucideIcons.users2, size: 14),
                   label: Text(_sharing ? "Sharing…" : "Share with Squad", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                 ),
@@ -252,12 +252,12 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                         child: BtnGold(
                           onPressed: _saving ? null : _save,
                           child: _saving
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 16,
                                   height: 16,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.onGold),
                                 )
-                              : const Row(
+                              : Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [Icon(LucideIcons.check, size: 15, color: AppColors.onGold), SizedBox(width: 6), Text("Save")],
@@ -275,7 +275,7 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 4, bottom: 4),
-              child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+              child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
             ),
           if (entries.isEmpty && !_adding)
             const HintBox(text: "No measurements logged yet. Track weight and body measurements over time.")
@@ -287,7 +287,7 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(dayLabel(m.date), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.gold, fontSize: 13)),
+                          Text(dayLabel(m.date), style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.gold, fontSize: 13)),
                           _removingId == m.id
                               ? const SizedBox(
                                   width: 14,
@@ -310,7 +310,7 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(f.$2.toUpperCase(), style: const TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 0.5)),
+                              Text(f.$2.toUpperCase(), style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 0.5)),
                               Text(f.$3!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                             ],
                           );
@@ -329,7 +329,7 @@ class _MeasurementsTabState extends ConsumerState<MeasurementsTab> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text("COACH'S NOTE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gold, letterSpacing: 0.5)),
+                                Text("COACH'S NOTE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.gold, letterSpacing: 0.5)),
                                 const SizedBox(height: 4),
                                 Text(m.coachComment!, style: const TextStyle(fontSize: 13)),
                               ],

@@ -387,7 +387,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               onChanged: (_) => setState(() => _error = null),
             ),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text(
               "Shown to clients before the first name — e.g. \"Coach Sooraj\".",
@@ -468,7 +468,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               }),
             ),
             if (largeGroupDisciplines.isNotEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 6),
                 child: Text(
                   "Hike and Outdoor HIIT are large group sessions — their availability is set separately below and does not use Semi-Private or One-on-One.",
@@ -484,7 +484,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
           if (_tab == "availability") ...[
           if (hasRegularDiscipline) ...[
             const SizedBox(height: 16),
-            const Text(
+            Text(
               "AVAILABILITY SCHEDULE",
               style: TextStyle(
                 fontSize: 11,
@@ -495,7 +495,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             ),
             const SizedBox(height: 8),
             if (regularSessionTypesChosen.isEmpty)
-              const Text(
+              Text(
                 "Pick session types and disciplines first, then add availability blocks.",
                 style: TextStyle(
                   fontSize: 12,
@@ -531,7 +531,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 LucideIcons.calendar,
                                 size: 13,
                                 color: AppColors.gold,
@@ -539,7 +539,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                               const SizedBox(width: 6),
                               Text(
                                 "${sessionTypeLabel(st)} schedule",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.gold,
@@ -575,7 +575,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                         ),
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.gold,
-                          side: const BorderSide(color: AppColors.goldDim),
+                          side: BorderSide(color: AppColors.goldDim),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 9,
@@ -600,13 +600,13 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                 _disciplines.length > 1
                     ? "Each block covers one discipline's days/times — add one per discipline if they run on different schedules."
                     : "Tap a day, then tap times for that day. Add more days the same way.",
-                style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                style: TextStyle(fontSize: 11, color: AppColors.mute),
               ),
             ),
           ],
           if (largeGroupDisciplines.isNotEmpty) ...[
             const SizedBox(height: 18),
-            const Text(
+            Text(
               "LARGE GROUP AVAILABILITY",
               style: TextStyle(
                 fontSize: 11,
@@ -624,7 +624,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                 border: Border.all(color: AppColors.goldDim),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text(
+              child: Text(
                 "Hike and Outdoor HIIT are large group sessions — 1 hour, capacity 15, starting on the hour every hour with a 15-minute buffer before and after. Not bookable as Semi-Private or One-on-One.",
                 style: TextStyle(
                   fontSize: 12,
@@ -647,7 +647,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                   children: [
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           LucideIcons.calendar,
                           size: 13,
                           color: AppColors.gold,
@@ -655,7 +655,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                         const SizedBox(width: 6),
                         Text(
                           "${disciplineLabel(d)} schedule",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
                             color: AppColors.gold,
@@ -693,7 +693,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                       ),
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.gold,
-                        side: const BorderSide(color: AppColors.goldDim),
+                        side: BorderSide(color: AppColors.goldDim),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 9,
@@ -721,7 +721,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
           ], // end availability tab
           if (_tab == "profile") ...[
           const SizedBox(height: 18),
-          const Text(
+          Text(
             "WHERE YOU TRAIN — PICK A LOCATION OR CREATE YOUR OWN",
             style: TextStyle(
               fontSize: 11,
@@ -742,7 +742,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                 ? AppCard(
                     child: Text(
                       widget.initial!.coachCode?.isNotEmpty == true ? widget.initial!.coachCode! : "Not set",
-                      style: const TextStyle(fontSize: 14, color: AppColors.mute),
+                      style: TextStyle(fontSize: 14, color: AppColors.mute),
                     ),
                   )
                 : AppField(kind: FieldKind.code, controller: _coachCode, placeholder: "e.g. JESS10"),
@@ -753,12 +753,12 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               widget.initial != null
                   ? "Set once at signup and can't be changed."
                   : "A unique code this coach gives clients at signup to link referrals to them.",
-              style: const TextStyle(fontSize: 11, color: AppColors.mute),
+              style: TextStyle(fontSize: 11, color: AppColors.mute),
             ),
           ),
           if (widget.isOwnerEditing) ...[
             const SizedBox(height: 14),
-            const Text(
+            Text(
               "PAY PER SESSION WORKED",
               style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5),
             ),
@@ -800,7 +800,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
               label: "Referral commission (%)",
               child: AppField(controller: _referralPercent, kind: FieldKind.decimal),
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 4),
               child: Text(
                 "Percent of every membership/package purchase by a client this coach referred (via their Coach Code) — charged to the client as a surcharge and paid to this coach.",
@@ -809,7 +809,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             ),
           ],
           const SizedBox(height: 16),
-          const Text(
+          Text(
             "BIO (OPTIONAL, BUT RECOMMENDED)",
             style: TextStyle(
               fontSize: 11,
@@ -833,7 +833,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "A strong bio helps clients choose you.",
                   style: TextStyle(fontSize: 11, color: AppColors.mute),
                 ),
@@ -842,7 +842,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
                   style: TextStyle(
                     fontSize: 11,
                     color: _bio.text.length > 700
-                        ? const Color(0xFFD68A4F)
+                        ? AppColors.warning
                         : AppColors.mute,
                   ),
                 ),
@@ -850,7 +850,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             "BEFORE & AFTER (OPTIONAL)",
             style: TextStyle(
               fontSize: 11,
@@ -860,7 +860,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             ),
           ),
           const SizedBox(height: 6),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(bottom: 10),
             child: Text(
               "Show client transformations. Add a Before and After photo for each frame. Up to 6 sets.",
@@ -881,11 +881,11 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
           if (widget.initial != null) ...[
             Text(
               "Password changes go through email now, not this form — click below to send a reset link to ${_email.text.trim().isEmpty ? "this account's email" : _email.text.trim()}.",
-              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
             const SizedBox(height: 8),
             if (_resetSent)
-              const Text(
+              Text(
                 "✓ Reset email sent.",
                 style: TextStyle(
                   color: AppColors.gold,
@@ -921,7 +921,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             const SizedBox(height: 10),
             Text(
               _error!,
-              style: const TextStyle(color: AppColors.errorText, fontSize: 12),
+              style: TextStyle(color: AppColors.errorText, fontSize: 12),
             ),
           ],
           const SizedBox(height: 16),
@@ -951,7 +951,7 @@ class _TrainerEditFormState extends State<TrainerEditForm> {
             TextButton(
               onPressed: widget.onDelete,
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC97F7F),
+                foregroundColor: AppColors.errorText,
               ),
               child: const Text("Remove trainer"),
             ),
@@ -1059,18 +1059,18 @@ class _UnavailabilitySectionState extends State<_UnavailabilitySection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "UNAVAILABILITY",
           style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5),
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           "Block off time you won't be working — clients won't be able to book you during these dates. Sessions already booked in this window aren't affected; reschedule or cancel those yourself if needed.",
           style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
         ),
         const SizedBox(height: 10),
         if (sorted.isEmpty && !_adding)
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(bottom: 8),
             child: Text("No time off scheduled.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
           ),
@@ -1091,7 +1091,7 @@ class _UnavailabilitySectionState extends State<_UnavailabilitySection> {
                         if (e.note != null && e.note!.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
-                            child: Text(e.note!, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                            child: Text(e.note!, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                           ),
                       ],
                     ),
@@ -1124,8 +1124,8 @@ class _UnavailabilitySectionState extends State<_UnavailabilitySection> {
                               filled: true,
                               fillColor: AppColors.card,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
                             ),
                             child: Text(_start ?? "Select date", style: TextStyle(fontSize: 13, color: _start == null ? AppColors.mute : AppColors.txt)),
                           ),
@@ -1143,8 +1143,8 @@ class _UnavailabilitySectionState extends State<_UnavailabilitySection> {
                               filled: true,
                               fillColor: AppColors.card,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
                             ),
                             child: Text(_end ?? _start ?? "Same as start", style: TextStyle(fontSize: 13, color: (_end ?? _start) == null ? AppColors.mute : AppColors.txt)),
                           ),
@@ -1179,7 +1179,7 @@ class _UnavailabilitySectionState extends State<_UnavailabilitySection> {
             onPressed: () => setState(() => _adding = true),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.gold,
-              side: const BorderSide(color: AppColors.goldDim),
+              side: BorderSide(color: AppColors.goldDim),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             ),
             icon: const Icon(LucideIcons.plus, size: 13),
@@ -1257,7 +1257,7 @@ class _BlockRow extends StatelessWidget {
               children: [
                 TextSpan(
                   text: "${_weekdayShort[d]} ",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.txt,
                     fontWeight: FontWeight.w700,
@@ -1265,7 +1265,7 @@ class _BlockRow extends StatelessWidget {
                 ),
                 TextSpan(
                   text: slots.map(fmtSlotShort).join(" "),
-                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
                 ),
               ],
             ),
@@ -1297,7 +1297,7 @@ class _BlockRow extends StatelessWidget {
                     ),
                   ),
                 if (dayLines.isEmpty)
-                  const Text(
+                  Text(
                     "No times set",
                     style: TextStyle(
                       fontSize: 11,
@@ -1314,7 +1314,7 @@ class _BlockRow extends StatelessWidget {
             children: [
               IconButton(
                 onPressed: onEdit,
-                icon: const Icon(
+                icon: Icon(
                   LucideIcons.pencil,
                   size: 14,
                   color: AppColors.mute,

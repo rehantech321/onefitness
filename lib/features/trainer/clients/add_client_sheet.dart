@@ -180,7 +180,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
       children: [
         BackBar(onBack: () => Navigator.pop(context, false), title: "Add a client"),
         const SizedBox(height: 10),
-        const Text(
+        Text(
           "Set up their account so they can sign in and start booking sessions. You'll hand them the details at the end.",
           style: TextStyle(color: AppColors.mute, fontSize: 12, height: 1.5),
         ),
@@ -204,7 +204,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
                         : null,
                   ),
                   alignment: Alignment.center,
-                  child: _photoDataUrl == null ? const Icon(LucideIcons.user, size: 30, color: AppColors.mute) : null,
+                  child: _photoDataUrl == null ? Icon(LucideIcons.user, size: 30, color: AppColors.mute) : null,
                 ),
               ),
               const SizedBox(height: 10),
@@ -280,7 +280,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
             helper: null,
             onChanged: () => setState(() => _error = null),
           ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(top: 4),
           child: Text("Personalized training near you", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
         ),
@@ -294,8 +294,8 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
                 filled: true,
                 fillColor: AppColors.bg,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
               ),
               child: Text(
                 _birthday.text.isEmpty ? "Select date" : _birthday.text,
@@ -309,7 +309,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
           label: "Coach Code (optional)",
           child: AppField(kind: FieldKind.code, controller: _coachCode, placeholder: "e.g. JESS10"),
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(top: 4),
           child: Text(
             "If a coach gave them a code, enter it here to link their account to that coach.",
@@ -318,7 +318,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
         ),
         if (_error != null) ...[
           const SizedBox(height: 12),
-          Text("⚠ $_error", style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+          Text("⚠ $_error", style: TextStyle(color: AppColors.errorText, fontSize: 12)),
         ],
         const SizedBox(height: 18),
         BtnGold(
@@ -354,7 +354,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
         const SizedBox(height: 14),
         Row(
           children: [
-            const Icon(LucideIcons.checkCircle2, size: 18, color: AppColors.success),
+            Icon(LucideIcons.checkCircle2, size: 18, color: AppColors.success),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -365,7 +365,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
           ],
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           "Give them these details to sign in. They can change the password once they're in.",
           style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
         ),
@@ -381,15 +381,15 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("EMAIL", style: TextStyle(fontSize: 9.5, color: AppColors.mute, letterSpacing: 1)),
+              Text("EMAIL", style: TextStyle(fontSize: 9.5, color: AppColors.mute, letterSpacing: 1)),
               const SizedBox(height: 2),
               SelectableText(email, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 10),
-              const Text("PASSWORD", style: TextStyle(fontSize: 9.5, color: AppColors.mute, letterSpacing: 1)),
+              Text("PASSWORD", style: TextStyle(fontSize: 9.5, color: AppColors.mute, letterSpacing: 1)),
               const SizedBox(height: 2),
               SelectableText(
                 password,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.gold, letterSpacing: 1),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.gold, letterSpacing: 1),
               ),
             ],
           ),
@@ -397,7 +397,7 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
         const SizedBox(height: 8),
         // Shown once and never recoverable — the server doesn't store it in
         // readable form, so if it's lost the only way back is a reset.
-        const Text(
+        Text(
           "This password isn't shown again. If it's lost, they'll need to reset it from the sign-in screen.",
           style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
         ),

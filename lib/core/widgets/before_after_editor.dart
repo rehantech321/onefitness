@@ -114,7 +114,7 @@ class _BeforeAfterEditorState extends State<BeforeAfterEditor> {
                   children: [
                     Text(
                       "Before & After${frames.length > 1 ? ' ${i + 1}' : ''}",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         color: AppColors.mute,
                         fontWeight: FontWeight.w700,
@@ -123,7 +123,7 @@ class _BeforeAfterEditorState extends State<BeforeAfterEditor> {
                     TextButton.icon(
                       onPressed: () => _removeFrame(frame.id),
                       style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFFC97F7F),
+                        foregroundColor: AppColors.errorText,
                         padding: EdgeInsets.zero,
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -180,7 +180,7 @@ class _BeforeAfterEditorState extends State<BeforeAfterEditor> {
             onPressed: _addFrame,
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.gold,
-              side: const BorderSide(
+              side: BorderSide(
                 color: AppColors.goldDim,
                 style: BorderStyle.solid,
               ),
@@ -209,7 +209,7 @@ class _BeforeAfterEditorState extends State<BeforeAfterEditor> {
           Text(
             "Maximum of ${widget.max} Before & After sets.",
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               color: AppColors.mute,
               fontStyle: FontStyle.italic,
@@ -254,7 +254,7 @@ class _Half extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 label.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: AppColors.mute,
@@ -264,7 +264,7 @@ class _Half extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 busy ? "Opening…" : "Tap to add",
-                style: const TextStyle(fontSize: 10, color: AppColors.mute),
+                style: TextStyle(fontSize: 10, color: AppColors.mute),
               ),
             ],
           ),

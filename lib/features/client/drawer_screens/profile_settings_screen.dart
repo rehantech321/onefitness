@@ -230,7 +230,7 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
             padding: const EdgeInsets.only(top: 24),
             child: Container(
               padding: const EdgeInsets.only(top: 16),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: AppColors.line)),
               ),
               child: _SettingRow(
@@ -246,6 +246,8 @@ class _ProfileSettingsScreenState extends ConsumerState<ProfileSettingsScreen> {
           // Deleting your own account has to be doable from inside the app,
           // in a couple of taps, without contacting support (Apple guideline
           // 5.1.1(v)).
+          const SizedBox(height: 18),
+          const ThemeModePicker(),
           const SizedBox(height: 18),
           const SectionLabel("Account"),
           _SettingRow(
@@ -334,7 +336,7 @@ class _SettingRow extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(
                       detail,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.mute,
                       ),
@@ -347,19 +349,19 @@ class _SettingRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD68A4F).withValues(alpha: 0.15),
+                  color: AppColors.warning.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: const Text(
+                child: Text(
                   "None",
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFD68A4F),
+                    color: AppColors.warning,
                   ),
                 ),
               ),
-            const Icon(
+            Icon(
                 LucideIcons.chevronRight,
                 size: 15,
                 color: AppColors.mute,
@@ -425,7 +427,7 @@ class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPr
           AppCard(
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -469,12 +471,12 @@ class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPr
                   ],
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   kSmsConsentLabel,
                   style: TextStyle(fontSize: 12.5, color: AppColors.txt, height: 1.45),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   kSmsConsentDisclosure,
                   style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.45),
                 ),
@@ -496,7 +498,7 @@ class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPr
                       child: const Text("Terms of Use",
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
                     ),
-                    const Text("  ·  ", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+                    Text("  ·  ", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                     TextButton(
                       onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                         builder: (ctx) => PrivacyPolicyScreen(onBack: () => Navigator.of(ctx).pop()),
@@ -515,7 +517,7 @@ class _NotificationPreferencesSectionState extends ConsumerState<_NotificationPr
                   const SizedBox(height: 8),
                   Text(
                     "Texts go to ${info.phone?.isNotEmpty == true ? info.phone : "the phone number on your profile"}.",
-                    style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+                    style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
                   ),
                 ],
               ],
@@ -757,7 +759,7 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
           ),
           const SizedBox(height: 10),
           CityStateFields(city: _city, state: _state),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 4),
             child: Text(
               "Personalized training near you",
@@ -783,11 +785,11 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.line),
+                    borderSide: BorderSide(color: AppColors.line),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.line),
+                    borderSide: BorderSide(color: AppColors.line),
                   ),
                 ),
                 child: Text(
@@ -811,11 +813,11 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
           const SizedBox(height: 14),
           Text(
             "Password changes go through email now — send a reset link to ${_email.text.trim().isEmpty ? "this account's email" : _email.text.trim()}.",
-            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+            style: TextStyle(fontSize: 12, color: AppColors.mute),
           ),
           const SizedBox(height: 8),
           if (_resetSent)
-            const Text(
+            Text(
               "✓ Reset email sent.",
               style: TextStyle(
                 color: AppColors.gold,
@@ -840,7 +842,7 @@ class _EditProfileSectionState extends ConsumerState<_EditProfileSection> {
               padding: const EdgeInsets.only(top: 10),
               child: Text(
                 _error!,
-                style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12),
+                style: TextStyle(color: AppColors.errorText, fontSize: 12),
               ),
             ),
           const SizedBox(height: 18),

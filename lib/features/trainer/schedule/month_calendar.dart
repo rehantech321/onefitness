@@ -85,11 +85,11 @@ class MonthCalendar extends StatelessWidget {
                   Text("$d", style: TextStyle(fontSize: 13, fontWeight: isToday || available ? FontWeight.w800 : FontWeight.w500, color: isToday ? AppColors.gold : available ? _availableYellow : AppColors.txt)),
                   const SizedBox(height: 2),
                   for (final s in shown)
-                    Text(fmtSlotCompactAmPm(s), style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.gold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  if (overflow > 0) Text("+$overflow", style: const TextStyle(fontSize: 9, color: AppColors.mute)),
+                    Text(fmtSlotCompactAmPm(s), style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.gold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if (overflow > 0) Text("+$overflow", style: TextStyle(fontSize: 9, color: AppColors.mute)),
                 ],
               ),
-              if (blocked) const Positioned(top: 0, right: 2, child: Icon(LucideIcons.lock, size: 8, color: AppColors.mute)),
+              if (blocked) Positioned(top: 0, right: 2, child: Icon(LucideIcons.lock, size: 8, color: AppColors.mute)),
             ],
           ),
         ),
@@ -101,12 +101,12 @@ class MonthCalendar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            IconButton(onPressed: () => onChangeMonth(-1), icon: const Icon(LucideIcons.chevronLeft, size: 18, color: AppColors.mute)),
+            IconButton(onPressed: () => onChangeMonth(-1), icon: Icon(LucideIcons.chevronLeft, size: 18, color: AppColors.mute)),
             Text("${_monthNames[month.month - 1]} ${month.year}", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-            IconButton(onPressed: () => onChangeMonth(1), icon: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.mute)),
+            IconButton(onPressed: () => onChangeMonth(1), icon: Icon(LucideIcons.chevronRight, size: 18, color: AppColors.mute)),
           ],
         ),
-        Row(children: _dowLabels.map((l) => Expanded(child: Center(child: Text(l, style: const TextStyle(fontSize: 11, color: AppColors.mute))))).toList()),
+        Row(children: _dowLabels.map((l) => Expanded(child: Center(child: Text(l, style: TextStyle(fontSize: 11, color: AppColors.mute))))).toList()),
         const SizedBox(height: 4),
         GridView.count(
           crossAxisCount: 7,

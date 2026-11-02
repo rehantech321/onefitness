@@ -16,7 +16,10 @@ class FlagMeta {
 
 /// Mirrors constants/domain.js `FLAG_META`. "payment" isn't a manually
 /// chosen coach note — it's derived from ClientInfo.hasOutstandingBalance.
-const kFlagMeta = {
+// Rebuilt on each read rather than held in a `final`: a lazily-initialised
+// field would capture whichever palette happened to be active the first
+// time it was touched and keep those colours after a theme switch.
+Map<String, FlagMeta> get kFlagMeta => {
   "payment": FlagMeta(
     emoji: "\u{1F4B3}",
     label: "Payment Failed",

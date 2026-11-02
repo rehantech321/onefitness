@@ -89,7 +89,7 @@ class _OrdersTabState extends ConsumerState<OrdersTab> {
                 const Expanded(child: SectionLabel("Orders")),
                 IconButton(
                   onPressed: _reload,
-                  icon: const Icon(LucideIcons.refreshCw, size: 16, color: AppColors.mute),
+                  icon: Icon(LucideIcons.refreshCw, size: 16, color: AppColors.mute),
                   tooltip: "Refresh",
                 ),
               ],
@@ -190,11 +190,11 @@ class _OrderCard extends StatelessWidget {
               "\$${(order.amountCents / 100).toStringAsFixed(2)}",
               if (placed != null) "${placed.month}/${placed.day}/${placed.year % 100}",
             ].join(" · "),
-            style: const TextStyle(fontSize: 11.5, color: AppColors.mute),
+            style: TextStyle(fontSize: 11.5, color: AppColors.mute),
           ),
           if (order.status != "cancelled") ...[
             const SizedBox(height: 10),
-            const Text("MOVE TO", style: TextStyle(fontSize: 9.5, color: AppColors.mute, letterSpacing: 1)),
+            Text("MOVE TO", style: TextStyle(fontSize: 9.5, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
@@ -205,7 +205,7 @@ class _OrderCard extends StatelessWidget {
                     OutlinedButton(
                       onPressed: busy ? null : () => onSetStatus(s),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.line),
+                        side: BorderSide(color: AppColors.line),
                         foregroundColor: AppColors.txt,
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         minimumSize: Size.zero,
@@ -216,8 +216,8 @@ class _OrderCard extends StatelessWidget {
                 OutlinedButton(
                   onPressed: busy ? null : () => onSetStatus("cancelled"),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.line),
-                    foregroundColor: const Color(0xFFC97F7F),
+                    side: BorderSide(color: AppColors.line),
+                    foregroundColor: AppColors.errorText,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -241,10 +241,10 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final (bg, fg) = switch (status) {
       "paid" => (AppColors.gold.withValues(alpha: 0.15), AppColors.gold),
-      "preparing" => (const Color(0x1AC9784A), const Color(0xFFD68A4F)),
+      "preparing" => (const Color(0x1AC9784A), AppColors.warning),
       "ready" => (const Color(0x1AD9D9D9), AppColors.success),
       "completed" => (AppColors.bg, AppColors.mute),
-      _ => (AppColors.bg, const Color(0xFFC97F7F)),
+      _ => (AppColors.bg, AppColors.errorText),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

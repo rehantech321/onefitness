@@ -394,7 +394,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         Expanded(
           child: thread.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
                     padding: EdgeInsets.all(24),
                     child: Text(
@@ -482,23 +482,23 @@ void showChatInfoSheet(BuildContext context) {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.info, size: 16, color: AppColors.gold),
+              Icon(LucideIcons.info, size: 16, color: AppColors.gold),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 "About this chat",
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.txt),
               ),
               const Spacer(),
               IconButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                icon: const Icon(LucideIcons.x, size: 18, color: AppColors.mute),
+                icon: Icon(LucideIcons.x, size: 18, color: AppColors.mute),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             "Every message is logged below, timestamped — a record you control.\n\n"
             "Pick any combination of the three ways to send. In app notifies them in ONE Fitness. "
             "SMS also texts them, and is the only one that needs a phone number. Email also emails "
@@ -558,7 +558,7 @@ class _RecipientSetupState extends State<_RecipientSetup> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             "Who are you messaging?",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.txt),
           ),
@@ -569,7 +569,7 @@ class _RecipientSetupState extends State<_RecipientSetup> {
           ],
           _businessCard(),
           const SizedBox(height: 20),
-          const Text("Send via — pick any", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+          Text("Send via — pick any", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -591,7 +591,7 @@ class _RecipientSetupState extends State<_RecipientSetup> {
                 : widget.needsPhone
                     ? "SMS needs a phone number — we'll ask for yours once."
                     : "Texts go to the number on your profile.",
-            style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
           const SizedBox(height: 20),
           Row(
@@ -626,7 +626,7 @@ class _RecipientSetupState extends State<_RecipientSetup> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Your coach", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+                Text("Your coach", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
                 const SizedBox(height: 4),
                 if (widget.realCandidates.length > 1)
                   InkWell(
@@ -649,22 +649,22 @@ class _RecipientSetupState extends State<_RecipientSetup> {
                             current.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.txt),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.txt),
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(LucideIcons.search, size: 15, color: AppColors.mute),
+                        Icon(LucideIcons.search, size: 15, color: AppColors.mute),
                       ],
                     ),
                   )
                 else
-                  Text(current.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.txt)),
+                  Text(current.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.txt)),
                 const SizedBox(height: 3),
-                const Text("Training, form checks, plan questions", style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4)),
+                Text("Training, form checks, plan questions", style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4)),
               ],
             ),
           ),
-          if (validId) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(LucideIcons.checkCircle2, size: 20, color: AppColors.gold)),
+          if (validId) Padding(padding: EdgeInsets.only(left: 8), child: Icon(LucideIcons.checkCircle2, size: 20, color: AppColors.gold)),
         ],
       ),
     );
@@ -682,16 +682,16 @@ class _RecipientSetupState extends State<_RecipientSetup> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.businessName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.txt)),
+                Text(widget.businessName, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.txt)),
                 const SizedBox(height: 3),
-                const Text(
+                Text(
                   "Billing, emergencies, or anything that can't wait for your coach",
                   style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
                 ),
               ],
             ),
           ),
-          if (selected) const Padding(padding: EdgeInsets.only(left: 8), child: Icon(LucideIcons.checkCircle2, size: 20, color: AppColors.gold)),
+          if (selected) Padding(padding: EdgeInsets.only(left: 8), child: Icon(LucideIcons.checkCircle2, size: 20, color: AppColors.gold)),
         ],
       ),
     );
@@ -812,13 +812,13 @@ class _CoachSearchSheetState extends State<_CoachSearchSheet> {
                                           t.disciplines.map(disciplineLabel).join(", "),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                          style: TextStyle(fontSize: 11, color: AppColors.mute),
                                         ),
                                       ),
                                   ],
                                 ),
                               ),
-                              if (selected) const Icon(LucideIcons.checkCircle2, size: 18, color: AppColors.gold),
+                              if (selected) Icon(LucideIcons.checkCircle2, size: 18, color: AppColors.gold),
                             ],
                           ),
                         );
@@ -898,7 +898,7 @@ class _ContextBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.card,
         border: Border(bottom: BorderSide(color: AppColors.line)),
       ),
@@ -914,9 +914,9 @@ class _ContextBar extends StatelessWidget {
                   coach.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.txt),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.txt),
                 ),
-                Text("via $channelLabel", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                Text("via $channelLabel", style: TextStyle(fontSize: 11, color: AppColors.mute)),
               ],
             ),
           ),
@@ -945,7 +945,7 @@ class _DaySeparator extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
-          child: Text(label, style: const TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
+          child: Text(label, style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
         ),
       ),
     );
@@ -1000,11 +1000,11 @@ class _Bubble extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           isPending
-              ? const Text("Sending…", style: TextStyle(fontSize: 10.5, color: AppColors.mute, fontStyle: FontStyle.italic))
+              ? Text("Sending…", style: TextStyle(fontSize: 10.5, color: AppColors.mute, fontStyle: FontStyle.italic))
               : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(_timeOnly(message.sentAt), style: const TextStyle(fontSize: 10.5, color: AppColors.mute)),
+                    Text(_timeOnly(message.sentAt), style: TextStyle(fontSize: 10.5, color: AppColors.mute)),
                     if (message.channel != null) ...[
                       const SizedBox(width: 4),
                       _ChannelBadge(channel: message.channel!),
@@ -1077,7 +1077,7 @@ class _ComposerState extends State<_Composer> {
     final hasText = widget.controller.text.trim().isNotEmpty;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.bg,
         border: Border(top: BorderSide(color: AppColors.line)),
       ),
@@ -1095,24 +1095,24 @@ class _ComposerState extends State<_Composer> {
       textCapitalization: TextCapitalization.sentences,
                   minLines: 1,
                   maxLines: 4,
-                  style: const TextStyle(color: AppColors.txt, fontSize: 14),
+                  style: TextStyle(color: AppColors.txt, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: "Message ${widget.recipientName}…",
-                    hintStyle: const TextStyle(color: AppColors.mute, fontSize: 14),
+                    hintStyle: TextStyle(color: AppColors.mute, fontSize: 14),
                     filled: true,
                     fillColor: AppColors.card,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: AppColors.line),
+                      borderSide: BorderSide(color: AppColors.line),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: AppColors.line),
+                      borderSide: BorderSide(color: AppColors.line),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
-                      borderSide: const BorderSide(color: AppColors.gold),
+                      borderSide: BorderSide(color: AppColors.gold),
                     ),
                   ),
                 ),

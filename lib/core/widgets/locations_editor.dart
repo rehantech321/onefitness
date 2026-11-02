@@ -195,7 +195,7 @@ class _LocationsEditorState extends ConsumerState<LocationsEditor> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.value.isEmpty) const Padding(padding: EdgeInsets.only(bottom: 8), child: Text("No locations yet.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic))),
+        if (widget.value.isEmpty) Padding(padding: EdgeInsets.only(bottom: 8), child: Text("No locations yet.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic))),
         ...shown.map((loc) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Container(
@@ -210,20 +210,20 @@ class _LocationsEditorState extends ConsumerState<LocationsEditor> {
                         children: [
                           Row(
                             children: [
-                              const Icon(LucideIcons.mapPin, size: 13, color: AppColors.gold),
+                              Icon(LucideIcons.mapPin, size: 13, color: AppColors.gold),
                               const SizedBox(width: 6),
                               Expanded(child: Text(loc.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
                             ],
                           ),
                           if ((loc.address ?? "").isNotEmpty)
-                            Padding(padding: const EdgeInsets.only(top: 3), child: Text(loc.address!, style: const TextStyle(fontSize: 12, color: AppColors.mute))),
+                            Padding(padding: const EdgeInsets.only(top: 3), child: Text(loc.address!, style: TextStyle(fontSize: 12, color: AppColors.mute))),
                           if ((loc.hint ?? "").isNotEmpty)
-                            Padding(padding: const EdgeInsets.only(top: 5), child: Text(loc.hint!, style: const TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic, height: 1.4))),
+                            Padding(padding: const EdgeInsets.only(top: 5), child: Text(loc.hint!, style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic, height: 1.4))),
                         ],
                       ),
                     ),
                     if (!isGymLocation(loc))
-                      IconButton(onPressed: () => _startEdit(loc), icon: const Icon(LucideIcons.pencil, size: 14, color: AppColors.mute), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 30, minHeight: 30)),
+                      IconButton(onPressed: () => _startEdit(loc), icon: Icon(LucideIcons.pencil, size: 14, color: AppColors.mute), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 30, minHeight: 30)),
                     IconButton(onPressed: () => _remove(loc.id), icon: const Icon(LucideIcons.trash2, size: 14, color: Color(0xFF6B3B3B)), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 30, minHeight: 30)),
                   ],
                 ),
@@ -236,12 +236,12 @@ class _LocationsEditorState extends ConsumerState<LocationsEditor> {
             if (!hasGym && gymName.trim().isNotEmpty)
               OutlinedButton(
                 onPressed: _addGym,
-                style: OutlinedButton.styleFrom(foregroundColor: AppColors.txt, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                style: OutlinedButton.styleFrom(foregroundColor: AppColors.txt, side: BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
                 child: Text("+ $gymName", style: const TextStyle(fontSize: 12)),
               ),
             OutlinedButton(
               onPressed: _startNew,
-              style: OutlinedButton.styleFrom(foregroundColor: AppColors.txt, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+              style: OutlinedButton.styleFrom(foregroundColor: AppColors.txt, side: BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
               child: const Text("+ Add location", style: TextStyle(fontSize: 12)),
             ),
           ],

@@ -103,7 +103,7 @@ class _SwipeableTabViewState extends State<SwipeableTabView> {
     return Column(
       children: [
         Container(
-          decoration: const BoxDecoration(color: AppColors.bg, border: Border(bottom: BorderSide(color: AppColors.line))),
+          decoration: BoxDecoration(color: AppColors.bg, border: Border(bottom: BorderSide(color: AppColors.line))),
           child: Row(
             children: [
               for (var i = 0; i < widget.labels.length; i++)

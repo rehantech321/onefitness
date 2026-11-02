@@ -86,11 +86,11 @@ class _CoachMeasurementsTabState extends ConsumerState<CoachMeasurementsTab> {
                       spacing: 14,
                       runSpacing: 4,
                       children: filled
-                          .map((f) => Text("${f.$2}: ${f.$3}", style: const TextStyle(fontSize: 12, color: AppColors.mute)))
+                          .map((f) => Text("${f.$2}: ${f.$3}", style: TextStyle(fontSize: 12, color: AppColors.mute)))
                           .toList(),
                     ),
                     const SizedBox(height: 10),
-                    const Text("COACH COMMENT", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.mute, letterSpacing: 0.5)),
+                    Text("COACH COMMENT", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.mute, letterSpacing: 0.5)),
                     const SizedBox(height: 6),
                     AppField(controller: _controllerFor(m.id, m.coachComment), placeholder: "Leave a note on this entry…", maxLines: 2),
                     const SizedBox(height: 6),

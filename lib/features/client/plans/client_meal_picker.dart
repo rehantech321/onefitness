@@ -99,7 +99,7 @@ class _ClientMealPickerBodyState extends ConsumerState<_ClientMealPickerBody> {
             if (widget.budget != null)
               Text(
                 "Your program allows about ${widget.budget} kcal for ${widget.label.toLowerCase()}.",
-                style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                style: TextStyle(fontSize: 12, color: AppColors.mute),
               ),
             const SizedBox(height: 10),
             AppField(kind: FieldKind.search,
@@ -116,7 +116,7 @@ class _ClientMealPickerBodyState extends ConsumerState<_ClientMealPickerBody> {
                     onChanged: (v) => setState(() => _budgetOnly = v),
                     activeThumbColor: AppColors.gold,
                   ),
-                  const Text("Only show meals that fit my budget", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                  Text("Only show meals that fit my budget", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                 ],
               ),
             ],
@@ -145,17 +145,17 @@ class _ClientMealPickerBodyState extends ConsumerState<_ClientMealPickerBody> {
                                     const SizedBox(height: 2),
                                     Text(
                                       "${m.calories} kcal · P ${m.protein.toInt()} · C ${m.carbs.toInt()} · F ${m.fats.toInt()}",
-                                      style: const TextStyle(fontSize: 11.5, color: AppColors.mute),
+                                      style: TextStyle(fontSize: 11.5, color: AppColors.mute),
                                     ),
                                     if (fits)
-                                      const Padding(
+                                      Padding(
                                         padding: EdgeInsets.only(top: 2),
                                         child: Text("Fits your budget", style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700)),
                                       ),
                                   ],
                                 ),
                               ),
-                              const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
+                              Icon(LucideIcons.chevronRight, size: 16, color: AppColors.mute),
                             ],
                           ),
                         );

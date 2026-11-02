@@ -8,7 +8,10 @@ import "../../../core/utils/program_utils.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/trainer_providers.dart";
 
-const _dirMeta = {
+// Rebuilt on each read rather than held in a `final`: a lazily-initialised
+// field would capture whichever palette happened to be active the first
+// time it was touched and keep those colours after a theme switch.
+Map<String, ({String arrow, Color color, String label})> get _dirMeta => {
   "up": (arrow: "↑", color: Color(0xFF00E676), label: "Increased"),
   "down": (arrow: "↓", color: AppColors.danger, label: "Decreased"),
   "same": (arrow: "=", color: AppColors.gold, label: "Maintained"),
@@ -97,7 +100,7 @@ class _LoggedTabState extends ConsumerState<LoggedTab> {
               title: day.dayTitle,
               meta: Text(
                 "${_niceDate(day.date)} · ${day.loggedBy == "coach" ? "Logged by coach" : "Self-logged"}",
-                style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                style: TextStyle(fontSize: 11, color: AppColors.mute),
               ),
               children: [
                 ...day.exercises.map(
@@ -115,7 +118,7 @@ class _LoggedTabState extends ConsumerState<LoggedTab> {
                         .map(
                           (s) => Container(
                             padding: const EdgeInsets.symmetric(vertical: 7),
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               border: Border(
                                 bottom: BorderSide(color: AppColors.line),
                               ),
@@ -126,7 +129,7 @@ class _LoggedTabState extends ConsumerState<LoggedTab> {
                               children: [
                                 Text(
                                   "Set ${s.setNum}",
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 13,
                                     color: AppColors.mute,
                                   ),
@@ -137,7 +140,7 @@ class _LoggedTabState extends ConsumerState<LoggedTab> {
                                       s.prevWeight != null
                                           ? "${_fmtNum(s.prevWeight!)} lbs → ${_fmtNum(s.weight)} lbs"
                                           : "${_fmtNum(s.weight)} lbs",
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 13,
                                         color: AppColors.txt,
                                       ),
@@ -166,7 +169,7 @@ class _LoggedTabState extends ConsumerState<LoggedTab> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("COACH COMMENT", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.mute, letterSpacing: 0.5)),
+                        Text("COACH COMMENT", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.mute, letterSpacing: 0.5)),
                         const SizedBox(height: 6),
                         AppField(
                           controller: _controllerFor(log.id, log.coachComment),

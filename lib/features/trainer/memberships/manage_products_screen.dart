@@ -234,7 +234,7 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                                     color: AppColors.line,
                                     borderRadius: BorderRadius.circular(5),
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     "Archived",
                                     style: TextStyle(
                                       fontSize: 10,
@@ -248,7 +248,7 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                           ),
                           Text(
                             "\$${(p.priceCents / 100).toStringAsFixed(2)} · ${p.category ?? 'Uncategorized'} · used by $inUse package${inUse != 1 ? "s" : ""}",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               color: AppColors.mute,
                             ),
@@ -256,7 +256,7 @@ class _ManageProductsScreenState extends ConsumerState<ManageProductsScreen> {
                         ],
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       LucideIcons.chevronRight,
                       size: 15,
                       color: AppColors.mute,
@@ -462,7 +462,7 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
             }),
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             "Category",
             style: TextStyle(
               color: AppColors.mute,
@@ -507,7 +507,7 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
                 onPressed: () => setState(() => _addingCategory = true),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.mute,
-                  side: const BorderSide(color: AppColors.line),
+                  side: BorderSide(color: AppColors.line),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 8,
@@ -575,7 +575,7 @@ class _ProductEditFormState extends ConsumerState<_ProductEditForm> {
             TextButton(
               onPressed: widget.onDelete,
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC97F7F),
+                foregroundColor: AppColors.errorText,
               ),
               child: Text(widget.isInUse ? "Archive product (hide from new packages)" : "Delete product"),
             ),
@@ -605,7 +605,7 @@ class _PhotoStrip extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text("Photos", style: TextStyle(color: AppColors.mute, fontSize: 11, fontWeight: FontWeight.w600)),
             ),
             TextButton(
@@ -709,7 +709,7 @@ class _SizeInventoryEditor extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             "Total is added up from the rows below — a size with 0 left still shows in the shop, marked sold out.",
             style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),

@@ -54,11 +54,11 @@ Future<void> showReportBlockSheet(
           ),
           const SizedBox(height: 14),
           ListTile(
-            leading: const Icon(LucideIcons.flag, size: 20, color: AppColors.gold),
+            leading: Icon(LucideIcons.flag, size: 20, color: AppColors.gold),
             title: const Text("Report", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             subtitle: Text(
               contentType == "profile" ? "Report $reportedUserName" : "Report this $contentType",
-              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
             onTap: () async {
               Navigator.of(sheetCtx).pop();
@@ -74,12 +74,12 @@ Future<void> showReportBlockSheet(
           ),
           if (reportedUserId != null)
             ListTile(
-              leading: const Icon(LucideIcons.ban, size: 20, color: AppColors.errorText),
-              title: const Text("Block user",
+              leading: Icon(LucideIcons.ban, size: 20, color: AppColors.errorText),
+              title: Text("Block user",
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.errorText)),
               subtitle: Text(
                 "$reportedUserName won't be able to message you, and you won't see them",
-                style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                style: TextStyle(fontSize: 12, color: AppColors.mute),
               ),
               onTap: () async {
                 Navigator.of(sheetCtx).pop();
@@ -87,7 +87,7 @@ Future<void> showReportBlockSheet(
               },
             ),
           ListTile(
-            leading: const Icon(LucideIcons.x, size: 20, color: AppColors.mute),
+            leading: Icon(LucideIcons.x, size: 20, color: AppColors.mute),
             title: const Text("Cancel", style: TextStyle(fontSize: 15)),
             onTap: () => Navigator.of(sheetCtx).pop(),
           ),
@@ -133,7 +133,7 @@ Future<void> _showReportReasons(
                   style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   "We review every report and act within 24 hours.",
                   style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
                 ),
@@ -181,17 +181,17 @@ Future<void> _showReportReasons(
                   style: const TextStyle(fontSize: 14),
                   decoration: InputDecoration(
                     hintText: "Anything else we should know? (optional)",
-                    hintStyle: const TextStyle(fontSize: 13, color: AppColors.mute),
+                    hintStyle: TextStyle(fontSize: 13, color: AppColors.mute),
                     filled: true,
                     fillColor: AppColors.bg,
                     contentPadding: const EdgeInsets.all(12),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.line),
+                      borderSide: BorderSide(color: AppColors.line),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.line),
+                      borderSide: BorderSide(color: AppColors.line),
                     ),
                   ),
                 ),

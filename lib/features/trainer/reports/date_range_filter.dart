@@ -108,8 +108,8 @@ class _CustomDateField extends StatelessWidget {
         decoration: BoxDecoration(color: AppColors.card, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
         child: Row(
           children: [
-            Text("$label: ", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
-            Expanded(child: Text(date, style: const TextStyle(fontSize: 12, color: AppColors.txt, fontWeight: FontWeight.w600))),
+            Text("$label: ", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+            Expanded(child: Text(date, style: TextStyle(fontSize: 12, color: AppColors.txt, fontWeight: FontWeight.w600))),
           ],
         ),
       ),

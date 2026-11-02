@@ -9,7 +9,10 @@ import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
 import "line_chart_painter.dart";
 
-const _chartColors = [Color(0xFF00E676), AppColors.gold, Color(0xFF64B5F6), Color(0xFFFF7043), Color(0xFFCE93D8), Color(0xFF80DEEA)];
+// Rebuilt on each read rather than held in a `final`: a lazily-initialised
+// field would capture whichever palette happened to be active the first
+// time it was touched and keep those colours after a theme switch.
+List<Color> get _chartColors => [Color(0xFF00E676), AppColors.gold, Color(0xFF64B5F6), Color(0xFFFF7043), Color(0xFFCE93D8), Color(0xFF80DEEA)];
 
 /// Mirrors LogProgressPage.jsx's "Lifts" tab — pick up to 6 exercises from
 /// workout history, chart their heaviest completed set over time.
@@ -159,11 +162,11 @@ class _ExerciseLiftsTabState extends ConsumerState<ExerciseLiftsTab> {
                         onPressed: _sharing ? null : () => _shareWithSquad({for (final n in _selected) n: seriesFor(n)!}),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.gold,
-                          side: const BorderSide(color: AppColors.goldDim),
+                          side: BorderSide(color: AppColors.goldDim),
                           padding: const EdgeInsets.symmetric(vertical: 9),
                         ),
                         icon: _sharing
-                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
+                            ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold))
                             : const Icon(LucideIcons.users2, size: 14),
                         label: Text(_sharing ? "Sharing…" : "Share with Squad", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                       ),

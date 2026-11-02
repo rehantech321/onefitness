@@ -70,7 +70,7 @@ class BookingPickingScreen extends StatelessWidget {
                         Text(t.displayTitle, style: const TextStyle(fontWeight: FontWeight.w700)),
                         Text(
                           "${disciplineLabel(pick.discipline)} · ${sessionTypeLabel(pick.sessionType)}",
-                          style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                          style: TextStyle(fontSize: 12, color: AppColors.mute),
                         ),
                       ],
                     ),
@@ -80,7 +80,7 @@ class BookingPickingScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     "${dayLabel(date)} · ${fmtSlot(pick.slot)}",
-                    style: const TextStyle(fontSize: 13, color: AppColors.gold),
+                    style: TextStyle(fontSize: 13, color: AppColors.gold),
                   ),
                 ),
               ],
@@ -96,7 +96,7 @@ class BookingPickingScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(LucideIcons.mapPin, size: 13, color: AppColors.gold),
+                      Icon(LucideIcons.mapPin, size: 13, color: AppColors.gold),
                       const SizedBox(width: 6),
                       Expanded(child: Text(location!.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
                     ],
@@ -104,12 +104,12 @@ class BookingPickingScreen extends StatelessWidget {
                   if (location!.address.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 3),
-                      child: Text(location!.address, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                      child: Text(location!.address, style: TextStyle(fontSize: 12, color: AppColors.mute)),
                     ),
                   if (location!.hint.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 3),
-                      child: Text(location!.hint, style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                      child: Text(location!.hint, style: TextStyle(fontSize: 12, color: AppColors.mute)),
                     ),
                 ],
               ),
@@ -123,7 +123,7 @@ class BookingPickingScreen extends StatelessWidget {
                 "large-group" => "Large Group — up to ${capFor("large-group")} share the class.",
                 _ => "One-on-one — just you.",
               },
-              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ),
           if (error != null) ...[
@@ -135,14 +135,14 @@ class BookingPickingScreen extends StatelessWidget {
                 border: Border.all(color: AppColors.errorText.withValues(alpha: 0.4)),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+              child: Text(error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
             ),
           ],
           BtnGold(
             onPressed: busy ? null : onConfirm,
             full: true,
             child: busy
-                ? const Row(
+                ? Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -155,7 +155,7 @@ class BookingPickingScreen extends StatelessWidget {
                       Text("Booking…"),
                     ],
                   )
-                : const Row(
+                : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [

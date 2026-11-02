@@ -99,7 +99,7 @@ class _EquipmentLibraryScreenState extends ConsumerState<EquipmentLibraryScreen>
         children: [
           const SectionLabel("Equipment Library"),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             "Everything the gym has. When you add an exercise, its equipment is picked from this list — and anything typed there is added here too.",
             style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
           ),
@@ -126,7 +126,7 @@ class _EquipmentLibraryScreenState extends ConsumerState<EquipmentLibraryScreen>
                   ],
                 ),
                 if (_error != null)
-                  Padding(padding: const EdgeInsets.only(top: 6), child: Text(_error!, style: const TextStyle(fontSize: 11, color: AppColors.errorText))),
+                  Padding(padding: const EdgeInsets.only(top: 6), child: Text(_error!, style: TextStyle(fontSize: 11, color: AppColors.errorText))),
               ],
             ),
           ),
@@ -150,13 +150,13 @@ class _EquipmentLibraryScreenState extends ConsumerState<EquipmentLibraryScreen>
                   ),
                   child: Row(
                     children: [
-                      const Icon(LucideIcons.dumbbell, size: 15, color: AppColors.gold),
+                      Icon(LucideIcons.dumbbell, size: 15, color: AppColors.gold),
                       const SizedBox(width: 10),
                       Expanded(child: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
                       if (isOwner)
                         IconButton(
                           onPressed: () => _delete(name),
-                          icon: const Icon(LucideIcons.trash2, size: 15, color: AppColors.errorText),
+                          icon: Icon(LucideIcons.trash2, size: 15, color: AppColors.errorText),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                         ),
@@ -167,7 +167,7 @@ class _EquipmentLibraryScreenState extends ConsumerState<EquipmentLibraryScreen>
           const SizedBox(height: 4),
           Text(
             "${all.length} item${all.length == 1 ? '' : 's'} in the library",
-            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+            style: TextStyle(fontSize: 11, color: AppColors.mute),
           ),
         ],
       ),

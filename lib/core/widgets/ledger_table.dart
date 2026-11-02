@@ -52,14 +52,14 @@ class LedgerTable extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(sourceLabel(r.source), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.txt)),
+                    Text(sourceLabel(r.source), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.txt)),
                     Text(
                       [
                         r.createdAt,
                         if (showGrantedBy && r.grantedByUserId != null) "By ${staffNames[r.grantedByUserId] ?? 'staff'}",
                         if (showGrantedBy && r.reason != null) "\"${r.reason}\"",
                       ].join(" · "),
-                      style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                      style: TextStyle(fontSize: 11, color: AppColors.mute),
                     ),
                   ],
                 ),
@@ -69,7 +69,7 @@ class LedgerTable extends StatelessWidget {
                   padding: const EdgeInsets.only(right: 8),
                   child: OutlinedButton(
                     onPressed: () => onVoid!(r),
-                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.mute, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5)),
+                    style: OutlinedButton.styleFrom(foregroundColor: AppColors.mute, side: BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5)),
                     child: const Text("Void", style: TextStyle(fontSize: 11)),
                   ),
                 ),
@@ -77,7 +77,7 @@ class LedgerTable extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text("${positive ? '+' : ''}${r.amount}", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: positive ? AppColors.success : AppColors.danger)),
-                  Text("Bal: ${entry.balance}", style: const TextStyle(fontSize: 10, color: AppColors.mute)),
+                  Text("Bal: ${entry.balance}", style: TextStyle(fontSize: 10, color: AppColors.mute)),
                 ],
               ),
             ],

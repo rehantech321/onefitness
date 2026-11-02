@@ -59,7 +59,7 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
               const SizedBox(height: 12),
               FieldLabeled(label: "Name", child: AppField(kind: FieldKind.name, controller: _customName)),
               const SizedBox(height: 10),
-              const Text("MUSCLE GROUP", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+              Text("MUSCLE GROUP", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 6,
@@ -111,7 +111,7 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const SectionLabel("Pick an Exercise"),
-              TextButton(onPressed: () => setState(() => _custom = true), child: const Text("Custom", style: TextStyle(color: AppColors.gold, fontSize: 12))),
+              TextButton(onPressed: () => setState(() => _custom = true), child: Text("Custom", style: TextStyle(color: AppColors.gold, fontSize: 12))),
             ],
           ),
           AppField(kind: FieldKind.search, controller: _search, placeholder: "Search…", onChanged: (_) => setState(() {})),
@@ -141,7 +141,7 @@ class _ExercisePickerBodyState extends ConsumerState<_ExercisePickerBody> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(e.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                                        Text(e.primaryMuscle, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                                        Text(e.primaryMuscle, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                                       ],
                                     ),
                                   ),

@@ -391,7 +391,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                   const SizedBox(height: 8),
                   Text(
                     _codeError!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.errorText,
                       fontSize: 12,
                     ),
@@ -477,7 +477,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                         ),
                         alignment: Alignment.center,
                         child: _photoDataUrl == null
-                            ? const Icon(
+                            ? Icon(
                                 LucideIcons.user,
                                 size: 28,
                                 color: AppColors.mute,
@@ -540,7 +540,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                   onChanged: (_) => setState(() => _error = null),
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text(
                   "How clients see you — e.g. \"Coach Sooraj\".",
@@ -603,7 +603,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                   final offered =
                       ref.watch(platformSettingsProvider).offeredSessionTypes;
                   if (offered.isEmpty) {
-                    return const Text(
+                    return Text(
                       "ONE Fitness hasn't set up any session types yet — you "
                       "can add yours later from My Profile.",
                       style: TextStyle(
@@ -650,7 +650,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(bottom: 8),
                       child: Text(
                         "When can clients book you? Add at least one block — "
@@ -673,7 +673,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                               : _disciplines.isEmpty
                                   ? "Choose your disciplines above, then add your available times here."
                                   : "Choose your session types above, then add your available times here.",
-                          style: const TextStyle(fontSize: 11.5, color: AppColors.gold, height: 1.4),
+                          style: TextStyle(fontSize: 11.5, color: AppColors.gold, height: 1.4),
                         ),
                       ),
                     if (_disciplines.isNotEmpty && _sessionTypes.isNotEmpty) ...[
@@ -704,14 +704,14 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                                       const SizedBox(height: 1),
                                       Text(
                                         "$slotCount slot${slotCount == 1 ? "" : "s"} across $dayCount day${dayCount == 1 ? "" : "s"}",
-                                        style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                        style: TextStyle(fontSize: 11, color: AppColors.mute),
                                       ),
                                     ],
                                   ),
                                 ),
                                 IconButton(
                                   onPressed: () => setState(() => _availability.removeAt(i)),
-                                  icon: const Icon(LucideIcons.trash2, size: 15, color: AppColors.errorText),
+                                  icon: Icon(LucideIcons.trash2, size: 15, color: AppColors.errorText),
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                 ),
@@ -736,7 +736,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                             child: OutlinedButton(
                               onPressed: () => setState(() => _addingForType = e.key),
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppColors.goldDim),
+                                side: BorderSide(color: AppColors.goldDim),
                                 foregroundColor: AppColors.gold,
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                 minimumSize: Size.zero,
@@ -754,7 +754,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 "Where you train",
                 style: TextStyle(
                   fontSize: 12,
@@ -813,7 +813,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                                     padding: const EdgeInsets.only(top: 3),
                                     child: Text(
                                       _locationAddress.text,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         color: AppColors.mute,
                                       ),
@@ -825,7 +825,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                           IconButton(
                             onPressed: () =>
                                 setState(() => _editingLocation = true),
-                            icon: const Icon(
+                            icon: Icon(
                               LucideIcons.pencil,
                               size: 16,
                               color: AppColors.mute,
@@ -837,7 +837,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                       ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 "Coach Code",
                 style: TextStyle(
                   fontSize: 12,
@@ -847,7 +847,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
               ),
               const SizedBox(height: 6),
               AppField(kind: FieldKind.code, controller: _coachCode, placeholder: "e.g. JESS10"),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text(
                   "A unique code you give clients at signup to link their account to you — set once here, can't be changed later.",
@@ -855,7 +855,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 "Bio (optional, but recommended)",
                 style: TextStyle(
                   fontSize: 12,
@@ -878,7 +878,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       "A strong bio helps clients choose you.",
                       style: TextStyle(fontSize: 11, color: AppColors.mute),
                     ),
@@ -887,7 +887,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                       style: TextStyle(
                         fontSize: 11,
                         color: _bio.text.length > 700
-                            ? const Color(0xFFD68A4F)
+                            ? AppColors.warning
                             : AppColors.mute,
                       ),
                     ),
@@ -895,7 +895,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 "Before & After (optional)",
                 style: TextStyle(
                   fontSize: 12,
@@ -904,7 +904,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 10),
                 child: Text(
                   "Show off past client transformations as a portfolio — every client can see these on your coach profile. Add a Before and After photo for each frame. Up to 6 sets.",
@@ -940,7 +940,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              const Divider(color: AppColors.line, height: 1),
+              Divider(color: AppColors.line, height: 1),
               const SizedBox(height: 6),
               ConsentCheckbox(
                 value: _over18,
@@ -967,7 +967,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                     const Text("I agree to the ", style: TextStyle(fontSize: 13, height: 1.4)),
                     GestureDetector(
                       onTap: () => setState(() => _readingTerms = true),
-                      child: const Text(
+                      child: Text(
                         "Terms of Use",
                         style: TextStyle(
                           fontSize: 13,
@@ -982,7 +982,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                   ],
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 36, top: 2),
                 child: Text(
                   "ONE Fitness has zero tolerance for objectionable content or abusive users.",
@@ -993,7 +993,7 @@ class _CoachSignupScreenState extends ConsumerState<CoachSignupScreen> {
                 const SizedBox(height: 10),
                 Text(
                   _error!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.errorText,
                     fontSize: 12,
                   ),

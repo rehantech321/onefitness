@@ -61,7 +61,7 @@ class _IntakeAttachmentsFieldState extends State<IntakeAttachmentsField> {
     try {
       result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: const ["pdf", "jpg", "jpeg"],
+        allowedExtensions: const ["pdf", "jpg", "jpeg", "png", "txt"],
         withData: true,
         allowMultiple: true,
       );
@@ -88,17 +88,25 @@ class _IntakeAttachmentsFieldState extends State<IntakeAttachmentsField> {
         failures.add("${file.name} couldn't be read");
         continue;
       }
-      final contentType = _contentTypeFor(file.name);
+      var contentType = _contentTypeFor(file.name);
       if (contentType == null) {
-        failures.add("${file.name} isn't a PDF or JPEG");
+        failures.add("${file.name} isn't a PDF, image or text file");
         continue;
       }
       var payload = bytes;
-      // A photographed document can easily clear 10MB. Shrinking it beats
-      // rejecting it — the page stays legible at 2000px — but a PDF can't be
-      // re-encoded this way, so an oversized one is still a refusal.
-      if (payload.length > SupabaseService.kIntakeFileMaxBytes && contentType == "image/jpeg") {
-        payload = await compute(_shrinkJpeg, payload) ?? payload;
+      // A photographed document can easily clear 10MB. Any image can be
+      // re-encoded down, which beats rejecting it — the page stays legible
+      // at 2000px. A PDF or a text file can't be, so an oversized one of
+      // those is still a refusal.
+      if (payload.length > SupabaseService.kIntakeFileMaxBytes && contentType.startsWith("image/")) {
+        final shrunk = await compute(_shrinkJpeg, payload);
+        if (shrunk != null) {
+          payload = shrunk;
+          // The shrink always emits JPEG. Leaving the type as image/png
+          // would store JPEG bytes labelled PNG — which the storage bucket
+          // takes at face value and Claude then fails to decode.
+          contentType = "image/jpeg";
+        }
       }
       if (payload.length > SupabaseService.kIntakeFileMaxBytes) {
         failures.add("${file.name} is over ${_fmtSize(SupabaseService.kIntakeFileMaxBytes)}");
@@ -206,7 +214,7 @@ class _IntakeAttachmentsFieldState extends State<IntakeAttachmentsField> {
       children: [
         Row(
           children: [
-            const Icon(LucideIcons.paperclip, size: 15, color: AppColors.gold),
+            Icon(LucideIcons.paperclip, size: 15, color: AppColors.gold),
             const SizedBox(width: 7),
             Text(
               widget.readOnly
@@ -217,10 +225,10 @@ class _IntakeAttachmentsFieldState extends State<IntakeAttachmentsField> {
           ],
         ),
         if (!widget.readOnly)
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 5),
             child: Text(
-              "Optional. Add bloodwork, a doctor's or dietitian's note, or a plan you're already following — PDF or JPEG.",
+              "Optional. Bloodwork, a doctor's or physio's note, a programme you're already on — PDF, image or text. Your coach's AI drafter reads these when building your plan.",
               style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.45),
             ),
           ),
@@ -242,7 +250,7 @@ class _IntakeAttachmentsFieldState extends State<IntakeAttachmentsField> {
               onPressed: _busy ? null : _pick,
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.mute,
-                side: const BorderSide(color: AppColors.line),
+                side: BorderSide(color: AppColors.line),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -250,7 +258,7 @@ class _IntakeAttachmentsFieldState extends State<IntakeAttachmentsField> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (_busy)
-                    const SizedBox(
+                    SizedBox(
                       width: 14,
                       height: 14,
                       child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(AppColors.mute)),
@@ -263,7 +271,7 @@ class _IntakeAttachmentsFieldState extends State<IntakeAttachmentsField> {
               ),
             )
           else
-            const Text(
+            Text(
               "That's the maximum. Remove one to add a different file.",
               style: TextStyle(fontSize: 11.5, color: AppColors.mute),
             ),
@@ -273,7 +281,7 @@ class _IntakeAttachmentsFieldState extends State<IntakeAttachmentsField> {
             padding: const EdgeInsets.only(top: 10),
             child: Text(
               _error!,
-              style: const TextStyle(color: Color(0xFFE05555), fontSize: 12, height: 1.4),
+              style: TextStyle(color: AppColors.danger, fontSize: 12, height: 1.4),
             ),
           ),
       ],
@@ -310,7 +318,7 @@ class _AttachmentRow extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              a.isPdf ? LucideIcons.fileText : LucideIcons.image,
+              a.isPdf ? LucideIcons.fileText : (a.isImage ? LucideIcons.image : LucideIcons.fileType),
               size: 16,
               color: AppColors.mute,
             ),
@@ -329,8 +337,8 @@ class _AttachmentRow extends StatelessWidget {
                   Text(
                     opening
                         ? "Opening…"
-                        : "${a.isPdf ? "PDF" : "JPEG"}${a.size > 0 ? " · ${_fmtSize(a.size)}" : ""}",
-                    style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                        : "${a.kindLabel}${a.size > 0 ? " · ${_fmtSize(a.size)}" : ""}",
+                    style: TextStyle(fontSize: 11, color: AppColors.mute),
                   ),
                 ],
               ),
@@ -338,13 +346,13 @@ class _AttachmentRow extends StatelessWidget {
             if (onRemove != null)
               IconButton(
                 onPressed: onRemove,
-                icon: const Icon(LucideIcons.x, size: 15, color: AppColors.mute),
+                icon: Icon(LucideIcons.x, size: 15, color: AppColors.mute),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                 tooltip: "Remove",
               )
             else
-              const Icon(LucideIcons.externalLink, size: 14, color: AppColors.mute),
+              Icon(LucideIcons.externalLink, size: 14, color: AppColors.mute),
           ],
         ),
       ),
@@ -360,6 +368,8 @@ String? _contentTypeFor(String filename) {
   final lower = filename.toLowerCase();
   if (lower.endsWith(".pdf")) return "application/pdf";
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".txt")) return "text/plain";
   return null;
 }
 

@@ -212,7 +212,7 @@ class _MapPickerSheetState extends State<_MapPickerSheet> {
                         Padding(
                           padding: const EdgeInsets.only(top: 3),
                           child: Text(widget.subtitle!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12, color: AppColors.mute, height: 1.4)),
                         ),
                     ],
@@ -220,7 +220,7 @@ class _MapPickerSheetState extends State<_MapPickerSheet> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(LucideIcons.x, size: 20, color: AppColors.mute),
+                  icon: Icon(LucideIcons.x, size: 20, color: AppColors.mute),
                   constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                   padding: EdgeInsets.zero,
                 ),
@@ -306,7 +306,7 @@ class _MapPickerSheetState extends State<_MapPickerSheet> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(LucideIcons.mapPin, size: 14, color: AppColors.gold),
+                Icon(LucideIcons.mapPin, size: 14, color: AppColors.gold),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -330,7 +330,7 @@ class _MapPickerSheetState extends State<_MapPickerSheet> {
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
               child: Text(_note!,
-                  style: const TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4)),
+                  style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4)),
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),

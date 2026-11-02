@@ -3,6 +3,7 @@ import "dart:typed_data";
 import "package:http/http.dart" as http;
 import "package:supabase_flutter/supabase_flutter.dart";
 import "package:uuid/uuid.dart";
+import "streamed_upload.dart";
 import "../utils/coach_merit_badge_utils.dart";
 import "../utils/image_shrink.dart";
 import "../utils/date_utils.dart";
@@ -1081,6 +1082,8 @@ class SupabaseService {
         setup: j["setup"] as String?,
         cues: j["cues"] as String?,
         coachNotes: j["coachNotes"] as String?,
+        videoPath: j["videoPath"] as String?,
+        videoName: j["videoName"] as String?,
       );
 
   static Future<List<Challenge>> loadChallenges() async {
@@ -2195,7 +2198,12 @@ class SupabaseService {
     required String contentType,
   }) async {
     final id = const Uuid().v4();
-    final ext = contentType == "application/pdf" ? "pdf" : "jpg";
+    final ext = switch (contentType) {
+      "application/pdf" => "pdf",
+      "image/png" => "png",
+      "text/plain" => "txt",
+      _ => "jpg",
+    };
     final path = "$profileId/$assessmentKey/$id.$ext";
     await client.storage.from(kIntakeFilesBucket).uploadBinary(
           path,
@@ -2280,6 +2288,9 @@ class SupabaseService {
     final nextIntake = {
       ...currentIntake,
       assessmentKey: {
+        // Spread first so the modelled fields below always win — `extra` is
+        // only ever the keys this app doesn't model.
+        ...record.extra,
         "answers": record.answers,
         "completed": record.completed,
         "at": record.at,
@@ -3708,6 +3719,7 @@ class SupabaseService {
     "kind": p.kind.name,
     "description": p.description,
     "startDate": p.startDate,
+    "endDate": p.endDate,
     "renewalDay": p.renewalDay,
     "maxSessions": p.maxSessions,
     "termMonths": p.termMonths,
@@ -3856,6 +3868,7 @@ class SupabaseService {
     "img": p.img,
     "coachComment": p.coachComment,
     "coachCommentAt": p.coachCommentAt,
+    if (p.addedBy != null) "addedBy": p.addedBy,
   };
 
   static ProgressPhoto _progressPhotoFromJson(Map<String, dynamic> j) => ProgressPhoto(
@@ -3864,6 +3877,7 @@ class SupabaseService {
     img: j["img"] as String? ?? "",
     coachComment: j["coachComment"] as String?,
     coachCommentAt: j["coachCommentAt"] as String?,
+    addedBy: j["addedBy"] as String?,
   );
 
   static Future<void> upsertProgramLibraryEntry(SavedProgram p) =>
@@ -3930,6 +3944,8 @@ class SupabaseService {
     "setup": e.setup,
     "cues": e.cues,
     "coachNotes": e.coachNotes,
+    "videoPath": e.videoPath,
+    "videoName": e.videoName,
   };
 
   static Future<void> upsertExercise(ExerciseDef e) =>
@@ -3937,6 +3953,72 @@ class SupabaseService {
 
   static Future<void> deleteExercise(String id) async {
     await client.from("exercises").delete().eq("id", id);
+  }
+
+  /// The bucket holding exercise demo clips (migration 36). Public to read —
+  /// a clip of a squat is not a client's private data, and a public URL
+  /// cannot expire halfway through playback the way a signed one can.
+  /// Writing is staff-only, enforced by the bucket's policies.
+  static const kExerciseVideosBucket = "exercise-videos";
+
+  /// Per-file ceiling, the same number migration 36 set on the bucket, so a
+  /// coach hears "too large" before sitting through a doomed upload.
+  static const kExerciseVideoMaxBytes = 150 * 1024 * 1024;
+
+  /// Media types the bucket accepts. Kept beside the limit above for the same
+  /// reason: the rejection should come from the picker, not from the server
+  /// after a long wait.
+  static const kExerciseVideoTypes = <String, String>{
+    "mp4": "video/mp4",
+    "mov": "video/quicktime",
+    "m4v": "video/mp4",
+    "webm": "video/webm",
+  };
+
+  /// Uploads a demo clip and returns its object name, to be stored on the
+  /// exercise as `videoPath`.
+  ///
+  /// Takes a stream so the file never has to be held whole: see
+  /// [uploadStreamWithProgress], which is also where [onProgress] comes from
+  /// and why this does not go through `storage.uploadBinary`.
+  static Future<String> uploadExerciseVideo({
+    required String exerciseId,
+    required Stream<List<int>> bytes,
+    required int length,
+    required String contentType,
+    UploadProgress? onProgress,
+  }) async {
+    // An exercise id is derived from its name, so it can hold anything a
+    // coach can type. Storage object keys cannot, so the folder segment is
+    // reduced to what is always safe; the uuid keeps it unique regardless.
+    final folder = exerciseId
+        .replaceAll(RegExp(r"[^A-Za-z0-9_-]+"), "-")
+        .replaceAll(RegExp(r"^-+|-+$"), "");
+    final ext = kExerciseVideoTypes.entries
+        .firstWhere(
+          (e) => e.value == contentType,
+          orElse: () => const MapEntry("mp4", "video/mp4"),
+        )
+        .key;
+    final path = "${folder.isEmpty ? "exercise" : folder}/${const Uuid().v4()}.$ext";
+    await uploadStreamWithProgress(
+      bucket: kExerciseVideosBucket,
+      path: path,
+      body: bytes,
+      length: length,
+      contentType: contentType,
+      onProgress: onProgress,
+    );
+    return path;
+  }
+
+  /// The URL a player can stream [path] from. Derived rather than stored, so
+  /// a project moving to a different storage host doesn't strand every clip.
+  static String exerciseVideoUrl(String path) =>
+      client.storage.from(kExerciseVideosBucket).getPublicUrl(path);
+
+  static Future<void> deleteExerciseVideo(String path) async {
+    await client.storage.from(kExerciseVideosBucket).remove([path]);
   }
 
   /// `status`/`created_at` are left to the table's own defaults ('upcoming',
@@ -4528,6 +4610,13 @@ class SupabaseService {
                   .map((a) => IntakeAttachment.fromJson(a.cast<String, dynamic>()))
                   .whereType<IntakeAttachment>()
                   .toList(),
+              // The physical assessment's own fields, and anything else the
+              // web app writes here — kept so a save from this app can put
+              // them back instead of dropping them.
+              extra: {
+                for (final e in m.entries)
+                  if (!IntakeRecord.knownKeys.contains(e.key)) e.key: e.value,
+              },
             ),
           );
         }),
@@ -4812,6 +4901,7 @@ class SupabaseService {
       kind: kindByName[j["kind"] as String?] ?? PlanKind.package,
       description: j["description"] as String?,
       startDate: j["startDate"] as String?,
+      endDate: j["endDate"] as String?,
       renewalDay: _asInt(j["renewalDay"]),
       maxSessions: _asInt(j["maxSessions"]),
       termMonths: _asInt(j["termMonths"]),

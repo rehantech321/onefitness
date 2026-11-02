@@ -12,7 +12,10 @@ class StatusMeta {
 }
 
 /// Mirrors lib/helpers.js `STATUS_META` — the four-state client progress system.
-const Map<ClientStatus, StatusMeta> kStatusMeta = {
+// Rebuilt on each read rather than held in a `final`: a lazily-initialised
+// field would capture whichever palette happened to be active the first
+// time it was touched and keep those colours after a theme switch.
+Map<ClientStatus, StatusMeta> get kStatusMeta => {
   ClientStatus.newClient: StatusMeta(
     color: AppColors.statusNew,
     border: AppColors.statusNewBorder,

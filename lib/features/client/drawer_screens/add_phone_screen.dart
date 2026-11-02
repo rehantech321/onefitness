@@ -113,17 +113,17 @@ class _PhoneDialogState extends State<_PhoneDialog> {
             style: const TextStyle(fontSize: 15),
             decoration: InputDecoration(
               hintText: "e.g. (555) 010-0199",
-              hintStyle: const TextStyle(color: AppColors.mute, fontSize: 14),
+              hintStyle: TextStyle(color: AppColors.mute, fontSize: 14),
               filled: true,
               fillColor: AppColors.bg,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.line),
+                borderSide: BorderSide(color: AppColors.line),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.line),
+                borderSide: BorderSide(color: AppColors.line),
               ),
               errorText: _error,
             ),
@@ -133,7 +133,7 @@ class _PhoneDialogState extends State<_PhoneDialog> {
             onSubmitted: (_) => _busy ? null : _save(),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             "Saved to your profile. Only your coach and ONE Fitness staff can see it, and you can change it any time in Profile Settings.",
             style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
@@ -244,7 +244,7 @@ class _AddPhoneScreenState extends ConsumerState<AddPhoneScreen> {
             ),
             child: Text(
               widget.reason,
-              style: const TextStyle(fontSize: 13, color: AppColors.txt, height: 1.5),
+              style: TextStyle(fontSize: 13, color: AppColors.txt, height: 1.5),
             ),
           ),
           const SizedBox(height: 16),
@@ -257,7 +257,7 @@ class _AddPhoneScreenState extends ConsumerState<AddPhoneScreen> {
               onChanged: (_) => setState(() => _error = null),
             ),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 6),
             child: Text(
               "Only your coach and ONE Fitness staff can see this. You can change it any time in Profile Settings.",
@@ -266,7 +266,7 @@ class _AddPhoneScreenState extends ConsumerState<AddPhoneScreen> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 10),
-            Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+            Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
           ],
           const SizedBox(height: 18),
           BtnGold(

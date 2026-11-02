@@ -65,7 +65,7 @@ class SubBadgeDetailScreen extends StatelessWidget {
           SectionLabel("$title Progress: $activeCount/${subBadges.length}"),
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: Text(blurb, style: const TextStyle(fontSize: 13, color: AppColors.mute, height: 1.6)),
+            child: Text(blurb, style: TextStyle(fontSize: 13, color: AppColors.mute, height: 1.6)),
           ),
           ...subBadges.map((sub) {
             final earned = byKey[sub.key];
@@ -88,14 +88,14 @@ class SubBadgeDetailScreen extends StatelessWidget {
                         Text(sub.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: earned != null ? AppColors.gold : AppColors.txt)),
                         Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: Text(sub.description, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.5)),
+                          child: Text(sub.description, style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.5)),
                         ),
                         if (earned != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
                               "Earned ${_fmtDate(earned.earnedAt)} · expires ${_fmtExpiry(earned.earnedAt)}",
-                              style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
+                              style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
                             ),
                           ),
                       ],

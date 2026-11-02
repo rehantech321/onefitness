@@ -59,7 +59,7 @@ class _RosterBarState extends ConsumerState<RosterBar> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -91,7 +91,7 @@ class _RosterBarState extends ConsumerState<RosterBar> {
                       border: Border.all(color: AppColors.goldDim, style: BorderStyle.solid),
                     ),
                     alignment: Alignment.center,
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(LucideIcons.plus, size: 14, color: AppColors.gold),
@@ -159,7 +159,7 @@ class _RosterBarState extends ConsumerState<RosterBar> {
                                           _fmtEmail(c.email),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 10, color: AppColors.mute),
+                                          style: TextStyle(fontSize: 10, color: AppColors.mute),
                                         ),
                                       ),
                                       if (rec != null && getHighestFlag(rec, c) != null) ...[
@@ -181,7 +181,7 @@ class _RosterBarState extends ConsumerState<RosterBar> {
             ),
           ),
           if (visible.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
                 "No clients yet — tap + Client to add your first one.",

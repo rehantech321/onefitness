@@ -37,7 +37,7 @@ Future<void> _toggleBillingShared(BuildContext context, WidgetRef ref, Squad squ
         builder: (ctx) => AlertDialog(
           backgroundColor: AppColors.card,
           title: const Text("Can't turn off shared billing"),
-          content: const Text(
+          content: Text(
             "This Squad has an active shared plan. Ask your coach to remove it before turning off shared billing.",
             style: TextStyle(color: AppColors.mute),
           ),
@@ -53,7 +53,7 @@ Future<void> _toggleBillingShared(BuildContext context, WidgetRef ref, Squad squ
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         title: const Text("Turn off shared billing?"),
-        content: const Text(
+        content: Text(
           "Payments and Membership tabs will be hidden for everyone in this Squad.",
           style: TextStyle(color: AppColors.mute),
         ),
@@ -156,7 +156,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                       "You'll be the Lead Account. You can invite existing clients after creating the Squad.",
                 ),
                 const SizedBox(height: 18),
-                const Text(
+                Text(
                   "Will this Squad share a membership or session package?",
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.txt),
                 ),
@@ -201,7 +201,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                           });
                         },
                   full: true,
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -222,14 +222,14 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(LucideIcons.users2, size: 40, color: AppColors.gold),
+              Icon(LucideIcons.users2, size: 40, color: AppColors.gold),
               const SizedBox(height: 16),
               const Text(
                 "You're not in a Squad yet",
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 "Squads let you share a membership or session package with family or training partners, "
                 "while keeping your own profile and history separate.",
                 textAlign: TextAlign.center,
@@ -243,7 +243,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
               BtnGold(
                 onPressed: () => setState(() => _creating = true),
                 full: true,
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -254,7 +254,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 "Or ask your coach to add you to one.",
                 style: TextStyle(fontSize: 12, color: AppColors.mute),
               ),
@@ -341,7 +341,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
             children: [
               Row(
             children: [
-              const Icon(LucideIcons.users2, size: 20, color: AppColors.gold),
+              Icon(LucideIcons.users2, size: 20, color: AppColors.gold),
               const SizedBox(width: 10),
               if (_nameEditing) ...[
                 Expanded(
@@ -364,7 +364,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                     }
                     setState(() => _nameEditing = false);
                   },
-                  child: const Text(
+                  child: Text(
                     "Save",
                     style: TextStyle(
                       color: AppColors.gold,
@@ -388,7 +388,7 @@ class _SquadDashboardScreenState extends ConsumerState<SquadDashboardScreen> {
                       _nameDraftController.text = squad.name ?? "";
                       setState(() => _nameEditing = true);
                     },
-                    icon: const Icon(
+                    icon: Icon(
                       LucideIcons.edit3,
                       size: 14,
                       color: AppColors.mute,
@@ -563,7 +563,7 @@ class _MembersTab extends ConsumerWidget {
                                     ),
                                     borderRadius: BorderRadius.circular(5),
                                   ),
-                                  child: const Row(
+                                  child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(
@@ -592,7 +592,7 @@ class _MembersTab extends ConsumerWidget {
                               padding: const EdgeInsets.only(top: 2),
                               child: Text(
                                 m.relationship,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   color: AppColors.mute,
                                 ),
@@ -690,7 +690,7 @@ class _MembersTab extends ConsumerWidget {
                         ),
                         Text(
                           "Awaiting response — invited ${inv.sentAt}",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             color: AppColors.mute,
                           ),
@@ -713,7 +713,7 @@ class _MembersTab extends ConsumerWidget {
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.mute,
-                      side: const BorderSide(color: AppColors.line),
+                      side: BorderSide(color: AppColors.line),
                     ),
                     child: const Text("Cancel", style: TextStyle(fontSize: 11)),
                   ),
@@ -727,7 +727,7 @@ class _MembersTab extends ConsumerWidget {
           AppCard(
             borderColor: AppColors.goldDim,
             onTap: onSearch,
-            child: const Row(
+            child: Row(
               children: [
                 Icon(LucideIcons.userPlus, size: 17, color: AppColors.gold),
                 SizedBox(width: 10),
@@ -747,7 +747,7 @@ class _MembersTab extends ConsumerWidget {
               child: Text(
                 "Squad is at the ${squad.maxSize}-member limit (including pending invites). An admin can override this.",
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                style: TextStyle(fontSize: 11, color: AppColors.mute),
               ),
             ),
           const SizedBox(height: 12),
@@ -763,7 +763,7 @@ class _MembersTab extends ConsumerWidget {
                         squad.billingShared
                             ? "This Squad shares a membership or session package."
                             : "This Squad is a connection only — no shared billing.",
-                        style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                        style: TextStyle(fontSize: 11, color: AppColors.mute),
                       ),
                     ],
                   ),
@@ -827,7 +827,7 @@ class _MembershipTab extends StatelessWidget {
         : 0.0;
     final color = pct > 0.4
         ? AppColors.grn
-        : (pct > 0.15 ? const Color(0xFFD68A4F) : AppColors.errorText);
+        : (pct > 0.15 ? AppColors.warning : AppColors.errorText);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -852,7 +852,7 @@ class _MembershipTab extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 "Sessions remaining",
                 style: TextStyle(fontSize: 12, color: AppColors.mute),
               ),
@@ -881,7 +881,7 @@ class _MembershipTab extends StatelessWidget {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 "Renews ${ms.renewalDate}",
-                style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                style: TextStyle(fontSize: 11, color: AppColors.mute),
               ),
             ),
         ],
@@ -908,7 +908,7 @@ class _PaymentsTab extends ConsumerWidget {
       children: [
         AppCard(
           borderColor: AppColors.goldDim,
-          child: const Text(
+          child: Text(
             "Choose which members' account balances can be applied toward membership renewals. Individual balances stay "
             "separate — only contributions you enable here apply to Squad charges.",
             style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
@@ -936,7 +936,7 @@ class _PaymentsTab extends ConsumerWidget {
                               fontSize: 14,
                             ),
                           ),
-                          const Text(
+                          Text(
                             "Available balance: \$0.00",
                             style: TextStyle(
                               fontSize: 11,
@@ -1015,7 +1015,7 @@ class _ActivityTab extends StatelessWidget {
           .map(
             (e) => Container(
               padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: AppColors.line)),
               ),
               child: Row(
@@ -1028,7 +1028,7 @@ class _ActivityTab extends StatelessWidget {
                       color: AppColors.gold.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       LucideIcons.shield,
                       size: 15,
                       color: AppColors.gold,
@@ -1041,7 +1041,7 @@ class _ActivityTab extends StatelessWidget {
                       children: [
                         Text(
                           e.description ?? e.type.replaceAll("_", " "),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             color: AppColors.txt,
                           ),
@@ -1051,7 +1051,7 @@ class _ActivityTab extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 2),
                             child: Text(
                               "by ${e.actorName}",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.mute,
                               ),
@@ -1062,7 +1062,7 @@ class _ActivityTab extends StatelessWidget {
                   ),
                   Text(
                     e.at,
-                    style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                    style: TextStyle(fontSize: 11, color: AppColors.mute),
                   ),
                 ],
               ),

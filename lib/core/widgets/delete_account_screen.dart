@@ -100,7 +100,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               border: Border.all(color: AppColors.errorText),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Row(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
@@ -119,7 +119,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             "WHAT GETS DELETED",
             style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5),
           ),
@@ -130,7 +130,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 5),
                     child: Icon(LucideIcons.x, size: 12, color: AppColors.errorText),
                   ),
@@ -142,12 +142,12 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
               ),
             ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             "WHAT WE HAVE TO KEEP",
             style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             "Payment and booking records we're required to keep for tax and "
             "accounting are retained, with your name and personal details "
             "removed so they can't be traced back to you.",
@@ -164,7 +164,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 10),
-            Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+            Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
           ],
           const SizedBox(height: 18),
           SizedBox(

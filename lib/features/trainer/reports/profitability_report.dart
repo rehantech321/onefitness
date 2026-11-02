@@ -40,8 +40,8 @@ class RevenueVsPayrollReport extends ConsumerWidget {
             ],
           ),
         ),
-        AppCard(child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Revenue", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), Text(_money(revenue), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.grn))])),
-        AppCard(child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Payroll", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), Text("-${_money(payroll)}", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.danger))])),
+        AppCard(child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Revenue", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), Text(_money(revenue), style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.grn))])),
+        AppCard(child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text("Payroll", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)), Text("-${_money(payroll)}", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.danger))])),
         AppCard(
           borderColor: AppColors.goldDim,
           child: Row(

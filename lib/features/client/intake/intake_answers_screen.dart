@@ -60,13 +60,13 @@ class IntakeAnswersScreen extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4, bottom: 16),
             child: Row(
               children: [
-                const Icon(LucideIcons.check, size: 14, color: AppColors.gold),
+                Icon(LucideIcons.check, size: 14, color: AppColors.gold),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     "Completed by ${record.by ?? "Client"}"
                     "${record.at != null ? " · ${record.at}" : ""}",
-                    style: const TextStyle(fontSize: 12, color: AppColors.gold),
+                    style: TextStyle(fontSize: 12, color: AppColors.gold),
                   ),
                 ),
               ],
@@ -83,7 +83,7 @@ class IntakeAnswersScreen extends StatelessWidget {
                 children: [
                   Text(
                     sec.title.toUpperCase(),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       color: AppColors.gold,
                       fontWeight: FontWeight.w700,
@@ -117,7 +117,7 @@ class IntakeAnswersScreen extends StatelessWidget {
           BtnGhost(
             onPressed: onEdit,
             full: true,
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [

@@ -83,12 +83,12 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "Which calendar?",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.txt),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   "Your sessions will keep themselves up to date either way.",
                   style: TextStyle(fontSize: 12, color: AppColors.mute),
                 ),
@@ -191,7 +191,7 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.calendar, size: 17, color: AppColors.gold),
+              Icon(LucideIcons.calendar, size: 17, color: AppColors.gold),
               const SizedBox(width: 10),
               const Expanded(
                 child: Text("Sync to your calendar", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
@@ -199,7 +199,7 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             "Add your sessions to the calendar you already use. New bookings, reschedules and cancellations all follow "
             "automatically.",
             style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
@@ -220,7 +220,7 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text("⚠ $_error", style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+            Text("⚠ $_error", style: TextStyle(color: AppColors.errorText, fontSize: 12)),
           ],
           if (!_manual) ...[
             const SizedBox(height: 6),
@@ -232,7 +232,7 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
           ],
           if (_manual && _url != null) ...[
             const SizedBox(height: 12),
-            const Text("YOUR CALENDAR LINK", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            Text("YOUR CALENDAR LINK", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 6),
             Container(
               width: double.infinity,
@@ -242,7 +242,7 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
                 border: Border.all(color: AppColors.line),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: SelectableText(_url!, style: const TextStyle(fontSize: 10.5, color: AppColors.txt, height: 1.4)),
+              child: SelectableText(_url!, style: TextStyle(fontSize: 10.5, color: AppColors.txt, height: 1.4)),
             ),
             const SizedBox(height: 8),
             BtnGhost(
@@ -264,7 +264,7 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               "Add it as a calendar subscription in Apple Calendar or Outlook. Treat it like a password — anyone who has "
               "it can see your schedule.",
               style: TextStyle(fontSize: 10.5, color: AppColors.mute, height: 1.4),
@@ -272,7 +272,7 @@ class _CalendarSyncSectionState extends ConsumerState<CalendarSyncSection> {
             const SizedBox(height: 4),
             TextButton(
               onPressed: _busy ? null : _regenerate,
-              style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F), padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
+              style: TextButton.styleFrom(foregroundColor: AppColors.errorText, padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
               child: const Text("Disconnect calendar", style: TextStyle(fontSize: 11)),
             ),
           ],
@@ -319,11 +319,11 @@ class _CalendarChoice extends StatelessWidget {
                 children: [
                   Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 1),
-                  Text(hint, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                  Text(hint, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                 ],
               ),
             ),
-            const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+            Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
           ],
         ),
       ),

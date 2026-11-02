@@ -66,7 +66,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
             onTap: () => setState(() => _open = !_open),
             child: Row(
               children: [
-                const Icon(LucideIcons.calendar, size: 16, color: AppColors.gold),
+                Icon(LucideIcons.calendar, size: 16, color: AppColors.gold),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text("Workout Calendar", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
@@ -90,13 +90,13 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
               children: [
                 IconButton(
                   onPressed: () => _shift(-1),
-                  icon: const Icon(LucideIcons.chevronLeft, size: 18, color: AppColors.mute),
+                  icon: Icon(LucideIcons.chevronLeft, size: 18, color: AppColors.mute),
                   visualDensity: VisualDensity.compact,
                 ),
                 Text(monthName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 IconButton(
                   onPressed: () => _shift(1),
-                  icon: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.mute),
+                  icon: Icon(LucideIcons.chevronRight, size: 18, color: AppColors.mute),
                   visualDensity: VisualDensity.compact,
                 ),
               ],
@@ -107,7 +107,7 @@ class _WorkoutCalendarState extends State<WorkoutCalendar> {
               physics: const NeverScrollableScrollPhysics(),
               children: const ["S", "M", "T", "W", "T", "F", "S"]
                   .map((d) => Center(
-                        child: Text(d, style: const TextStyle(fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w700)),
+                        child: Text(d, style: TextStyle(fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w700)),
                       ))
                   .toList(),
             ),
@@ -203,7 +203,7 @@ class _Legend extends StatelessWidget {
       children: [
         Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.mute)),
+        Text(label, style: TextStyle(fontSize: 10, color: AppColors.mute)),
       ],
     );
   }

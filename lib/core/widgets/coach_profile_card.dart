@@ -46,7 +46,7 @@ class CoachProfileCard extends ConsumerWidget {
     return Dialog(
       insetPadding: EdgeInsets.symmetric(horizontal: 12, vertical: screenHeight * 0.06),
       backgroundColor: AppColors.card,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.line)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: AppColors.line)),
       clipBehavior: Clip.antiAlias,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -79,12 +79,12 @@ class CoachProfileCard extends ConsumerWidget {
                   onPressed: onClose,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
-                  icon: const Icon(LucideIcons.x, size: 20, color: AppColors.mute),
+                  icon: Icon(LucideIcons.x, size: 20, color: AppColors.mute),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.line),
+          Divider(height: 1, color: AppColors.line),
           Flexible(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -97,14 +97,14 @@ class CoachProfileCard extends ConsumerWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Padding(padding: EdgeInsets.only(top: 2), child: Icon(LucideIcons.mapPin, size: 12, color: AppColors.goldDim)),
+                          Padding(padding: EdgeInsets.only(top: 2), child: Icon(LucideIcons.mapPin, size: 12, color: AppColors.goldDim)),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               resolveTrainerLocations(trainer.locations, ref.watch(platformSettingsProvider))
                                   .map((l) => l.name)
                                   .join(" · "),
-                              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                              style: TextStyle(fontSize: 12, color: AppColors.mute),
                             ),
                           ),
                         ],
@@ -113,10 +113,10 @@ class CoachProfileCard extends ConsumerWidget {
                   if (trainer.bio != null && trainer.bio!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 18),
-                      child: Text(trainer.bio!, style: const TextStyle(fontSize: 14, color: AppColors.txt, height: 1.6)),
+                      child: Text(trainer.bio!, style: TextStyle(fontSize: 14, color: AppColors.txt, height: 1.6)),
                     )
                   else
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(bottom: 18),
                       child: Text(
                         "This coach hasn't added a bio yet.",
@@ -124,7 +124,7 @@ class CoachProfileCard extends ConsumerWidget {
                       ),
                     ),
                   if (frames.isNotEmpty) ...[
-                    const Text(
+                    Text(
                       "CLIENT TRANSFORMATIONS",
                       style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.8),
                     ),
@@ -185,7 +185,7 @@ class _TransformationSide extends StatelessWidget {
             color: AppColors.bg,
             child: image != null
                 ? Image(image: image!, fit: BoxFit.cover)
-                : const Center(child: Text("—", style: TextStyle(color: AppColors.mute, fontSize: 11))),
+                : Center(child: Text("—", style: TextStyle(color: AppColors.mute, fontSize: 11))),
           ),
           Positioned(
             left: 0,

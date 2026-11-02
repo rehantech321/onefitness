@@ -206,7 +206,10 @@ class AttendanceOption {
   final Color color;
 }
 
-const kAttendanceOptions = [
+// Rebuilt on each read rather than held in a `final`: a lazily-initialised
+// field would capture whichever palette happened to be active the first
+// time it was touched and keep those colours after a theme switch.
+List<AttendanceOption> get kAttendanceOptions => [
   AttendanceOption("checked-in", "Check In", AppColors.grn),
   AttendanceOption("early-cancel", "Early Cancel", AppColors.info),
   AttendanceOption("late-cancel", "Late Cancel", AppColors.warning),

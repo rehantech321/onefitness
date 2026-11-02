@@ -196,7 +196,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       fontSize: 19,
                     ),
                   ),
-                  const Text(
+                  Text(
                     "ONE Fitness client",
                     style: TextStyle(fontSize: 12, color: AppColors.mute),
                   ),
@@ -214,7 +214,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     earnedBadges: earnedBadges,
                   ),
                 )
-              : const Padding(
+              : Padding(
                   padding: EdgeInsets.only(bottom: 14),
                   child: Text(
                     "No Merit Badges earned yet.",
@@ -242,10 +242,10 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                   Expanded(
                     child: Text(
                       "Client left ${notes.length == 1 ? 'a note' : '${notes.length} notes'} on their workout program — review before session",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFFE05555),
+                        color: AppColors.danger,
                       ),
                     ),
                   ),
@@ -260,7 +260,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       "PROGRESS STATUS",
                       style: TextStyle(
                         fontSize: 10,
@@ -277,7 +277,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     ),
                     Text(
                       meta.desc,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         color: AppColors.mute,
                       ),
@@ -293,7 +293,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               children: [
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       LucideIcons.creditCard,
                       size: 17,
                       color: AppColors.gold,
@@ -303,7 +303,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "MEMBERSHIP",
                             style: TextStyle(
                               fontSize: 10,
@@ -325,7 +325,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               padding: const EdgeInsets.only(top: 3),
                               child: Text(
                                 "Cancelled · access ends ${niceDate(info.membershipCancelsAt!)}",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   color: AppColors.errorText,
                                   fontWeight: FontWeight.w700,
@@ -337,9 +337,9 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                               padding: const EdgeInsets.only(top: 3),
                               child: Text(
                                 "Frozen ${info.membershipPausedAt ?? ''}${info.membershipFreezeEndsAt != null ? ' – ${info.membershipFreezeEndsAt}' : ''}",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
-                                  color: Color(0xFFD68A4F),
+                                  color: AppColors.warning,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -356,8 +356,8 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Text(
                         _freezeErr!,
-                        style: const TextStyle(
-                          color: Color(0xFFC97F7F),
+                        style: TextStyle(
+                          color: AppColors.errorText,
                           fontSize: 12,
                         ),
                       ),
@@ -394,7 +394,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                         children: [
                           Text(
                             "Both dates are required — this shifts ${info.name}'s billing date too, so they don't lose any paid-for time.",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: AppColors.mute,
                             ),
@@ -491,7 +491,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                     padding: const EdgeInsets.only(top: 14),
                     child: Container(
                       padding: const EdgeInsets.only(top: 12),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(top: BorderSide(color: AppColors.line)),
                       ),
                       child: _SessionOverrideRow(
@@ -528,13 +528,13 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
               onTap: () => setState(() => _billingAnchor = true),
               child: Row(
                 children: [
-                  const Icon(LucideIcons.calendarClock, size: 17, color: AppColors.gold),
+                  Icon(LucideIcons.calendarClock, size: 17, color: AppColors.gold),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text("BILLING DATE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+                        Text("BILLING DATE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
                         Text(
                           info.billingAnchorDay != null ? "Bills on the ${ordinalDay(info.billingAnchorDay!)} of the month" : "Bills on whatever day they signed up",
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -542,7 +542,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                       ],
                     ),
                   ),
-                  const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                  Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
                 ],
               ),
             ),
@@ -631,7 +631,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
             child: TextButton(
               onPressed: () => _deleteClient(info),
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC97F7F),
+                foregroundColor: AppColors.errorText,
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
@@ -926,7 +926,7 @@ class _IntakeStatusSummary extends StatelessWidget {
                 child: Row(
                   children: [
                     done
-                        ? const Icon(
+                        ? Icon(
                             LucideIcons.check,
                             size: 16,
                             color: AppColors.gold,
@@ -934,9 +934,9 @@ class _IntakeStatusSummary extends StatelessWidget {
                         : Container(
                             width: 7,
                             height: 7,
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Color(0xFFE05555),
+                              color: AppColors.danger,
                             ),
                           ),
                     const SizedBox(width: 12),
@@ -966,7 +966,7 @@ class _IntakeStatusSummary extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       LucideIcons.chevronRight,
                       size: 15,
                       color: AppColors.mute,
@@ -1004,7 +1004,7 @@ class _ContactRow extends StatelessWidget {
             children: [
               Text(
                 label.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   color: AppColors.mute,
                   letterSpacing: 1,
@@ -1103,7 +1103,7 @@ class _SessionOverrideRowState extends State<_SessionOverrideRow> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "REMAINING SESSIONS",
           style: TextStyle(
             fontSize: 10,
@@ -1138,7 +1138,7 @@ class _SessionOverrideRowState extends State<_SessionOverrideRow> {
                 (widget.plan.kind == PlanKind.membership
                     ? " This only applies to the current month — it reverts to the plan default next month."
                     : ""),
-            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+            style: TextStyle(fontSize: 11, color: AppColors.mute),
           ),
         ),
       ],
@@ -1228,7 +1228,7 @@ class _AddChargeFormState extends State<_AddChargeForm> {
           const SizedBox(height: 10),
           SectionLabel("Add Charge — ${widget.info.name}"),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             "CATEGORY",
             style: TextStyle(
               fontSize: 10,
@@ -1294,7 +1294,7 @@ class _AddChargeFormState extends State<_AddChargeForm> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 _err!,
-                style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12),
+                style: TextStyle(color: AppColors.errorText, fontSize: 12),
               ),
             ),
           const SizedBox(height: 16),
@@ -1449,7 +1449,7 @@ class _EditSectionState extends State<_EditSection> {
               padding: const EdgeInsets.only(top: 10),
               child: Text(
                 _err!,
-                style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12),
+                style: TextStyle(color: AppColors.errorText, fontSize: 12),
               ),
             ),
           const SizedBox(height: 18),
@@ -1513,7 +1513,7 @@ class _CancelModeOption extends StatelessWidget {
                       fontSize: 13.5, fontWeight: FontWeight.w800, color: enabled ? accent : AppColors.mute)),
               const SizedBox(height: 3),
               Text(detail,
-                  style: const TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4)),
+                  style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4)),
             ],
           ),
         ),

@@ -22,7 +22,7 @@ class HintBox extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: const TextStyle(color: AppColors.mute, fontSize: 13, height: 1.6),
+        style: TextStyle(color: AppColors.mute, fontSize: 13, height: 1.6),
       ),
     );
   }

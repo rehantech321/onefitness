@@ -31,7 +31,7 @@ class BackBar extends StatelessWidget {
           ),
           if (title != null) ...[
             const SizedBox(width: 8),
-            Text(title!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.txt)),
+            Text(title!, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.txt)),
           ],
         ],
       ),

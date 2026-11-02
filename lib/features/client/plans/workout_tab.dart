@@ -91,7 +91,7 @@ class _WorkoutTabState extends ConsumerState<WorkoutTab> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     "Your coach will be notified.",
                     style: TextStyle(fontSize: 12, color: AppColors.mute),
                   ),
@@ -100,15 +100,15 @@ class _WorkoutTabState extends ConsumerState<WorkoutTab> {
                     controller: controller,
                     maxLines: 4,
                     autofocus: true,
-                    style: const TextStyle(color: AppColors.txt, fontSize: 14),
+                    style: TextStyle(color: AppColors.txt, fontSize: 14),
                     decoration: InputDecoration(
                       hintText: "e.g. Left shoulder feels tight on this one",
-                      hintStyle: const TextStyle(color: AppColors.mute),
+                      hintStyle: TextStyle(color: AppColors.mute),
                       filled: true,
                       fillColor: AppColors.bg,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppColors.line),
+                        borderSide: BorderSide(color: AppColors.line),
                       ),
                     ),
                     onChanged: (_) => setSheetState(() {}),
@@ -130,7 +130,7 @@ class _WorkoutTabState extends ConsumerState<WorkoutTab> {
                                 },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.gold,
-                            side: const BorderSide(color: AppColors.goldDim),
+                            side: BorderSide(color: AppColors.goldDim),
                             padding: const EdgeInsets.symmetric(vertical: 11),
                           ),
                           child: const Text(
@@ -165,7 +165,7 @@ class _WorkoutTabState extends ConsumerState<WorkoutTab> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.of(sheetContext).pop(),
-                    child: const Text(
+                    child: Text(
                       "Cancel",
                       style: TextStyle(color: AppColors.mute, fontSize: 12),
                     ),
@@ -242,7 +242,7 @@ class _WorkoutTabState extends ConsumerState<WorkoutTab> {
             ),
             child: Text(
               "\u{1F4DD} ${ex.clientNoteText}",
-              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ),
         Align(
@@ -261,7 +261,7 @@ class _WorkoutTabState extends ConsumerState<WorkoutTab> {
               ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.mute,
-                side: const BorderSide(color: AppColors.line),
+                side: BorderSide(color: AppColors.line),
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -304,7 +304,7 @@ class _WorkoutTabState extends ConsumerState<WorkoutTab> {
               children: [
                 Text(
                   "\u{1F4DD} Your program notes (${allNotes.length})",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: AppColors.danger,
@@ -316,14 +316,14 @@ class _WorkoutTabState extends ConsumerState<WorkoutTab> {
                     padding: const EdgeInsets.only(bottom: 3),
                     child: RichText(
                       text: TextSpan(
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: AppColors.mute,
                         ),
                         children: [
                           TextSpan(
                             text: "${n.label}: ",
-                            style: const TextStyle(color: AppColors.txt),
+                            style: TextStyle(color: AppColors.txt),
                           ),
                           TextSpan(text: n.text),
                         ],

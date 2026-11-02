@@ -46,7 +46,7 @@ class BookingCancelScreen extends ConsumerWidget {
               children: [
                 Text("${dayLabel(booking.date)} · ${fmtSlot(booking.slot)}", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                 const SizedBox(height: 2),
-                Text(trainer?.name ?? "Trainer", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                Text(trainer?.name ?? "Trainer", style: TextStyle(fontSize: 12, color: AppColors.mute)),
               ],
             ),
           ),
@@ -61,15 +61,15 @@ class BookingCancelScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (charged)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(bottom: 4),
-                    child: Text("Late cancellation", style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFD68A4F))),
+                    child: Text("Late cancellation", style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.warning)),
                   ),
                 Text(
                   charged
                       ? "This is within ${settings.lateCancellationHours} hours of your session — a late cancellation. You'll be charged ${lateCancellationFeeLabel(feeCents: settings.lateCancellationFeeCents)}."
                       : "You're outside the ${settings.lateCancellationHours}-hour window — no charge.",
-                  style: const TextStyle(fontSize: 13, color: AppColors.txt, height: 1.5),
+                  style: TextStyle(fontSize: 13, color: AppColors.txt, height: 1.5),
                 ),
               ],
             ),
@@ -84,7 +84,7 @@ class BookingCancelScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(LucideIcons.check, size: 15, color: AppColors.onGold),
+                      Icon(LucideIcons.check, size: 15, color: AppColors.onGold),
                       const SizedBox(width: 6),
                       Text(charged ? "Cancel anyway" : "Confirm cancel"),
                     ],
@@ -139,7 +139,7 @@ class BookingDeniedScreen extends StatelessWidget {
           Icon(
             isConflict || isLimitHit ? LucideIcons.calendarCheck : LucideIcons.circleSlash,
             size: 36,
-            color: isConflict || isLimitHit ? AppColors.gold : const Color(0xFFD68A4F),
+            color: isConflict || isLimitHit ? AppColors.gold : AppColors.warning,
           ),
           const SizedBox(height: 16),
           Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800), textAlign: TextAlign.center),
@@ -149,7 +149,7 @@ class BookingDeniedScreen extends StatelessWidget {
             child: Text(
               check.msg ?? check.reason ?? "",
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppColors.mute, height: 1.6),
+              style: TextStyle(fontSize: 13, color: AppColors.mute, height: 1.6),
             ),
           ),
           const SizedBox(height: 26),
@@ -157,7 +157,7 @@ class BookingDeniedScreen extends StatelessWidget {
             BtnGold(
               onPressed: onGoSignatures,
               full: true,
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -171,7 +171,7 @@ class BookingDeniedScreen extends StatelessWidget {
             BtnGold(
               onPressed: onGoMemberships,
               full: true,
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [

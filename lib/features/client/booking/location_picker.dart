@@ -174,12 +174,12 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
           spacing: 6,
           runSpacing: 6,
           children: [
-            const Text("My Location:", style: TextStyle(fontSize: 13, color: AppColors.mute)),
+            Text("My Location:", style: TextStyle(fontSize: 13, color: AppColors.mute)),
             Text(widget.selected ?? "Any location",
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold)),
             GestureDetector(
               onTap: () => setState(() => _expanded = true),
-              child: const Text("Change Location",
+              child: Text("Change Location",
                   style: TextStyle(fontSize: 11, color: AppColors.mute, decoration: TextDecoration.underline)),
             ),
           ],
@@ -207,7 +207,7 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
                     Text(label,
                         style: TextStyle(fontSize: 13.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500)),
                     if (address.isNotEmpty)
-                      Text(address, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3)),
+                      Text(address, style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.3)),
                   ],
                 ),
               ),
@@ -241,7 +241,7 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.mapPin, size: 15, color: AppColors.gold),
+              Icon(LucideIcons.mapPin, size: 15, color: AppColors.gold),
               const SizedBox(width: 7),
               const Expanded(
                 child: Text("Change Location", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
@@ -249,7 +249,7 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
               // Close without changing anything.
               GestureDetector(
                 onTap: () => setState(() => _expanded = false),
-                child: const Icon(LucideIcons.x, size: 16, color: AppColors.mute),
+                child: Icon(LucideIcons.x, size: 16, color: AppColors.mute),
               ),
             ],
           ),
@@ -267,7 +267,7 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
                   onPressed: _locating ? null : _useMyLocation,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.gold,
-                    side: const BorderSide(color: AppColors.goldDim),
+                    side: BorderSide(color: AppColors.goldDim),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                   icon: Icon(_locating ? LucideIcons.loader : LucideIcons.navigation, size: 13),
@@ -283,7 +283,7 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
                   onPressed: _locating ? null : _pickOnMap,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.mute,
-                    side: const BorderSide(color: AppColors.line),
+                    side: BorderSide(color: AppColors.line),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                   icon: const Icon(LucideIcons.map, size: 13),
@@ -298,7 +298,7 @@ class _LocationPickerState extends ConsumerState<LocationPicker>
             const SizedBox(height: 8),
             Text(
               nearestErrorMessage(_error!),
-              style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+              style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
             ),
             // Only offered when settings can actually fix it — sending
             // someone to Settings for a missing address would waste a trip.

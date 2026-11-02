@@ -118,7 +118,7 @@ class _MealEditorSheetState extends State<_MealEditorSheet> {
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 20, color: AppColors.mute),
+                      icon: Icon(Icons.close, size: 20, color: AppColors.mute),
                       constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                       padding: EdgeInsets.zero,
                     ),
@@ -143,20 +143,20 @@ class _MealEditorSheetState extends State<_MealEditorSheet> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text("${macros.calories} kcal",
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.gold)),
                         if (budget != null && budget > 0)
                           Text("Budget $budget",
-                              style: const TextStyle(fontSize: 11.5, color: AppColors.mute)),
+                              style: TextStyle(fontSize: 11.5, color: AppColors.mute)),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
                       "Protein ${macros.protein}g · Carbs ${macros.carbs}g · Fat ${macros.fats}g",
-                      style: const TextStyle(fontSize: 12.5, color: AppColors.mute),
+                      style: TextStyle(fontSize: 12.5, color: AppColors.mute),
                     ),
                     if (!canRecalculate)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 6),
                         child: Text(
                           "This meal's ingredients don't carry nutrition data, so the "
@@ -165,18 +165,18 @@ class _MealEditorSheetState extends State<_MealEditorSheet> {
                         ),
                       ),
                     if (overBudget)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 6),
                         child: Text(
                           "Over this meal's calorie budget — that's fine if it fits your day.",
-                          style: TextStyle(fontSize: 11, color: Color(0xFFD68A4F), height: 1.4),
+                          style: TextStyle(fontSize: 11, color: AppColors.warning, height: 1.4),
                         ),
                       ),
                   ],
                 ),
               ),
 
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(18, 14, 18, 6),
                 child: Text("INGREDIENTS",
                     style: TextStyle(
@@ -191,7 +191,7 @@ class _MealEditorSheetState extends State<_MealEditorSheet> {
                     final changed = _overrides.containsKey(i);
                     return Container(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(bottom: BorderSide(color: AppColors.line)),
                       ),
                       child: Row(
@@ -202,7 +202,7 @@ class _MealEditorSheetState extends State<_MealEditorSheet> {
                               children: [
                                 Text(ing.item, style: const TextStyle(fontSize: 13.5)),
                                 if (changed)
-                                  const Padding(
+                                  Padding(
                                     padding: EdgeInsets.only(top: 1),
                                     child: Text("changed",
                                         style: TextStyle(
@@ -224,7 +224,7 @@ class _MealEditorSheetState extends State<_MealEditorSheet> {
                             SizedBox(
                               width: 44,
                               child: Text(ing.unit!,
-                                  style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                                  style: TextStyle(fontSize: 12, color: AppColors.mute)),
                             ),
                           ],
                         ],

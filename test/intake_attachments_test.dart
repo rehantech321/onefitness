@@ -92,8 +92,10 @@ void main() {
       expect(assessmentDefFor("nutritional")?.allowsAttachments, isTrue);
     });
 
-    test("the training intake and physical assessment don't", () {
-      expect(assessmentDefFor("personalTraining")?.allowsAttachments, isFalse);
+    test("the physical assessment doesn't", () {
+      // The one form with nothing for a client to attach: it's a movement
+      // screen a coach performs, recorded by the coach. The training intake
+      // used to be on this list too, until it started taking files.
       expect(assessmentDefFor("physical")?.allowsAttachments, isFalse);
     });
 
@@ -124,6 +126,45 @@ void main() {
 
     test("the bucket name is the one the storage policies match on", () {
       expect(SupabaseService.kIntakeFilesBucket, "intake-files");
+    });
+  });
+
+  group("what a client may attach", () {
+    test("both questionnaires take files now", () {
+      // Only the nutrition intake did. A physio letter or an old programme
+      // belongs on the training intake, and the workout drafter reads it.
+      expect(assessmentDefFor("personalTraining")?.allowsAttachments, isTrue);
+      expect(assessmentDefFor("nutritional")?.allowsAttachments, isTrue);
+    });
+
+    test("PDF, both image types and plain text are recognised", () {
+      for (final (type, label) in const [
+        ("application/pdf", "PDF"),
+        ("image/jpeg", "Image"),
+        ("image/png", "Image"),
+        ("text/plain", "Text"),
+      ]) {
+        final a = IntakeAttachment(
+          id: "a", name: "f", path: "c/n/a", size: 10, contentType: type,
+        );
+        expect(a.kindLabel, label, reason: type);
+      }
+    });
+
+    test("the kind flags don't overlap", () {
+      const pdf = IntakeAttachment(id: "a", name: "f", path: "p", size: 1, contentType: "application/pdf");
+      expect([pdf.isPdf, pdf.isImage, pdf.isText], [true, false, false]);
+      const png = IntakeAttachment(id: "a", name: "f", path: "p", size: 1, contentType: "image/png");
+      expect([png.isPdf, png.isImage, png.isText], [false, true, false]);
+      const txt = IntakeAttachment(id: "a", name: "f", path: "p", size: 1, contentType: "text/plain");
+      expect([txt.isPdf, txt.isImage, txt.isText], [false, false, true]);
+    });
+
+    test("an unknown type still renders rather than crashing", () {
+      // A type the bucket stops accepting, or an older record.
+      const odd = IntakeAttachment(id: "a", name: "f", path: "p", size: 1, contentType: "application/zip");
+      expect(odd.kindLabel, "File");
+      expect(odd.isPdf, isFalse);
     });
   });
 }

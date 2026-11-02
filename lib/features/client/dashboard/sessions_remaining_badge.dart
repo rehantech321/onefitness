@@ -42,7 +42,7 @@ class SessionsRemainingBadge extends ConsumerWidget {
           ),
           child: Text(
             "Membership cancelled. You can keep booking until ${niceDate(endsAt)}, then it ends.",
-            style: const TextStyle(fontSize: 12, color: Color(0xFFC97F7F), fontWeight: FontWeight.w700, height: 1.4),
+            style: TextStyle(fontSize: 12, color: AppColors.errorText, fontWeight: FontWeight.w700, height: 1.4),
           ),
         ),
       ],
@@ -67,7 +67,7 @@ class SessionsRemainingBadge extends ConsumerWidget {
           children: [
             Row(
               children: [
-                const Icon(LucideIcons.circleSlash, size: 18, color: AppColors.warning),
+                Icon(LucideIcons.circleSlash, size: 18, color: AppColors.warning),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -80,7 +80,7 @@ class SessionsRemainingBadge extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               "Contact your gym to unfreeze early — nothing on your plan has been lost.",
               style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
@@ -100,14 +100,14 @@ class SessionsRemainingBadge extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "YOUR MEMBERSHIP",
               style: TextStyle(fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.8),
             ),
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(LucideIcons.clipboardList, size: 18, color: AppColors.gold),
+                Icon(LucideIcons.clipboardList, size: 18, color: AppColors.gold),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(plan.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
@@ -115,7 +115,7 @@ class SessionsRemainingBadge extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               "Your coach builds and manages your program.",
               style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
@@ -123,7 +123,7 @@ class SessionsRemainingBadge extends ConsumerWidget {
               const SizedBox(height: 6),
               Text(
                 "${term.termMonths}-month term · renews ${term.renewsLabel}",
-                style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700),
               ),
             ],
           ],
@@ -150,7 +150,7 @@ class SessionsRemainingBadge extends ConsumerWidget {
                   plan.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.txt),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.txt),
                 ),
               ),
               const SizedBox(width: 8),
@@ -164,13 +164,13 @@ class SessionsRemainingBadge extends ConsumerWidget {
                   plan.kind == PlanKind.membership ? "MEMBERSHIP" : "PACKAGE",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                  style: TextStyle(fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             "SESSIONS REMAINING",
             style: TextStyle(fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 0.8),
           ),
@@ -183,7 +183,7 @@ class SessionsRemainingBadge extends ConsumerWidget {
               const SizedBox(width: 6),
               Text(
                 "of $max ${plan.kind == PlanKind.membership ? "this month" : "in package"}",
-                style: const TextStyle(fontSize: 13, color: AppColors.mute),
+                style: TextStyle(fontSize: 13, color: AppColors.mute),
               ),
             ],
           ),
@@ -195,7 +195,7 @@ class SessionsRemainingBadge extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 2),
               child: Text(
                 "Includes ${rolloverSessionsFor(info, plan)} rolled over from last month — use them this month.",
-                style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w600),
               ),
             ),
           const SizedBox(height: 8),

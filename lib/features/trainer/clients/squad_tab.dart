@@ -61,11 +61,11 @@ class _SquadTabState extends ConsumerState<SquadTab> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(LucideIcons.users2, size: 36, color: AppColors.gold),
+              Icon(LucideIcons.users2, size: 36, color: AppColors.gold),
               const SizedBox(height: 14),
               Text("${info.name} isn't in a Squad yet", style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 "Will this Squad share a membership or session package?",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.txt),
@@ -154,7 +154,7 @@ class _SquadTabState extends ConsumerState<SquadTab> {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.users2, size: 20, color: AppColors.gold),
+              Icon(LucideIcons.users2, size: 20, color: AppColors.gold),
               const SizedBox(width: 10),
               Expanded(child: Text(squad.displayName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18))),
             ],
@@ -215,7 +215,7 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                                   decoration: BoxDecoration(color: AppColors.gold, border: Border.all(color: AppColors.gold), borderRadius: BorderRadius.circular(5)),
-                                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
                                     Icon(LucideIcons.crown, size: 9, color: AppColors.onGold),
                                     SizedBox(width: 3),
                                     Text("LEAD", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.onGold)),
@@ -223,7 +223,7 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                                 ),
                             ],
                           ),
-                          if (m.relationship.isNotEmpty) Text(m.relationship, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                          if (m.relationship.isNotEmpty) Text(m.relationship, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                         ],
                       ),
                     ),
@@ -259,7 +259,7 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                           final ok = await mutateSquad(ref, squad, (s) => s.copyWith(pendingInvites: s.pendingInvites.where((x) => x.clientId != inv.clientId).toList()));
                           if (!ok && context.mounted) _showMutateError(context);
                         },
-                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.mute, side: const BorderSide(color: AppColors.line)),
+                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.mute, side: BorderSide(color: AppColors.line)),
                         child: const Text("Cancel", style: TextStyle(fontSize: 11)),
                       ),
                     ],
@@ -270,7 +270,7 @@ class _SquadTabState extends ConsumerState<SquadTab> {
             AppCard(
               borderColor: AppColors.goldDim,
               onTap: () => setState(() => _searching = true),
-              child: const Row(children: [
+              child: Row(children: [
                 Icon(LucideIcons.userPlus, size: 17, color: AppColors.gold),
                 SizedBox(width: 10),
                 Expanded(child: Text("Add existing client", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
@@ -282,7 +282,7 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Text(
                   "Squad is at the ${squad.maxSize}-member limit (including pending invites).${isOwner ? ' As owner you can override this by inviting anyway.' : ''}",
-                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
                 ),
               ),
             if (isOwner) ...[
@@ -302,7 +302,7 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                       children: [
                         Text(squad.membership!.planName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                         const SizedBox(height: 4),
-                        Text("${squad.membership!.sessionsRemaining} / ${squad.membership!.sessionsTotal} sessions remaining", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                        Text("${squad.membership!.sessionsRemaining} / ${squad.membership!.sessionsTotal} sessions remaining", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                       ],
                     ),
                   ),
@@ -313,11 +313,11 @@ class _SquadTabState extends ConsumerState<SquadTab> {
                     children: squad.activity
                         .map((e) => Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
+                              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))),
                               child: Row(
                                 children: [
                                   Expanded(child: Text(e.description ?? e.type, style: const TextStyle(fontSize: 13))),
-                                  Text(e.at, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                                  Text(e.at, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                                 ],
                               ),
                             ))

@@ -88,7 +88,7 @@ class _MealPickerBodyState extends ConsumerState<_MealPickerBody> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const SectionLabel("Pick a Meal"),
-              TextButton(onPressed: () => setState(() => _creating = true), child: const Text("Create Custom Meal", style: TextStyle(color: AppColors.gold, fontSize: 12))),
+              TextButton(onPressed: () => setState(() => _creating = true), child: Text("Create Custom Meal", style: TextStyle(color: AppColors.gold, fontSize: 12))),
             ],
           ),
           AppField(kind: FieldKind.search, controller: _search, placeholder: "Search…", onChanged: (_) => setState(() {})),
@@ -128,7 +128,7 @@ class _MealPickerBodyState extends ConsumerState<_MealPickerBody> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(m.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                                        Text("${m.calories} kcal · P${m.protein.toStringAsFixed(0)} C${m.carbs.toStringAsFixed(0)} F${m.fats.toStringAsFixed(0)}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                                        Text("${m.calories} kcal · P${m.protein.toStringAsFixed(0)} C${m.carbs.toStringAsFixed(0)} F${m.fats.toStringAsFixed(0)}", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                                       ],
                                     ),
                                   ),

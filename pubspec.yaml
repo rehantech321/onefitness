@@ -66,6 +66,32 @@ dependencies:
   # floor, so it plays a real sound rather than relying on the system
   # notification tone, which the OS silences while the app is in front.
   audioplayers: ^6.1.0
+  # Exercise demo clips. Streamed from a public storage bucket rather than
+  # bundled, so the catalogue stays small; video_player is the first-party
+  # plugin and wraps ExoPlayer/AVPlayer, which handle progressive download
+  # over HTTPS without any extra configuration.
+  #
+  # These pins are conservative, not required — nothing currently blocks a
+  # newer version, and unpinning is a reasonable cleanup.
+  #
+  # They were added while diagnosing a build failure, on two beliefs that
+  # both turned out to be wrong:
+  #   1. That 2.9.x's minSdk 24 clashed with the app. It doesn't: this app's
+  #      effective minSdk is already 24, because build.gradle.kts sets
+  #      maxOf(flutter.minSdkVersion, 23) and Flutter's own default
+  #      (FlutterExtension.minSdkVersion) is 24. The built APK reports
+  #      minSdkVersion 24. So Android 6 is already unsupported and moving
+  #      off these pins costs no device coverage.
+  #   2. That 2.9.x's .kts android config couldn't be compiled. It can, now
+  #      that org.gradle.java.home pins the build to JDK 21 — see the note
+  #      in android/gradle.properties for why JDK 25 broke it.
+  #
+  # Kept only because the release they're in is built and verified. Note if
+  # unpinning: the facade's own constraint is ^2.8.1, which resolves forward
+  # to 2.9.x on its own, so the implementation has to be pinned (or not)
+  # explicitly — a facade pin alone does not hold the implementation back.
+  video_player: 2.10.0
+  video_player_android: 2.8.14
   # Only ever used as a command-line generator
   # (`dart run flutter_native_splash:create`) — no Dart code imports it, and
   # the splash images it produces are real files already committed under
@@ -84,6 +110,11 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Test-only. exercise_video_test.dart builds the same upload body with
+  # http's own MultipartRequest and checks ours matches it byte for byte;
+  # MultipartFile needs an http_parser MediaType to do that.
+  http_parser: ^4.1.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

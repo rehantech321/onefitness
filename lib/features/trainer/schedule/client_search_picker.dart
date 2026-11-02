@@ -53,7 +53,7 @@ class _ClientSearchPickerState extends State<ClientSearchPicker> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                                      Text(c.email ?? "", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                                      Text(c.email ?? "", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                                     ],
                                   ),
                                 ),

@@ -1,3 +1,4 @@
+import "package:file_picker/file_picker.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:lucide_flutter/lucide_flutter.dart";
@@ -9,9 +10,9 @@ import "../../../data/models/exercise_def.dart";
 import "../../../data/providers/trainer_providers.dart";
 
 /// Mirrors ExercisesTab.jsx + ExerciseEditForm.jsx — the coach-editable
-/// exercise library. Trimmed: no video field, no regression/progression
-/// swap-links, no "used in these programs" delete guard (this trimmed
-/// build's programs library is small enough that a plain confirm suffices).
+/// exercise library. Trimmed: no regression/progression swap-links, no
+/// "used in these programs" delete guard (this trimmed build's programs
+/// library is small enough that a plain confirm suffices).
 class ExercisesScreen extends ConsumerStatefulWidget {
   const ExercisesScreen({super.key});
 
@@ -117,12 +118,12 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
               SectionLabel("Exercises (${catalog.length})"),
               TextButton.icon(
                 onPressed: () => setState(() => _creatingNew = true),
-                icon: const Icon(
+                icon: Icon(
                   LucideIcons.plus,
                   size: 14,
                   color: AppColors.gold,
                 ),
-                label: const Text(
+                label: Text(
                   "New exercise",
                   style: TextStyle(
                     color: AppColors.gold,
@@ -162,12 +163,16 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                           children: [
                             Tag(text: e.primaryMuscle, gold: true),
                             Tag(text: e.movementPattern),
+                            // Which exercises still need filming is the one
+                            // thing a coach can't tell from this list
+                            // otherwise, short of opening every one.
+                            if (e.hasVideo) const Tag(text: "Video"),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  const Icon(
+                  Icon(
                     LucideIcons.chevronRight,
                     size: 15,
                     color: AppColors.mute,
@@ -216,6 +221,39 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
   late final _coachNotes = TextEditingController(
     text: widget.initial?.coachNotes ?? "",
   );
+  late String? _videoPath = widget.initial?.videoPath;
+  late String? _videoName = widget.initial?.videoName;
+
+  /// Clips uploaded while this form has been open. Replacing one of these is
+  /// safe to clean up, because no saved exercise has ever pointed at it —
+  /// unlike the clip the form opened with, which stays in the bucket even if
+  /// it's replaced, so that cancelling out leaves the saved exercise playable.
+  final _uploadedHere = <String>{};
+
+  /// The clip handed to [_ExerciseEditForm.onSave], if Save has been pressed.
+  /// Everything else in [_uploadedHere] is abandoned when this form closes.
+  String? _handedOff;
+
+  /// An existing exercise keeps its id; a new one takes it from the name, so
+  /// that a video uploaded before Save is filed under the same folder the
+  /// saved exercise will have.
+  String _exerciseId() =>
+      widget.initial?.id ??
+      _name.text.trim().toLowerCase().replaceAll(RegExp(r"\s+"), "-");
+
+  /// Points the form at [path], cleaning up whatever it was showing if that
+  /// clip was uploaded here and so was never saved anywhere.
+  void _setVideo(String? path, String? name) {
+    setState(() {
+      final previous = _videoPath;
+      _videoPath = path;
+      _videoName = name;
+      if (path != null) _uploadedHere.add(path);
+      if (previous != null && _uploadedHere.remove(previous)) {
+        SupabaseService.deleteExerciseVideo(previous).ignore();
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -224,6 +262,13 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
     _setup.dispose();
     _cues.dispose();
     _coachNotes.dispose();
+    // A coach who uploads a 90MB clip and then backs out has left it in the
+    // bucket with nothing pointing at it. Only clips uploaded here are
+    // cleaned up, and never the one just saved — so the worst this can do is
+    // leave a file behind, never take away one an exercise still plays.
+    for (final path in _uploadedHere) {
+      if (path != _handedOff) SupabaseService.deleteExerciseVideo(path).ignore();
+    }
     super.dispose();
   }
 
@@ -244,7 +289,7 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
             child: AppField(kind: FieldKind.name, controller: _name),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             "MOVEMENT PATTERN",
             style: TextStyle(
               fontSize: 10,
@@ -259,7 +304,7 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
             onChanged: (v) => setState(() => _movement = v),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             "PRIMARY MUSCLE",
             style: TextStyle(
               fontSize: 10,
@@ -310,7 +355,7 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (library.isEmpty && extras.isEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(bottom: 6),
                       child: Text("The Equipment Library is empty — add the first item below.", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                     ),
@@ -344,7 +389,7 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
                       BtnGhost(onPressed: _addingEquipment ? null : addNew, child: Text(_addingEquipment ? "Adding…" : "+ Add")),
                     ],
                   ),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 4),
                     child: Text("New equipment is saved to the Equipment Library for every coach.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
                   ),
@@ -367,6 +412,17 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
             label: "Coach notes (internal, never shown to clients)",
             child: AppField(controller: _coachNotes),
           ),
+          const SizedBox(height: 10),
+          FieldLabeled(
+            label: "Demo video (clients watch this while they train)",
+            child: _ExerciseVideoField(
+              videoPath: _videoPath,
+              videoName: _videoName,
+              exerciseId: _exerciseId,
+              onUploaded: _setVideo,
+              onRemoved: () => _setVideo(null, null),
+            ),
+          ),
           const SizedBox(height: 18),
           Row(
             children: [
@@ -374,29 +430,31 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
                 child: BtnGold(
                   onPressed: _name.text.trim().isEmpty
                       ? null
-                      : () => widget.onSave(
-                          ExerciseDef(
-                            id:
-                                widget.initial?.id ??
-                                _name.text.trim().toLowerCase().replaceAll(
-                                  RegExp(r"\s+"),
-                                  "-",
-                                ),
-                            name: _name.text.trim(),
-                            movementPattern: _movement,
-                            primaryMuscle: _muscle,
-                            equipment: _equipment.toList(),
-                            setup: _setup.text.trim().isEmpty
-                                ? null
-                                : _setup.text.trim(),
-                            cues: _cues.text.trim().isEmpty
-                                ? null
-                                : _cues.text.trim(),
-                            coachNotes: _coachNotes.text.trim().isEmpty
-                                ? null
-                                : _coachNotes.text.trim(),
-                          ),
-                        ),
+                      : () {
+                          // Noted before handing over, so that closing the
+                          // form doesn't clean up the clip being saved.
+                          _handedOff = _videoPath;
+                          widget.onSave(
+                            ExerciseDef(
+                              id: _exerciseId(),
+                              name: _name.text.trim(),
+                              movementPattern: _movement,
+                              primaryMuscle: _muscle,
+                              equipment: _equipment.toList(),
+                              setup: _setup.text.trim().isEmpty
+                                  ? null
+                                  : _setup.text.trim(),
+                              cues: _cues.text.trim().isEmpty
+                                  ? null
+                                  : _cues.text.trim(),
+                              coachNotes: _coachNotes.text.trim().isEmpty
+                                  ? null
+                                  : _coachNotes.text.trim(),
+                              videoPath: _videoPath,
+                              videoName: _videoName,
+                            ),
+                          );
+                        },
                   child: const Text("Save"),
                 ),
               ),
@@ -409,13 +467,241 @@ class _ExerciseEditFormState extends State<_ExerciseEditForm> {
             TextButton(
               onPressed: widget.onDelete,
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC97F7F),
+                foregroundColor: AppColors.errorText,
               ),
               child: const Text("Delete exercise"),
             ),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Picks a clip, uploads it with a real progress bar, and previews whatever
+/// the exercise currently has.
+class _ExerciseVideoField extends StatefulWidget {
+  const _ExerciseVideoField({
+    required this.videoPath,
+    required this.videoName,
+    required this.exerciseId,
+    required this.onUploaded,
+    required this.onRemoved,
+  });
+
+  final String? videoPath;
+  final String? videoName;
+
+  /// Read at upload time rather than passed as a value: on a new exercise the
+  /// id follows the name field, which the coach may still be typing.
+  final String Function() exerciseId;
+
+  final void Function(String path, String name) onUploaded;
+  final VoidCallback onRemoved;
+
+  @override
+  State<_ExerciseVideoField> createState() => _ExerciseVideoFieldState();
+}
+
+class _ExerciseVideoFieldState extends State<_ExerciseVideoField> {
+  /// Null unless an upload is in flight; otherwise 0–1.
+  double? _progress;
+  String? _error;
+
+  /// What is being uploaded, named while the bar is on screen so a coach who
+  /// picked the wrong take can tell before it finishes.
+  String? _uploadingName;
+
+  Future<void> _pick() async {
+    if (_progress != null) return;
+    setState(() => _error = null);
+
+    final FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: SupabaseService.kExerciseVideoTypes.keys.toList(),
+        // Streamed from the file rather than loaded: a phone recording runs
+        // to tens of megabytes, and `withData` would put all of it on the
+        // heap at once before a single byte went out.
+        withReadStream: true,
+      );
+    } catch (_) {
+      setState(() => _error = "Couldn't open the file picker.");
+      return;
+    }
+
+    final file = result?.files.firstOrNull;
+    if (file == null) return;
+
+    final stream = file.readStream;
+    if (stream == null) {
+      setState(() => _error = "Couldn't read that file.");
+      return;
+    }
+    if (file.size > SupabaseService.kExerciseVideoMaxBytes) {
+      setState(
+        () => _error =
+            "That video is ${_mb(file.size)} — the limit is "
+            "${_mb(SupabaseService.kExerciseVideoMaxBytes)}. Trim it and try again.",
+      );
+      return;
+    }
+    final contentType =
+        SupabaseService.kExerciseVideoTypes[file.extension?.toLowerCase() ?? ""];
+    if (contentType == null) {
+      setState(() => _error = "That file type can't be uploaded.");
+      return;
+    }
+
+    setState(() {
+      _progress = 0;
+      _uploadingName = file.name;
+    });
+    try {
+      final path = await SupabaseService.uploadExerciseVideo(
+        exerciseId: widget.exerciseId(),
+        bytes: stream,
+        length: file.size,
+        contentType: contentType,
+        onProgress: (fraction) {
+          if (mounted) setState(() => _progress = fraction);
+        },
+      );
+      if (!mounted) return;
+      widget.onUploaded(path, file.name);
+    } catch (e) {
+      if (!mounted) return;
+      setState(
+        () => _error =
+            "Couldn't upload that video — check your connection and try again.",
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _progress = null;
+          _uploadingName = null;
+        });
+      }
+    }
+  }
+
+  static String _mb(int bytes) =>
+      "${(bytes / (1024 * 1024)).toStringAsFixed(0)}MB";
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = _progress;
+    final path = widget.videoPath;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (progress != null) ...[
+          Text(
+            _uploadingName ?? "Uploading…",
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 7,
+              backgroundColor: AppColors.line,
+              valueColor: AlwaysStoppedAnimation(AppColors.gold),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            // The bar stops just short of full until the server confirms, so
+            // the wording has to carry that last step rather than sit at 99%.
+            progress >= 0.99
+                ? "Finishing up…"
+                : "Uploading — ${(progress * 100).toStringAsFixed(0)}%",
+            style: TextStyle(fontSize: 11, color: AppColors.mute),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              "Keep this screen open until it finishes.",
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.mute,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        ] else if (path != null) ...[
+          // Paused on its first frame: this is here to show the coach what
+          // the exercise has, not to play at them while they edit it.
+          ExerciseVideoPlayer(
+            key: ValueKey(path),
+            videoPath: path,
+            autoPlay: false,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.videoName ?? "Demo video",
+                  style: TextStyle(fontSize: 12, color: AppColors.mute),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              BtnGhost(onPressed: _pick, child: const Text("Replace")),
+              const SizedBox(width: 6),
+              TextButton(
+                onPressed: widget.onRemoved,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.errorText,
+                ),
+                child: const Text("Remove"),
+              ),
+            ],
+          ),
+        ] else
+          Row(
+            children: [
+              BtnGhost(
+                onPressed: _pick,
+                child: const Text("+ Upload video"),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "MP4 or MOV, up to ${_mb(SupabaseService.kExerciseVideoMaxBytes)}.",
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
+                ),
+              ),
+            ],
+          ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              _error!,
+              style: TextStyle(fontSize: 11, color: AppColors.errorText),
+            ),
+          ),
+        if (progress == null && path == null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              "The video is saved with the exercise, so remember to press Save.",
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.mute,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -93,7 +93,7 @@ class _SquadChatTabState extends ConsumerState<SquadChatTab> {
       children: [
         Expanded(
           child: thread.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
                     padding: EdgeInsets.all(24),
                     child: Text(
@@ -166,7 +166,7 @@ class _DaySeparator extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
-          child: Text(label, style: const TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
+          child: Text(label, style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
         ),
       ),
     );
@@ -198,7 +198,7 @@ class _SquadBubble extends StatelessWidget {
           if (!isMine)
             Padding(
               padding: const EdgeInsets.only(left: 3, bottom: 2),
-              child: Text(senderName, style: const TextStyle(fontSize: 10.5, color: AppColors.mute, fontWeight: FontWeight.w600)),
+              child: Text(senderName, style: TextStyle(fontSize: 10.5, color: AppColors.mute, fontWeight: FontWeight.w600)),
             ),
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
@@ -219,8 +219,8 @@ class _SquadBubble extends StatelessWidget {
           ),
           const SizedBox(height: 3),
           isPending
-              ? const Text("Sending…", style: TextStyle(fontSize: 10.5, color: AppColors.mute, fontStyle: FontStyle.italic))
-              : Text(_timeOnly(message.sentAt), style: const TextStyle(fontSize: 10.5, color: AppColors.mute)),
+              ? Text("Sending…", style: TextStyle(fontSize: 10.5, color: AppColors.mute, fontStyle: FontStyle.italic))
+              : Text(_timeOnly(message.sentAt), style: TextStyle(fontSize: 10.5, color: AppColors.mute)),
         ],
       ),
     );
@@ -410,7 +410,7 @@ class _SquadComposerState extends State<_SquadComposer> {
     final hasText = widget.controller.text.trim().isNotEmpty;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      decoration: const BoxDecoration(color: AppColors.bg, border: Border(top: BorderSide(color: AppColors.line))),
+      decoration: BoxDecoration(color: AppColors.bg, border: Border(top: BorderSide(color: AppColors.line))),
       child: SafeArea(
         top: false,
         child: Row(
@@ -425,16 +425,16 @@ class _SquadComposerState extends State<_SquadComposer> {
       textCapitalization: TextCapitalization.sentences,
                   minLines: 1,
                   maxLines: 4,
-                  style: const TextStyle(color: AppColors.txt, fontSize: 14),
+                  style: TextStyle(color: AppColors.txt, fontSize: 14),
                   decoration: InputDecoration(
                     hintText: "Message your Squad…",
-                    hintStyle: const TextStyle(color: AppColors.mute, fontSize: 14),
+                    hintStyle: TextStyle(color: AppColors.mute, fontSize: 14),
                     filled: true,
                     fillColor: AppColors.card,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: AppColors.line)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: AppColors.line)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: AppColors.gold)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: AppColors.line)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: AppColors.line)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: AppColors.gold)),
                   ),
                 ),
               ),

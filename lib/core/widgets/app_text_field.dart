@@ -222,26 +222,26 @@ class AppField extends StatelessWidget {
             }
           : null,
       buildCounter: maxLength == null ? null : (context, {required currentLength, required isFocused, maxLength}) => null,
-      style: const TextStyle(color: AppColors.txt, fontSize: 14),
+      style: TextStyle(color: AppColors.txt, fontSize: 14),
       cursorColor: AppColors.gold,
       decoration: InputDecoration(
         hintText: placeholder,
-        hintStyle: const TextStyle(color: AppColors.mute, fontSize: 14),
+        hintStyle: TextStyle(color: AppColors.mute, fontSize: 14),
         filled: true,
         fillColor: AppColors.bg,
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.line),
+          borderSide: BorderSide(color: AppColors.line),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.line),
+          borderSide: BorderSide(color: AppColors.line),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.gold),
+          borderSide: BorderSide(color: AppColors.gold),
         ),
       ),
     );
@@ -262,7 +262,7 @@ class FieldLabeled extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(color: AppColors.mute, fontSize: 11, fontWeight: FontWeight.w600),
+          style: TextStyle(color: AppColors.mute, fontSize: 11, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 4),
         child,

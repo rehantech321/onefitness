@@ -231,20 +231,20 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
         children: [
           const SectionLabel("Create Session"),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             "Publishes a bookable session for a coach. Clients can book it, or you can add a client to it from the day view.",
             style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
           ),
           const SizedBox(height: 14),
-          const Text("SESSION TYPE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          Text("SESSION TYPE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 6),
           _Chips(value: _sessionType, options: types.map((t) => (t, sessionTypeLabel(t))).toList(), onChanged: (v) => setState(() => _sessionType = v)),
           const SizedBox(height: 12),
-          const Text("DISCIPLINE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          Text("DISCIPLINE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 6),
           _Chips(value: _discipline, options: disciplines.map((d) => (d, disciplineLabel(d))).toList(), onChanged: (v) => setState(() => _discipline = v)),
           const SizedBox(height: 12),
-          const Text("COACH", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          Text("COACH", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 6),
           InkWell(
             onTap: () => setState(() => _pickingCoach = true),
@@ -261,7 +261,7 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
                       style: TextStyle(fontSize: 14, color: _trainer == null ? AppColors.mute : AppColors.txt),
                     ),
                   ),
-                  const Icon(LucideIcons.search, size: 15, color: AppColors.mute),
+                  Icon(LucideIcons.search, size: 15, color: AppColors.mute),
                 ],
               ),
             ),
@@ -269,7 +269,7 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
           // Only worth asking once the gym has more than one location.
           if (settings.allLocations.length > 1) ...[
             const SizedBox(height: 12),
-            const Text("LOCATION", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            Text("LOCATION", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 6),
             _Chips(
               value: _locationName ?? settings.allLocations.first.name,
@@ -302,7 +302,7 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
                   Expanded(
                     child: TimeField(minutes: t.start, onChanged: (v) => setState(() => t.start = v)),
                   ),
-                  const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text("to", style: TextStyle(color: AppColors.mute, fontSize: 12))),
+                  Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text("to", style: TextStyle(color: AppColors.mute, fontSize: 12))),
                   Expanded(
                     child: TimeField(
                       minutes: t.end,
@@ -315,19 +315,19 @@ class _CreateSessionBodyState extends ConsumerState<_CreateSessionBody> {
                   if (_times.length > 1)
                     IconButton(
                       onPressed: () => setState(() => _times.remove(t)),
-                      icon: const Icon(LucideIcons.x, size: 15, color: AppColors.mute),
+                      icon: Icon(LucideIcons.x, size: 15, color: AppColors.mute),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                     ),
                 ],
               ),
             ),
-          const Text(
+          Text(
             "Leave the end time blank for a one-hour session.",
             style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
           ),
           if (_error != null)
-            Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12))),
+            Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12))),
           const SizedBox(height: 16),
           BtnGold(
             full: true,
@@ -351,7 +351,7 @@ class _ListHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+        Text(label, style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
         TextButton.icon(
           onPressed: onAdd,
           style: TextButton.styleFrom(foregroundColor: AppColors.gold, padding: const EdgeInsets.symmetric(horizontal: 6), minimumSize: Size.zero),
@@ -380,10 +380,10 @@ class _Pill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold)),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold)),
           if (onRemove != null) ...[
             const SizedBox(width: 4),
-            InkWell(onTap: onRemove, child: const Icon(LucideIcons.x, size: 13, color: AppColors.gold)),
+            InkWell(onTap: onRemove, child: Icon(LucideIcons.x, size: 13, color: AppColors.gold)),
           ],
         ],
       ),

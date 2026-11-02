@@ -47,7 +47,7 @@ class _DocumentsTabState extends State<DocumentsTab> {
         builder: (context, snap) {
           final children = <Widget>[const SectionLabel("Signed Documents")];
           if (snap.connectionState != ConnectionState.done) {
-            children.add(const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator(color: AppColors.gold))));
+            children.add(Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator(color: AppColors.gold))));
           } else if (snap.hasError) {
             children.add(const HintBox(text: "Couldn't load documents — pull down to try again."));
           } else if ((snap.data ?? const []).isEmpty) {

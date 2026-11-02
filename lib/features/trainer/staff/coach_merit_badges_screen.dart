@@ -44,7 +44,7 @@ class _CoachMeritBadgesScreenState extends ConsumerState<CoachMeritBadgesScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SectionLabel("Merit Badges"),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(bottom: 14),
             child: Text(
               "Coach Merit Badges recognize your coaching performance, gym-wide, every month — session completion, PRs you log, following up with at-risk clients, habit consistency, and challenge participation. They're computed automatically from your activity, never set by hand, and finalized at month's end — the dollar reward you see is locked in the moment a badge is earned, so it never changes retroactively even if the owner updates reward values later. Earned rewards are added automatically to your pay.",
@@ -72,16 +72,16 @@ class _CoachMeritBadgesScreenState extends ConsumerState<CoachMeritBadgesScreen>
                           const Text("Coach of the Month", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                           Text(
                             "\$${(settings.badgeCoachOfMonthCents / 100).toStringAsFixed(2)}",
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.gold),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.gold),
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(kCoachBadgeDescriptions["coach_of_month"] ?? "", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                      Text(kCoachBadgeDescriptions["coach_of_month"] ?? "", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                       const SizedBox(height: 4),
                       Text(
                         coachOfMonthWins > 0 ? "Won $coachOfMonthWins time${coachOfMonthWins == 1 ? '' : 's'} so far." : "Not won yet — decided automatically at month's end.",
-                        style: const TextStyle(fontSize: 11, color: AppColors.txt),
+                        style: TextStyle(fontSize: 11, color: AppColors.txt),
                       ),
                     ],
                   ),

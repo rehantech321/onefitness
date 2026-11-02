@@ -170,3 +170,29 @@ TermRenewal? termRenewal(String startDateISO, int termMonths) {
     termMonths: termMonths,
   );
 }
+
+/// Whether [plan] is on sale on [today] (ISO yyyy-MM-dd).
+///
+/// A plan carries an optional sales window: `startDate` is the first day it
+/// can be bought, `endDate` the last. Outside it the plan is hidden from the
+/// Access Hub and refused by the purchase paths.
+///
+/// This is deliberately only about selling. Clients already holding the plan
+/// keep their access, keep their session allowance and keep booking, and a
+/// membership carries on renewing — closing a plan to new sales is a
+/// merchandising decision, not a reason to cut off people who are paying.
+/// Both ends are inclusive: a plan sold "until 31 Dec" is still on sale on
+/// the 31st.
+bool planOnSale(MembershipPlan plan, String today) {
+  final from = (plan.startDate ?? "").trim();
+  if (from.isNotEmpty && today.compareTo(from) < 0) return false;
+  final until = (plan.endDate ?? "").trim();
+  if (until.isNotEmpty && today.compareTo(until) > 0) return false;
+  return true;
+}
+
+/// What a plan's session allowance is counted against — the two kinds mean
+/// different things by the same number, and the editor used to just say
+/// "Max sessions".
+String sessionAllowanceLabel(PlanKind kind) =>
+    kind == PlanKind.membership ? "Sessions per month" : "Sessions included";

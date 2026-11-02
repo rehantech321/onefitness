@@ -113,7 +113,7 @@ class _CustomMealFormState extends State<CustomMealForm> {
           const SizedBox(height: 12),
           FieldLabeled(label: "Meal name *", child: AppField(kind: FieldKind.name, controller: _name, placeholder: "e.g. Protein Pancakes")),
           const SizedBox(height: 14),
-          const Text("INGREDIENTS *", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          Text("INGREDIENTS *", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 8),
           ..._rows.map((row) => Padding(
                 padding: const EdgeInsets.only(bottom: 6),
@@ -149,7 +149,7 @@ class _CustomMealFormState extends State<CustomMealForm> {
                 value: _rows.last.category,
                 isExpanded: true,
                 dropdownColor: AppColors.card,
-                style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                style: TextStyle(fontSize: 12, color: AppColors.mute),
                 items: kIngredientCategories.map((c) => DropdownMenuItem(value: c.$1, child: Text("Last row's category: ${c.$2}"))).toList(),
                 onChanged: (v) => setState(() => _rows.last.category = v ?? _rows.last.category),
               ),
@@ -179,15 +179,15 @@ class _CustomMealFormState extends State<CustomMealForm> {
             child: TextField(
               controller: _instructions,
               maxLines: 4,
-              style: const TextStyle(color: AppColors.txt, fontSize: 13),
+              style: TextStyle(color: AppColors.txt, fontSize: 13),
               decoration: InputDecoration(
                 hintText: "Step-by-step prep…",
-                hintStyle: const TextStyle(color: AppColors.mute),
+                hintStyle: TextStyle(color: AppColors.mute),
                 filled: true,
                 fillColor: AppColors.bg,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.gold)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.gold)),
               ),
             ),
           ),
@@ -210,7 +210,7 @@ class _CustomMealFormState extends State<CustomMealForm> {
             ),
           ],
           const SizedBox(height: 14),
-          const Text("DIET TAGS", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
+          Text("DIET TAGS", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
@@ -233,20 +233,20 @@ class _CustomMealFormState extends State<CustomMealForm> {
             child: TextField(
               controller: _notes,
               maxLines: 3,
-              style: const TextStyle(color: AppColors.txt, fontSize: 13),
+              style: TextStyle(color: AppColors.txt, fontSize: 13),
               decoration: InputDecoration(
                 hintText: "Optional…",
-                hintStyle: const TextStyle(color: AppColors.mute),
+                hintStyle: TextStyle(color: AppColors.mute),
                 filled: true,
                 fillColor: AppColors.bg,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.gold)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.gold)),
               ),
             ),
           ),
           if (_err != null)
-            Padding(padding: const EdgeInsets.only(top: 10), child: Text(_err!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12))),
+            Padding(padding: const EdgeInsets.only(top: 10), child: Text(_err!, style: TextStyle(color: AppColors.errorText, fontSize: 12))),
           const SizedBox(height: 16),
           BtnGold(
             full: true,
@@ -274,8 +274,8 @@ class _MacroBox extends StatelessWidget {
       decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(8)),
       child: Column(
         children: [
-          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.gold)),
-          Text(label, style: const TextStyle(fontSize: 9, color: AppColors.mute, letterSpacing: 0.5)),
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.gold)),
+          Text(label, style: TextStyle(fontSize: 9, color: AppColors.mute, letterSpacing: 0.5)),
         ],
       ),
     );

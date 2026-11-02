@@ -92,6 +92,11 @@ class IntakeAttachment {
   final String? uploadedAt;
 
   bool get isPdf => contentType == "application/pdf";
+  bool get isImage => contentType.startsWith("image/");
+  bool get isText => contentType.startsWith("text/");
+
+  /// Short label for the row under the file name.
+  String get kindLabel => isPdf ? "PDF" : (isImage ? "Image" : (isText ? "Text" : "File"));
 
   Map<String, dynamic> toJson() => {
         "id": id,
@@ -128,6 +133,7 @@ class IntakeRecord {
     this.at,
     this.by,
     this.attachments = const [],
+    this.extra = const {},
   });
   final Map<String, dynamic> answers;
   final bool completed;
@@ -135,12 +141,25 @@ class IntakeRecord {
   final String? by;
   final List<IntakeAttachment> attachments;
 
+  /// Any other top-level keys on this intake entry, carried through
+  /// untouched.
+  ///
+  /// The physical assessment is the reason: it stores `scores`,
+  /// `observations`, `painScreen`, `programmingFlags`, `coachSummary` and
+  /// the rest beside `completed`, not inside `answers` — a shape the web app
+  /// writes and generate-ai-workout-program reads. Without this, any save
+  /// from the app rebuilt the entry from the fields it knew about and
+  /// silently deleted the others, so one coach leaving a comment could wipe
+  /// another's whole movement screen.
+  final Map<String, dynamic> extra;
+
   IntakeRecord copyWith({
     Map<String, dynamic>? answers,
     bool? completed,
     String? at,
     String? by,
     List<IntakeAttachment>? attachments,
+    Map<String, dynamic>? extra,
   }) =>
       IntakeRecord(
         answers: answers ?? this.answers,
@@ -148,7 +167,12 @@ class IntakeRecord {
         at: at ?? this.at,
         by: by ?? this.by,
         attachments: attachments ?? this.attachments,
+        extra: extra ?? this.extra,
       );
+
+  /// The keys this model stores in its own fields. Everything else on an
+  /// intake entry belongs in [extra].
+  static const knownKeys = {"answers", "completed", "at", "by", "attachments"};
 }
 
 /// How many files one intake form accepts. A cap at all because these are

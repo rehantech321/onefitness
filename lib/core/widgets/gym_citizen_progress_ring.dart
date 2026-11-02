@@ -22,7 +22,7 @@ class GymCitizenProgressLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     if (activeCount >= 10) return const SizedBox.shrink();
     final msg = gymCitizenProgressMessage(activeCount);
-    return Text("$msg · $activeCount/10", style: const TextStyle(fontSize: 11, color: AppColors.mute));
+    return Text("$msg · $activeCount/10", style: TextStyle(fontSize: 11, color: AppColors.mute));
   }
 }
 

@@ -103,7 +103,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
           BackBar(onBack: widget.onBack, title: "Blocked users"),
           const SizedBox(height: 14),
           if (blocked == null)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 40),
               child: Center(child: CircularProgressIndicator(color: AppColors.gold)),
             )
@@ -118,7 +118,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
                     "or by holding down one of their messages in Chat.",
               )
             else ...[
-              const Text(
+              Text(
                 "Blocked people can't message you, and you won't see their messages or find them in search.",
                 style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
               ),
@@ -127,7 +127,7 @@ class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
                 AppCard(
                   child: Row(
                     children: [
-                      const Icon(LucideIcons.ban, size: 18, color: AppColors.errorText),
+                      Icon(LucideIcons.ban, size: 18, color: AppColors.errorText),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(

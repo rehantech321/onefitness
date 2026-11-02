@@ -224,7 +224,7 @@ class _ReportsHubScreenState extends State<ReportsHubScreen> {
               const SizedBox(height: 4),
               Text(
                 _open!.description,
-                style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                style: TextStyle(fontSize: 12, color: AppColors.mute),
               ),
               const SizedBox(height: 12),
               DateRangeFilter(
@@ -338,7 +338,7 @@ class _ReportCard extends StatelessWidget {
                 ),
                 Text(
                   report.description,
-                  style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                  style: TextStyle(fontSize: 11, color: AppColors.mute),
                 ),
               ],
             ),

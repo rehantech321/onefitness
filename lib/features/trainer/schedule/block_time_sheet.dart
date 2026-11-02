@@ -71,7 +71,7 @@ class _BlockTimeBodyState extends ConsumerState<_BlockTimeBody> {
         children: [
           const SectionLabel("Block Time"),
           if (isOwner) ...[
-            const Text("COACH", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            Text("COACH", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
@@ -125,16 +125,16 @@ class _BlockTimeBodyState extends ConsumerState<_BlockTimeBody> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("${overlapping.length} existing booking${overlapping.length == 1 ? '' : 's'} overlap this window:", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFFD68A4F))),
+                  Text("${overlapping.length} existing booking${overlapping.length == 1 ? '' : 's'} overlap this window:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.warning)),
                   const SizedBox(height: 4),
-                  ...overlapping.map((b) => Text("• ${fmtSlot(b.slot)}", style: const TextStyle(fontSize: 12, color: AppColors.mute))),
+                  ...overlapping.map((b) => Text("• ${fmtSlot(b.slot)}", style: TextStyle(fontSize: 12, color: AppColors.mute))),
                   const SizedBox(height: 4),
-                  const Text("Blocking won't cancel these — you'll need to reach out or cancel them yourself.", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+                  Text("Blocking won't cancel these — you'll need to reach out or cancel them yourself.", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                 ],
               ),
             ),
           if (_error != null)
-            Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12))),
+            Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12))),
           const SizedBox(height: 16),
           BtnGold(
             full: true,

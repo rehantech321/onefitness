@@ -397,15 +397,15 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("FROM THEIR ASSESSMENT", style: TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                  Text("FROM THEIR ASSESSMENT", style: TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 1)),
                   const SizedBox(height: 6),
                   ...refItems.map((e) => Padding(
                         padding: const EdgeInsets.only(bottom: 2),
                         child: RichText(
                           text: TextSpan(
-                            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                            style: TextStyle(fontSize: 12, color: AppColors.mute),
                             children: [
-                              TextSpan(text: "${e.$1}: ", style: const TextStyle(color: AppColors.txt, fontWeight: FontWeight.w600)),
+                              TextSpan(text: "${e.$1}: ", style: TextStyle(color: AppColors.txt, fontWeight: FontWeight.w600)),
                               TextSpan(text: e.$2),
                             ],
                           ),
@@ -444,7 +444,7 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
                     hasAnyAiNutrition
                         ? "If this client has updated their Nutrition Intake answers since their targets were last set, draft a fresh set from their current answers. You'll review it here before anything on this page changes."
                         : "This client's Nutrition Intake is complete but no AI draft has been generated yet. Draft whole-number Training/Rest Day targets, Water, Calorie Budget, and coaching notes from their intake answers — you'll review it here before anything is applied.",
-                    style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
+                    style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
                   ),
                   const SizedBox(height: 10),
                   if (isOwner)
@@ -460,7 +460,7 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
                               : "Generate AI Nutrition Targets"),
                     )
                   else
-                    const Text("Only the owner can generate AI drafts.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
+                    Text("Only the owner can generate AI drafts.", style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
                 ],
               ),
             ),
@@ -487,24 +487,24 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
                   const SizedBox(height: 6),
                   Text(
                     "Training: ${p.trainingTargets.calories ?? "—"} kcal · ${p.trainingTargets.protein ?? "—"}/${p.trainingTargets.carbs ?? "—"}/${p.trainingTargets.fats ?? "—"}% P/C/F",
-                    style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                    style: TextStyle(fontSize: 12, color: AppColors.mute),
                   ),
                   Text(
                     "Rest: ${p.restTargets.calories ?? "—"} kcal · ${p.restTargets.protein ?? "—"}/${p.restTargets.carbs ?? "—"}/${p.restTargets.fats ?? "—"}% P/C/F",
-                    style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                    style: TextStyle(fontSize: 12, color: AppColors.mute),
                   ),
                   if (p.mealBudgets.training.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         "Training budget: ${p.mealBudgets.training["breakfast"] ?? "—"}/${p.mealBudgets.training["lunch"] ?? "—"}/${p.mealBudgets.training["dinner"] ?? "—"}/${p.mealBudgets.training["snacks"] ?? "—"} kcal (B/L/D/S)",
-                        style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                        style: TextStyle(fontSize: 12, color: AppColors.mute),
                       ),
                     ),
                   if (p.guidelines != null && p.guidelines!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
-                      child: Text('"${p.guidelines}"', style: const TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
+                      child: Text('"${p.guidelines}"', style: TextStyle(fontSize: 12, color: AppColors.mute, fontStyle: FontStyle.italic)),
                     ),
                   const SizedBox(height: 8),
                   const HintBox(text: "Applying fills in the Training/Rest Day Targets, Water, Calorie Budget, and Guidelines & Notes below with this draft — your meals and grocery list are untouched. Review it first if you'd like to adjust anything."),
@@ -527,7 +527,7 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
                       Expanded(
                         child: OutlinedButton(
                           onPressed: _saving ? null : () => _discardNutritionDraft(p.id),
-                          style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF6B3B3B)), foregroundColor: const Color(0xFFC97F7F)),
+                          style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFF6B3B3B)), foregroundColor: AppColors.errorText),
                           child: const Text("Discard"),
                         ),
                       ),
@@ -538,7 +538,7 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
             ),
 
           if (_error != null) ...[
-            Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+            Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
             const SizedBox(height: 10),
           ],
 
@@ -595,7 +595,7 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
               if (groceryCategories.isNotEmpty)
                 OutlinedButton(
                   onPressed: () => _copyGroceryList(groceryCategories),
-                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: const BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5)),
+                  style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: BorderSide(color: AppColors.line), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5)),
                   child: Text(_copied ? "Copied!" : "Copy list", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
                 ),
             ],
@@ -608,16 +608,16 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(cat.label.toUpperCase(), style: const TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 1)),
+                      Text(cat.label.toUpperCase(), style: TextStyle(fontSize: 10, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 1)),
                       const SizedBox(height: 8),
                       ...cat.items.asMap().entries.map((entry) => Container(
                             padding: const EdgeInsets.symmetric(vertical: 4),
-                            decoration: entry.key < cat.items.length - 1 ? const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))) : null,
+                            decoration: entry.key < cat.items.length - 1 ? BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.line))) : null,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(entry.value.item, style: const TextStyle(fontSize: 13, color: AppColors.txt)),
-                                Text("${fmtQty(entry.value.qty)} ${entry.value.unit ?? ""}".trim(), style: const TextStyle(fontSize: 13, color: AppColors.mute)),
+                                Text(entry.value.item, style: TextStyle(fontSize: 13, color: AppColors.txt)),
+                                Text("${fmtQty(entry.value.qty)} ${entry.value.unit ?? ""}".trim(), style: TextStyle(fontSize: 13, color: AppColors.mute)),
                               ],
                             ),
                           )),
@@ -640,14 +640,14 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
                 margin: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   children: [
-                    const Icon(LucideIcons.fileText, size: 18, color: AppColors.gold),
+                    Icon(LucideIcons.fileText, size: 18, color: AppColors.gold),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(doc.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                          Text("${(doc.size / 1024).toStringAsFixed(0)} KB", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                          Text("${(doc.size / 1024).toStringAsFixed(0)} KB", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                         ],
                       ),
                     ),
@@ -662,30 +662,30 @@ class _NutritionBuilderScreenState extends ConsumerState<NutritionBuilderScreen>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(10)),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [Icon(LucideIcons.plus, size: 15, color: AppColors.gold), SizedBox(width: 6), Text("Upload PDF", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.gold))],
               ),
             ),
           ),
-          if (_fileErr != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_fileErr!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12))),
+          if (_fileErr != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_fileErr!, style: TextStyle(color: AppColors.errorText, fontSize: 12))),
 
           const SizedBox(height: 20),
           const SectionLabel("Guidelines & Notes"),
           TextField(
             controller: _guidelines,
             maxLines: 4,
-            style: const TextStyle(color: AppColors.txt, fontSize: 13),
+            style: TextStyle(color: AppColors.txt, fontSize: 13),
             onChanged: (_) => _persist(),
             decoration: InputDecoration(
               hintText: "Hydration, supplements, dos & don'ts, coaching notes…",
-              hintStyle: const TextStyle(color: AppColors.mute),
+              hintStyle: TextStyle(color: AppColors.mute),
               filled: true,
               fillColor: AppColors.card,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.gold)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.gold)),
             ),
           ),
           const SizedBox(height: 12),
@@ -787,7 +787,7 @@ class _TargetsCard extends StatelessWidget {
                         height: 5,
                         child: Row(
                           children: [
-                            for (final seg in [(p, AppColors.grn), (c, AppColors.mute), (f, const Color(0xFFD68A4F)), (100 - total, AppColors.line)])
+                            for (final seg in [(p, AppColors.grn), (c, AppColors.mute), (f, AppColors.warning), (100 - total, AppColors.line)])
                               if (seg.$1 > 0) Expanded(flex: seg.$1.round().clamp(1, 1000), child: Container(color: seg.$2)),
                           ],
                         ),
@@ -797,15 +797,15 @@ class _TargetsCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     "${total.round()}%${ok ? " ✓" : ""}",
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ok ? AppColors.grn : const Color(0xFFC97F7F)),
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ok ? AppColors.grn : AppColors.errorText),
                   ),
                 ],
               ),
             ),
           if (total > 0 && !ok)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 2),
-              child: Align(alignment: Alignment.centerRight, child: Text("← should equal 100%", style: TextStyle(fontSize: 10, color: Color(0xFFC97F7F)))),
+              child: Align(alignment: Alignment.centerRight, child: Text("← should equal 100%", style: TextStyle(fontSize: 10, color: AppColors.errorText))),
             ),
         ],
       ),

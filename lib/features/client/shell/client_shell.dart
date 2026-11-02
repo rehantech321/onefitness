@@ -237,7 +237,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
-        title: const Row(
+        title: Row(
           children: [
             Icon(LucideIcons.fileSignature, size: 18, color: AppColors.gold),
             SizedBox(width: 8),
@@ -413,7 +413,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                   children: [
                     // Top bar
                     Container(
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: AppColors.bg,
                         border: Border(
                           bottom: BorderSide(color: AppColors.line),
@@ -439,7 +439,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                               builder: (context) => IconButton(
                                 onPressed: () =>
                                     Scaffold.of(context).openDrawer(),
-                                icon: const Icon(
+                                icon: Icon(
                                   LucideIcons.menu,
                                   size: 22,
                                   color: AppColors.txt,
@@ -457,7 +457,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                               IconButton(
                                 onPressed: _handleBack,
                                 tooltip: "Back",
-                                icon: const Icon(
+                                icon: Icon(
                                   LucideIcons.chevronLeft,
                                   size: 24,
                                   color: AppColors.txt,
@@ -484,7 +484,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                             if (screen == "chat") ...[
                               IconButton(
                                 onPressed: () => showChatInfoSheet(context),
-                                icon: const Icon(
+                                icon: Icon(
                                   LucideIcons.info,
                                   size: 20,
                                   color: AppColors.mute,
@@ -634,7 +634,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
                       ref.read(pendingBookingTargetProvider.notifier).set(null);
                       go("advancedBooking");
                     },
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -653,7 +653,7 @@ class _ClientShellState extends ConsumerState<ClientShell> {
           ),
         ),
         bottomNavigationBar: DecoratedBox(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.bottomBarBg,
             border: Border(top: BorderSide(color: AppColors.line)),
           ),
@@ -790,7 +790,7 @@ class _ClientDrawerState extends ConsumerState<_ClientDrawer> {
                         ),
                         Text(
                           info.city ?? "",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             color: AppColors.mute,
                           ),
@@ -798,10 +798,14 @@ class _ClientDrawerState extends ConsumerState<_ClientDrawer> {
                       ],
                     ),
                   ),
+                  // Light/dark here as well as in Profile Settings: the full
+                  // picker is the right home for the setting, but nobody
+                  // walks to Settings mid-workout to dim a screen.
+                  const ThemeModeToggleButton(),
                   IconButton(
                     onPressed: () => Scaffold.of(context).closeDrawer(),
                     tooltip: "Close menu",
-                    icon: const Icon(
+                    icon: Icon(
                       LucideIcons.x,
                       size: 20,
                       color: AppColors.mute,
@@ -815,7 +819,7 @@ class _ClientDrawerState extends ConsumerState<_ClientDrawer> {
                   ),
                 ],
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 16, bottom: 12),
                 child: Divider(color: AppColors.line, height: 1),
               ),
@@ -862,13 +866,13 @@ class _ClientDrawerState extends ConsumerState<_ClientDrawer> {
                   }).toList(),
                 ),
               ),
-              const Divider(color: AppColors.line, height: 1),
+              Divider(color: AppColors.line, height: 1),
               InkWell(
                 onTap: () {
                   SupabaseService.signOut();
                   ref.read(clientSignedInProvider.notifier).signOut();
                 },
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 11),
                   child: Row(
                     children: [

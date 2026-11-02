@@ -294,7 +294,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                 children: [
                   Text(
                     fmtSlot(slot),
-                    style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                    style: TextStyle(fontSize: 12, color: AppColors.mute),
                   ),
                   if (_run != null) ...[
                     const SizedBox(width: 10),
@@ -331,7 +331,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                           ),
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         LucideIcons.chevronRight,
                         size: 16,
                         color: AppColors.mute,
@@ -519,7 +519,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                     ),
                     Text(
                       dayLabel(isoToday()),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.mute,
                       ),
@@ -534,7 +534,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                 },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.mute,
-                  side: const BorderSide(color: AppColors.line),
+                  side: BorderSide(color: AppColors.line),
                 ),
                 child: const Text("Sign out", style: TextStyle(fontSize: 12)),
               ),
@@ -579,10 +579,10 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                   children: [
                     Text(
                       "${entry.key.toUpperCase()} (${entry.value.length})",
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFFD68A4F),
+                        color: AppColors.warning,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -632,7 +632,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                   if (n.bookingId != null)
                                     Text(
                                       "${dayLabel(n.date!)}${n.date == isoToday() ? ' · Today' : ''} · ${fmtSlot(n.slot!)}",
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 11,
                                         color: AppColors.mute,
                                       ),
@@ -640,7 +640,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                 ],
                               ),
                             ),
-                            const Icon(
+                            Icon(
                               LucideIcons.chevronRight,
                               size: 15,
                               color: AppColors.mute,
@@ -658,7 +658,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 2),
               margin: const EdgeInsets.only(top: 4),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(color: AppColors.line),
                   bottom: BorderSide(color: AppColors.line),
@@ -677,7 +677,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                         ),
                       ),
                       if (_viewDate == isoToday())
-                        const Text(
+                        Text(
                           " · Today",
                           style: TextStyle(
                             fontSize: 13,
@@ -769,7 +769,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                         Expanded(
                           child: Text(
                             fmtSlot(slot),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w800,
                               color: AppColors.gold,
@@ -814,7 +814,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                           isFutureDate
                               ? "Starts on ${dayLabel(_viewDate)}"
                               : "Can be started at ${fmtSlot(slot)}, or as soon as someone checks in",
-                          style: const TextStyle(fontSize: 10.5, color: AppColors.mute),
+                          style: TextStyle(fontSize: 10.5, color: AppColors.mute),
                         ),
                       ),
                     const SizedBox(height: 8),
@@ -899,7 +899,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                             if (isOwner && t.isNotEmpty)
                                               t.first.name,
                                           ].join(" · "),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 11,
                                             color: AppColors.mute,
                                           ),
@@ -908,7 +908,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                                     ),
                                   ),
                                   if (clickable)
-                                    const Icon(
+                                    Icon(
                                       LucideIcons.chevronRight,
                                       size: 15,
                                       color: AppColors.mute,
@@ -1046,22 +1046,22 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(
+                      Icon(
                         LucideIcons.circleSlash,
                         size: 18,
-                        color: Color(0xFFD68A4F),
+                        color: AppColors.warning,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           "${todayCharges.length} charge${todayCharges.length != 1 ? "s" : ""} to collect today",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             color: AppColors.txt,
                           ),
                         ),
                       ),
-                      const Icon(
+                      Icon(
                         LucideIcons.chevronRight,
                         size: 16,
                         color: AppColors.mute,
@@ -1104,7 +1104,7 @@ class _StatBox extends StatelessWidget {
             children: [
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: AppColors.gold,
@@ -1112,7 +1112,7 @@ class _StatBox extends StatelessWidget {
               ),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   color: AppColors.mute,
                   letterSpacing: 0.5,

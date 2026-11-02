@@ -54,6 +54,22 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
   /// rather than the stale one the form opened with.
   late List<IntakeAttachment> _attachments;
 
+  /// One controller per text question, created once and kept.
+  ///
+  /// These used to be built inside `build()`. Every keystroke runs
+  /// onChanged → setState → rebuild, so the whole form allocated a fresh
+  /// controller for each of its sixty-odd questions on every character
+  /// typed, leaking the previous ones and resetting the cursor. On an
+  /// intake this long that is indistinguishable from the page locking up.
+  final Map<String, TextEditingController> _textControllers = {};
+
+  TextEditingController _controllerFor(IntakeQuestion q) =>
+      _textControllers.putIfAbsent(q.id, () {
+        final initial = _answers[q.id] as String? ?? "";
+        return TextEditingController(text: initial)
+          ..selection = TextSelection.collapsed(offset: initial.length);
+      });
+
   bool _saving = false;
   String? _error;
 
@@ -63,6 +79,14 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
     final existing = widget.client.intake[widget.assessmentKey];
     _answers = Map<String, dynamic>.from(existing?.answers ?? {});
     _attachments = [...?existing?.attachments];
+  }
+
+  @override
+  void dispose() {
+    for (final c in _textControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
   }
 
   void _setText(String id, dynamic v) => setState(() => _answers[id] = v);
@@ -131,7 +155,7 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
           BackBar(onBack: widget.onBack),
           const SizedBox(height: 6),
           Text(widget.schema.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 4, bottom: 16),
             child: Text("Fill what you can — it saves to the client's profile.", style: TextStyle(fontSize: 12, color: AppColors.mute)),
           ),
@@ -142,7 +166,7 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
                   children: [
                     Text(
                       sec.title.toUpperCase(),
-                      style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 1),
+                      style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 1),
                     ),
                     const SizedBox(height: 12),
                     ...sec.questions.where(_shouldShow).map((q) => Padding(
@@ -155,6 +179,9 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
                               _QuestionInput(
                                 question: q,
                                 value: _answers[q.id],
+                                controller: (q.type == "text" || q.type == "textarea")
+                                    ? _controllerFor(q)
+                                    : null,
                                 onText: (v) => _setText(q.id, v),
                                 onToggle: (opt) => _toggleMulti(q.id, opt),
                               ),
@@ -191,14 +218,14 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
                 border: Border.all(color: AppColors.errorText.withValues(alpha: 0.4)),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+              child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
             ),
           ],
           BtnGold(
             onPressed: _saving ? null : _save,
             full: true,
             child: _saving
-                ? const Row(
+                ? Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -211,13 +238,15 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
                       Text("Saving…"),
                     ],
                   )
-                : const Row(
+                : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(LucideIcons.check, size: 16, color: AppColors.onGold),
                       SizedBox(width: 6),
-                      Text("Save & mark complete"),
+                      // Flexible so the label shrinks rather than pushing
+                      // past the button edge on a narrow phone.
+                      Flexible(child: Text("Save & mark complete", maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                   ),
           ),
@@ -228,9 +257,19 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
 }
 
 class _QuestionInput extends StatelessWidget {
-  const _QuestionInput({required this.question, required this.value, required this.onText, required this.onToggle});
+  const _QuestionInput({
+    required this.question,
+    required this.value,
+    required this.onText,
+    required this.onToggle,
+    this.controller,
+  });
   final IntakeQuestion question;
   final dynamic value;
+
+  /// Owned by the parent State for text questions; null for the chip and
+  /// scale types, which have no text field to drive.
+  final TextEditingController? controller;
   final ValueChanged<dynamic> onText;
   final ValueChanged<String> onToggle;
 
@@ -252,16 +291,16 @@ class _QuestionInput extends StatelessWidget {
           onChanged: onText,
           minLines: 3,
           maxLines: 6,
-          style: const TextStyle(color: AppColors.txt, fontSize: 14),
+          style: TextStyle(color: AppColors.txt, fontSize: 14),
           decoration: InputDecoration(
             hintText: "Type here…",
-            hintStyle: const TextStyle(color: AppColors.mute),
+            hintStyle: TextStyle(color: AppColors.mute),
             filled: true,
             fillColor: AppColors.bg,
             contentPadding: const EdgeInsets.all(10),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.gold)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.gold)),
           ),
         );
       case "scale":

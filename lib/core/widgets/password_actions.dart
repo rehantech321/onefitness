@@ -104,7 +104,7 @@ class _PasswordActionsState extends ConsumerState<PasswordActions> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 10),
-        const Text(
+        Text(
           "Password",
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.txt),
         ),
@@ -116,7 +116,7 @@ class _PasswordActionsState extends ConsumerState<PasswordActions> {
                 onPressed: _busy ? null : _sendReset,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.gold,
-                  side: const BorderSide(color: AppColors.goldDim),
+                  side: BorderSide(color: AppColors.goldDim),
                   padding: const EdgeInsets.symmetric(vertical: 9),
                 ),
                 icon: const Icon(LucideIcons.mail, size: 13),
@@ -131,7 +131,7 @@ class _PasswordActionsState extends ConsumerState<PasswordActions> {
                   onPressed: _busy ? null : _setPassword,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.mute,
-                    side: const BorderSide(color: AppColors.line),
+                    side: BorderSide(color: AppColors.line),
                     padding: const EdgeInsets.symmetric(vertical: 9),
                   ),
                   icon: const Icon(LucideIcons.keyRound, size: 13),
@@ -148,7 +148,7 @@ class _PasswordActionsState extends ConsumerState<PasswordActions> {
             isOwner
                 ? "A reset email lets them choose their own password. Setting one yourself is for someone locked out with no access to their email."
                 : "Sends a link so they can choose a new password themselves.",
-            style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
+            style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
           ),
         ),
         if (_message != null)
@@ -212,7 +212,7 @@ class _SetPasswordDialogState extends State<_SetPasswordDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
+          Text(
             "They'll be able to sign in with this straight away. Tell them in "
             "person and ask them to change it once they're in — anyone who "
             "overhears it can use it.",
@@ -242,7 +242,7 @@ class _SetPasswordDialogState extends State<_SetPasswordDialog> {
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Text(_error!,
-                  style: const TextStyle(fontSize: 12, color: AppColors.errorText)),
+                  style: TextStyle(fontSize: 12, color: AppColors.errorText)),
             ),
         ],
       ),

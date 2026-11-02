@@ -67,7 +67,7 @@ class TimeField extends StatelessWidget {
             if (m != null && onClear != null)
               InkWell(
                 onTap: onClear,
-                child: const Icon(Icons.close, size: 14, color: AppColors.mute),
+                child: Icon(Icons.close, size: 14, color: AppColors.mute),
               ),
           ],
         ),

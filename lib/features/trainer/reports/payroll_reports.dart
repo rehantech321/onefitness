@@ -156,12 +156,12 @@ class MeritBadgeEarningsReport extends ConsumerWidget {
                         Text(kCoachBadgeLabels[b.badgeKey] ?? b.badgeKey, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                         Text(
                           onlyTrainerId != null ? "${b.periodMonth} · ${b.payoutStatus}" : "${trainerNames[b.trainerId] ?? '—'} · ${b.periodMonth} · ${b.payoutStatus}",
-                          style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                          style: TextStyle(fontSize: 11, color: AppColors.mute),
                         ),
                       ],
                     ),
                   ),
-                  Text(_money(b.rewardCents / 100), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold)),
+                  Text(_money(b.rewardCents / 100), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold)),
                 ],
               ),
             )),
@@ -247,15 +247,15 @@ class _StatsTable extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(s.trainer.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                          Text("${s.sessionCount} sessions$suffix", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                          Text("${s.sessionCount} sessions$suffix", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                         ],
                       ),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(valueOf(s), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold)),
-                        Text(valueLabel, style: const TextStyle(fontSize: 10, color: AppColors.mute)),
+                        Text(valueOf(s), style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold)),
+                        Text(valueLabel, style: TextStyle(fontSize: 10, color: AppColors.mute)),
                       ],
                     ),
                   ],

@@ -102,10 +102,10 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
             ),
             child: Column(
               children: [
-                const Icon(LucideIcons.gift, size: 26, color: AppColors.gold),
+                Icon(LucideIcons.gift, size: 26, color: AppColors.gold),
                 const SizedBox(height: 6),
-                Text("${replay.balance}", style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: AppColors.gold)),
-                const Text("REWARD POINTS", style: TextStyle(fontSize: 12, color: AppColors.mute, letterSpacing: 1)),
+                Text("${replay.balance}", style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: AppColors.gold)),
+                Text("REWARD POINTS", style: TextStyle(fontSize: 12, color: AppColors.mute, letterSpacing: 1)),
               ],
             ),
           ),
@@ -132,7 +132,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "Turn the toggle on to use your points toward your next purchase or renewal automatically. Leave it off to keep accumulating points — each point stays available for 6 months from the day you earned it.",
                   style: TextStyle(fontSize: 12, color: AppColors.txt, height: 1.5),
                 ),
@@ -147,7 +147,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         if (next && !_redeeming) _redeemNow();
                       },
                     ),
-                    if (_redeeming) const Padding(padding: EdgeInsets.only(top: 6), child: Text("Redeeming…", style: TextStyle(fontSize: 12, color: AppColors.gold))),
+                    if (_redeeming) Padding(padding: EdgeInsets.only(top: 6), child: Text("Redeeming…", style: TextStyle(fontSize: 12, color: AppColors.gold))),
                   ] else
                     _ToggleRow(
                       label: "Redeem ${redemptionPlan.points} points on my next purchase",
@@ -187,7 +187,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                                     ? "$activeBadgeCount of $kMeritBadgeMinActiveForPoints Merit Badges"
                                     : "$activeBadgeCount Active Merit Badges")
                                 : "$activeBadgeCount of $kMeritBadgeMinActiveForPoints required badges",
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.txt),
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.txt),
                           ),
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
@@ -219,7 +219,7 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(vertical: 9),
                         decoration: BoxDecoration(border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(8)),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -241,17 +241,17 @@ class _RewardsScreenState extends ConsumerState<RewardsScreen> {
                 final w = entry.value;
                 return Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(border: entry.key == kWaysToEarn.length - 1 ? null : const Border(bottom: BorderSide(color: AppColors.line))),
+                  decoration: BoxDecoration(border: entry.key == kWaysToEarn.length - 1 ? null : Border(bottom: BorderSide(color: AppColors.line))),
                   child: Row(
                     children: [
-                      SizedBox(width: 34, child: Text("+${w.points}", textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold))),
+                      SizedBox(width: 34, child: Text("+${w.points}", textAlign: TextAlign.center, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold))),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(w.label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.txt)),
-                            Text(w.desc, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                            Text(w.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.txt)),
+                            Text(w.desc, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                           ],
                         ),
                       ),
@@ -292,11 +292,11 @@ class _ToggleRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.txt)),
+                  Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.txt)),
                   if (hint != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
-                      child: Text(hint!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+                      child: Text(hint!, style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
                     ),
                 ],
               ),

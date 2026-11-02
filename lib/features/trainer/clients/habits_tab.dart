@@ -59,7 +59,7 @@ class _HabitsTabState extends ConsumerState<HabitsTab> {
           AppCard(
             child: Text(
               "Weekly score: $weekScore% · Streak: $streak days",
-              style: const TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700),
             ),
           ),
           Row(
@@ -117,7 +117,7 @@ class _HabitsTabState extends ConsumerState<HabitsTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("DAILY CHECK-IN", style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                Text("DAILY CHECK-IN", style: TextStyle(fontSize: 11, color: AppColors.gold, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
                 const SizedBox(height: 12),
                 HabitRatingRow(label: "\u{26A1} Energy Level", value: log.energy, onChange: (_) {}, disabled: true),
                 const SizedBox(height: 14),
@@ -125,7 +125,7 @@ class _HabitsTabState extends ConsumerState<HabitsTab> {
               ],
             ),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 12, bottom: 4),
             child: Text(
               "Coach view — read-only. To assign/remove habits, use the settings below.",
@@ -135,17 +135,17 @@ class _HabitsTabState extends ConsumerState<HabitsTab> {
           Container(
             margin: const EdgeInsets.only(top: 10),
             padding: const EdgeInsets.only(top: 14),
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SectionLabel("Manage Habits for This Client"),
-                const Text(
+                Text(
                   "Turn on the habits you want this client to track. Only the habits you designate here will appear on their dashboard — if none are on, they'll see no habit tile. You can also create custom habits below.",
                   style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
                 ),
                 const SizedBox(height: 12),
-                const Text("DEFAULT HABITS", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+                Text("DEFAULT HABITS", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
                 const SizedBox(height: 8),
                 ...kDefaultHabits.map((h) {
                   final on = record.habits.contains(h.id);
@@ -177,7 +177,7 @@ class _HabitsTabState extends ConsumerState<HabitsTab> {
                   );
                 }),
                 const SizedBox(height: 12),
-                const Text("CUSTOM HABITS", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+                Text("CUSTOM HABITS", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
                 const SizedBox(height: 8),
                 ...record.customHabits.map((h) => AppCard(
                       child: Row(

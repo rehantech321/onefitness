@@ -166,7 +166,7 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
           const SizedBox(height: 4),
           Text(
             _category == null ? "Showing all requests — tap a category to narrow." : "Showing ${_category == "semi-private" ? "Semi-Private" : _category == "one-on-one" ? "One-on-One" : "Other"} only — tap again for all.",
-            style: const TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
+            style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic),
           ),
           const SizedBox(height: 14),
           const SectionLabel("Waiting for a spot"),
@@ -187,7 +187,7 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
           if (_err != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Text(_err!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12)),
+              child: Text(_err!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
             ),
           if (groups.isEmpty)
             const Padding(padding: EdgeInsets.only(top: 12), child: HintBox(text: "No pending waitlist requests."))
@@ -221,7 +221,7 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
                               Text(first.clientName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                               Text(
                                 "with ${first.trainerName} · ${entries.length} request${entries.length != 1 ? "s" : ""}",
-                                style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                style: TextStyle(fontSize: 11, color: AppColors.mute),
                               ),
                             ],
                           ),
@@ -232,7 +232,7 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
                       final busy = _busyId == w.id;
                       return Container(
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
+                        decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.line))),
                         child: Row(
                           children: [
                             Expanded(
@@ -242,7 +242,7 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
                                   Text("${w.date} · ${fmtSlot(w.slot)}", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                                   Text(
                                     "${sessionTypeLabel(w.sessionType)} · ${w.discipline != null ? disciplineLabel(w.discipline!) : ""}",
-                                    style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                                    style: TextStyle(fontSize: 11, color: AppColors.mute),
                                   ),
                                 ],
                               ),
@@ -257,7 +257,7 @@ class _WaitlistScreenState extends ConsumerState<WaitlistScreen> {
                             _WaitlistActionBtn(
                               icon: LucideIcons.x,
                               label: "Decline",
-                              color: const Color(0xFFC97F7F),
+                              color: AppColors.errorText,
                               onTap: busy ? null : () => _decline(w),
                             ),
                           ],
@@ -333,13 +333,13 @@ class _QueuedSlotCard extends StatelessWidget {
               ),
               Text(
                 "${entries.length} waiting",
-                style: const TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w600),
               ),
             ],
           ),
           Text(
             "${first.trainerName} · ${first.sessionType}",
-            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+            style: TextStyle(fontSize: 11, color: AppColors.mute),
           ),
           const SizedBox(height: 8),
           ...entries.asMap().entries.map((e) {
@@ -354,7 +354,7 @@ class _QueuedSlotCard extends StatelessWidget {
                     width: 20,
                     child: Text(
                       "${i + 1}.",
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.mute, fontWeight: FontWeight.w700),
+                      style: TextStyle(fontSize: 11.5, color: AppColors.mute, fontWeight: FontWeight.w700),
                     ),
                   ),
                   Expanded(
@@ -368,7 +368,7 @@ class _QueuedSlotCard extends StatelessWidget {
                     ),
                   ),
                   if (offered)
-                    const Text(
+                    Text(
                       "OFFERED",
                       style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.gold, letterSpacing: 0.5),
                     ),

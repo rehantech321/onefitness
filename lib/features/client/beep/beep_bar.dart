@@ -165,7 +165,7 @@ class _BeepBarState extends ConsumerState<BeepBar> {
             children: [
               SessionTimer(run: run, label: "SESSION LIVE"),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
                   "Your coach has started the session.",
                   style: TextStyle(fontSize: 11, color: AppColors.mute),
@@ -309,14 +309,14 @@ class _BeepOptionsSheetState extends State<_BeepOptionsSheet> {
             const SizedBox(height: 2),
             Text(
               _exercise == null ? "Your coach will come to you." : "On ${_exercise!}",
-              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
 
             // In Full view the client is scrolling freely, so which exercise
             // they mean can't be assumed — they say.
             if (widget.fullView && widget.exerciseNames.length > 1) ...[
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 "WHICH EXERCISE",
                 style: TextStyle(fontSize: 10, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1),
               ),
@@ -437,7 +437,7 @@ class _BeepChoice extends StatelessWidget {
                     waiting
                         ? "Just sent — you can send this again in ${remaining.inSeconds}s"
                         : blurb,
-                    style: const TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.3),
+                    style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.3),
                   ),
                 ],
               ),

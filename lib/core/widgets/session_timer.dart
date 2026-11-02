@@ -137,7 +137,7 @@ class _SessionTimerState extends State<SessionTimer> {
             ),
           ),
           const SizedBox(width: 4),
-          const Text("left", style: TextStyle(fontSize: 10.5, color: AppColors.mute)),
+          Text("left", style: TextStyle(fontSize: 10.5, color: AppColors.mute)),
         ],
       ),
     );

@@ -222,7 +222,7 @@ class _BeepPopup extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 "$queued more waiting",
-                style: const TextStyle(fontSize: 11.5, color: AppColors.mute),
+                style: TextStyle(fontSize: 11.5, color: AppColors.mute),
               ),
             ],
             const SizedBox(height: 12),
@@ -266,7 +266,7 @@ class _DoneBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(LucideIcons.check, size: 14, color: AppColors.grn),
+            Icon(LucideIcons.check, size: 14, color: AppColors.grn),
             const SizedBox(width: 8),
             Expanded(
               child: Text(

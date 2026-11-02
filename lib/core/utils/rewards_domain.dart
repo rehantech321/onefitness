@@ -56,7 +56,10 @@ class PointsBannerMeta {
 }
 
 /// Mirrors `POINTS_BANNER_META`.
-const kPointsBannerExpiring = PointsBannerMeta(
+// Rebuilt on each read rather than held in a `final`: a lazily-initialised
+// field would capture whichever palette happened to be active the first
+// time it was touched and keep those colours after a theme switch.
+PointsBannerMeta get kPointsBannerExpiring => PointsBannerMeta(
   emoji: "\u{23F3}",
   color: AppColors.warning,
   bg: Color(0x1AD68A4F),

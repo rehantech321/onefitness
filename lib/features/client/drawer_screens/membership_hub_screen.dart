@@ -280,7 +280,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
-        title: Text("Cancel ${p.name}?", style: const TextStyle(color: AppColors.txt, fontSize: 16, fontWeight: FontWeight.w800)),
+        title: Text("Cancel ${p.name}?", style: TextStyle(color: AppColors.txt, fontSize: 16, fontWeight: FontWeight.w800)),
         content: Text(
           [
             endsAt != null
@@ -289,13 +289,13 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             "Your other plans aren't affected.",
             if (fee > 0) "An early termination fee of \$${(fee / 100).toStringAsFixed(2)} applies.",
           ].join(" "),
-          style: const TextStyle(color: AppColors.mute, fontSize: 13, height: 1.5),
+          style: TextStyle(color: AppColors.mute, fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text("Never mind")),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)),
+            style: TextButton.styleFrom(foregroundColor: AppColors.errorText),
             child: const Text("Cancel plan", style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
@@ -492,7 +492,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
         backgroundColor: AppColors.card,
         title: Text(
           immediate ? "Cancel your ${currentPlan?.name ?? "plan"}?" : "Cancel your membership?",
-          style: const TextStyle(color: AppColors.txt, fontSize: 16, fontWeight: FontWeight.w800),
+          style: TextStyle(color: AppColors.txt, fontSize: 16, fontWeight: FontWeight.w800),
         ),
         content: Text(
           [
@@ -506,7 +506,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             if (((preview["feeCents"] as num?) ?? 0) > 0)
               "A cancellation fee of \$${(((preview["feeCents"] as num).toInt()) / 100).toStringAsFixed(2)} will be charged to your card on file.",
           ].join("\n\n"),
-          style: const TextStyle(color: AppColors.mute, fontSize: 13, height: 1.5),
+          style: TextStyle(color: AppColors.mute, fontSize: 13, height: 1.5),
         ),
         actions: [
           TextButton(
@@ -516,7 +516,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)),
+            style: TextButton.styleFrom(foregroundColor: AppColors.errorText),
             child: Text(
               immediate ? "Cancel it now" : "Cancel at end of billing period",
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -581,7 +581,11 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
     // access rather than instead of it — they live in the Membership Hub
     // catalogue (see the _catalog branch), which is also where a client with
     // no membership at all is sent to get started.
-    final buyable = plans.where((p) => !p.archived && !isProgramKind(p.kind)).toList();
+    // Off-sale plans drop out of the hub entirely. A client already on
+    // one still sees it above under "Your Membership", which reads from
+    // their own plan id rather than this list.
+    final today = isoToday();
+    final buyable = plans.where((p) => !p.archived && !isProgramKind(p.kind) && planOnSale(p, today)).toList();
     final filteredBuyable = applyPlanFilter(buyable, _filter);
     // Regrouped from the *filtered* list, so the tiles only ever offer
     // categories that survive the current Memberships/Packages filter.
@@ -653,7 +657,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             const SizedBox(height: 16),
             AppCard(
               onTap: _busyPlanId != null ? null : () => _confirmTiming(info, p, "immediate"),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("Prorate the difference", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
@@ -669,7 +673,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             ),
             AppCard(
               onTap: _busyPlanId != null ? null : () => _confirmTiming(info, p, "immediate_reset"),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("Reset my billing cycle to start today", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
@@ -686,7 +690,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text("⚠ $_error", style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12, fontWeight: FontWeight.w700)),
+                child: Text("⚠ $_error", style: TextStyle(color: AppColors.errorText, fontSize: 12, fontWeight: FontWeight.w700)),
               ),
             const SizedBox(height: 14),
             TextButton(
@@ -707,7 +711,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
       // (clearly marked) is the point of this screen: a client asking
       // "what else could I do here?" gets a real answer instead of a list
       // silently filtered down to what the checkout happens to support.
-      final visible = plans.where((p) => !p.archived && p.public).toList()
+      final visible = plans.where((p) => !p.archived && p.public && planOnSale(p, isoToday())).toList()
         ..sort((a, b) => a.kind.index.compareTo(b.kind.index));
       final catalogGroups = _groupByCategory(visible, ref.watch(packageCategoriesProvider));
       return LocalBackScope(
@@ -760,7 +764,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 ],
               ],
               if (_error != null)
-                Text("⚠ $_error", style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12, fontWeight: FontWeight.w700)),
+                Text("⚠ $_error", style: TextStyle(color: AppColors.errorText, fontSize: 12, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
@@ -791,7 +795,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                         _confirmTiming(info, p, "immediate");
                       }
                     },
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("Switch now", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
@@ -804,7 +808,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             ),
             AppCard(
               onTap: _busyPlanId != null ? null : () => _confirmTiming(info, p, "end_of_cycle"),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("Switch at my next renewal", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
@@ -818,7 +822,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: Text("⚠ $_error", style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12, fontWeight: FontWeight.w700)),
+                child: Text("⚠ $_error", style: TextStyle(color: AppColors.errorText, fontSize: 12, fontWeight: FontWeight.w700)),
               ),
             const SizedBox(height: 14),
             TextButton(
@@ -844,7 +848,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: Text("⚠ $_error", style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12, fontWeight: FontWeight.w700)),
+              child: Text("⚠ $_error", style: TextStyle(color: AppColors.errorText, fontSize: 12, fontWeight: FontWeight.w700)),
             ),
           if (plan != null && !_browsing) ...[
             SessionsRemainingBadge(info: info, bookings: bookings, showEndNotice: false),
@@ -856,9 +860,9 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       "Cancelled — it won't renew",
-                      style: TextStyle(fontSize: 13, color: Color(0xFFC97F7F), fontWeight: FontWeight.w800),
+                      style: TextStyle(fontSize: 13, color: AppColors.errorText, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -867,7 +871,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                       // client keeps what they paid for rather than losing it.
                       "You won't be charged again. You've already paid through ${niceDate(info.membershipCancelsAt!)}, "
                       "so you can keep booking until then — after that the membership ends.",
-                      style: const TextStyle(fontSize: 12, color: Color(0xFFC97F7F), height: 1.4),
+                      style: TextStyle(fontSize: 12, color: AppColors.errorText, height: 1.4),
                     ),
                     TextButton(
                       onPressed: _cancelBusy ? null : _keepMembership,
@@ -885,7 +889,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.08), border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(8)),
                 child: Text(
                   "Paused${info.membershipFreezeEndsAt != null ? " until ${info.membershipFreezeEndsAt}" : ""}.",
-                  style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600),
                 ),
               )
             else if (pendingPlan != null)
@@ -895,7 +899,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 decoration: BoxDecoration(color: AppColors.gold.withValues(alpha: 0.08), border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(8)),
                 child: Text(
                   "Switching to ${pendingPlan.name}${info.pendingPlanEffectiveAt != null ? " on ${info.pendingPlanEffectiveAt}" : ""}.",
-                  style: const TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w600),
                 ),
               ),
             const SizedBox(height: 4),
@@ -925,7 +929,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
                         plan.description!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.45),
+                        style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.45),
                       ),
                     ),
                 ],
@@ -945,7 +949,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: _cancelBusy ? null : () => setState(() => _browsing = true),
-                  style: OutlinedButton.styleFrom(backgroundColor: AppColors.gold.withValues(alpha: 0.12), side: const BorderSide(color: AppColors.goldDim), foregroundColor: AppColors.gold, padding: const EdgeInsets.symmetric(vertical: 10)),
+                  style: OutlinedButton.styleFrom(backgroundColor: AppColors.gold.withValues(alpha: 0.12), side: BorderSide(color: AppColors.goldDim), foregroundColor: AppColors.gold, padding: const EdgeInsets.symmetric(vertical: 10)),
                   child: const Text("Change Access", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 ),
               ),
@@ -959,7 +963,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: _cancelBusy ? null : () => setState(() => _catalog = true),
-                  style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.goldDim), foregroundColor: AppColors.gold, padding: const EdgeInsets.symmetric(vertical: 10)),
+                  style: OutlinedButton.styleFrom(side: BorderSide(color: AppColors.goldDim), foregroundColor: AppColors.gold, padding: const EdgeInsets.symmetric(vertical: 10)),
                   child: const Text("Membership Hub", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 ),
               ),
@@ -970,7 +974,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               // who can actually do it, so a paused client isn't left
               // wondering how to resume.
               if (info.membershipPaused)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(bottom: 8),
                   child: Text(
                     "Your access is paused by your coach or ONE Fitness — ask them to resume it.",
@@ -981,7 +985,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: _cancelBusy ? null : _startCancel,
-                  style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.line), foregroundColor: const Color(0xFFC97F7F), padding: const EdgeInsets.symmetric(vertical: 5)),
+                  style: OutlinedButton.styleFrom(side: BorderSide(color: AppColors.line), foregroundColor: AppColors.errorText, padding: const EdgeInsets.symmetric(vertical: 5)),
                   child: Text(_cancelBusy ? "Working…" : "Cancel", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 ),
               ),
@@ -1070,7 +1074,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: Text("⚠ $_error", style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12, fontWeight: FontWeight.w700)),
+                  child: Text("⚠ $_error", style: TextStyle(color: AppColors.errorText, fontSize: 12, fontWeight: FontWeight.w700)),
                 ),
               if (filteredBuyable.isEmpty)
                 const Padding(
@@ -1098,7 +1102,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                               Expanded(child: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
                               Text(
                                 p.priceCents > 0 ? "\$${(p.priceCents / 100).toStringAsFixed(2)}${p.kind == PlanKind.membership ? '/mo' : ''}" : "Free",
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold),
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold),
                               ),
                             ],
                           ),
@@ -1118,7 +1122,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                                   if ((p.startDate ?? "").isNotEmpty) "Starts ${p.startDate}",
                                   if (p.renewalDay != null) "Renews ${_ordinalDay(p.renewalDay!)} monthly",
                                 ].join(" · "),
-                                style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                                style: TextStyle(fontSize: 12, color: AppColors.mute),
                               ),
                             ),
                           if ((p.description ?? "").isNotEmpty)
@@ -1126,7 +1130,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                               padding: const EdgeInsets.only(top: 6),
                               child: Text(
                                 p.description!,
-                                style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
+                                style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
                               ),
                             ),
                           // A membership with a fixed renewal day charges the
@@ -1142,7 +1146,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                               child: Text(
                                 "You pay \$${(p.priceCents / 100).toStringAsFixed(2)} today, then \$${(p.priceCents / 100).toStringAsFixed(2)} "
                                 "on the ${_ordinalDay(p.renewalDay!)} of every month, starting next month.",
-                                style: const TextStyle(fontSize: 11.5, color: AppColors.gold, height: 1.4),
+                                style: TextStyle(fontSize: 11.5, color: AppColors.gold, height: 1.4),
                               ),
                             ),
                           const SizedBox(height: 10),
@@ -1154,7 +1158,7 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                               decoration: BoxDecoration(border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
                               child: Text(
                                 p.kind == PlanKind.membership ? "Current plan" : "You have this package",
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.mute),
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.mute),
                               ),
                             )
                           else
@@ -1239,7 +1243,7 @@ class _HeldPackages extends StatelessWidget {
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 13,
-                            color: left > 0 ? AppColors.gold : const Color(0xFFC97F7F),
+                            color: left > 0 ? AppColors.gold : AppColors.errorText,
                           ),
                         ),
                       ],
@@ -1252,7 +1256,7 @@ class _HeldPackages extends StatelessWidget {
                             if (p.allowedTypes.isNotEmpty) "Covers ${coversLabel(p)}",
                             p.kind == PlanKind.membership ? "resets monthly" : "sessions never expire on their own",
                           ].join(" · "),
-                          style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                          style: TextStyle(fontSize: 12, color: AppColors.mute),
                         ),
                       ),
                     if (endsAt != null)
@@ -1260,7 +1264,7 @@ class _HeldPackages extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 6),
                         child: Text(
                           "Cancelled — won't renew. You can keep using it until ${niceDate(endsAt)}.",
-                          style: const TextStyle(fontSize: 12, color: Color(0xFFC97F7F), fontWeight: FontWeight.w600),
+                          style: TextStyle(fontSize: 12, color: AppColors.errorText, fontWeight: FontWeight.w600),
                         ),
                       ),
                     // Only a membership is cancelled from here — a package
@@ -1271,7 +1275,7 @@ class _HeldPackages extends StatelessWidget {
                         child: TextButton(
                           onPressed: busyPlanId != null ? null : () => (endsAt != null ? onKeep : onCancel)!(p),
                           style: TextButton.styleFrom(
-                            foregroundColor: endsAt != null ? AppColors.gold : const Color(0xFFC97F7F),
+                            foregroundColor: endsAt != null ? AppColors.gold : AppColors.errorText,
                             padding: EdgeInsets.zero,
                             minimumSize: const Size(0, 32),
                           ),
@@ -1442,7 +1446,7 @@ class _CategoryTiles extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     "$count plan${count == 1 ? "" : "s"}",
-                    style: const TextStyle(fontSize: 10.5, color: AppColors.mute),
+                    style: TextStyle(fontSize: 10.5, color: AppColors.mute),
                   ),
                 ],
               ),
@@ -1498,7 +1502,7 @@ class _CatalogCard extends StatelessWidget {
                 plan.priceCents > 0
                     ? "\$${(plan.priceCents / 100).toStringAsFixed(2)}${plan.kind == PlanKind.membership ? '/mo' : ''}"
                     : "Free",
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.gold),
               ),
             ],
           ),
@@ -1512,14 +1516,14 @@ class _CatalogCard extends StatelessWidget {
               if ((plan.startDate ?? "").isNotEmpty) "Starts ${plan.startDate}",
               if (plan.renewalDay != null) "Renews ${_ordinalDay(plan.renewalDay!)} monthly",
             ].join(" · "),
-            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+            style: TextStyle(fontSize: 11, color: AppColors.mute),
           ),
           if ((plan.description ?? "").isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
                 plan.description!,
-                style: const TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4),
+                style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4),
               ),
             ),
           const SizedBox(height: 10),
@@ -1531,7 +1535,7 @@ class _CatalogCard extends StatelessWidget {
               decoration: BoxDecoration(border: Border.all(color: AppColors.goldDim), borderRadius: BorderRadius.circular(8)),
               child: Text(
                 isCurrent ? "Your current plan" : "Active",
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold),
               ),
             )
           else
@@ -1577,13 +1581,13 @@ class PlanDetailRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: AppColors.mute)),
+          Text(label, style: TextStyle(fontSize: 13, color: AppColors.mute)),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: const TextStyle(fontSize: 13, color: AppColors.txt, fontWeight: FontWeight.w600, height: 1.35),
+              style: TextStyle(fontSize: 13, color: AppColors.txt, fontWeight: FontWeight.w600, height: 1.35),
             ),
           ),
         ],

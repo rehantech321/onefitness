@@ -43,7 +43,7 @@ class AttendanceSummaryReport extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(r.$1, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  Text("${r.$2}", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.gold)),
+                  Text("${r.$2}", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.gold)),
                 ],
               ),
             )),
@@ -108,11 +108,11 @@ class SessionUtilizationReport extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(r.$1, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                          Text("${r.$2} available · ${r.$3} booked", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                          Text("${r.$2} available · ${r.$3} booked", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                         ],
                       ),
                     ),
-                    Text(r.$4 != null ? "${r.$4}%" : "—", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.gold)),
+                    Text(r.$4 != null ? "${r.$4}%" : "—", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.gold)),
                   ],
                 ),
               )),

@@ -281,20 +281,20 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                       children: [
                         Text(
                           "Gym Citizen — $gymCitizenActiveSubCount/10 verified",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: AppColors.gold,
                           ),
                         ),
-                        const Text(
+                        Text(
                           "Check off the 10 sub-badges — the badge itself awards automatically at 10/10.",
                           style: TextStyle(fontSize: 11, color: AppColors.mute),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(
+                  Icon(
                     LucideIcons.chevronRight,
                     size: 16,
                     color: AppColors.mute,
@@ -309,7 +309,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
                       Icon(
                         LucideIcons.shieldAlert,
@@ -329,7 +329,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     "Bypasses normal eligibility checks. A normally-automatic badge assigned this way can still be automatically removed later if it turns out the client doesn't actually qualify.",
                     style: TextStyle(fontSize: 11, color: AppColors.mute),
                   ),
@@ -341,7 +341,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                           initialValue: _forcePick,
                           dropdownColor: AppColors.card,
                           isExpanded: true,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             color: AppColors.txt,
                           ),
@@ -355,12 +355,12 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
+                              borderSide: BorderSide(
                                 color: AppColors.line,
                               ),
                             ),
                           ),
-                          hint: const Text(
+                          hint: Text(
                             "Choose a badge…",
                             style: TextStyle(
                               fontSize: 13,
@@ -391,7 +391,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
               ),
             ),
           if (awardable.isNotEmpty) ...[
-            const Text(
+            Text(
               "AWARD A BADGE",
               style: TextStyle(
                 fontSize: 11,
@@ -415,7 +415,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                         children: [
                           Text(
                             b.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: AppColors.gold,
@@ -423,7 +423,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                           ),
                           Text(
                             b.description,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               color: AppColors.mute,
                             ),
@@ -431,7 +431,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                         ],
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       LucideIcons.award,
                       size: 15,
                       color: AppColors.gold,
@@ -474,7 +474,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                         b.earnedMethod == "coach"
                             ? "COACH AWARDED"
                             : "AUTOMATIC",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 9,
                           color: AppColors.gold,
                           fontWeight: FontWeight.w700,
@@ -482,7 +482,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                       ),
                       Text(
                         b.earnedAt,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           color: AppColors.mute,
                         ),
@@ -491,7 +491,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                           b.grantedByUserId != null)
                         Text(
                           "by ${staffNames[b.grantedByUserId] ?? 'a coach'}",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             color: AppColors.mute,
                           ),
@@ -500,7 +500,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                         Text(
                           '"${b.note}"',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             color: AppColors.mute,
                             fontStyle: FontStyle.italic,
@@ -513,7 +513,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                             onPressed: () =>
                                 revoke(b, meta?.name ?? b.badgeKey),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFC97F7F),
+                              foregroundColor: AppColors.errorText,
                               side: const BorderSide(color: Color(0xFF6B3B3B)),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -562,16 +562,16 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                             ),
                             Text(
                               "Earned ${b.earnedAt} · ${b.earnedMethod == 'coach' ? 'Awarded by ${staffNames[b.grantedByUserId] ?? 'a coach'}' : 'Earned automatically'}",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.mute,
                               ),
                             ),
                             Text(
                               "Removed ${b.revokedAt}${b.revokedByUserId != null ? ' by ${staffNames[b.revokedByUserId] ?? 'a coach'}' : ' automatically'}",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
-                                color: Color(0xFFC97F7F),
+                                color: AppColors.errorText,
                               ),
                             ),
                           ],
@@ -632,7 +632,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                               b.category == "coach"
                                   ? "COACH AWARDED"
                                   : "AUTOMATIC",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
                                 color: AppColors.mute,
                                 fontWeight: FontWeight.w700,
@@ -642,7 +642,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                         ),
                         Text(
                           b.description,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             color: AppColors.mute,
                             height: 1.4,
@@ -651,7 +651,7 @@ class _MeritBadgesTabState extends ConsumerState<MeritBadgesTab> {
                         if (isEarned)
                           Text(
                             "Earned ${earned.first.earnedAt}",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               color: AppColors.gold,
                               fontWeight: FontWeight.w700,
@@ -737,9 +737,9 @@ Future<String?> _promptExercise(
                 initialValue: null,
                 isExpanded: true,
                 dropdownColor: AppColors.card,
-                style: const TextStyle(fontSize: 13, color: AppColors.txt),
+                style: TextStyle(fontSize: 13, color: AppColors.txt),
                 decoration: const InputDecoration(isDense: true),
-                hint: const Text(
+                hint: Text(
                   "Pick from this client's program…",
                   style: TextStyle(fontSize: 12, color: AppColors.mute),
                 ),
@@ -755,7 +755,7 @@ Future<String?> _promptExercise(
                     setDialogState(() => controller.text = v ?? ""),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 "or type one:",
                 style: TextStyle(fontSize: 11, color: AppColors.mute),
               ),
@@ -900,7 +900,7 @@ class _GymCitizenChecklistState extends ConsumerState<_GymCitizenChecklist> {
           const SizedBox(height: 14),
           SectionLabel("Gym Citizen Progress: $activeCount/10"),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             "Check off each behavior as you verify it. The Gym Citizen badge itself is awarded automatically once all 10 are checked, and removed automatically if any drop back off.",
             style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.5),
           ),
@@ -941,7 +941,7 @@ class _GymCitizenChecklistState extends ConsumerState<_GymCitizenChecklist> {
                             ),
                             Text(
                               sub.description,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.mute,
                                 height: 1.5,
@@ -952,7 +952,7 @@ class _GymCitizenChecklistState extends ConsumerState<_GymCitizenChecklist> {
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Text(
                                   "Verified ${_fmtBadgeDate(row.earnedAt)} by ${widget.staffNames[row.grantedByUserId] ?? 'a coach'} · expires ${_fmtExpiry(row.earnedAt)}",
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     color: AppColors.mute,
                                   ),
@@ -978,7 +978,7 @@ class _GymCitizenChecklistState extends ConsumerState<_GymCitizenChecklist> {
                               : Colors.transparent,
                         ),
                         child: row != null
-                            ? const Icon(
+                            ? Icon(
                                 LucideIcons.check,
                                 size: 14,
                                 color: AppColors.onGold,

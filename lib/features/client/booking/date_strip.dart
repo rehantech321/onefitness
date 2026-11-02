@@ -49,7 +49,7 @@ class _DateStripState extends State<DateStrip> {
         children: [
           Text(dayLabel(widget.date), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           if (widget.date == todayStr)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 2),
               child: Text("Today", style: TextStyle(fontSize: 11, color: AppColors.gold)),
             ),

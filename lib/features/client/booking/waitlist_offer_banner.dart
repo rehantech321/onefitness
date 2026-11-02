@@ -92,9 +92,9 @@ class _WaitlistOfferBannerState extends ConsumerState<WaitlistOfferBanner> {
             children: [
               Row(
                 children: [
-                  const Icon(LucideIcons.bellRing, size: 17, color: AppColors.gold),
+                  Icon(LucideIcons.bellRing, size: 17, color: AppColors.gold),
                   const SizedBox(width: 8),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       "A spot just opened up",
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.gold),
@@ -111,11 +111,11 @@ class _WaitlistOfferBannerState extends ConsumerState<WaitlistOfferBanner> {
               const SizedBox(height: 2),
               Text(
                 _heldFor(offer.offerExpiresAt),
-                style: const TextStyle(fontSize: 11.5, color: AppColors.mute),
+                style: TextStyle(fontSize: 11.5, color: AppColors.mute),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 8),
-                Text(_error!, style: const TextStyle(fontSize: 12, color: AppColors.errorText)),
+                Text(_error!, style: TextStyle(fontSize: 12, color: AppColors.errorText)),
               ],
               const SizedBox(height: 12),
               Row(

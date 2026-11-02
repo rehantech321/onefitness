@@ -103,12 +103,20 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
+              // Opaque by the midpoint, which is where the form starts (the
+              // 0.5 spacer below). The heading used to sit at ~40% opacity
+              // over the photo, which washed it out in dark mode and left
+              // the subtitle barely legible in light mode — grey text on a
+              // half-lit photograph is unreadable in either palette. The
+              // photo keeps the top third; everything you have to read sits
+              // on the page colour.
               colors: [
                 AppColors.bg.withValues(alpha: 0),
-                AppColors.bg.withValues(alpha: 0.5),
-                AppColors.bg.withValues(alpha: 0.97),
+                AppColors.bg.withValues(alpha: 0.55),
+                AppColors.bg,
+                AppColors.bg,
               ],
-              stops: const [0.0, 0.62, 1.0],
+              stops: const [0.0, 0.34, 0.5, 1.0],
             ),
           ),
           child: SafeArea(
@@ -136,15 +144,20 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                                   Text(
                                     "Welcome to ${_businessName.toUpperCase()}",
                                     textAlign: TextAlign.center,
-                                    style: const TextStyle(
+                                    // Was hardcoded white, which only ever
+                                    // suited the dark palette — in light mode
+                                    // it was white-on-near-white. It sits on
+                                    // the page colour now, so it takes the
+                                    // page's text colour.
+                                    style: TextStyle(
                                       fontWeight: FontWeight.w300,
                                       fontSize: 19,
                                       letterSpacing: 0.4,
-                                      color: Colors.white,
+                                      color: AppColors.txt,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
-                                  const Text(
+                                  Text(
                                     "Sign in to your account",
                                     style: TextStyle(color: AppColors.mute, fontSize: 12),
                                   ),
@@ -172,7 +185,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                               ),
                               if (_error != null) ...[
                                 const SizedBox(height: 5),
-                                Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                                Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
                               ],
                               const SizedBox(height: 6),
                               BtnGold(
@@ -193,7 +206,7 @@ class _ClientAuthScreenState extends ConsumerState<ClientAuthScreen> {
                               Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 6),
                                 child: Row(
-                                  children: const [
+                                  children: [
                                     Expanded(child: Divider(color: AppColors.line, height: 1)),
                                     Padding(
                                       padding: EdgeInsets.symmetric(horizontal: 10),

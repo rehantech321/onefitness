@@ -150,12 +150,12 @@ class _NotesTabState extends ConsumerState<NotesTab> {
               const SectionLabel("Trainer Notes"),
               TextButton.icon(
                 onPressed: () => setState(() => _adding = true),
-                icon: const Icon(
+                icon: Icon(
                   LucideIcons.plus,
                   size: 14,
                   color: AppColors.gold,
                 ),
-                label: const Text(
+                label: Text(
                   "Add Note",
                   style: TextStyle(
                     color: AppColors.gold,
@@ -262,7 +262,7 @@ class _NotesTabState extends ConsumerState<NotesTab> {
                               ),
                               Text(
                                 "${n.status == 'resolved' ? 'Resolved' : 'Archived'} · by ${n.coachName}",
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   color: AppColors.mute,
                                 ),
@@ -376,7 +376,7 @@ class _NoteCard extends StatelessWidget {
           if (note.title?.isNotEmpty == true) const SizedBox(height: 4),
           Text(
             note.details,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               color: AppColors.txt,
               height: 1.4,
@@ -397,7 +397,7 @@ class _NoteCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             "by ${note.coachName} · ${note.createdAt}",
-            style: const TextStyle(fontSize: 11, color: AppColors.mute),
+            style: TextStyle(fontSize: 11, color: AppColors.mute),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -408,7 +408,7 @@ class _NoteCard extends StatelessWidget {
                 onPressed: onResolve,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.grn,
-                  side: const BorderSide(color: AppColors.grn),
+                  side: BorderSide(color: AppColors.grn),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 6,
@@ -424,7 +424,7 @@ class _NoteCard extends StatelessWidget {
                   onPressed: onEdit,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.mute,
-                    side: const BorderSide(color: AppColors.line),
+                    side: BorderSide(color: AppColors.line),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 6,
@@ -437,7 +437,7 @@ class _NoteCard extends StatelessWidget {
                   value: note.flag,
                   underline: const SizedBox.shrink(),
                   dropdownColor: AppColors.card,
-                  style: const TextStyle(fontSize: 11, color: AppColors.txt),
+                  style: TextStyle(fontSize: 11, color: AppColors.txt),
                   items: _noteFlags
                       .map(
                         (f) => DropdownMenuItem(
@@ -452,7 +452,7 @@ class _NoteCard extends StatelessWidget {
                   onPressed: onArchive,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.mute,
-                    side: const BorderSide(color: AppColors.line),
+                    side: BorderSide(color: AppColors.line),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 6,
@@ -463,7 +463,7 @@ class _NoteCard extends StatelessWidget {
                 OutlinedButton(
                   onPressed: onDelete,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFC97F7F),
+                    foregroundColor: AppColors.errorText,
                     side: const BorderSide(color: Color(0xFF8B3B3B)),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -535,7 +535,7 @@ class _NoteFormState extends State<_NoteForm> {
             title: widget.initial != null ? "Edit Note" : "Add Note",
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             "FLAG",
             style: TextStyle(
               fontSize: 10,
@@ -591,27 +591,27 @@ class _NoteFormState extends State<_NoteForm> {
             child: TextField(
               controller: _details,
               maxLines: 4,
-              style: const TextStyle(color: AppColors.txt, fontSize: 14),
+              style: TextStyle(color: AppColors.txt, fontSize: 14),
               decoration: InputDecoration(
                 filled: true,
                 fillColor: AppColors.bg,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.line),
+                  borderSide: BorderSide(color: AppColors.line),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.line),
+                  borderSide: BorderSide(color: AppColors.line),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.gold),
+                  borderSide: BorderSide(color: AppColors.gold),
                 ),
               ),
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             "BODY AREA (OPTIONAL)",
             style: TextStyle(
               fontSize: 10,

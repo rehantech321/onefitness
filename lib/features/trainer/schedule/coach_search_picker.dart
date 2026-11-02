@@ -79,11 +79,11 @@ class _CoachSearchPickerState extends State<CoachSearchPicker> {
                                     children: [
                                       Text(t.displayTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                                       if ((t.email ?? "").isNotEmpty)
-                                        Text(t.email!, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                                        Text(t.email!, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                                     ],
                                   ),
                                 ),
-                                if (t.id == widget.selectedId) const Icon(LucideIcons.check, size: 16, color: AppColors.gold),
+                                if (t.id == widget.selectedId) Icon(LucideIcons.check, size: 16, color: AppColors.gold),
                               ],
                             ),
                           ))

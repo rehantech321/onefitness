@@ -92,7 +92,7 @@ class _OrderCard extends StatelessWidget {
               ),
               Text(
                 "\$${(order.amountCents / 100).toStringAsFixed(2)}",
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.gold),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.gold),
               ),
             ],
           ),
@@ -103,7 +103,7 @@ class _OrderCard extends StatelessWidget {
               if (order.quantity > 1) "x${order.quantity}",
               if (placed != null) "Ordered ${placed.month}/${placed.day}/${placed.year % 100}",
             ].join(" · "),
-            style: const TextStyle(fontSize: 11.5, color: AppColors.mute),
+            style: TextStyle(fontSize: 11.5, color: AppColors.mute),
           ),
           const SizedBox(height: 12),
           if (!cancelled && stepIndex >= 0)
@@ -137,7 +137,7 @@ class _OrderCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w800,
-                  color: cancelled ? const Color(0xFFC97F7F) : AppColors.gold,
+                  color: cancelled ? AppColors.errorText : AppColors.gold,
                 ),
               ),
             ],
@@ -145,7 +145,7 @@ class _OrderCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             orderStatusBlurb(order.status),
-            style: const TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4),
+            style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.4),
           ),
         ],
       ),

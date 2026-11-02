@@ -229,7 +229,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
             children: [
               BackBar(onBack: _busy ? null : widget.onBack, title: "Create my profile"),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 "Set up your account to start booking sessions and tracking your progress.",
                 style: TextStyle(color: AppColors.mute, fontSize: 12, height: 1.5),
               ),
@@ -250,7 +250,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                               : null,
                         ),
                         alignment: Alignment.center,
-                        child: _photoDataUrl == null ? const Icon(LucideIcons.user, size: 30, color: AppColors.mute) : null,
+                        child: _photoDataUrl == null ? Icon(LucideIcons.user, size: 30, color: AppColors.mute) : null,
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -301,7 +301,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                 label: "Phone number (optional)",
                 child: AppField(controller: _phone, keyboardType: TextInputType.phone, onChanged: (_) => setState(() => _error = null)),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text(
                   "We'll ask for this when you book your first in-person session, so your coach can coordinate with you. You can add it later.",
@@ -327,8 +327,8 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                       filled: true,
                       fillColor: AppColors.bg,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.line)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: AppColors.line)),
                     ),
                     child: Text(
                       _birthday.text.isEmpty ? "Select date" : _birthday.text,
@@ -342,12 +342,12 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                 label: "Coach Code (optional)",
                 child: AppField(kind: FieldKind.code, controller: _coachCode, placeholder: "e.g. JESS10", onChanged: (_) => setState(() => _error = null)),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text("If a coach gave you a code, enter it here to link your account to them.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic)),
               ),
               const SizedBox(height: 14),
-              const Divider(color: AppColors.line, height: 1),
+              Divider(color: AppColors.line, height: 1),
               const SizedBox(height: 6),
               ConsentCheckbox(
                 value: _over18,
@@ -374,7 +374,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                     const Text("I agree to the ", style: TextStyle(fontSize: 13, height: 1.4)),
                     GestureDetector(
                       onTap: () => setState(() => _readingTerms = true),
-                      child: const Text(
+                      child: Text(
                         "Terms of Use",
                         style: TextStyle(
                           fontSize: 13,
@@ -389,7 +389,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                   ],
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 36, top: 2),
                 child: Text(
                   "ONE Fitness has zero tolerance for objectionable content or abusive users.",
@@ -407,7 +407,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
                   style: TextStyle(fontSize: 13, height: 1.4),
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(left: 36, top: 2),
                 child: Text(
                   kSmsConsentDisclosure,
@@ -416,7 +416,7 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
               ),
               if (_error != null) ...[
                 const SizedBox(height: 10),
-                Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
               ],
               const SizedBox(height: 16),
               BtnGold(

@@ -262,16 +262,16 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                   title: const Text("Photo/Video Release", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  subtitle: const Text("I allow ONE Fitness to use photos or video of me in its marketing. Leave unticked to opt out.", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+                  subtitle: Text("I allow ONE Fitness to use photos or video of me in its marketing. Leave unticked to opt out.", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                 ),
-                const Divider(color: AppColors.line, height: 12),
+                Divider(color: AppColors.line, height: 12),
                 CheckboxListTile(
                   value: _consentAt != null,
                   onChanged: (v) => setState(() => _consentAt = v == true ? _now() : null),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                   title: const Text("I agree to sign this document electronically", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  subtitle: const Text("My electronic signature has the same legal effect as a handwritten one.", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+                  subtitle: Text("My electronic signature has the same legal effect as a handwritten one.", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                 ),
               ],
             ),
@@ -304,7 +304,7 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
+              child: Text(_error!, style: TextStyle(color: AppColors.danger, fontSize: 12)),
             ),
           const SizedBox(height: 16),
           BtnGold(
@@ -313,7 +313,7 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
             child: Text(_busy ? "Signing…" : "Sign document"),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             "When you sign, we record the date, time, your IP address and device, and email you a signed PDF.",
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4),
@@ -335,7 +335,7 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
             borderColor: AppColors.gold,
             child: Row(
               children: [
-                const Icon(LucideIcons.checkCircle2, color: AppColors.gold),
+                Icon(LucideIcons.checkCircle2, color: AppColors.gold),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -356,14 +356,14 @@ class _WaiverSigningScreenState extends ConsumerState<WaiverSigningScreen> {
             // instead of sitting on "Preparing…" with nothing to tap.
             OutlinedButton.icon(
               onPressed: _pdfLoading ? null : () => _loadPdf(done.id),
-              style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: const BorderSide(color: AppColors.goldDim)),
+              style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: BorderSide(color: AppColors.goldDim)),
               icon: const Icon(LucideIcons.fileText, size: 14),
               label: Text(_pdfLoading ? "Preparing your PDF…" : "Open signed PDF", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
             ),
           if (_pdfError != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(_pdfError!, style: const TextStyle(fontSize: 11, color: AppColors.errorText)),
+              child: Text(_pdfError!, style: TextStyle(fontSize: 11, color: AppColors.errorText)),
             ),
           const SizedBox(height: 12),
           if (widget.onDone != null)
@@ -391,8 +391,8 @@ class _StepLabel extends StatelessWidget {
             width: 22,
             height: 22,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
-            child: Text("$n", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.onGold)),
+            decoration: BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
+            child: Text("$n", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.onGold)),
           ),
           const SizedBox(width: 8),
           Expanded(child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800))),
@@ -435,16 +435,16 @@ class _ClauseCard extends StatelessWidget {
         children: [
           Text("${index + 1}. ${clause.title}", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          Text(clause.text, style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4)),
+          Text(clause.text, style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4)),
           const SizedBox(height: 10),
           if (acked && initials != null)
             Row(
               children: [
                 _ImageBox(dataUrl: initials!, height: 46, width: 110),
                 const SizedBox(width: 10),
-                const Icon(LucideIcons.checkCircle2, size: 15, color: AppColors.gold),
+                Icon(LucideIcons.checkCircle2, size: 15, color: AppColors.gold),
                 const SizedBox(width: 4),
-                const Expanded(child: Text("Initialled", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700))),
+                Expanded(child: Text("Initialled", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700))),
                 if (onClear != null)
                   TextButton(onPressed: onClear, child: const Text("Clear and redraw", style: TextStyle(fontSize: 11))),
               ],
@@ -464,7 +464,7 @@ class _ClauseCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 6),
                 child: Text("or draw new initials:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
               ),
@@ -478,7 +478,7 @@ class _ClauseCard extends StatelessWidget {
               onConfirm: (img) => onAdopt?.call(img, "draw"),
             ),
           ] else if (initials == null)
-            const Text("Initial the first section to continue.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic))
+            Text("Initial the first section to continue.", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic))
           else
             Row(
               children: [
@@ -514,16 +514,16 @@ class _SignatureCardState extends State<_SignatureCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.label, style: const TextStyle(fontSize: 12, color: AppColors.mute, fontWeight: FontWeight.w700)),
+          Text(widget.label, style: TextStyle(fontSize: 12, color: AppColors.mute, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           if (image != null) ...[
             _ImageBox(dataUrl: image, height: 90, width: double.infinity),
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(LucideIcons.checkCircle2, size: 15, color: AppColors.gold),
+                Icon(LucideIcons.checkCircle2, size: 15, color: AppColors.gold),
                 const SizedBox(width: 4),
-                const Expanded(child: Text("Signed", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700))),
+                Expanded(child: Text("Signed", style: TextStyle(fontSize: 12, color: AppColors.gold, fontWeight: FontWeight.w700))),
                 TextButton(onPressed: () => widget.onCaptured(null, "draw"), child: const Text("Clear and redraw", style: TextStyle(fontSize: 11))),
               ],
             ),
@@ -536,7 +536,7 @@ class _SignatureCardState extends State<_SignatureCard> {
                 onPressed: () => widget.onCaptured(widget.savedSignature, "adopted"),
                 child: const Text("Use my saved signature"),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 6),
                 child: Text("or draw a new signature:", style: TextStyle(fontSize: 11, color: AppColors.mute)),
               ),
@@ -641,7 +641,7 @@ class _WaiverText extends StatelessWidget {
         final content = bullet ? line.trimLeft().substring(2) : line;
         return Padding(
           padding: EdgeInsets.only(bottom: 6, left: bullet ? 12 : 0),
-          child: Text.rich(_richify(bullet ? "•  $content" : content), style: const TextStyle(fontSize: 13, height: 1.5, color: AppColors.txt)),
+          child: Text.rich(_richify(bullet ? "•  $content" : content), style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.txt)),
         );
       }).toList(),
     );

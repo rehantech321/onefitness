@@ -205,7 +205,7 @@ class MapPickButton extends StatelessWidget {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: AppColors.gold,
-        side: const BorderSide(color: AppColors.goldDim),
+        side: BorderSide(color: AppColors.goldDim),
         minimumSize: const Size.fromHeight(44),
       ),
       icon: const Icon(LucideIcons.map, size: 15),

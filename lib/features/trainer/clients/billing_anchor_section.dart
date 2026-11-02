@@ -89,10 +89,10 @@ class _BillingAnchorSectionState extends ConsumerState<BillingAnchorSection> {
               widget.info.billingAnchorDay != null
                   ? "Currently bills on the ${ordinalDay(widget.info.billingAnchorDay!)} of the month."
                   : "No billing date override on file — bills on whatever day they originally signed up.",
-              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ),
-          const Text("NEW DAY OF THE MONTH", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          Text("NEW DAY OF THE MONTH", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
@@ -135,7 +135,7 @@ class _BillingAnchorSectionState extends ConsumerState<BillingAnchorSection> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Text(_error!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12)),
+              child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
             ),
           if (_preview != null) ...[
             const SizedBox(height: 12),
@@ -144,7 +144,7 @@ class _BillingAnchorSectionState extends ConsumerState<BillingAnchorSection> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("PREVIEW", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+                  Text("PREVIEW", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
                   const SizedBox(height: 6),
                   if (_preview!["hasActiveSubscription"] == false)
                     Text(_preview!["message"] as String? ?? "No active Stripe subscription — nothing to prorate.", style: const TextStyle(fontSize: 13))
@@ -159,7 +159,7 @@ class _BillingAnchorSectionState extends ConsumerState<BillingAnchorSection> {
                       );
                     }),
                     const SizedBox(height: 4),
-                    Text("Next full charge: ${_preview!["nextChargeDate"]}, and every month on the ${ordinalDay(_pickedDay)} after that.", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                    Text("Next full charge: ${_preview!["nextChargeDate"]}, and every month on the ${ordinalDay(_pickedDay)} after that.", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                   ],
                   const SizedBox(height: 12),
                   BtnGold(
@@ -194,7 +194,7 @@ class _BillingAnchorSectionState extends ConsumerState<BillingAnchorSection> {
                         const SizedBox(height: 2),
                         Text(
                           "${r.changedAt}${r.changedByName != null ? " · by ${r.changedByName}" : ""}${cents != null ? " · \$${(cents / 100).toStringAsFixed(2)} prorated" : ""}",
-                          style: const TextStyle(fontSize: 11, color: AppColors.mute),
+                          style: TextStyle(fontSize: 11, color: AppColors.mute),
                         ),
                       ],
                     ),

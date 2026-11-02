@@ -87,7 +87,7 @@ class _BadgeGalleryScreenState extends ConsumerState<BadgeGalleryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SectionLabel("Merit Badges"),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(bottom: 14),
             child: Text.rich(
               TextSpan(
@@ -164,7 +164,7 @@ class _BadgeGalleryScreenState extends ConsumerState<BadgeGalleryScreen> {
                               value: subCount / subTotal,
                               strokeWidth: 3,
                               backgroundColor: AppColors.line,
-                              valueColor: const AlwaysStoppedAnimation(
+                              valueColor: AlwaysStoppedAnimation(
                                 AppColors.gold,
                               ),
                             ),
@@ -211,7 +211,7 @@ class _BadgeGalleryScreenState extends ConsumerState<BadgeGalleryScreen> {
                         ),
                         Text(
                           b.category == "coach" ? "COACH AWARDED" : "AUTOMATIC",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
                             color: AppColors.mute,
                             letterSpacing: 0.5,
@@ -224,7 +224,7 @@ class _BadgeGalleryScreenState extends ConsumerState<BadgeGalleryScreen> {
                             isGymCitizen
                                 ? _gymCitizenProgressLabel(subCount)
                                 : "$subCount/$subTotal sub-badges verified",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
                               color: AppColors.mute,
                               fontWeight: FontWeight.w700,
@@ -234,7 +234,7 @@ class _BadgeGalleryScreenState extends ConsumerState<BadgeGalleryScreen> {
                         else
                           Text(
                             b.description,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               color: AppColors.mute,
                               height: 1.4,
@@ -245,7 +245,7 @@ class _BadgeGalleryScreenState extends ConsumerState<BadgeGalleryScreen> {
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
                               "Earned ${earned.earnedAt.isEmpty ? '' : _badgeDateFmt.format(DateTime.parse(earned.earnedAt))}",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.gold,
                                 fontWeight: FontWeight.w700,
@@ -260,13 +260,13 @@ class _BadgeGalleryScreenState extends ConsumerState<BadgeGalleryScreen> {
                               children: [
                                 Text(
                                   "View $subTotal sub-badges",
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.gold,
                                   ),
                                 ),
-                                const Icon(
+                                Icon(
                                   LucideIcons.chevronRight,
                                   size: 11,
                                   color: AppColors.gold,

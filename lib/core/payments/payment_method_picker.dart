@@ -69,12 +69,12 @@ Future<PayTender?> showPaymentMethodPicker(BuildContext context, MembershipPlan 
           children: [
             Text(
               "How would you like to pay?",
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.txt),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.txt),
             ),
             const SizedBox(height: 4),
             Text(
               plan.name,
-              style: const TextStyle(fontSize: 12, color: AppColors.mute),
+              style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
             const SizedBox(height: 14),
             for (final t in options)
@@ -100,11 +100,11 @@ Future<PayTender?> showPaymentMethodPicker(BuildContext context, MembershipPlan 
                             children: [
                               Text(tenderLabel(t), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                               const SizedBox(height: 1),
-                              Text(tenderHint(t), style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                              Text(tenderHint(t), style: TextStyle(fontSize: 11, color: AppColors.mute)),
                             ],
                           ),
                         ),
-                        const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                        Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
                       ],
                     ),
                   ),

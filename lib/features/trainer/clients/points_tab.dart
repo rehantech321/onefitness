@@ -90,14 +90,14 @@ class _PointsTabState extends ConsumerState<PointsTab> {
           AppCard(
             child: Row(
               children: [
-                Text("${replay.balance}", style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: AppColors.gold)),
+                Text("${replay.balance}", style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: AppColors.gold)),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Current balance", style: TextStyle(fontSize: 12, color: AppColors.mute)),
-                      if (expiringSoon.isNotEmpty) Text("$expiringPoints expiring soon", style: const TextStyle(fontSize: 11, color: AppColors.warning)),
+                      Text("Current balance", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                      if (expiringSoon.isNotEmpty) Text("$expiringPoints expiring soon", style: TextStyle(fontSize: 11, color: AppColors.warning)),
                     ],
                   ),
                 ),
@@ -113,7 +113,7 @@ class _PointsTabState extends ConsumerState<PointsTab> {
                     padding: EdgeInsets.only(right: amt == 5 ? 0 : 8),
                     child: OutlinedButton(
                       onPressed: () => grant(amt),
-                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: const BorderSide(color: AppColors.gold), padding: const EdgeInsets.symmetric(vertical: 12)),
+                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: BorderSide(color: AppColors.gold), padding: const EdgeInsets.symmetric(vertical: 12)),
                       child: Text("+$amt", style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                     ),
                   ),
@@ -121,11 +121,11 @@ class _PointsTabState extends ConsumerState<PointsTab> {
               }).toList(),
             ),
           ),
-          if (!isOwner) const Padding(padding: EdgeInsets.only(bottom: 12), child: Text("Capped at 5 points per client per month for coaches — the owner has no cap.", style: TextStyle(fontSize: 11, color: AppColors.mute))),
+          if (!isOwner) Padding(padding: EdgeInsets.only(bottom: 12), child: Text("Capped at 5 points per client per month for coaches — the owner has no cap.", style: TextStyle(fontSize: 11, color: AppColors.mute))),
           if (isOwner) ...[
             OutlinedButton(
               onPressed: deduct,
-              style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFC97F7F), side: const BorderSide(color: Color(0xFF6B3B3B)), minimumSize: const Size.fromHeight(44)),
+              style: OutlinedButton.styleFrom(foregroundColor: AppColors.errorText, side: const BorderSide(color: Color(0xFF6B3B3B)), minimumSize: const Size.fromHeight(44)),
               child: const Text("Deduct points"),
             ),
             const SizedBox(height: 12),

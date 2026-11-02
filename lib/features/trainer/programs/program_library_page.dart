@@ -107,7 +107,7 @@ class _ProgramLibraryPageState extends ConsumerState<ProgramLibraryPage> {
             isWorkout
                 ? "Templates you can assign to any client from their Plans tab. Tap one to edit it."
                 : "Templates you can assign to any client from their Plans tab. Tap one to edit it.",
-            style: const TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
+            style: TextStyle(fontSize: 12, color: AppColors.mute, height: 1.4),
           ),
           const SizedBox(height: 14),
           BtnGold(
@@ -117,7 +117,7 @@ class _ProgramLibraryPageState extends ConsumerState<ProgramLibraryPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(LucideIcons.plus, size: 15, color: AppColors.onGold),
+                Icon(LucideIcons.plus, size: 15, color: AppColors.onGold),
                 const SizedBox(width: 6),
                 Text(isWorkout ? "Build new workout program" : "Build new nutrition program"),
               ],
@@ -188,17 +188,17 @@ class _Row extends StatelessWidget {
               children: [
                 Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                Text(subtitle, style: TextStyle(fontSize: 11, color: AppColors.mute)),
               ],
             ),
           ),
           IconButton(
             onPressed: onDelete,
-            icon: const Icon(LucideIcons.trash2, size: 15, color: AppColors.errorText),
+            icon: Icon(LucideIcons.trash2, size: 15, color: AppColors.errorText),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
-          const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+          Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
         ],
       ),
     );

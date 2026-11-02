@@ -190,9 +190,9 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
             ],
           ),
           const SizedBox(height: 2),
-          Text("${disciplineLabel(first.discipline)} · $trainerName", style: const TextStyle(fontSize: 13, color: AppColors.txt)),
+          Text("${disciplineLabel(first.discipline)} · $trainerName", style: TextStyle(fontSize: 13, color: AppColors.txt)),
           const SizedBox(height: 2),
-          Text("${dayLabel(widget.date)} · ${fmtSlot(widget.slot)} – ${fmtSlot(widget.slot + first.durationMin)}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+          Text("${dayLabel(widget.date)} · ${fmtSlot(widget.slot)} – ${fmtSlot(widget.slot + first.durationMin)}", style: TextStyle(fontSize: 12, color: AppColors.mute)),
           const SizedBox(height: 14),
           ...active.map((b) {
             final matches = roster.where((c) => c.id == b.clientId);
@@ -229,7 +229,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                               ? "Hasn't completed their ${missingIntake.first}"
                               : "Hasn't completed: ${missingIntake.join(", ")}",
                           triggerMode: TooltipTriggerMode.tap,
-                          child: const Padding(
+                          child: Padding(
                             padding: EdgeInsets.only(right: 4),
                             child: Icon(
                               LucideIcons.clipboardX,
@@ -302,7 +302,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                                 border: Border.all(color: AppColors.line),
                                 borderRadius: BorderRadius.circular(7),
                               ),
-                              child: Text(opt.label, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.mute)),
+                              child: Text(opt.label, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.mute)),
                             ),
                           );
                         }).toList(),
@@ -333,7 +333,7 @@ class _SessionDetailBodyState extends ConsumerState<_SessionDetailBody> {
                         if (mounted) setState(() => _busy = false);
                       }
                     },
-              style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFFC97F7F), side: const BorderSide(color: Color(0xFF8B3B3B)), minimumSize: const Size.fromHeight(44)),
+              style: OutlinedButton.styleFrom(foregroundColor: AppColors.errorText, side: const BorderSide(color: Color(0xFF8B3B3B)), minimumSize: const Size.fromHeight(44)),
               child: Text(_busy ? "Cancelling…" : "Cancel session"),
             ),
           ],

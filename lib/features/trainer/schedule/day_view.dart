@@ -69,8 +69,8 @@ class DayView extends ConsumerWidget {
               if (!isPast && !isOwner)
                 TextButton.icon(
                   onPressed: () => showBlockTimeSheet(context, ref, date: date, trainerId: trainerAuth ?? ""),
-                  icon: const Icon(LucideIcons.lock, size: 13, color: AppColors.mute),
-                  label: const Text("Block time", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                  icon: Icon(LucideIcons.lock, size: 13, color: AppColors.mute),
+                  label: Text("Block time", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                 ),
             ],
           ),
@@ -97,8 +97,8 @@ class DayView extends ConsumerWidget {
                     if (!isPast)
                       TextButton.icon(
                         onPressed: () => showBlockTimeSheet(context, ref, date: date, trainerId: trainer.id),
-                        icon: const Icon(LucideIcons.lock, size: 12, color: AppColors.mute),
-                        label: const Text("Block", style: TextStyle(fontSize: 11, color: AppColors.mute)),
+                        icon: Icon(LucideIcons.lock, size: 12, color: AppColors.mute),
+                        label: Text("Block", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                       ),
                   ],
                 ),
@@ -182,7 +182,7 @@ class _TrainerDaySessions extends ConsumerWidget {
                       children: [
                         Text(sessionTypeLabel(first.sessionType), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 2),
-                        Text("${disciplineLabel(first.discipline)} · $trainerName", style: const TextStyle(fontSize: 12, color: AppColors.txt)),
+                        Text("${disciplineLabel(first.discipline)} · $trainerName", style: TextStyle(fontSize: 12, color: AppColors.txt)),
                         const SizedBox(height: 2),
                         Text(
                           "${dayLabel(date)} · ${fmtSlot(slot)} – ${fmtSlot(slot + first.durationMin)}",
@@ -193,7 +193,7 @@ class _TrainerDaySessions extends ConsumerWidget {
                   ),
                   Tag(text: "${cap.count}/${cap.cap}", gold: cap.atCap),
                   const SizedBox(width: 6),
-                  const Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
+                  Icon(LucideIcons.chevronRight, size: 15, color: AppColors.mute),
                 ],
               ),
             );
@@ -222,18 +222,18 @@ class _TrainerDaySessions extends ConsumerWidget {
                     children: [
                       Text(sessionTypeLabel(o.sessionType), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 2),
-                      Text("${disciplineLabel(o.discipline)} · $trainerName", style: const TextStyle(fontSize: 12, color: AppColors.txt)),
+                      Text("${disciplineLabel(o.discipline)} · $trainerName", style: TextStyle(fontSize: 12, color: AppColors.txt)),
                       const SizedBox(height: 2),
                       Text(
                         "${dayLabel(date)} · ${fmtSlot(o.slot)} – ${fmtSlot(o.slot + o.durationMin)}",
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.mute),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.mute),
                       ),
                     ],
                   ),
                 ),
                 const Tag(text: "Open", gold: true),
                 const SizedBox(width: 6),
-                const Icon(LucideIcons.userPlus, size: 15, color: AppColors.gold),
+                Icon(LucideIcons.userPlus, size: 15, color: AppColors.gold),
               ],
             ),
           ),
@@ -241,12 +241,12 @@ class _TrainerDaySessions extends ConsumerWidget {
           AppCard(
             child: Row(
               children: [
-                const Icon(LucideIcons.lock, size: 15, color: AppColors.mute),
+                Icon(LucideIcons.lock, size: 15, color: AppColors.mute),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     "${b.allDay ? 'All day' : fmtSlot(b.startMin ?? 0)} — Blocked${b.reason != null ? ' · ${b.reason}' : ''}",
-                    style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                    style: TextStyle(fontSize: 12, color: AppColors.mute),
                   ),
                 ),
               ],

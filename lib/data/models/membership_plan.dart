@@ -29,6 +29,7 @@ class MembershipPlan {
     required this.kind,
     this.description,
     this.startDate,
+    this.endDate,
     this.renewalDay,
     this.maxSessions,
     this.termMonths,
@@ -98,6 +99,17 @@ class MembershipPlan {
   /// an ongoing membership. Mainly for dated offerings — a program that runs
   /// from a fixed start, or a seasonal package.
   final String? startDate;
+
+  /// ISO yyyy-MM-dd. The last day this plan is sold. After it, the plan
+  /// disappears from the Access Hub and can no longer be bought or assigned
+  /// — but it is NOT a cut-off for people already on it: their access and
+  /// their bookings carry on exactly as before, and a membership keeps
+  /// renewing. It closes the door, it doesn't empty the room.
+  ///
+  /// Together with [startDate] this is the window the plan is on sale for;
+  /// see `planOnSale`. Null means on sale indefinitely, which is the normal
+  /// case.
+  final String? endDate;
 
   /// Memberships only: the day of the month (1–28) every client on this
   /// plan is billed. "Renews on the 21st" — a client who joins on the 10th

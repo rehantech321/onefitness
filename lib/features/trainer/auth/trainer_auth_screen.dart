@@ -118,8 +118,16 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.bg.withValues(alpha: 0), AppColors.bg.withValues(alpha: 0.5), AppColors.bg.withValues(alpha: 0.97)],
-            stops: const [0.0, 0.62, 1.0],
+            // Opaque by the midpoint, where the form starts — see the same
+            // gradient on the client sign-in screen: text at ~40% over a
+            // photograph is unreadable in both palettes.
+            colors: [
+              AppColors.bg.withValues(alpha: 0),
+              AppColors.bg.withValues(alpha: 0.55),
+              AppColors.bg,
+              AppColors.bg,
+            ],
+            stops: const [0.0, 0.34, 0.5, 1.0],
           ),
         ),
         child: SafeArea(
@@ -161,7 +169,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                                 ),
                                 if (_error != null) ...[
                                   const SizedBox(height: 5),
-                                  Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                                  Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
                                 ],
                                 const SizedBox(height: 6),
                                 BtnGold(
@@ -178,7 +186,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                                 Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                   child: Row(
-                                    children: const [
+                                    children: [
                                       Expanded(child: Divider(color: AppColors.line, height: 1)),
                                       Padding(
                                         padding: EdgeInsets.symmetric(horizontal: 10),
@@ -198,10 +206,10 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 14),
-                                const Center(
+                                Center(
                                   child: Icon(LucideIcons.chevronUp, color: AppColors.mute, size: 18),
                                 ),
-                                const Center(
+                                Center(
                                   child: Text(
                                     "Swipe up for owner login",
                                     style: TextStyle(color: AppColors.mute, fontSize: 11, letterSpacing: 0.5),
@@ -221,7 +229,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             child: Row(
-                              children: const [
+                              children: [
                                 Expanded(child: Divider(color: AppColors.line, height: 1)),
                                 Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 10),
@@ -265,7 +273,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                                   ),
                                   if (_ownerError != null) ...[
                                     const SizedBox(height: 8),
-                                    Text(_ownerError!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+                                    Text(_ownerError!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
                                   ],
                                   const SizedBox(height: 8),
                                   Row(
@@ -302,7 +310,7 @@ class _TrainerAuthScreenState extends ConsumerState<TrainerAuthScreen> {
                                 children: [Icon(LucideIcons.lock, size: 14), SizedBox(width: 6), Text("Owner / Admin login")],
                               ),
                             ),
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(top: 8),
                             child: Text(
                               "Owner access manages all clients, staff, and the schedule.",

@@ -69,7 +69,7 @@ class RewardsPointsReport extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Expanded(child: Text("BY SOURCE", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1))),
+            Expanded(child: Text("BY SOURCE", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1))),
             DownloadCsvButton(
               filename: "rewards-by-source.csv",
               rows: [
@@ -88,9 +88,9 @@ class RewardsPointsReport extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(child: Text(sourceLabel(e.key), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13))),
-                    Text("${e.value.$1 > 0 ? '+' : ''}${e.value.$1} pts", style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.gold)),
+                    Text("${e.value.$1 > 0 ? '+' : ''}${e.value.$1} pts", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: AppColors.gold)),
                     const SizedBox(width: 10),
-                    Text("${e.value.$2} row${e.value.$2 == 1 ? '' : 's'}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                    Text("${e.value.$2} row${e.value.$2 == 1 ? '' : 's'}", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                   ],
                 ),
               )),
@@ -98,7 +98,7 @@ class RewardsPointsReport extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Expanded(child: Text("DISCRETIONARY GRANTS BY COACH", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1))),
+            Expanded(child: Text("DISCRETIONARY GRANTS BY COACH", style: TextStyle(fontSize: 11, color: AppColors.mute, fontWeight: FontWeight.w700, letterSpacing: 1))),
             DownloadCsvButton(
               filename: "rewards-grants-by-coach.csv",
               rows: [
@@ -120,14 +120,14 @@ class RewardsPointsReport extends ConsumerWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(g.$1, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                        Text("${g.$3} grant${g.$3 == 1 ? '' : 's'} · +${g.$2} pts", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold)),
+                        Text("${g.$3} grant${g.$3 == 1 ? '' : 's'} · +${g.$2} pts", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.gold)),
                       ],
                     ),
                     if (g.$4.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       ...g.$4.map((reason) => Padding(
                             padding: const EdgeInsets.only(top: 2),
-                            child: Text("• $reason", style: const TextStyle(fontSize: 12, color: AppColors.txt, height: 1.5)),
+                            child: Text("• $reason", style: TextStyle(fontSize: 12, color: AppColors.txt, height: 1.5)),
                           )),
                     ],
                   ],
@@ -151,9 +151,9 @@ class _StatTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text("$value", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.gold)),
+          Text("$value", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.gold)),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+          Text(label, style: TextStyle(fontSize: 11, color: AppColors.mute)),
         ],
       ),
     );

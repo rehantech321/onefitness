@@ -211,7 +211,7 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
           ),
           const SizedBox(height: 14),
           if (isOwner) ...[
-            const Text("COACH", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            Text("COACH", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 6),
             InkWell(
               onTap: () => setState(() => _pickingCoach = true),
@@ -228,19 +228,19 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
                         style: TextStyle(fontSize: 14, color: trainerName == null ? AppColors.mute : AppColors.txt),
                       ),
                     ),
-                    const Icon(LucideIcons.search, size: 15, color: AppColors.mute),
+                    Icon(LucideIcons.search, size: 15, color: AppColors.mute),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 12),
           ],
-          const Text("SESSION TYPE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          Text("SESSION TYPE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 6),
           _ChoiceRow<String>(value: _sessionType, options: types.map((t) => (t, sessionTypeLabel(t))).toList(), onChanged: (v) => setState(() => _sessionType = v ?? _sessionType)),
           if (!isAssessment) ...[
             const SizedBox(height: 12),
-            const Text("DISCIPLINE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+            Text("DISCIPLINE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
             const SizedBox(height: 6),
             _ChoiceRow<String>(value: _discipline, options: disciplines.map((d) => (d, disciplineLabel(d))).toList(), onChanged: (v) => setState(() => _discipline = v ?? _discipline)),
           ],
@@ -255,7 +255,7 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       decoration: BoxDecoration(color: AppColors.bg, border: Border.all(color: AppColors.line), borderRadius: BorderRadius.circular(8)),
-                      child: Text(isoDate(_date), style: const TextStyle(fontSize: 14, color: AppColors.txt)),
+                      child: Text(isoDate(_date), style: TextStyle(fontSize: 14, color: AppColors.txt)),
                     ),
                   ),
                 ),
@@ -287,7 +287,7 @@ class _AddManualBookingBodyState extends ConsumerState<_AddManualBookingBody> {
             ],
           ),
           if (_error != null)
-            Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: const TextStyle(color: Color(0xFFC97F7F), fontSize: 12))),
+            Padding(padding: const EdgeInsets.only(top: 10), child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12))),
           const SizedBox(height: 16),
           BtnGold(
             full: true,

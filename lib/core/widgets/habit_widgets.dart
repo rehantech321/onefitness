@@ -19,7 +19,7 @@ class HabitStatBox extends StatelessWidget {
           children: [
             Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: color)),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 0.5)),
+            Text(label, style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 0.5)),
           ],
         ),
       ),

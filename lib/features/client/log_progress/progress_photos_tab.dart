@@ -124,7 +124,7 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text(_error!, style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+              child: Text(_error!, style: TextStyle(color: AppColors.errorText, fontSize: 12)),
             ),
           const SizedBox(height: 12),
           if (photos.isEmpty)
@@ -163,7 +163,7 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
                             child: Container(
                               padding: const EdgeInsets.all(5),
                               decoration: BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
-                              child: const Icon(LucideIcons.messageSquare, size: 13, color: AppColors.onGold),
+                              child: Icon(LucideIcons.messageSquare, size: 13, color: AppColors.onGold),
                             ),
                           ),
                         ),
@@ -172,7 +172,7 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
                           top: 6,
                           right: 6,
                           child: _sharingId == p.id
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 22,
                                   height: 22,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
@@ -197,7 +197,17 @@ class _ProgressPhotosTabState extends ConsumerState<ProgressPhotosTab> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(dayLabel(p.date), style: const TextStyle(fontSize: 11, color: Colors.white)),
+                              Flexible(
+                                child: Text(
+                                  // A photo their coach added says so, so it
+                                  // isn't mistaken for one they took and
+                                  // forgot about.
+                                  p.addedBy == null ? dayLabel(p.date) : "${dayLabel(p.date)} · ${p.addedBy}",
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 11, color: Colors.white),
+                                ),
+                              ),
                               _removingId == p.id
                                   ? const SizedBox(
                                       width: 12,

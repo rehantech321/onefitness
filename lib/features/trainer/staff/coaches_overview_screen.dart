@@ -203,14 +203,14 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
               children: [
                 const Text("Coach Approval Code", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   "Give this code (or the link below) to a coach only after you've met them and approved them. "
                   "It works from their own device, no account needed yet — good for one signup, until it expires or you generate a new one.",
                   style: TextStyle(color: AppColors.mute, fontSize: 12, height: 1.4),
                 ),
                 const SizedBox(height: 10),
                 if (_loading)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(vertical: 4),
                     child: SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold)),
                   )
@@ -221,7 +221,7 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                     children: [
                       Text(
                         code,
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 3, color: AppColors.gold, fontFamily: "monospace"),
+                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: 3, color: AppColors.gold, fontFamily: "monospace"),
                       ),
                       const SizedBox(width: 10),
                       Text(statusText, style: TextStyle(fontSize: 12, color: statusColor)),
@@ -244,14 +244,14 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    const Text("Valid for", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                    Text("Valid for", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                     const SizedBox(width: 8),
                     SizedBox(
                       width: 60,
                       child: AppField(controller: _daysValid, keyboardType: TextInputType.number),
                     ),
                     const SizedBox(width: 8),
-                    const Text("days", style: TextStyle(fontSize: 12, color: AppColors.mute)),
+                    Text("days", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -269,7 +269,7 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                   ),
                 ),
                 if (_justGenerated)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 8),
                     child: Text(
                       "✓ New code generated — old code no longer works",
@@ -289,7 +289,7 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                   decoration: BoxDecoration(color: AppColors.danger.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6), border: Border.all(color: AppColors.danger.withValues(alpha: 0.4))),
-                  child: Text("$newCount new", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.danger)),
+                  child: Text("$newCount new", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.danger)),
                 ),
               ],
             ],
@@ -325,7 +325,7 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(color: AppColors.danger.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(5), border: Border.all(color: AppColors.danger.withValues(alpha: 0.4))),
-                                    child: const Text("New", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.danger)),
+                                    child: Text("New", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.danger)),
                                   ),
                                 ],
                               ],
@@ -335,7 +335,7 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                             // identity — "Muhammad afnan / Coach".
                             if ((t.title ?? "").trim().isNotEmpty)
                               Text(t.title!.trim(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14), overflow: TextOverflow.ellipsis),
-                            Text("${myRoster.length} client${myRoster.length == 1 ? '' : 's'}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                            Text("${myRoster.length} client${myRoster.length == 1 ? '' : 's'}", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                           ],
                         ),
                       ),
@@ -346,9 +346,9 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(LucideIcons.flag, size: 11, color: AppColors.danger),
+                              Icon(LucideIcons.flag, size: 11, color: AppColors.danger),
                               const SizedBox(width: 4),
-                              Text("${flags.length}", style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.danger)),
+                              Text("${flags.length}", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.danger)),
                             ],
                           ),
                         ),
@@ -356,20 +356,20 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                       AnimatedRotation(
                         turns: open ? 0.5 : 0,
                         duration: const Duration(milliseconds: 150),
-                        child: const Icon(LucideIcons.chevronDown, size: 16, color: AppColors.mute),
+                        child: Icon(LucideIcons.chevronDown, size: 16, color: AppColors.mute),
                       ),
                     ],
                   ),
                   if (open) ...[
                     const SizedBox(height: 12),
-                    const Divider(height: 1, color: AppColors.line),
+                    Divider(height: 1, color: AppColors.line),
                     const SizedBox(height: 12),
-                    Text("Email: ${t.email ?? '—'}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                    Text("Email: ${t.email ?? '—'}", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                     const SizedBox(height: 4),
-                    Text("Phone: ${t.phone ?? '—'}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                    Text("Phone: ${t.phone ?? '—'}", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                     if (t.signupAt != null) ...[
                       const SizedBox(height: 4),
-                      Text("Signed up: ${niceDate(t.signupAt!)}", style: const TextStyle(fontSize: 12, color: AppColors.mute)),
+                      Text("Signed up: ${niceDate(t.signupAt!)}", style: TextStyle(fontSize: 12, color: AppColors.mute)),
                     ],
                     // What this coach offers — from their profile, falling
                     // back to whatever their availability blocks contain so
@@ -384,12 +384,12 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                           const SizedBox(height: 4),
                           Text(
                             "Session types: ${types.isEmpty ? '—' : types.map(sessionTypeLabel).join(', ')}",
-                            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                            style: TextStyle(fontSize: 12, color: AppColors.mute),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             "Disciplines: ${discs.isEmpty ? '—' : discs.map(disciplineLabel).join(', ')}",
-                            style: const TextStyle(fontSize: 12, color: AppColors.mute),
+                            style: TextStyle(fontSize: 12, color: AppColors.mute),
                           ),
                         ],
                       );
@@ -427,14 +427,14 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                       const Text("Needs attention on their roster:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                       ...flags.map((f) => Padding(
                             padding: const EdgeInsets.only(top: 2),
-                            child: Text("• ${f.label}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                            child: Text("• ${f.label}", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                           )),
                     ],
                     const SizedBox(height: 12),
                     Center(
                       child: TextButton(
                         onPressed: () => _deleteCoach(t),
-                        style: TextButton.styleFrom(foregroundColor: const Color(0xFFC97F7F)),
+                        style: TextButton.styleFrom(foregroundColor: AppColors.errorText),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [Icon(LucideIcons.trash2, size: 13), SizedBox(width: 6), Text("Remove coach", style: TextStyle(fontSize: 12))],
@@ -445,7 +445,7 @@ class _CoachesOverviewScreenState extends ConsumerState<CoachesOverviewScreen> {
                     const SizedBox(height: 8),
                     ...flags.take(4).map((f) => Padding(
                           padding: const EdgeInsets.only(top: 2),
-                          child: Text("• ${f.label}", style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                          child: Text("• ${f.label}", style: TextStyle(fontSize: 11, color: AppColors.mute)),
                         )),
                   ],
                 ],

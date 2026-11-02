@@ -138,7 +138,7 @@ class _ProductCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     "\$${(product.priceCents / 100).toStringAsFixed(2)}",
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.gold),
                   ),
                 ],
               ),
@@ -251,14 +251,14 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
           const SizedBox(height: 4),
           Text(
             "\$${(p.priceCents / 100).toStringAsFixed(2)}",
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.gold),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.gold),
           ),
           if ((p.description ?? "").isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(p.description!, style: const TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5)),
+            Text(p.description!, style: TextStyle(fontSize: 13, color: AppColors.mute, height: 1.5)),
           ],
           const SizedBox(height: 18),
-          const Text("SIZE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
+          Text("SIZE", style: TextStyle(fontSize: 10, color: AppColors.mute, letterSpacing: 1)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -302,13 +302,13 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(
                   "Only ${picked.inventory} left in ${picked.label}.",
-                  style: const TextStyle(fontSize: 12, color: Color(0xFFD68A4F), fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 12, color: AppColors.warning, fontWeight: FontWeight.w600),
                 ),
               );
             }),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text("⚠ $_error", style: const TextStyle(color: AppColors.errorText, fontSize: 12)),
+            Text("⚠ $_error", style: TextStyle(color: AppColors.errorText, fontSize: 12)),
           ],
           const SizedBox(height: 20),
           BtnGold(

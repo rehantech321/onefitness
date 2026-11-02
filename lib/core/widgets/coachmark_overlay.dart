@@ -121,7 +121,7 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
                             value: (_i + 1) / widget.steps.length,
                             minHeight: 4,
                             backgroundColor: AppColors.line,
-                            valueColor: const AlwaysStoppedAnimation(AppColors.gold),
+                            valueColor: AlwaysStoppedAnimation(AppColors.gold),
                           ),
                         ),
                         const SizedBox(height: 8),

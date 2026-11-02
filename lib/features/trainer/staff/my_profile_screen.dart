@@ -73,6 +73,13 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
 
     return Column(
       children: [
+        // Above the profile form rather than inside it: the theme is a
+        // device setting, not part of the profile being saved, and burying
+        // it in a form with a Save button would imply otherwise.
+        const Padding(
+          padding: EdgeInsets.fromLTRB(18, 14, 18, 4),
+          child: ThemeModePicker(),
+        ),
         Expanded(
           child: TrainerEditForm(
             initial: matches.first,
@@ -120,7 +127,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
         // stays two taps from the menu: Menu -> My Profile -> Delete Account.
         Container(
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(top: BorderSide(color: AppColors.line)),
           ),
           child: Row(

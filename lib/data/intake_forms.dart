@@ -176,7 +176,16 @@ const kIntakeForms = [
     key: "training",
     title: "Training Intake",
     assessments: [
-      AssessmentDef(key: "personalTraining", title: "Personalized Training Intake", by: "Client or Coach", schema: kTrainingIntakeSchema),
+      AssessmentDef(
+        key: "personalTraining",
+        title: "Personalized Training Intake",
+        by: "Client or Coach",
+        schema: kTrainingIntakeSchema,
+        // Physio notes, a surgeon's letter, an old program they got on with
+        // — the things a coach would otherwise ask them to email over, and
+        // which the AI drafter now reads when building their split.
+        allowsAttachments: true,
+      ),
       AssessmentDef(key: "physical", title: "Free Physical Assessment Session", by: "Coach · first training session", clientCanFill: false, physical: true),
     ],
   ),

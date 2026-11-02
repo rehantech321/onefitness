@@ -58,7 +58,7 @@ class _SignedWaiverTileState extends State<SignedWaiverTile> {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.fileSignature, size: 17, color: AppColors.gold),
+              Icon(LucideIcons.fileSignature, size: 17, color: AppColors.gold),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -66,27 +66,27 @@ class _SignedWaiverTileState extends State<SignedWaiverTile> {
                   children: [
                     Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                     const SizedBox(height: 2),
-                    Text(widget.subtitle, style: const TextStyle(fontSize: 11, color: AppColors.mute)),
+                    Text(widget.subtitle, style: TextStyle(fontSize: 11, color: AppColors.mute)),
                   ],
                 ),
               ),
-              const Icon(LucideIcons.check, size: 16, color: AppColors.grn),
+              Icon(LucideIcons.check, size: 16, color: AppColors.grn),
             ],
           ),
           if (widget.detail != null)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(widget.detail!, style: const TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
+              child: Text(widget.detail!, style: TextStyle(fontSize: 11, color: AppColors.mute, height: 1.4)),
             ),
           const SizedBox(height: 10),
           if (_pdf != null)
             DownloadPdfButton(filename: widget.title, pdfDataUrl: _pdf!, label: "Open signed PDF")
           else if (_missing)
-            const Text("No PDF on file for this signature (signed before PDFs were stored).", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic))
+            Text("No PDF on file for this signature (signed before PDFs were stored).", style: TextStyle(fontSize: 11, color: AppColors.mute, fontStyle: FontStyle.italic))
           else
             OutlinedButton.icon(
               onPressed: _loading ? null : _load,
-              style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: const BorderSide(color: AppColors.goldDim)),
+              style: OutlinedButton.styleFrom(foregroundColor: AppColors.gold, side: BorderSide(color: AppColors.goldDim)),
               icon: const Icon(LucideIcons.fileText, size: 14),
               label: Text(_loading ? "Loading…" : "View signed PDF", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
             ),

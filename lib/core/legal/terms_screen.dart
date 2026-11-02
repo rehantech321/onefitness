@@ -34,7 +34,7 @@ class TermsScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
                         "Effective $kTermsEffectiveDate",
                         style: TextStyle(fontSize: 11, color: AppColors.mute),
@@ -91,7 +91,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
                         "Effective $kPrivacyPolicyEffectiveDate",
                         style: TextStyle(fontSize: 11, color: AppColors.mute),
@@ -148,7 +148,7 @@ class ConsentCheckbox extends StatelessWidget {
                 onChanged: (v) => onChanged(v ?? false),
                 activeColor: AppColors.gold,
                 checkColor: AppColors.onGold,
-                side: const BorderSide(color: AppColors.line, width: 1.5),
+                side: BorderSide(color: AppColors.line, width: 1.5),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity.compact,
               ),
