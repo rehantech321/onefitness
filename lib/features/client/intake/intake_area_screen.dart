@@ -103,12 +103,17 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
       ref.read(pendingIntakeFormKeyProvider.notifier).set(null);
     final key = pending ?? widget.initialOpenKey;
     if (key != null) {
-      for (final group in kIntakeForms) {
+      for (final group in intakeFormsWith(ref.read(liveIntakeFormTemplatesProvider))) {
         for (final a in group.assessments) {
           if (a.key == key) _open = a;
         }
       }
-      if (_open != null) _editing = _opensAsEditor(_open!);
+      // Deep-linked straight at one form, so it opens ready to fill in.
+      // Tapping a named form is asking to work on it; landing on the
+      // read-only view would mean a third tap to get to the same place. The
+      // list route still opens completed forms for reading first — see
+      // [_opensAsEditor].
+      if (_open != null) _editing = true;
     }
   }
 
@@ -234,6 +239,12 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
           onBack: _closeAssessment,
           child: IntakeAnswersScreen(
             schema: a.schema!,
+            // Each submission is read back against the version of the form it
+            // was given against, so revising a gym form never changes what an
+            // earlier client appears to have been asked.
+            schemaFor: (version) =>
+                templateVersionFor(a.key, version, ref.read(intakeFormTemplatesProvider))?.schema ??
+                a.schema!,
             record: record,
             profileId: widget.profileId,
             assessmentKey: a.key,
@@ -327,7 +338,7 @@ class _IntakeAreaScreenState extends ConsumerState<IntakeAreaScreen> {
                 ),
               ),
             ),
-          ...kIntakeForms.map((group) {
+          ...intakeFormsWith(ref.watch(liveIntakeFormTemplatesProvider)).map((group) {
           final visible = group.assessments
               .where((a) => a.clientCanFill || a.physical)
               // The coach-run physical assessment comes with a membership or

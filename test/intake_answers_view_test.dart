@@ -322,7 +322,7 @@ void main() {
     testWidgets("a coach gets both actions", (tester) async {
       await pump(tester, onFillAgain: () {});
       expect(find.text("Edit answers"), findsOneWidget);
-      expect(find.text("Fill in again"), findsOneWidget);
+      expect(find.text("Add another"), findsOneWidget);
     });
 
     testWidgets("a client gets only the correction", (tester) async {
@@ -330,24 +330,24 @@ void main() {
       // is nearly always fixing what they just typed.
       await pump(tester);
       expect(find.text("Edit answers"), findsOneWidget);
-      expect(find.text("Fill in again"), findsNothing);
+      expect(find.text("Add another"), findsNothing);
     });
 
     testWidgets("the hint explains the difference when both are offered", (tester) async {
       await pump(tester, onFillAgain: () {});
-      expect(find.textContaining("Editing corrects what's on record"), findsOneWidget);
+      expect(find.textContaining("Add another starts a blank copy"), findsOneWidget);
     });
 
     testWidgets("and doesn't mention re-filling when it isn't on offer", (tester) async {
       await pump(tester);
-      expect(find.textContaining("Fill in again"), findsNothing);
+      expect(find.textContaining("Add another"), findsNothing);
       expect(find.textContaining("replacing the record"), findsOneWidget);
     });
 
-    testWidgets("fill-in-again is what fires the fresh-submission path", (tester) async {
+    testWidgets("Add another is what fires the fresh-submission path", (tester) async {
       var fillAgain = false;
       await pump(tester, onFillAgain: () => fillAgain = true);
-      await tester.tap(find.text("Fill in again"));
+      await tester.tap(find.text("Add another"));
       expect(fillAgain, isTrue);
     });
   });

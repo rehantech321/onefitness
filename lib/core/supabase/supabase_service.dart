@@ -27,6 +27,7 @@ import "../../data/models/exercise_def.dart";
 import "../../data/models/exercise_prescription.dart";
 import "../../data/models/habit_def.dart";
 import "../../data/models/habit_log_entry.dart";
+import "../../data/models/intake_form_template.dart";
 import "../../data/models/intake_schema.dart";
 import "../../data/models/meal_def.dart";
 import "../../data/models/measurement.dart";
@@ -3645,6 +3646,59 @@ class SupabaseService {
 
   static Future<void> deleteEquipment(String name) async {
     await client.from("equipment").delete().eq("name", name);
+  }
+
+  /// Every version of every gym-defined intake form, newest version first.
+  ///
+  /// All versions, not just the current one: a submission is rendered against
+  /// the version it was filled against, so reading back a two-year-old intake
+  /// needs the questions as they stood then. See migration 37.
+  static Future<List<IntakeFormTemplate>> loadIntakeFormTemplates() async {
+    final rows = await client
+        .from("intake_form_templates")
+        .select()
+        .order("key")
+        .order("version", ascending: false);
+    return rows
+        .map((r) => IntakeFormTemplate.fromJson(r.cast<String, dynamic>()))
+        .toList();
+  }
+
+  /// Writes a new version of [template] and returns it.
+  ///
+  /// Always an insert, never an update: the row for a version that clients
+  /// have already answered must not change underneath their answers. The
+  /// version is computed from what's on the table rather than from the
+  /// caller's copy, which may be a catalogue load old.
+  static Future<IntakeFormTemplate> saveIntakeFormTemplate(
+    IntakeFormTemplate template,
+  ) async {
+    final existing = await client
+        .from("intake_form_templates")
+        .select("version")
+        .eq("key", template.key)
+        .order("version", ascending: false)
+        .limit(1);
+    final nextVersion = existing.isEmpty
+        ? 1
+        : ((existing.first["version"] as num).toInt() + 1);
+
+    final next = template.copyWith(version: nextVersion);
+    await client.from("intake_form_templates").insert(next.toJson());
+    return next;
+  }
+
+  /// Retires a form, or brings it back.
+  ///
+  /// Applied to every version of the key, so the form stops being offered
+  /// whichever version a client last answered. Nothing is deleted: the
+  /// answers already given stay readable, which is the whole point of
+  /// archiving rather than removing.
+  static Future<void> setIntakeFormArchived(String key, bool archived) async {
+    await client
+        .from("intake_form_templates")
+        .update({"archived": archived})
+        .eq("key", key);
   }
 
   static Map<String, dynamic> _waiverDocToJson(WaiverDoc w) => {

@@ -302,6 +302,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final waitlistF = SupabaseService.loadWaitlist()..ignore();
   final packageCategoriesF = SupabaseService.loadPackageCategories()..ignore();
   final equipmentF = SupabaseService.loadEquipment()..ignore();
+  final intakeFormsF = SupabaseService.loadIntakeFormTemplates()..ignore();
   final coachMeritBadgesF = SupabaseService.loadCoachMeritBadges()..ignore();
   final coachPrEventsF = SupabaseService.loadCoachPrEvents()..ignore();
   final messagesF = SupabaseService.loadAllMessages()..ignore();
@@ -373,6 +374,8 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   final WaitlistNotifier waitlistN = ref.read(waitlistProvider.notifier);
   final PackageCategoriesNotifier packageCategoriesN = ref.read(packageCategoriesProvider.notifier);
   final EquipmentNotifier equipmentN = ref.read(equipmentProvider.notifier);
+  final IntakeFormTemplatesNotifier intakeFormsN =
+      ref.read(intakeFormTemplatesProvider.notifier);
   final CoachMeritBadgesNotifier coachMeritBadgesN = ref.read(coachMeritBadgesProvider.notifier);
   final CoachPrEventsNotifier coachPrEventsN = ref.read(coachPrEventsProvider.notifier);
   final TrainerClientRecordsNotifier clientRecordsN = ref.read(trainerClientRecordsProvider.notifier);
@@ -463,6 +466,7 @@ Future<void> loadAndSeedCoreData(dynamic ref) async {
   later(waitlistF, "waitlist", waitlistN.setAll);
   later(packageCategoriesF, "package categories", packageCategoriesN.setAll);
   later(equipmentF, "equipment", equipmentN.setAll);
+  later(intakeFormsF, "intake forms", intakeFormsN.setAll);
   later(coachMeritBadgesF, "coach badges", coachMeritBadgesN.setAll);
   later(coachPrEventsF, "coach PR events", coachPrEventsN.setAll);
   // Chat lives in the `messages` table, not the record's jsonb; older

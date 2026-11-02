@@ -4,6 +4,7 @@ import "../mock/exercise_catalog.dart";
 import "../mock/meal_catalog.dart";
 import "../mock/mock_data.dart";
 import "../models/blocked_time.dart";
+import "../models/intake_form_template.dart";
 import "../models/booking.dart";
 import "../models/charge.dart";
 import "../models/client_info.dart";
@@ -321,6 +322,45 @@ class EquipmentNotifier extends Notifier<List<String>> {
 }
 
 final equipmentProvider = NotifierProvider<EquipmentNotifier, List<String>>(EquipmentNotifier.new);
+
+/// Gym-defined intake forms — every version of every one of them.
+///
+/// Holds the old versions as well as the current one because a submission is
+/// read back against the version it was filled against; see migration 37 and
+/// [IntakeFormTemplate].
+class IntakeFormTemplatesNotifier extends Notifier<List<IntakeFormTemplate>> {
+  @override
+  List<IntakeFormTemplate> build() => [];
+
+  void setAll(List<IntakeFormTemplate> templates) => state = templates;
+
+  /// Adds a newly written version, replacing nothing — the version it
+  /// supersedes stays in the list so past answers keep rendering.
+  void addVersion(IntakeFormTemplate template) => state = [template, ...state];
+
+  void setArchived(String key, bool archived) => state = [
+    for (final t in state)
+      if (t.key == key) t.copyWith(archived: archived) else t,
+  ];
+}
+
+final intakeFormTemplatesProvider =
+    NotifierProvider<IntakeFormTemplatesNotifier, List<IntakeFormTemplate>>(
+      IntakeFormTemplatesNotifier.new,
+    );
+
+/// The current version of each gym-defined form, newest first — what the
+/// "which form?" lists are built from. Archived ones are left out: they are
+/// readable but no longer offered.
+final liveIntakeFormTemplatesProvider = Provider<List<IntakeFormTemplate>>((ref) {
+  final all = ref.watch(intakeFormTemplatesProvider);
+  final newest = <String, IntakeFormTemplate>{};
+  for (final t in all) {
+    final seen = newest[t.key];
+    if (seen == null || t.version > seen.version) newest[t.key] = t;
+  }
+  return [for (final t in newest.values) if (!t.archived) t];
+});
 
 /// Waiver/contract documents (ManageWaivers.jsx).
 class WaiversNotifier extends Notifier<List<WaiverDoc>> {

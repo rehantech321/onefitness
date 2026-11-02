@@ -136,7 +136,25 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
   }
 
   // Opening Plans always lands on Training, whatever was showing last time.
-  void _goTab(String k) => _visit(k, k == "plans" ? "training" : _plansSub);
+  void _goTab(String k) => _go(k, null);
+
+  /// Which intake form to open on arriving at the Intake tab, set by a tap on
+  /// the Profile tab's assessment list.
+  ///
+  /// Tapping "Personalized Training Intake" there used to land on the list of
+  /// forms, so opening the thing you tapped took two taps and a second look
+  /// at the same three rows. It now opens that form directly.
+  String? _intakeKey;
+
+  /// Opens that one form. Reached only from the Profile tab's rows.
+  void _goToIntakeForm(String assessmentKey) => _go("intake", assessmentKey);
+
+  /// Every tab change clears the pending form, so reaching Intake any other
+  /// way — the tab bar, the back stack — starts on the list as it always did.
+  void _go(String k, String? intakeKey) {
+    _intakeKey = intakeKey;
+    _visit(k, k == "plans" ? "training" : _plansSub);
+  }
 
   // Uses showMenu (the root Overlay) rather than a Positioned-in-Stack
   // dropdown: a Positioned that overflows its Stack's own box paints
@@ -212,9 +230,16 @@ class _TrainerViewState extends ConsumerState<TrainerView> {
   Widget _body() {
     switch (_tab) {
       case "profile":
-        return ProfileTab(clientId: widget.clientId, onGoToIntake: () => _goTab("intake"));
+        return ProfileTab(clientId: widget.clientId, onGoToIntake: _goToIntakeForm);
       case "intake":
-        return IntakeTab(clientId: widget.clientId);
+        return IntakeTab(
+          // Keyed so that arriving from a different row rebuilds the tab and
+          // opens that form, rather than reusing the state of the one already
+          // showing.
+          key: ValueKey(_intakeKey),
+          clientId: widget.clientId,
+          initialOpenKey: _intakeKey,
+        );
       case "logs":
         return LoggedTab(clientId: widget.clientId);
       case "plans":

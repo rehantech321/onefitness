@@ -30,6 +30,7 @@ class IntakeAnswersScreen extends StatefulWidget {
     required this.onBack,
     required this.onEdit,
     this.onFillAgain,
+    this.schemaFor,
   });
 
   final IntakeSchema schema;
@@ -50,6 +51,15 @@ class IntakeAnswersScreen extends StatefulWidget {
   /// own view wants: re-filling is a coach's call.
   final VoidCallback? onFillAgain;
 
+  /// The questions as they stood for a given form version.
+  ///
+  /// A gym-defined form can be revised, and a submission given against
+  /// version 1 must go on being read against version 1's questions — a
+  /// renamed question would otherwise relabel an old answer, and a deleted
+  /// one would make it disappear. Null, or a version that can't be found,
+  /// falls back to [schema].
+  final IntakeSchema Function(int? version)? schemaFor;
+
   @override
   State<IntakeAnswersScreen> createState() => _IntakeAnswersScreenState();
 }
@@ -59,6 +69,15 @@ class _IntakeAnswersScreenState extends State<IntakeAnswersScreen> {
   int _viewing = 0;
 
   bool get _isCurrent => _viewing == 0;
+
+  /// The form version the submission on screen was filled against.
+  int? get _version => _isCurrent
+      ? widget.record.templateVersion
+      : widget.record.history[_viewing - 1].templateVersion;
+
+  /// The questions that submission was actually asked.
+  IntakeSchema get _schema =>
+      widget.schemaFor?.call(_version) ?? widget.schema;
 
   Map<String, dynamic> get _answers =>
       _isCurrent ? widget.record.answers : widget.record.history[_viewing - 1].answers;
@@ -75,7 +94,7 @@ class _IntakeAnswersScreenState extends State<IntakeAnswersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final schema = widget.schema;
+    final schema = _schema;
     final record = widget.record;
     final answers = _answers;
     return SingleChildScrollView(
@@ -165,10 +184,9 @@ class _IntakeAnswersScreenState extends State<IntakeAnswersScreen> {
               text: widget.onFillAgain == null
                   ? "Editing this re-files the form under your name and today's "
                       "date, replacing the record of who filled it in and when."
-                  : "Editing corrects what's on record. Use Fill in again when "
-                      "the client is answering afresh — that keeps these "
-                      "answers as an earlier submission instead of replacing "
-                      "them.",
+                  : "Editing corrects what's on record. Add another starts a "
+                      "blank copy of this form for this client — these answers "
+                      "are saved automatically and stay readable.",
             ),
             const SizedBox(height: 10),
             BtnGhost(
@@ -195,7 +213,7 @@ class _IntakeAnswersScreenState extends State<IntakeAnswersScreen> {
                   children: [
                     Icon(LucideIcons.filePlus, size: 15, color: AppColors.mute),
                     const SizedBox(width: 7),
-                    const Text("Fill in again"),
+                    const Text("Add another"),
                   ],
                 ),
               ),

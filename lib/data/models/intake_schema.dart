@@ -31,12 +31,73 @@ class IntakeQuestion {
   final int? max;
   final String? showIfId;
   final String? showIfValue;
+
+  /// The question types a stored schema may use.
+  ///
+  /// A gym-defined form picks from these rather than inventing one: both
+  /// renderers switch on [type], and a type neither recognises would render
+  /// as nothing at all — a question the client never sees and the coach never
+  /// knows was asked.
+  static const kTypes = ["text", "textarea", "single", "multi", "scale"];
+
+  static IntakeQuestion fromJson(Map<String, dynamic> j) {
+    final type = j["type"] as String? ?? "text";
+    return IntakeQuestion(
+      id: j["id"] as String? ?? "",
+      label: j["label"] as String? ?? "",
+      // An unknown type would render as a blank, so it falls back to a plain
+      // text question: the label is still asked and the answer still kept.
+      type: kTypes.contains(type) ? type : "text",
+      inputKind: _kindFromName(j["inputKind"] as String?),
+      options: ((j["options"] as List?) ?? const [])
+          .map((o) => "$o")
+          .where((o) => o.isNotEmpty)
+          .toList(),
+      min: (j["min"] as num?)?.toInt(),
+      max: (j["max"] as num?)?.toInt(),
+      showIfId: j["showIfId"] as String?,
+      showIfValue: j["showIfValue"] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "label": label,
+    "type": type,
+    if (inputKind != null) "inputKind": inputKind!.name,
+    if (options.isNotEmpty) "options": options,
+    if (min != null) "min": min,
+    if (max != null) "max": max,
+    if (showIfId != null) "showIfId": showIfId,
+    if (showIfValue != null) "showIfValue": showIfValue,
+  };
+
+  static FieldKind? _kindFromName(String? name) {
+    if (name == null) return null;
+    for (final k in FieldKind.values) {
+      if (k.name == name) return k;
+    }
+    return null;
+  }
 }
 
 class IntakeSection {
   const IntakeSection({required this.title, required this.questions});
   final String title;
   final List<IntakeQuestion> questions;
+
+  static IntakeSection fromJson(Map<String, dynamic> j) => IntakeSection(
+    title: j["title"] as String? ?? "",
+    questions: ((j["questions"] as List?) ?? const [])
+        .whereType<Map>()
+        .map((q) => IntakeQuestion.fromJson(q.cast<String, dynamic>()))
+        .toList(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    "title": title,
+    "questions": [for (final q in questions) q.toJson()],
+  };
 }
 
 /// Whether [q] should appear, given the answers given so far. A question
@@ -59,6 +120,19 @@ class IntakeSchema {
   const IntakeSchema({required this.title, required this.sections});
   final String title;
   final List<IntakeSection> sections;
+
+  static IntakeSchema fromJson(Map<String, dynamic> j) => IntakeSchema(
+    title: j["title"] as String? ?? "",
+    sections: ((j["sections"] as List?) ?? const [])
+        .whereType<Map>()
+        .map((s) => IntakeSection.fromJson(s.cast<String, dynamic>()))
+        .toList(),
+  );
+
+  Map<String, dynamic> toJson() => {
+    "title": title,
+    "sections": [for (final s in sections) s.toJson()],
+  };
 }
 
 /// A file a client attached to an intake form — bloodwork, a doctor's note,
@@ -138,6 +212,7 @@ class IntakeSubmission {
     this.at,
     this.by,
     this.attachments = const [],
+    this.templateVersion,
   });
 
   final Map<String, dynamic> answers;
@@ -145,12 +220,19 @@ class IntakeSubmission {
   final String? by;
   final List<IntakeAttachment> attachments;
 
+  /// Which version of a gym-defined form these answers were given against.
+  ///
+  /// Null for the forms built into the app, whose questions live in code and
+  /// change only with a release.
+  final int? templateVersion;
+
   static IntakeSubmission fromJson(Map<String, dynamic> j) {
     final answers = j["answers"];
     return IntakeSubmission(
       answers: answers is Map ? answers.cast<String, dynamic>() : const {},
       at: j["at"] as String?,
       by: j["by"] as String?,
+      templateVersion: (j["templateVersion"] as num?)?.toInt(),
       attachments: ((j["attachments"] as List?) ?? const [])
           .whereType<Map>()
           .map((a) => IntakeAttachment.fromJson(a.cast<String, dynamic>()))
@@ -164,6 +246,7 @@ class IntakeSubmission {
     "at": at,
     "by": by,
     "attachments": [for (final a in attachments) a.toJson()],
+    if (templateVersion != null) "templateVersion": templateVersion,
   };
 }
 
@@ -185,10 +268,17 @@ class IntakeRecord {
     this.by,
     this.attachments = const [],
     this.history = const [],
+    this.templateVersion,
     this.extra = const {},
   });
   final Map<String, dynamic> answers;
   final bool completed;
+
+  /// Which version of a gym-defined form the current answers were given
+  /// against; null for the forms built into the app. Read back with the
+  /// matching version so a later edit to the form can't relabel, reorder or
+  /// hide what the client actually answered.
+  final int? templateVersion;
   final String? at;
   final String? by;
   final List<IntakeAttachment> attachments;
@@ -221,6 +311,7 @@ class IntakeRecord {
     String? by,
     List<IntakeAttachment>? attachments,
     List<IntakeSubmission>? history,
+    int? templateVersion,
     Map<String, dynamic>? extra,
   }) =>
       IntakeRecord(
@@ -230,6 +321,7 @@ class IntakeRecord {
         by: by ?? this.by,
         attachments: attachments ?? this.attachments,
         history: history ?? this.history,
+        templateVersion: templateVersion ?? this.templateVersion,
         extra: extra ?? this.extra,
       );
 
@@ -248,6 +340,9 @@ class IntakeRecord {
           at: at,
           by: by,
           attachments: attachments,
+          // Travels with the answers: without it an archived submission would
+          // be read back against whatever the form says today.
+          templateVersion: templateVersion,
         ),
         ...history,
       ].take(kMaxIntakeHistory).toList(),
@@ -256,7 +351,15 @@ class IntakeRecord {
 
   /// The keys this model stores in its own fields. Everything else on an
   /// intake entry belongs in [extra].
-  static const knownKeys = {"answers", "completed", "at", "by", "attachments", "history"};
+  static const knownKeys = {
+    "answers",
+    "completed",
+    "at",
+    "by",
+    "attachments",
+    "history",
+    "templateVersion",
+  };
 }
 
 /// How many files one intake form accepts. A cap at all because these are

@@ -1,4 +1,5 @@
 import "../core/widgets/app_text_field.dart" show FieldKind;
+import "models/intake_form_template.dart";
 import "models/intake_schema.dart";
 
 /// Mirrors src/features/intake/schemas.js — TRAINING_INTAKE_SCHEMA,
@@ -210,11 +211,59 @@ const kIntakeForms = [
 /// screen holding only an assessment key (FormFillerScreen does) read the
 /// rest of its definition without the key's properties having to be threaded
 /// through every caller.
-AssessmentDef? assessmentDefFor(String key) {
+AssessmentDef? assessmentDefFor(String key, {List<IntakeFormTemplate> custom = const []}) {
   for (final group in kIntakeForms) {
     for (final a in group.assessments) {
       if (a.key == key) return a;
     }
   }
-  return null;
+  // Then the gym's own. Archived ones are included on purpose: a retired form
+  // isn't offered for new submissions, but the answers already given to it
+  // still have to render, and they can't without their definition.
+  return newestTemplateFor(key, custom)?.asAssessment;
+}
+
+/// The highest version of [key] among [templates], or null if there is none.
+IntakeFormTemplate? newestTemplateFor(String key, List<IntakeFormTemplate> templates) {
+  IntakeFormTemplate? best;
+  for (final t in templates) {
+    if (t.key != key) continue;
+    if (best == null || t.version > best.version) best = t;
+  }
+  return best;
+}
+
+/// The exact version a submission was filled against, so its answers read
+/// back against the questions that were actually asked.
+///
+/// Falls back to the newest version when that one can't be found — a form
+/// whose history predates versioning, or a row that never made it down. The
+/// alternative is showing nothing at all, which loses the answers entirely.
+IntakeFormTemplate? templateVersionFor(
+  String key,
+  int? version,
+  List<IntakeFormTemplate> templates,
+) {
+  if (version != null) {
+    for (final t in templates) {
+      if (t.key == key && t.version == version) return t;
+    }
+  }
+  return newestTemplateFor(key, templates);
+}
+
+/// The built-in groups plus one holding the gym's own forms.
+///
+/// Only live (non-archived) templates, at their current version — this is
+/// what builds the "which form?" lists.
+List<IntakeFormGroup> intakeFormsWith(List<IntakeFormTemplate> live) {
+  if (live.isEmpty) return kIntakeForms;
+  return [
+    ...kIntakeForms,
+    IntakeFormGroup(
+      key: "custom",
+      title: "Gym Forms",
+      assessments: [for (final t in live) t.asAssessment],
+    ),
+  ];
 }

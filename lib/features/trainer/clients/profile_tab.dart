@@ -38,7 +38,9 @@ class ProfileTab extends ConsumerStatefulWidget {
   });
 
   final String clientId;
-  final VoidCallback onGoToIntake;
+  /// Opens the client's intake. The assessment key is the row that was
+  /// tapped, so the form itself opens rather than the list it sits in.
+  final void Function(String assessmentKey) onGoToIntake;
 
   @override
   ConsumerState<ProfileTab> createState() => _ProfileTabState();
@@ -893,7 +895,7 @@ class _IntakeStatusSummary extends StatelessWidget {
   const _IntakeStatusSummary({required this.intake, required this.onTap});
 
   final Map<String, IntakeRecord> intake;
-  final VoidCallback onTap;
+  final void Function(String assessmentKey) onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -907,7 +909,7 @@ class _IntakeStatusSummary extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(bottom: 5),
             child: InkWell(
-              onTap: onTap,
+              onTap: () => onTap(key),
               borderRadius: BorderRadius.circular(10),
               child: Container(
                 padding: const EdgeInsets.symmetric(

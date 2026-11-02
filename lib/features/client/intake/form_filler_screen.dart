@@ -87,8 +87,18 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
   void initState() {
     super.initState();
     final existing = widget.client.intake[widget.assessmentKey];
-    _answers = Map<String, dynamic>.from(existing?.answers ?? {});
-    _attachments = [...?existing?.attachments];
+    if (widget.keepPrevious) {
+      // Adding another copy of this form, so it opens blank. Carrying the
+      // last answers over would make a fresh intake look already filled in,
+      // and a client re-doing it months later would be correcting old
+      // answers instead of giving new ones. The previous submission isn't
+      // lost — it's saved and readable as soon as this one is filed.
+      _answers = {};
+      _attachments = [];
+    } else {
+      _answers = Map<String, dynamic>.from(existing?.answers ?? {});
+      _attachments = [...?existing?.attachments];
+    }
   }
 
   @override
@@ -119,12 +129,21 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
       _saving = true;
       _error = null;
     });
+    // Stamped with the form version these answers were given against, so a
+    // later revision of a gym-defined form can't relabel, reorder or hide
+    // what was actually asked. Null for the built-in forms, whose questions
+    // live in code.
+    final template = newestTemplateFor(
+      widget.assessmentKey,
+      ref.read(liveIntakeFormTemplatesProvider),
+    );
     final record = IntakeRecord(
       answers: _answers,
       completed: true,
       at: stamp(),
       by: widget.who == "client" ? "Client" : "Trainer/Coach",
       attachments: _attachments,
+      templateVersion: template?.version,
     );
     try {
       await SupabaseService.updateClientIntake(
@@ -206,7 +225,9 @@ class _FormFillerScreenState extends ConsumerState<FormFillerScreen> {
                   ],
                 ),
               )),
-          if (assessmentDefFor(widget.assessmentKey)?.allowsAttachments ?? false) ...[
+          if (assessmentDefFor(widget.assessmentKey,
+                  custom: ref.watch(intakeFormTemplatesProvider))?.allowsAttachments ??
+              false) ...[
             Padding(
               padding: const EdgeInsets.only(bottom: 22),
               child: IntakeAttachmentsField(
