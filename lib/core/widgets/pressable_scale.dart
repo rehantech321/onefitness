@@ -19,6 +19,14 @@ class _PressableScaleState extends State<PressableScale> {
   bool _down = false;
 
   void _set(bool v) {
+    // The up/cancel can arrive after this widget has gone. A [Listener]'s
+    // render object stays in the pointer route for the whole gesture, so when
+    // something swaps the subtree out mid-press the release still lands here
+    // — on a State that is no longer in the tree. Press-and-hold to drag a
+    // session card does exactly that: the card is replaced by its
+    // childWhenDragging while the finger is still down, and without this
+    // guard letting go throws "setState() called after dispose()".
+    if (!mounted) return;
     if (_down != v) setState(() => _down = v);
   }
 

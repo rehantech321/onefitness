@@ -133,7 +133,16 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                           style: TextButton.styleFrom(padding: EdgeInsets.zero, alignment: Alignment.centerLeft),
                         ),
                       ),
-                      Expanded(child: DayView(date: _selectedDate!, onOpenClient: _openClient)),
+                      Expanded(
+                        child: DayView(
+                          date: _selectedDate!,
+                          onOpenClient: _openClient,
+                          // The day view's date strip doubles as day-to-day
+                          // navigation, so it doesn't cost a trip back to
+                          // the month grid to look at tomorrow.
+                          onPickDate: (d) => setState(() => _selectedDate = d),
+                        ),
+                      ),
                     ],
                   ),
           ),

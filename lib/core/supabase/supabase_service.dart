@@ -2601,6 +2601,18 @@ class SupabaseService {
     }
   }
 
+  /// Removes a booking WITHOUT offering the slot on to the waitlist.
+  ///
+  /// For a row that never really held a seat: the replacement bookings made
+  /// part-way through a session move that then failed, which are rolled back
+  /// (see session_drag.dart). Those existed for a moment and freed nothing,
+  /// so handing them to the waitlist would offer someone a session that
+  /// isn't there. Everything a client or coach actually cancels goes through
+  /// [deleteBooking] instead.
+  static Future<void> discardBooking(String id) async {
+    await client.from("bookings").delete().eq("id", id);
+  }
+
   static WaitlistEntry _waitlistFromRow(Map<String, dynamic> row) =>
       WaitlistEntry(
         id: row["id"] as String,

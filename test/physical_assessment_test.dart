@@ -100,7 +100,19 @@ void main() {
     test("the modelled fields are not swallowed into extra", () {
       // knownKeys is what splits the two. If "completed" leaked into extra,
       // the write would put a stale value back over the real one.
-      expect(IntakeRecord.knownKeys, {"answers", "completed", "at", "by", "attachments"});
+      //
+      // "history" and "templateVersion" joined the list when a form gained
+      // the ability to be filled in more than once — the earlier submissions
+      // are modelled, not loose payload.
+      expect(IntakeRecord.knownKeys, {
+        "answers",
+        "completed",
+        "at",
+        "by",
+        "attachments",
+        "history",
+        "templateVersion",
+      });
       for (final key in IntakeRecord.knownKeys) {
         expect(physicalPayload.containsKey(key), isFalse, reason: "$key would collide");
       }
