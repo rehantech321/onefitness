@@ -230,6 +230,51 @@ void _subscribeRealtimeUpdates(Ref ref) {
       )
       .subscribe();
 
+  // Bookings. Loaded once at sign-in otherwise, so a booking or cancellation
+  // made on one device never reached the other. Every insert, update and
+  // delete is mirrored into both booking providers; a cancellation (a delete,
+  // or a row stamped cancelled_at) leaves both sides.
+  SupabaseService.client
+      .channel("bookings_live")
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: "public",
+        table: "bookings",
+        callback: (payload) {
+          try {
+            final all = ref.read(allBookingsProvider.notifier);
+            final mine = ref.read(clientBookingsProvider.notifier);
+            if (payload.eventType == PostgresChangeEvent.delete) {
+              final id = payload.oldRecord["id"]?.toString();
+              if (id == null) return;
+              all.cancelBooking(id);
+              mine.cancelBooking(id);
+              return;
+            }
+            final row = payload.newRecord;
+            if (row.isEmpty) return;
+            final id = row["id"]?.toString();
+            if (id == null) return;
+            if (row["cancelled_at"] != null) {
+              all.cancelBooking(id);
+              mine.cancelBooking(id);
+              return;
+            }
+            final booking = SupabaseService.bookingFromRealtimeRow(row);
+            if (booking == null) return;
+            all.upsert(booking);
+            if (ref.read(clientSignedInProvider) == true &&
+                booking.clientId == ref.read(clientInfoProvider).id) {
+              mine.upsert(booking);
+            }
+          } catch (e) {
+            // ignore: avoid_print
+            print("[realtime bookings] apply failed: $e");
+          }
+        },
+      )
+      .subscribe();
+
   // Live sessions and Beep Your Coach. These have their own subscriber
   // because they carry state as well as a stream — which session is running,
   // and which beeps are still outstanding — and because the coach's alert

@@ -69,7 +69,9 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
       final trainerId = ref.read(trainerAuthProvider);
       final first = group.isEmpty ? null : group.first;
       final run = await SupabaseService.startSessionRun(
-        trainerId: trainerId ?? "",
+        // The booking's coach, not the signed-in id: an owner's id is the
+        // literal "owner", which is not a valid trainer_id.
+        trainerId: first?.trainerId ?? trainerId ?? "",
         date: _viewDate,
         slotMin: slot,
         sessionType: first?.sessionType ?? "semi-private",

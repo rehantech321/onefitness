@@ -99,6 +99,11 @@ class AllBookingsNotifier extends Notifier<List<Booking>> {
 
   void cancelBooking(String id) => state = state.where((b) => b.id != id).toList();
 
+  /// Insert or replace by id (realtime echoes of our own writes must not
+  /// duplicate).
+  void upsert(Booking b) =>
+      state = state.any((x) => x.id == b.id) ? state.map((x) => x.id == b.id ? b : x).toList() : [...state, b];
+
   void updateAttendance(String bookingId, String? status) =>
       state = state.map((b) => b.id == bookingId ? b.copyWith(attendanceStatus: status) : b).toList();
 

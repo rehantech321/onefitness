@@ -63,10 +63,9 @@ class LiveSession {
   /// acts on to close the session off properly.
   bool get hasRunOut => endedAt == null && remaining == Duration.zero;
 
-  /// Beep Your Coach is a semi-private feature: in a one-on-one the coach is
-  /// already standing with the client, and in a large group a beep button
-  /// would be a stampede.
-  bool get supportsBeep => isLive && sessionType == "semi-private";
+  /// Beep Your Coach is available in any live session the client is booked
+  /// into (the database re-checks the booking).
+  bool get supportsBeep => isLive;
 
   static LiveSession? fromJson(Map<String, dynamic> j) {
     final id = j["id"]?.toString();

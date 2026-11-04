@@ -81,6 +81,11 @@ class ClientBookingsNotifier extends Notifier<List<Booking>> {
 
   void cancelBooking(String id) => state = state.where((b) => b.id != id).toList();
 
+  /// Insert or replace by id (realtime echoes of our own writes must not
+  /// duplicate).
+  void upsert(Booking b) =>
+      state = state.any((x) => x.id == b.id) ? state.map((x) => x.id == b.id ? b : x).toList() : [...state, b];
+
   /// Reschedule: add the new booking and remove the original in one state
   /// update, so nothing observes the in-between state with neither/both.
   void reschedule(Booking newBooking, String originalId) =>

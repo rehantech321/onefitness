@@ -522,6 +522,15 @@ class SupabaseService {
     return _safeMap(rows, _bookingFromRow);
   }
 
+  /// Maps a realtime `bookings` row. Null when the row is unusable.
+  static Booking? bookingFromRealtimeRow(Map<String, dynamic> row) {
+    try {
+      return _bookingFromRow(row);
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<ClientRecord> loadClientRecord(String id) async {
     final row = await client
         .from("client_records")

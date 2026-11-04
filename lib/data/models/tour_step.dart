@@ -24,10 +24,16 @@ const kDashboardTourSteps = [
 
 /// Mirrors tourSteps.js `DRAWER_TOUR_STEPS` — shown once, the first time a
 /// client opens the hamburger drawer, spotlighting each menu item in order.
+///
+/// Every step here must name a menu item that is really in the drawer (see
+/// `_drawerItems` in client_shell.dart), and in the order the drawer lists
+/// them. A step pointing at an item that isn't there has nothing to put the
+/// spotlight on, so it showed as a black screen with no tooltip at all —
+/// which is what happened to "Workout Plan" and "Nutrition Plan" when those
+/// two moved into the Plans tab and left the menu. They were steps 2 and 3,
+/// so the tour appeared to skip straight from 1 to 4.
 const kDrawerTourSteps = [
   TourStep("drawer-progress", "Log Progress", "Log your weight, photos, and measurements over time."),
-  TourStep("drawer-plans", "Workout Plan", "Your full training program, day by day."),
-  TourStep("drawer-nutrition", "Nutrition Plan", "Your meals and daily nutrition targets."),
   TourStep("drawer-habits", "Habit Tracker", "Check off your daily habits and build your streak."),
   TourStep("drawer-history", "History", "Every workout you've logged, all in one place."),
   TourStep("drawer-forms", "Assessments", "Fill out or review your intake and assessment forms."),

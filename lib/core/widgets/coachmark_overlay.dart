@@ -25,15 +25,35 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
   int _i = 0;
   Rect? _rect;
 
+  /// The steps that have something on screen to point at, which is the only
+  /// kind this overlay can show: with no target there is no hole in the
+  /// scrim and no bubble either, just a black screen the tap-to-advance
+  /// still counts as a step. Filtering here rather than skipping as we go
+  /// keeps the counter honest — "1 of 8" means eight steps the client will
+  /// actually see, numbered without gaps.
+  ///
+  /// Settled once, when the tour opens: the targets are built by then (both
+  /// tours start from a post-frame callback), and a list that changed mid-
+  /// tour would renumber the step the client is looking at.
+  late final List<TourStep> _steps = widget.steps
+      .where((s) => widget.keys[s.key]?.currentContext != null)
+      .toList();
+
   @override
   void initState() {
     super.initState();
+    // Nothing to show — end it rather than leave an invisible overlay
+    // sitting over the screen for the rest of the session.
+    if (_steps.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => widget.onDone());
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
   }
 
   void _measure() {
     if (!mounted) return;
-    final step = widget.steps.isNotEmpty && _i < widget.steps.length ? widget.steps[_i] : null;
+    final step = _steps.isNotEmpty && _i < _steps.length ? _steps[_i] : null;
     final key = step != null ? widget.keys[step.key] : null;
     final box = key?.currentContext?.findRenderObject() as RenderBox?;
     final next = box != null && box.attached ? (box.localToGlobal(Offset.zero) & box.size) : null;
@@ -49,8 +69,8 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
   }
 
   void _advance() {
-    if (widget.steps.isEmpty) return;
-    if (_i >= widget.steps.length - 1) {
+    if (_steps.isEmpty) return;
+    if (_i >= _steps.length - 1) {
       widget.onDone();
     } else {
       setState(() {
@@ -63,9 +83,9 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.steps.isEmpty) return const SizedBox.shrink();
-    final step = widget.steps[_i];
-    final last = _i == widget.steps.length - 1;
+    if (_steps.isEmpty) return const SizedBox.shrink();
+    final step = _steps[_i];
+    final last = _i == _steps.length - 1;
     final media = MediaQuery.of(context);
     final screen = media.size;
     final rect = _rect;
@@ -111,14 +131,14 @@ class _CoachmarkOverlayState extends State<CoachmarkOverlay> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text("${_i + 1} of ${widget.steps.length}", style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
+                        Text("${_i + 1} of ${_steps.length}", style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
                         const SizedBox(height: 6),
                         // Grows with each step — short on the first, full on
                         // the last — so it's clear how far through the tour is.
                         ClipRRect(
                           borderRadius: BorderRadius.circular(3),
                           child: LinearProgressIndicator(
-                            value: (_i + 1) / widget.steps.length,
+                            value: (_i + 1) / _steps.length,
                             minHeight: 4,
                             backgroundColor: AppColors.line,
                             valueColor: AlwaysStoppedAnimation(AppColors.gold),
