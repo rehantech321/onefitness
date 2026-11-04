@@ -9,6 +9,7 @@ import "../../../core/utils/photo_picker_utils.dart";
 import "../../../core/widgets/city_state_fields.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/providers/supabase_bootstrap_provider.dart";
+import "../../../core/utils/notification_triggers.dart";
 import "../../../core/utils/phone_guard.dart";
 
 /// Coach/owner adding a client in person — the desk-signup path for someone
@@ -140,6 +141,11 @@ class _AddClientPageState extends ConsumerState<_AddClientPage> {
         coachCode: _coachCode.text.trim().isEmpty ? null : _coachCode.text.trim(),
         photo: _photoDataUrl,
       );
+      // The same welcome a client gets signing themselves up — someone added
+      // at the desk shouldn't be the one person who never hears from us.
+      // Fire-and-forget: the account already exists, and the handover screen
+      // below is what the coach is waiting on.
+      notifyWelcome(toEmail: email, firstName: firstName);
       // Re-seed so the new client shows up in the roster straight away
       // rather than after a restart.
       await loadAndSeedCoreData(ref);

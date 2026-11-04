@@ -228,7 +228,7 @@ class _IntakeAttachmentsFieldState extends State<IntakeAttachmentsField> {
           Padding(
             padding: EdgeInsets.only(top: 5),
             child: Text(
-              "Optional. Bloodwork, a doctor's or physio's note, a programme you're already on — PDF, image or text. Your coach's AI drafter reads these when building your plan.",
+              "Optional. Bloodwork, a doctor's or physio's note, a programme you're already on — PDF, image or text.",
               style: TextStyle(fontSize: 11.5, color: AppColors.mute, height: 1.45),
             ),
           ),

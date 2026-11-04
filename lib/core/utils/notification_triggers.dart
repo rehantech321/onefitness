@@ -26,6 +26,87 @@ Future<void> notifyPlanAssigned({
   } catch (_) {}
 }
 
+/// The welcome email's body, with `{First Name}` standing in for whoever it
+/// is going to. Kept as one block of copy rather than built up in code so
+/// the wording can be changed without reading any Dart — it is marketing
+/// text, and it gets rewritten far more often than anything around it.
+///
+/// Plain text on purpose: send-email posts to Microsoft Graph with
+/// contentType "Text" (see _shared/sendEmail.ts), so the bullets and blank
+/// lines here are exactly what lands in the inbox.
+const kWelcomeEmailBody = """
+Hi {First Name},
+
+Welcome to ONE Fitness Marketplace! Your profile is set up and ready to go.
+
+Here, you are number one. Every feature is built around you, your goals, and your progress. Here's what you can do:
+
+YOUR PLAN, ALWAYS IN YOUR POCKET
+• See your workout and nutrition guidelines anytime
+• Log every workout and meal so you and your coach can track your progress
+
+BOOK ON YOUR TERMS
+• Book sessions in seconds, or reserve them in advance so your spot is locked in
+• Find sessions near you
+• Chat directly with your coach in the app
+
+TRAINERS YOU CAN TRUST
+• Every trainer on the Marketplace is vetted
+• Each one is committed to one standard: you come first
+
+MAKE IT A GAME
+• Challenges: trainers post challenges that anyone can join, and anyone can win
+• Merit badges: earn badges as you hit milestones
+• Rewards: rack up points for showing up and putting in the work
+• Squad: build your crew, train together, and keep each other accountable
+
+NEXT STEP
+Open the app, check out your plan, and book your first session.
+
+Questions? Reply to this email or reach us at Info@onefitnessworkout.com.
+
+Let's get to work.
+
+The ONE Fitness Marketplace Team
+ONEFitnessWorkout.com""";
+
+/// Used when there's no first name to greet them by — a name field that was
+/// only ever filled in as one word, or a record that predates the split.
+/// "Hi ," is worse than no name at all.
+const _welcomeFallbackName = "there";
+
+/// The first word of [name], which is what the copy's `{First Name}` wants
+/// when only a combined name was recorded.
+String firstNameFrom(String name) {
+  final parts = name.trim().split(RegExp(r"\s+")).where((p) => p.isNotEmpty);
+  return parts.isEmpty ? "" : parts.first;
+}
+
+/// Sent once, when a client's profile is created — from their own signup and
+/// from a coach creating the account at the desk, which is why it lives here
+/// rather than in either screen.
+///
+/// Clients only. The copy is written to someone who is going to book
+/// sessions and follow a plan, so it would read strangely to a new coach.
+Future<void> notifyWelcome({
+  required String toEmail,
+  required String firstName,
+}) async {
+  if (toEmail.isEmpty) return;
+  final greeting = firstName.trim().isEmpty ? _welcomeFallbackName : firstName.trim();
+  try {
+    await SupabaseService.sendEmail(
+      to: toEmail,
+      // No name in the subject when there isn't one — "Welcome to ONE
+      // Fitness Marketplace, there!" would be worse than the plain version.
+      subject: firstName.trim().isEmpty
+          ? "Welcome to ONE Fitness Marketplace!"
+          : "Welcome to ONE Fitness Marketplace, ${firstName.trim()}!",
+      text: kWelcomeEmailBody.replaceAll("{First Name}", greeting),
+    );
+  } catch (_) {}
+}
+
 const kSessionMilestones = [10, 25, 50, 100];
 
 /// Push counterpart to every email trigger above/below that also appears on

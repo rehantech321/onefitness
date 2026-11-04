@@ -170,6 +170,9 @@ class _ClientSignupScreenState extends ConsumerState<ClientSignupScreen> {
           sms: true,
         );
       }
+      // Fire-and-forget, deliberately not awaited: the welcome email must
+      // never be a reason signup takes longer or appears to fail.
+      notifyWelcome(toEmail: email, firstName: firstName);
       await SupabaseService.recordTermsAcceptance(
         userId,
         version: kTermsVersion,

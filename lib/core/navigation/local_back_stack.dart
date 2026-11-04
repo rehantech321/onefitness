@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/widgets.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -115,7 +117,34 @@ class _LocalBackScopeState extends ConsumerState<LocalBackScope> {
   void dispose() {
     if (_pushed) {
       _pushed = false;
-      _stack.pop(_handler);
+      // Deferred for the same reason the push is, and it was missed here:
+      // dispose runs during finalizeTree, which is still the build phase as
+      // far as Riverpod is concerned, so popping straight from here is the
+      // very write the assert above forbids.
+      //
+      // This fires on the ordinary way a sub-view closes. A screen that
+      // returns the LocalBackScope only while its sub-view is open — which
+      // is most of them — unmounts the scope rather than flipping [isOpen],
+      // so closing goes through dispose every time, never didUpdateWidget.
+      // In debug that threw; in release the write landed mid-unmount and the
+      // shells, which watch this provider, could be left still believing a
+      // sub-view was open. Back then ran a closure belonging to a screen
+      // that had gone, doing nothing visible — a back press, or a whole tap,
+      // that the app appeared to swallow.
+      //
+      // A microtask rather than a post-frame callback: nothing guarantees
+      // another frame is coming, and a pop that waits for one can strand the
+      // handler indefinitely. Microtasks run once the frame's synchronous
+      // work is done, which is all this needs.
+      final stack = _stack;
+      final handler = _handler;
+      scheduleMicrotask(() {
+        // The whole ProviderContainer can go first (sign-out, hot restart);
+        // there is no stack left to tidy up in that case.
+        try {
+          stack.pop(handler);
+        } catch (_) {}
+      });
     }
     super.dispose();
   }

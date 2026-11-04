@@ -1021,17 +1021,22 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
                 const SectionLabel("Available Plans"),
               ],
               const SizedBox(height: 8),
-              // Every filter on one scrolling line: All, the two plan kinds,
-              // then one chip per category. Built from `buyable` rather than
-              // `filteredBuyable` on purpose — chips derived from the
-              // filtered list would vanish the moment you picked one, and
-              // there'd be no way back but "All".
+              // Every filter on one scrolling line: All, then one chip per
+              // category. Built from `buyable` rather than `filteredBuyable`
+              // on purpose — chips derived from the filtered list would
+              // vanish the moment you picked one, and there'd be no way back
+              // but "All".
+              //
+              // The Memberships and Packages chips used to lead this row.
+              // They went once every category was showing: the gym's own
+              // categories say more about what a plan is for than the two
+              // billing kinds behind them, and the kinds mostly restated
+              // what the categories already split. `kind:` is still a filter
+              // applyPlanFilter understands — nothing in the UI sets one.
               Builder(builder: (context) {
                 final groups = _groupByCategory(buyable, ref.watch(packageCategoriesProvider));
                 final chips = <(String, String)>[
                   ("all", "All"),
-                  ("kind:membership", "Memberships"),
-                  ("kind:package", "Packages"),
                   for (final g in groups) ("cat:${g.key}", "${g.key} (${g.value.length})"),
                 ];
                 return SingleChildScrollView(
