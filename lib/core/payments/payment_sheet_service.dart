@@ -1,3 +1,4 @@
+import "dart:io" show Platform;
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter_stripe/flutter_stripe.dart";
 import "../supabase/supabase_service.dart";
@@ -68,6 +69,15 @@ const kApplePayMerchantId = String.fromEnvironment("APPLE_PAY_MERCHANT_ID");
 /// which is what a coach saw instead of a "Take payment" sheet. Anything
 /// that offers Apple Pay has to check this first.
 bool get applePayConfigured => kApplePayMerchantId.isNotEmpty;
+
+/// iOS silently refuses to present the native Payment Sheet while another
+/// modal (the "how would you like to pay" sheet) is still animating closed —
+/// no error, the tap just does nothing. Give the dismissal time to finish.
+Future<void> _letIosSettle() async {
+  if (!kIsWeb && Platform.isIOS) {
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+  }
+}
 
 class PaymentSheetService {
   /// Set once per process, the first time a sheet is opened. The key comes
@@ -150,6 +160,7 @@ class PaymentSheetService {
           allowsDelayedPaymentMethods: true,
         ),
       );
+      await _letIosSettle();
       await Stripe.instance.presentPaymentSheet();
       return const PaymentResult.success();
     } on StripeException catch (e) {
@@ -236,6 +247,7 @@ class PaymentSheetService {
           allowsDelayedPaymentMethods: true,
         ),
       );
+      await _letIosSettle();
       await Stripe.instance.presentPaymentSheet();
       return const PaymentResult.success();
     } on StripeException catch (e) {
