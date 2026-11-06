@@ -19,6 +19,7 @@ import "../../../data/models/intake_schema.dart";
 import "../../../data/models/membership_plan.dart";
 import "../../../data/providers/client_providers.dart";
 import "../../../data/providers/trainer_providers.dart";
+import "../../client/drawer_screens/payment_details_section.dart";
 import "billing_anchor_section.dart";
 import "purchase_for_client_section.dart";
 import "../../../core/utils/phone_guard.dart";
@@ -51,6 +52,7 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
   bool _charging = false;
   bool _billingAnchor = false;
   bool _purchasing = false;
+  bool _paymentDetails = false;
   bool _freezing = false;
   bool _freezeBusy = false;
   bool _cancelBusy = false;
@@ -135,6 +137,18 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
           info: info,
           onBack: () => setState(() => _billingAnchor = false),
           onChanged: (day) => update((c) => c.copyWith(billingAnchorDay: day)),
+        ),
+      );
+    }
+
+    if (_paymentDetails) {
+      return LocalBackScope(
+        isOpen: true,
+        onBack: () => setState(() => _paymentDetails = false),
+        child: PaymentDetailsSection(
+          clientId: info.id,
+          clientName: info.name,
+          onBack: () => setState(() => _paymentDetails = false),
         ),
       );
     }
@@ -625,6 +639,12 @@ class _ProfileTabState extends ConsumerState<ProfileTab> {
                 Text("Purchase for client"),
               ],
             ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => setState(() => _paymentDetails = true),
+            icon: const Icon(LucideIcons.creditCard, size: 14),
+            label: const Text("Payment details (add or remove card)"),
           ),
           const SizedBox(height: 18),
           Container(height: 1, color: AppColors.line),

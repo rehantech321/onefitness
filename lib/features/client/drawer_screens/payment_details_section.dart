@@ -4,6 +4,9 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/payments/payment_sheet_service.dart";
 import "../../../core/supabase/supabase_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/widgets/billing_address_form.dart";
+import "../../../data/models/billing_address.dart";
+import "../../../data/providers/client_providers.dart" show clientInfoProvider;
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/saved_payment_method.dart";
 import "../../../data/providers/platform_settings_provider.dart";
@@ -14,22 +17,48 @@ import "../../../data/providers/platform_settings_provider.dart";
 /// next checkout. The client can remove any except the one a live membership
 /// renews on.
 class PaymentDetailsSection extends ConsumerStatefulWidget {
-  const PaymentDetailsSection({super.key, required this.onBack});
+  const PaymentDetailsSection({super.key, required this.onBack, this.clientId, this.clientName});
   final VoidCallback onBack;
+
+  /// Set when a coach or owner is managing a client's payment methods; null
+  /// for a client looking at their own.
+  final String? clientId;
+  final String? clientName;
 
   @override
   ConsumerState<PaymentDetailsSection> createState() => _PaymentDetailsSectionState();
 }
 
 class _PaymentDetailsSectionState extends ConsumerState<PaymentDetailsSection> {
-  late Future<List<SavedPaymentMethod>> _future = SupabaseService.loadPaymentMethods();
+  late Future<List<SavedPaymentMethod>> _future = SupabaseService.loadPaymentMethods(clientId: widget.clientId);
   String? _removing;
   bool _adding = false;
 
+  /// Whose address and cards these are: the client being managed by staff,
+  /// or the signed-in client themselves.
+  String get _targetId => widget.clientId ?? ref.read(clientInfoProvider).id;
+
+  late Future<BillingAddress?> _billingFuture = SupabaseService.loadBillingAddress(_targetId);
+
+  Future<void> _editBilling() async {
+    final updated = await ensureBillingAddress(context, clientId: _targetId, clientName: widget.clientName, forceEdit: true);
+    if (updated != null && mounted) {
+      setState(() => _billingFuture = Future.value(updated));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Billing address saved.")));
+    }
+  }
+
   Future<void> _addCard() async {
     setState(() => _adding = true);
+    final billing = await ensureBillingAddress(context, clientId: _targetId, clientName: widget.clientName);
+    if (billing == null) {
+      if (mounted) setState(() => _adding = false);
+      return;
+    }
     final result = await PaymentSheetService.addPaymentMethod(
       businessName: ref.read(platformSettingsProvider).businessName,
+      clientId: widget.clientId,
+      billing: billing,
     );
     if (!mounted) return;
     setState(() => _adding = false);
@@ -38,7 +67,7 @@ class _PaymentDetailsSectionState extends ConsumerState<PaymentDetailsSection> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.error ?? "Couldn't save that card.")));
       return;
     }
-    setState(() => _future = SupabaseService.loadPaymentMethods());
+    setState(() => _future = SupabaseService.loadPaymentMethods(clientId: widget.clientId));
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Card saved.")));
   }
 
@@ -48,7 +77,9 @@ class _PaymentDetailsSectionState extends ConsumerState<PaymentDetailsSection> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card,
         title: const Text("Remove payment method?"),
-        content: Text("${m.label} will be removed from your account. You can add it again at your next purchase."),
+        content: Text(widget.clientId == null
+            ? "${m.label} will be removed from your account. You can add it again at your next purchase."
+            : "${m.label} will be removed from ${widget.clientName ?? "this client"}'s account."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Keep")),
           TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text("Remove", style: TextStyle(color: AppColors.danger))),
@@ -58,7 +89,7 @@ class _PaymentDetailsSectionState extends ConsumerState<PaymentDetailsSection> {
     if (ok != true || !mounted) return;
     setState(() => _removing = m.id);
     try {
-      final next = await SupabaseService.loadPaymentMethods(removeId: m.id);
+      final next = await SupabaseService.loadPaymentMethods(removeId: m.id, clientId: widget.clientId);
       if (mounted) setState(() => _future = Future.value(next));
     } catch (e) {
       if (mounted) {
@@ -75,14 +106,14 @@ class _PaymentDetailsSectionState extends ConsumerState<PaymentDetailsSection> {
     return RefreshIndicator(
       color: AppColors.gold,
       onRefresh: () async {
-        final next = SupabaseService.loadPaymentMethods();
+        final next = SupabaseService.loadPaymentMethods(clientId: widget.clientId);
         setState(() => _future = next);
         await next;
       },
       child: ListView(
         padding: const EdgeInsets.all(18),
         children: [
-          BackBar(onBack: widget.onBack, title: "Payment Details"),
+          BackBar(onBack: widget.onBack, title: widget.clientName == null ? "Payment Details" : "${widget.clientName}'s Payment Details"),
           const SizedBox(height: 14),
           // Add a card up front, without waiting for a purchase — it's then
           // used for renewals and any cancellation fee.
@@ -92,6 +123,41 @@ class _PaymentDetailsSectionState extends ConsumerState<PaymentDetailsSection> {
             child: Text(_adding ? "Opening…" : "Add card"),
           ),
           const SizedBox(height: 12),
+          // Billing address — saved to the profile, reused for every purchase
+          // and editable here.
+          FutureBuilder<BillingAddress?>(
+            future: _billingFuture,
+            builder: (context, snap) {
+              final a = snap.data;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppCard(
+                  child: Row(
+                    children: [
+                      Icon(LucideIcons.mapPin, size: 20, color: AppColors.gold),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Billing address", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                            const SizedBox(height: 2),
+                            Text(
+                              a == null
+                                  ? (snap.connectionState == ConnectionState.done ? "Not added yet" : "Loading…")
+                                  : [a.line1, if (a.line2.isNotEmpty) a.line2, "${a.city}, ${a.state} ${a.postalCode}"].join(", "),
+                              style: TextStyle(fontSize: 12, color: AppColors.mute),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(onPressed: _editBilling, child: Text(a == null ? "Add" : "Edit")),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           FutureBuilder<List<SavedPaymentMethod>>(
             future: _future,
             builder: (context, snap) {

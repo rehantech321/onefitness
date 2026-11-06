@@ -8,6 +8,7 @@ import "../../../core/theme/app_colors.dart";
 import "../../../core/utils/domain_labels.dart";
 import "../../../core/utils/date_utils.dart";
 import "../../../core/utils/membership_utils.dart";
+import "../../../core/widgets/billing_address_form.dart";
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/booking.dart";
 import "../../../data/models/client_info.dart";
@@ -192,7 +193,15 @@ class _MembershipHubScreenState extends ConsumerState<MembershipHubScreen> {
         // with no browser and nothing to redirect back from. The plan is
         // still only ever granted by stripe-webhook once Stripe confirms the
         // payment, never by this call returning.
+        // Billing address first — asked once, saved to the profile.
+        final billing = await ensureBillingAddress(context, clientId: clientId);
+        if (billing == null) {
+          if (mounted) setState(() => _busyPlanId = null);
+          return;
+        }
+        if (!mounted) return;
         final result = await PaymentSheetService.purchase(
+          billing: billing,
           planId: plan.id,
           couponCode: couponCode.isEmpty ? null : couponCode,
           paymentMethod: tender == PayTender.ach ? "ach" : "card",

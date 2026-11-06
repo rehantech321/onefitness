@@ -1,6 +1,7 @@
 import "dart:io" show Platform;
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter_stripe/flutter_stripe.dart";
+import "../../data/models/billing_address.dart";
 import "../supabase/supabase_service.dart";
 
 /// Result of an in-app purchase attempt. [cancelled] is separated from
@@ -79,6 +80,26 @@ Future<void> _letIosSettle() async {
   }
 }
 
+/// Hands the saved billing address to the sheet so it is attached to the
+/// card instead of being asked for a second time inside Stripe's form.
+BillingDetails? _billingDetails(BillingAddress? a) => a == null
+    ? null
+    : BillingDetails(
+        address: Address(
+          line1: a.line1,
+          line2: a.line2.isEmpty ? null : a.line2,
+          city: a.city,
+          state: a.state,
+          postalCode: a.postalCode,
+          country: a.country,
+        ),
+      );
+
+const _billingConfig = BillingDetailsCollectionConfiguration(
+  address: AddressCollectionMode.never,
+  attachDefaultsToPaymentMethod: true,
+);
+
 class PaymentSheetService {
   /// Set once per process, the first time a sheet is opened. The key comes
   /// from the backend rather than being compiled in, so rotating it or
@@ -106,6 +127,7 @@ class PaymentSheetService {
     required String size,
     int quantity = 1,
     required String businessName,
+    BillingAddress? billing,
   }) async {
     if (kIsWeb) {
       return const PaymentResult.failed("In-app payment isn't available on web yet.");
@@ -120,20 +142,20 @@ class PaymentSheetService {
     } catch (e) {
       return PaymentResult.failed(e.toString().replaceFirst("Exception: ", ""));
     }
-    return _present(intent, businessName);
+    return _present(intent, businessName, billing);
   }
 
   /// Saving a card without buying anything — Profile Settings → Payment
   /// Details → "Add card". Same sheet, in setup mode: the card is attached
   /// to the client's Stripe Customer for later charges (renewals, a
   /// cancellation fee) and nothing is charged now.
-  static Future<PaymentResult> addPaymentMethod({required String businessName}) async {
+  static Future<PaymentResult> addPaymentMethod({required String businessName, String? clientId, BillingAddress? billing}) async {
     if (kIsWeb) {
       return const PaymentResult.failed("Adding a card isn't available on web yet.");
     }
     final Map<String, dynamic> setup;
     try {
-      setup = await SupabaseService.createSetupIntent();
+      setup = await SupabaseService.createSetupIntent(clientId: clientId);
     } catch (e) {
       return PaymentResult.failed(e.toString().replaceFirst("Exception: ", ""));
     }
@@ -157,6 +179,8 @@ class PaymentSheetService {
           customerId: setup["customerId"] as String?,
           customerEphemeralKeySecret: setup["ephemeralKey"] as String?,
           merchantDisplayName: businessName,
+          billingDetails: _billingDetails(billing),
+          billingDetailsCollectionConfiguration: billing == null ? null : _billingConfig,
           allowsDelayedPaymentMethods: true,
         ),
       );
@@ -179,6 +203,7 @@ class PaymentSheetService {
     required String businessName,
     int? priceOverrideCents,
     String? accessExpiresAt,
+    BillingAddress? billing,
   }) async {
     // The native sheet is iOS/Android only. Web would need Stripe Elements,
     // which this app doesn't ship — failing loudly beats silently doing
@@ -201,13 +226,13 @@ class PaymentSheetService {
       return PaymentResult.failed(e.toString().replaceFirst("Exception: ", ""));
     }
 
-    return _present(intent, businessName);
+    return _present(intent, businessName, billing);
   }
 
   /// Everything from "we have an intent" to "the sheet closed" — shared by
   /// the plan and product flows so the two can't drift apart on Apple Pay
   /// handling, key configuration or cancellation semantics.
-  static Future<PaymentResult> _present(Map<String, dynamic> intent, String businessName) async {
+  static Future<PaymentResult> _present(Map<String, dynamic> intent, String businessName, BillingAddress? billing) async {
     if (intent["requiresPayment"] == false) return const PaymentResult.nothingDue();
 
     final clientSecret = intent["clientSecret"] as String?;
@@ -235,6 +260,8 @@ class PaymentSheetService {
           customerId: intent["customerId"] as String?,
           customerEphemeralKeySecret: intent["ephemeralKey"] as String?,
           merchantDisplayName: businessName,
+          billingDetails: _billingDetails(billing),
+          billingDetailsCollectionConfiguration: billing == null ? null : _billingConfig,
           // Apple Pay is a card wallet layered on top of the sheet, so it's
           // switched on here rather than in the server's method list — and
           // only for packages, per the product-type rules, and only when

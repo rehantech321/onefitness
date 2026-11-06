@@ -13,6 +13,7 @@ import "../../data/models/live_session.dart";
 import "../../data/models/saved_payment_method.dart";
 import "../../data/models/blocked_time.dart";
 import "../../data/models/billing_anchor_history_entry.dart";
+import "../../data/models/billing_address.dart";
 import "../../data/models/booking.dart";
 import "../../data/models/challenge.dart";
 import "../../data/models/charge.dart";
@@ -4380,10 +4381,24 @@ class SupabaseService {
   static Future<void> updatePushOptIn(String profileId, bool optIn) =>
       client.from("profiles").update({"push_opt_in": optIn}).eq("id", profileId);
 
+  /// The billing address saved on a client's profile, or null when none yet.
+  static Future<BillingAddress?> loadBillingAddress(String clientId) async {
+    final row = await client.from("clients").select("billing_address").eq("profile_id", clientId).maybeSingle();
+    return BillingAddress.fromJson(row?["billing_address"]);
+  }
+
+  /// Saves (or replaces) the billing address on a client's profile.
+  static Future<void> saveBillingAddress(String clientId, BillingAddress address) async {
+    await client.from("clients").update({"billing_address": address.toJson()}).eq("profile_id", clientId);
+  }
+
   /// What Stripe's Payment Sheet needs to save a card without charging it
   /// (Payment Details → Add card).
-  static Future<Map<String, dynamic>> createSetupIntent() async {
-    final res = await client.functions.invoke("create-setup-intent", body: const {});
+  static Future<Map<String, dynamic>> createSetupIntent({String? clientId}) async {
+    final res = await client.functions.invoke(
+      "create-setup-intent",
+      body: clientId == null ? const {} : {"clientId": clientId},
+    );
     final data = res.data;
     if (data is Map && data["error"] != null) throw Exception(data["error"]);
     return (data as Map).cast<String, dynamic>();
@@ -4392,10 +4407,15 @@ class SupabaseService {
   /// Cards / bank accounts saved on the client's Stripe Customer — saved
   /// automatically when they pay for a membership or package. Pass
   /// [removeId] to remove one first; the updated list comes back either way.
-  static Future<List<SavedPaymentMethod>> loadPaymentMethods({String? removeId}) async {
+  static Future<List<SavedPaymentMethod>> loadPaymentMethods({String? removeId, String? clientId}) async {
     final res = await client.functions.invoke(
       "list-payment-methods",
-      body: removeId == null ? const {} : {"action": "remove", "id": removeId},
+      body: {
+        if (removeId != null) "action": "remove",
+        if (removeId != null) "id": removeId,
+        // Staff managing a client's methods; the server re-checks the role.
+        if (clientId != null) "clientId": clientId,
+      },
     );
     final data = res.data;
     if (data is Map && data["error"] != null) throw Exception(data["error"]);

@@ -4,6 +4,8 @@ import "package:lucide_flutter/lucide_flutter.dart";
 import "../../../core/navigation/local_back_stack.dart";
 import "../../../core/payments/payment_sheet_service.dart";
 import "../../../core/theme/app_colors.dart";
+import "../../../core/widgets/billing_address_form.dart";
+import "../../../data/providers/client_providers.dart" show clientInfoProvider;
 import "../../../core/widgets/widgets.dart";
 import "../../../data/models/product.dart";
 import "../../../data/providers/platform_settings_provider.dart";
@@ -185,9 +187,17 @@ class _ProductDetailState extends ConsumerState<_ProductDetail> {
       _busy = true;
       _error = null;
     });
+    // Billing address first (saved to the profile, reused next time).
+    final billing = await ensureBillingAddress(context, clientId: ref.read(clientInfoProvider).id);
+    if (billing == null) {
+      if (mounted) setState(() => _busy = false);
+      return;
+    }
+    if (!mounted) return;
     final result = await PaymentSheetService.purchaseProduct(
       productId: widget.product.id,
       size: size,
+      billing: billing,
       businessName: ref.read(platformSettingsProvider).businessName,
     );
     if (!mounted) return;
