@@ -80,8 +80,8 @@ class TrainerRangeStats {
   }
 }
 
-/// Mirrors `perTrainerInRange` — per-trainer session counts + estimated
-/// revenue for every non-staff, non-cancelled booking in range.
+/// Mirrors `perTrainerInRange` — per-trainer session counts (checked-in
+/// clients only) + estimated revenue for every non-cancelled booking in range.
 List<TrainerRangeStats> perTrainerInRange(List<Trainer> trainers, List<Booking> bookings, List<ClientInfo> roster, List<MembershipPlan> plans, ReportRange range) {
   MembershipPlan? planById(String? id) {
     if (id == null) return null;
@@ -90,9 +90,15 @@ List<TrainerRangeStats> perTrainerInRange(List<Trainer> trainers, List<Booking> 
   }
 
   return trainers.map((t) {
-    final sessions = bookings.where((b) => b.trainerId == t.id && b.status != "cancelled" && range.includes(b.date)).toList();
+    final booked = bookings.where((b) => b.trainerId == t.id && b.status != "cancelled" && range.includes(b.date)).toList();
+    // Coach pay counts ONLY clients who were checked in. A booking that is
+    // unmarked, an early/late cancel or a no-show earns the coach nothing —
+    // signing up for a session is not enough, they have to attend it.
+    final sessions = booked.where((b) => b.attendanceStatus == "checked-in").toList();
+    // Revenue is the gym's, not the coach's: a no-show or late cancel still
+    // keeps the session/fee, so it stays measured over every booking.
     var revenue = 0.0;
-    for (final b in sessions) {
+    for (final b in booked) {
       final client = roster.where((c) => c.id == b.clientId);
       final plan = client.isNotEmpty ? planById(client.first.membershipPlanId) : null;
       revenue += estimateSessionRevenue(plan);

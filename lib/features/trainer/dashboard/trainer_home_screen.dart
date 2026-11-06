@@ -736,24 +736,10 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
               final isPastDate = _viewDate.compareTo(isoToday()) < 0;
               final group = byTime[slot]!;
 
-              // A session can't be started before it's due. The 9pm slot was
-              // startable at 9:52 in the morning, which is how a coach ends
-              // up logging sets against a session that hasn't happened.
-              //
-              // The one exception is a client who turned up early and
-              // checked themselves in: their arrival is exactly the thing
-              // that makes starting early legitimate, so the coach can join
-              // them rather than being locked out of a session already
-              // happening on the gym floor.
-              final nowMin = DateTime.now().hour * 60 + DateTime.now().minute;
-              final isFutureDate = _viewDate.compareTo(isoToday()) > 0;
-              // Only the client's own "I'm here — start my session" counts.
-              // attendance_status is no use here: the coach's own Check In
-              // button writes exactly the same value, so ticking someone
-              // present at 6pm unlocked starting a 9pm session.
-              final someoneArrivedEarly = group.any((b) => b.clientStartedEarly);
-              final tooEarly = isFutureDate ||
-                  (_viewDate == isoToday() && nowMin < slot && !someoneArrivedEarly);
+              // A session can only be started once at least one client in it
+              // has been checked in — on any day, so a coach who checks a
+              // client in for Saturday can start Saturday's session now.
+              final anyCheckedIn = group.any((b) => b.attendanceStatus == "checked-in");
 
               // A session this coach already has running — including one
               // left open on another device. Starting it again reuses the
@@ -780,7 +766,7 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                           ),
                         ),
                         ElevatedButton(
-                          onPressed: (isPastDate || tooEarly)
+                          onPressed: (isPastDate || !(anyCheckedIn || alreadyLive))
                               ? null
                               : () => _beginRun(slot, group),
                           style: ElevatedButton.styleFrom(
@@ -809,13 +795,11 @@ class _TrainerHomeScreenState extends ConsumerState<TrainerHomeScreen> {
                     ),
                     // A disabled button with no reason beside it reads as a
                     // broken button, so it says what it's waiting for.
-                    if (tooEarly)
+                    if (!anyCheckedIn && !alreadyLive && !isPastDate)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
-                          isFutureDate
-                              ? "Starts on ${dayLabel(_viewDate)}"
-                              : "Can be started at ${fmtSlot(slot)}, or as soon as someone checks in",
+                          "Check in at least one client to start this session",
                           style: TextStyle(fontSize: 10.5, color: AppColors.mute),
                         ),
                       ),

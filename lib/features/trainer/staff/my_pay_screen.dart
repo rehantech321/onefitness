@@ -46,7 +46,8 @@ class _MyPayScreenState extends ConsumerState<MyPayScreen> {
             borderColor: AppColors.goldDim,
             child: Text(
               "You're paid ${_payoutModeLabel(me.payoutMode)} at \$${(me.payoutRateCents / 100).toStringAsFixed(2)}"
-              "${me.referralCommissionPercent > 0 ? ', plus ${me.referralCommissionPercent}% on purchases by clients who used your Coach Code' : ''}.",
+              "${me.referralCommissionPercent > 0 ? ', plus ${me.referralCommissionPercent}% on purchases by clients who used your Coach Code' : ''}. "
+              "Only clients who were checked in count — early cancels, late cancels, no-shows and unmarked bookings aren't paid.",
               style: TextStyle(fontSize: 12, color: AppColors.mute),
             ),
           ),
