@@ -60,12 +60,22 @@ class _ExerciseLiftsTabState extends ConsumerState<ExerciseLiftsTab> {
 
     // name -> [(date, weight)], mirrors LogProgressPage.jsx's exerciseHistory build-up.
     final history = <String, List<(String, double)>>{};
-    for (final log in client.workoutLogs) {
+    // Keyed by workout (date + position), not by date alone: two workouts
+    // logged on the same day used to collapse into one point, so the chart
+    // still said "need more history" after the client had logged two.
+    final orderedLogs = [...client.workoutLogs.asMap().entries]
+      ..sort((a, b) {
+        final c = a.value.date.compareTo(b.value.date);
+        return c != 0 ? c : a.key.compareTo(b.key);
+      });
+    for (final entry in orderedLogs) {
+      final log = entry.value;
+      final logKey = "${log.date}#${entry.key.toString().padLeft(6, "0")}";
       for (final ex in log.exercises) {
         final doneWeights = ex.sets.where((s) => s.completed && (s.completedWeight ?? 0) > 0).map((s) => s.completedWeight!);
         if (doneWeights.isEmpty) continue;
         final maxW = doneWeights.reduce((a, b) => a > b ? a : b);
-        history.putIfAbsent(ex.name, () => []).add((log.date, maxW));
+        history.putIfAbsent(ex.name, () => []).add((logKey, maxW));
       }
     }
     final names = history.keys.toList()..sort();
